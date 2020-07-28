@@ -23,26 +23,21 @@
   ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "ReShadeUI.fxh"
 #include "ReShade.fxh"
 
-sampler sLinear { Texture = ReShade::BackBufferTex; SRGBTexture = true; };
-
-uniform float g_sldSharpen < __UNIFORM_SLIDER_FLOAT1
-    ui_min = 0.000; ui_max=1.000;
+uniform float g_sldSharpen <
     ui_label = "Sharpen";
     ui_tooltip = "Increase to sharpen details within the image.";
-    ui_step = 0.001;
+	ui_type = "slider";
+    ui_min = 0.0; ui_max = 1.0;
 > = 0.5;
 
-uniform float g_sldDenoise < __UNIFORM_SLIDER_FLOAT1
-    ui_min = 0.000; ui_max=1.000;
+uniform float g_sldDenoise <
     ui_label = "Ignore Film Grain";
     ui_tooltip = "Increase to limit how intensely film grain within the image gets sharpened.";
-    ui_step = 0.001;
+	ui_type = "slider";
+    ui_min = 0.0; ui_max = 1.0;
 > = 0.17;
-
-#include "ReShade.fxh"
 
 float GetLuma(float4 p) { return dot(p.rgb, float3(0.299f, 0.587f, 0.114f)); } // Y from JPEG spec
 float Square(float v) { return v * v; }
