@@ -28,18 +28,19 @@
 uniform float g_sldSharpen <
     ui_label = "Sharpen";
     ui_tooltip = "Increase to sharpen details within the image.";
-	ui_type = "slider";
+    ui_type = "slider";
     ui_min = 0.0; ui_max = 1.0;
 > = 0.5;
 
 uniform float g_sldDenoise <
     ui_label = "Ignore Film Grain";
     ui_tooltip = "Increase to limit how intensely film grain within the image gets sharpened.";
-	ui_type = "slider";
+    ui_type = "slider";
     ui_min = 0.0; ui_max = 1.0;
 > = 0.17;
 
-float GetLuma(float4 p) { return dot(p.rgb, float3(0.299f, 0.587f, 0.114f)); } // Y from JPEG spec
+sampler sLinear { Texture = ReShade::BackBufferTex; SRGBTexture = true; };
+float GetLuma(float4 p) { return dot(p.rgb, 0.333f); }
 float Square(float v) { return v * v; }
 
 // highlight fall-off start (prevents halos and noise in bright areas)
@@ -53,9 +54,9 @@ float Square(float v) { return v * v; }
 
 void PS_ImageSharpening(in float4 i_pos : SV_POSITION, in float2 i_uv : TEXCOORD, out float4 o_rgba : SV_Target)
 {
-    float4 x = tex2D(ReShade::BackBuffer, i_uv);
+    float4 x = tex2D(sLinear, i_uv);
 
-    #define getTexture(i,j) GetLuma(tex2Doffset(ReShade::BackBuffer, i_uv, int2(i, j)))
+    #define getTexture(i,j) GetLuma(tex2Doffset(sLinear, i_uv, int2(i, j)))
 
     const float lx = getTexture( 0, 0);
 
@@ -131,5 +132,5 @@ void PS_ImageSharpening(in float4 i_pos : SV_POSITION, in float2 i_uv : TEXCOORD
 }
 
 technique ImageSharpening {
-    pass { VertexShader = PostProcessVS; PixelShader = PS_ImageSharpening; }
+    pass { VertexShader = PostProcessVS; PixelShader = PS_ImageSharpening; SRGBWriteEnable = true; }
 }

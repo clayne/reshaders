@@ -18,26 +18,28 @@ static const float weights[4] = { 0.1210733, 0.2193107, 0.1476820, 0.0724707 };
 
 float3 blur(sampler src, float2 uv, float2 pxSize, float2 direction)
 {
-    const float2 offset_factor = pxSize * direction;
+    const float2 offset_factor = rcp(pxSize) * direction;
 
-    float3 color = tex2D(src, uv).rgb * weights[0]; // Center Sampler
-    color += tex2D(src, uv - offsets[3] * offset_factor).rgb * weights[3];
-    color += tex2D(src, uv - offsets[2] * offset_factor).rgb * weights[2];
-    color += tex2D(src, uv - offsets[1] * offset_factor).rgb * weights[1];
-    color += tex2D(src, uv + offsets[1] * offset_factor).rgb * weights[1];
-    color += tex2D(src, uv + offsets[2] * offset_factor).rgb * weights[2];
-    color += tex2D(src, uv + offsets[3] * offset_factor).rgb * weights[3];
+    float3 color; // Center Sampler
+    color += tex2Dlod(src, float4(uv - offsets[3] * offset_factor, 0.0, 0.0)).rgb * weights[3];
+    color += tex2Dlod(src, float4(uv - offsets[2] * offset_factor, 0.0, 0.0)).rgb * weights[2];
+    color += tex2Dlod(src, float4(uv - offsets[1] * offset_factor, 0.0, 0.0)).rgb * weights[1];
+    color += tex2Dlod(src, float4(uv, 0.0, 0.0)).rgb * weights[0];
+    color += tex2Dlod(src, float4(uv + offsets[1] * offset_factor, 0.0, 0.0)).rgb * weights[1];
+    color += tex2Dlod(src, float4(uv + offsets[2] * offset_factor, 0.0, 0.0)).rgb * weights[2];
+    color += tex2Dlod(src, float4(uv + offsets[3] * offset_factor, 0.0, 0.0)).rgb * weights[3];
     return color;
 }
 
 /* [Pixel Shaders -> Technique] */
 
 struct VS_OUTPUT { float4 vpos : SV_Position; float2 uv : TEXCOORD0; };
-void PS_PrePass(VS_OUTPUT IN, out float3 c : SV_Target0) { c = tex2D(sLinear, IN.uv).rgb; c *= c - 0.5; }
-void PS_Blur1(VS_OUTPUT IN, out float3 c : SV_Target0) { c = blur(sBlur1, IN.uv, rcp(tex2Dsize(sBlur1, 1.0)), float2(1.0, 0.0)); }
-void PS_Blur2(VS_OUTPUT IN, out float3 c : SV_Target0) { c = blur(sBlur2, IN.uv, rcp(tex2Dsize(sBlur2, 1.0)), float2(0.0, 1.0)); }
-void PS_Blur3(VS_OUTPUT IN, out float3 c : SV_Target0) { c = blur(sBlur3, IN.uv, rcp(tex2Dsize(sBlur3, 3.0)), float2(1.0, 0.0)); }
-void PS_Blur4(VS_OUTPUT IN, out float3 c : SV_Target0) { c = blur(sBlur4, IN.uv, rcp(tex2Dsize(sBlur4, 3.0)), float2(0.0, 1.0)); }
+float GetLuma(float3 p) { return dot(p, 0.333f); }
+void PS_PrePass(VS_OUTPUT IN, out float3 c : SV_Target0) { c = tex2D(sLinear, IN.uv).rgb; c *= c * GetLuma(c * c) * c; }
+void PS_Blur1(VS_OUTPUT IN, out float3 c : SV_Target0) { c = blur(sBlur1, IN.uv, tex2Dsize(sBlur1, 1.0), float2(1.0, 0.0)); }
+void PS_Blur2(VS_OUTPUT IN, out float3 c : SV_Target0) { c = blur(sBlur2, IN.uv, tex2Dsize(sBlur2, 1.0), float2(0.0, 1.0)); }
+void PS_Blur3(VS_OUTPUT IN, out float3 c : SV_Target0) { c = blur(sBlur3, IN.uv, tex2Dsize(sBlur3, 3.0), float2(1.0, 0.0)); }
+void PS_Blur4(VS_OUTPUT IN, out float3 c : SV_Target0) { c = blur(sBlur4, IN.uv, tex2Dsize(sBlur4, 3.0), float2(0.0, 1.0)); }
 
 technique CBloom < ui_label = "CBloom"; >
 {
