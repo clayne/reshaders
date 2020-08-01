@@ -42,9 +42,9 @@ void PS_Blur4(VS_OUTPUT IN, out float3 c : SV_Target0) { c = blur(sBlur4, IN.uv,
 
 technique CBloom < ui_label = "CBloom"; >
 {
-    pass { VertexShader = PostProcessVS; PixelShader = PS_PrePass; ClearRenderTargets = true; StencilEnable = true; RenderTarget0 = tBlur1; }
-    pass { VertexShader = PostProcessVS; PixelShader = PS_Blur1; ClearRenderTargets = true; StencilEnable = true; RenderTarget0 = tBlur2; }
-    pass { VertexShader = PostProcessVS; PixelShader = PS_Blur2; ClearRenderTargets = true; StencilEnable = true; RenderTarget0 = tBlur3; }
-    pass { VertexShader = PostProcessVS; PixelShader = PS_Blur3; ClearRenderTargets = true; StencilEnable = true; RenderTarget0 = tBlur4; }
+    pass { VertexShader = PostProcessVS; PixelShader = PS_PrePass; RenderTarget0 = tBlur1; }
+    pass { VertexShader = PostProcessVS; PixelShader = PS_Blur1; RenderTarget0 = tBlur2; }
+    pass { VertexShader = PostProcessVS; PixelShader = PS_Blur2; RenderTarget0 = tBlur3; }
+    pass { VertexShader = PostProcessVS; PixelShader = PS_Blur3; RenderTarget0 = tBlur4; }
     pass { VertexShader = PostProcessVS; PixelShader = PS_Blur4; SRGBWriteEnable = true; BlendEnable = true; DestBlend = INVSRCCOLOR; }
 }
