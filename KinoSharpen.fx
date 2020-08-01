@@ -9,7 +9,8 @@ uniform float intensity <
     ui_tooltip = "Increase to sharpen details within the image.";
 > = 0.05;
 
-sampler sLinear { Texture = ReShade::BackBufferTex; SRGBTexture = true; };
+texture BackBufferTex : COLOR;
+sampler sLinear { Texture = BackBufferTex; SRGBTexture = true; };
 
 struct VS_OUTPUT { float4 vpos : SV_Position; float2 uv : TEXCOORD0; };
 
@@ -24,7 +25,8 @@ void PS_Fragment(VS_OUTPUT IN, out float4 c : SV_Target)
     float4 c2 = tex2Doffset(sLinear, IN.uv, + offset(int2(+1, -1)));
 
     float4 c3 = tex2Doffset(sLinear, IN.uv, + offset(int2(-1, 0)));
-    float4 c4 = tex2Doffset(sLinear, IN.uv, + offset(int2( 0, 0)));
+    float4 c4 = tex2D(sLinear,IN.uv);
+    // float4 c4 = tex2Dlod(sLinear, float4(IN.uv, 0.0, 0.0));
     float4 c5 = tex2Doffset(sLinear, IN.uv, + offset(int2(+1, 0)));
 
     float4 c6 = tex2Doffset(sLinear, IN.uv, + offset(int2(-1, +1)));
