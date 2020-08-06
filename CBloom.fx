@@ -33,16 +33,16 @@ float3 blur(sampler src, float2 uv, float2 pxSize, float2 direction)
 
 /* [Pixel Shaders -> Technique] */
 
-struct VS_OUTPUT { float4 vpos : SV_Position; float2 uv : TEXCOORD0; };
-void PS_PrePass(VS_OUTPUT IN, out float3 c : SV_Target) { c = tex2D(sLinear, IN.uv).rgb; c *= dot(c, 0.333f)*c; }
-void PS_Blur1(VS_OUTPUT IN, out float3 c : SV_Target) { c = blur(sBlur1, IN.uv, tex2Dsize(sBlur1, 2.0), float2(1.0, 0.0)); }
-void PS_Blur2(VS_OUTPUT IN, out float3 c : SV_Target) { c = blur(sBlur2, IN.uv, tex2Dsize(sBlur2, 2.0), float2(0.0, 1.0)); }
-void PS_Blur3(VS_OUTPUT IN, out float3 c : SV_Target) { c = blur(sBlur3, IN.uv, tex2Dsize(sBlur3, 0.0), float2(1.0, 0.0)); }
-void PS_Blur4(VS_OUTPUT IN, out float3 c : SV_Target) { c = blur(sBlur4, IN.uv, tex2Dsize(sBlur4, 0.0), float2(0.0, 1.0)); }
+struct vs_output { float4 vpos : SV_Position; float2 uv : TEXCOORD0; };
+void PS_Light(vs_output op, out float3 c : SV_Target) { c = tex2D(sLinear, op.uv).rgb; c *= c * dot(c, 0.333f) * c; }
+void PS_Blur1(vs_output op, out float3 c : SV_Target) { c = blur(sBlur1, op.uv, tex2Dsize(sBlur1, 1.0), float2(1.0, 0.0)); }
+void PS_Blur2(vs_output op, out float3 c : SV_Target) { c = blur(sBlur2, op.uv, tex2Dsize(sBlur2, 1.0), float2(0.0, 1.0)); }
+void PS_Blur3(vs_output op, out float3 c : SV_Target) { c = blur(sBlur3, op.uv, tex2Dsize(sBlur3, 0.0), float2(1.0, 0.0)); }
+void PS_Blur4(vs_output op, out float3 c : SV_Target) { c = blur(sBlur4, op.uv, tex2Dsize(sBlur4, 0.0), float2(0.0, 1.0)); }
 
 technique CBloom < ui_label = "CBloom"; >
 {
-    pass { VertexShader = PostProcessVS; PixelShader = PS_PrePass; RenderTarget = tBlur1; }
+    pass { VertexShader = PostProcessVS; PixelShader = PS_Light; RenderTarget = tBlur1; }
     pass { VertexShader = PostProcessVS; PixelShader = PS_Blur1; RenderTarget = tBlur2; }
     pass { VertexShader = PostProcessVS; PixelShader = PS_Blur2; RenderTarget = tBlur3; }
     pass { VertexShader = PostProcessVS; PixelShader = PS_Blur3; RenderTarget = tBlur4; }
