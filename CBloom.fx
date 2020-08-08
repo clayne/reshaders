@@ -1,6 +1,6 @@
 #include "ReShade.fxh"
 
-texture tBlur1 < pooled = true; > { Width = BUFFER_WIDTH/2; Height = BUFFER_HEIGHT/2; Format = RGB10A2; MipLevels = 2; };
+texture tBlur1 < pooled = true; > { Width = BUFFER_WIDTH/2; Height = BUFFER_HEIGHT/2; Format = RGB10A2; };
 texture tBlur2 < pooled = true; > { Width = BUFFER_WIDTH/2; Height = BUFFER_HEIGHT/2; Format = RGB10A2; MipLevels = 2; };
 texture tBlur3 < pooled = true; > { Width = BUFFER_WIDTH/8; Height = BUFFER_HEIGHT/8; Format = RGB10A2; };
 texture tBlur4 < pooled = true; > { Width = BUFFER_WIDTH/8; Height = BUFFER_HEIGHT/8; Format = RGB10A2; };
@@ -34,7 +34,7 @@ float3 blur(sampler src, float2 uv, float2 pxSize, float2 direction)
 /* [Pixel Shaders -> Technique] */
 
 struct vs_output { float4 vpos : SV_Position; float2 uv : TEXCOORD0; };
-void PS_Light(vs_output op, out float3 c : SV_Target) { c = tex2D(sLinear, op.uv).rgb; c *= c * dot(c, 0.333f) * c; }
+void PS_Light(vs_output op, out float3 c : SV_Target) { c = tex2D(sLinear, op.uv).rgb; c = (c-0.333f) * lerp(c, dot(c, 0.333f), -c); }
 void PS_Blur1(vs_output op, out float3 c : SV_Target) { c = blur(sBlur1, op.uv, tex2Dsize(sBlur1, 2.0), float2(1.0, 0.0)); }
 void PS_Blur2(vs_output op, out float3 c : SV_Target) { c = blur(sBlur2, op.uv, tex2Dsize(sBlur2, 2.0), float2(0.0, 1.0)); }
 void PS_Blur3(vs_output op, out float3 c : SV_Target) { c = blur(sBlur3, op.uv, tex2Dsize(sBlur3, 0.0), float2(1.0, 0.0)); }
