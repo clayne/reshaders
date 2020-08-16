@@ -5,15 +5,22 @@
     - Mix of ThinMatrix's traditional progressive downscaling with mipmap levels
     - Blur optimized for bilinear filtering
 
-    Why MipLevels?
-    - Mipmaps progressively downsample the texture, meaning more blur and accuracy than direct downsampling
-    - Mipmaps reduce aliasing at the expense of memory and very little CPU
+    Why MipMap?
+    - Mipmaps progressively downsample the texture - more blurry and accurate than direct downscaling
+    - Mipmaps also reduces aliasing at the expense of memory and a little more CPU
+    
+    Passes:
+    1. Threshold pass -> downscale to 1/2 resolution texture (tBlurA). No mipmaps because 1/2 resolution samples 4 pixels
+    2. Horizontally blur tBlurA to tBlurB
+    3. Vertically blur tBlurB -> make 3 mipmap levels (1/4-1/6-1/8) -> use 4th level to downscale to 1/8 resolution texture (tBlurC)
+    4. Horizontally blur tBlurC to tBlurD
+    5. Vertically blur tBlurD and do a BlendOp to the source buffer
 */
 
-texture tBlurA < pooled = true; > { Width = BUFFER_WIDTH/2.0; Height = BUFFER_HEIGHT/2.0; Format = RGB10A2; MipLevels = 11; };
-texture tBlurB < pooled = true; > { Width = BUFFER_WIDTH/2.0; Height = BUFFER_HEIGHT/2.0; Format = RGB10A2; MipLevels = 11; };
-texture tBlurC < pooled = true; > { Width = BUFFER_WIDTH/8.0; Height = BUFFER_HEIGHT/8.0; Format = RGB10A2; MipLevels = 11; };
-texture tBlurD < pooled = true; > { Width = BUFFER_WIDTH/8.0; Height = BUFFER_HEIGHT/8.0; Format = RGB10A2; MipLevels = 11; };
+texture tBlurA < pooled = true; > { Width = BUFFER_WIDTH/2.0; Height = BUFFER_HEIGHT/2.0; Format = RGB10A2; MipLevels = 4; };
+texture tBlurB < pooled = true; > { Width = BUFFER_WIDTH/2.0; Height = BUFFER_HEIGHT/2.0; Format = RGB10A2; MipLevels = 4; };
+texture tBlurC < pooled = true; > { Width = BUFFER_WIDTH/8.0; Height = BUFFER_HEIGHT/8.0; Format = RGB10A2; };
+texture tBlurD < pooled = true; > { Width = BUFFER_WIDTH/8.0; Height = BUFFER_HEIGHT/8.0; Format = RGB10A2; };
 
 // NOTE: Process display-referred images into linear light, no matter the shader
 sampler sLinear { Texture = ReShade::BackBufferTex; SRGBTexture = true; };
