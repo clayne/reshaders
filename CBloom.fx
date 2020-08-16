@@ -1,3 +1,4 @@
+
 #include "ReShade.fxh"
 
 /*
@@ -29,7 +30,7 @@ sampler sBlurB { Texture = tBlurB; };
 sampler sBlurC { Texture = tBlurC; };
 sampler sBlurD { Texture = tBlurD; };
 
-struct vs_out { float4 vpos : SV_POSITION; float2 uv : TEXCOORD0; };
+struct vs_out { float4 vpos : SV_POSITION; float2 uv : TEXCOORD; };
 
 /* [ Seperated Blur :: https://www.shadertoy.com/view/ltBcDm :: Bilinear Adaption by CeeJayDK] */
 
@@ -38,7 +39,7 @@ static const float samples = 16.0;
 
 float gaussian(float x) { return exp(-(x*x) / (2.0*sigma*sigma)); } // Simple(r) gaussian hill curve - start with horizontal (x), turn direction 180 degrees
 
-float3 blur(sampler src, float2 uv, float2 ps, bool horizontal)
+float3 blur(sampler src, float2 uv, float2 ps, bool horizontal) : SV_Target
 {
     // Initialize 3 starters that will accumilate overtime, then divided
     float3 color;
@@ -74,17 +75,17 @@ float3 blur(sampler src, float2 uv, float2 ps, bool horizontal)
 /* [ Pixel Shaders -> Techniques ] */
 
 float max3(float3 i) { return max(max(i.r, i.g), i.b); }
-void PS_Light0(vs_out op, out float3 c : SV_Target0) { c = tex2D(sLinear, op.uv).rgb; c *= (c - 0.5) * lerp(c, dot(c, max3(c)), c) * c; }
-void PS_BlurH1(vs_out op, out float3 c : SV_Target0) { c = blur(sBlurA, op.uv, ReShade::PixelSize * 4.0, true); }
-void PS_BlurV1(vs_out op, out float3 c : SV_Target0) { c = blur(sBlurB, op.uv, ReShade::PixelSize * 4.0, false); }
-void PS_BlurH2(vs_out op, out float3 c : SV_Target0) { c = blur(sBlurC, op.uv, ReShade::PixelSize * 16.0, true); }
-void PS_BlurV2(vs_out op, out float3 c : SV_Target0) { c = blur(sBlurD, op.uv, ReShade::PixelSize * 16.0, false); }
+float3 PS_Light0(vs_out op) { float3 c = tex2D(sLinear, op.uv).rgb; return (c - 0.5) * lerp(c, dot(c, max3(c)), c) * c; }
+float3 PS_BlurH1(vs_out op) { return blur(sBlurA, op.uv, ReShade::PixelSize * 4.0, true); }
+float3 PS_BlurV1(vs_out op) { return blur(sBlurB, op.uv, ReShade::PixelSize * 4.0, false); }
+float3 PS_BlurH2(vs_out op) { return blur(sBlurC, op.uv, ReShade::PixelSize * 16.0, true); }
+float3 PS_BlurV2(vs_out op) { return blur(sBlurD, op.uv, ReShade::PixelSize * 16.0, false); }
 
 technique cBloom < ui_label = "Bloom"; >
 {
-    pass { VertexShader = PostProcessVS; PixelShader = PS_Light0; RenderTarget0 = tBlurA; }
-    pass { VertexShader = PostProcessVS; PixelShader = PS_BlurH1; RenderTarget0 = tBlurB; }
-    pass { VertexShader = PostProcessVS; PixelShader = PS_BlurV1; RenderTarget0 = tBlurC; }
-    pass { VertexShader = PostProcessVS; PixelShader = PS_BlurH2; RenderTarget0 = tBlurD; }
+    pass { VertexShader = PostProcessVS; PixelShader = PS_Light0; RenderTarget = tBlurA; }
+    pass { VertexShader = PostProcessVS; PixelShader = PS_BlurH1; RenderTarget = tBlurB; }
+    pass { VertexShader = PostProcessVS; PixelShader = PS_BlurV1; RenderTarget = tBlurC; }
+    pass { VertexShader = PostProcessVS; PixelShader = PS_BlurH2; RenderTarget = tBlurD; }
     pass { VertexShader = PostProcessVS; PixelShader = PS_BlurV2; SRGBWriteEnable = true; BlendEnable = true; DestBlend = INVSRCColor; }
 }
