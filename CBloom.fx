@@ -7,7 +7,6 @@
     Why MipMap?
     - Mipmaps progressively downsample the texture - more blurry and accurate than direct downscaling
     - Mipmaps also reduces aliasing at the expense of memory and a little more CPU
-
     Passes:
     1. Threshold pass -> downscale to 1/2 resolution texture (tBlurA). No mipmaps because 1/2 resolution samples 4 pixels
     2. Horizontally blur tBlurA to tBlurB
