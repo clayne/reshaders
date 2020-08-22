@@ -1,4 +1,3 @@
-
 /*
     CBloom, by copingMechanism with good help from CeeJayDK! :)
     - Mix of ThinMatrix's traditional progressive downscaling with mipmap levels
@@ -7,6 +6,7 @@
     Why MipMap?
     - Mipmaps progressively downsample the texture - more blurry and accurate than direct downscaling
     - Mipmaps also reduces aliasing at the expense of memory and a little more CPU
+
     Passes:
     1. Threshold pass -> downscale to 1/2 resolution texture (tBlurA). No mipmaps because 1/2 resolution samples 4 pixels
     2. Horizontally blur tBlurA to tBlurB
@@ -56,12 +56,7 @@ float3 blur(sampler src,  float2 uv, float2 ps, bool horizontal)
 
     [loop] for (float i = -iter + 0.5; i <= iter; i+=2.0)
     {
-        float2 direction;
-
-        if (horizontal)
-            direction = float2(i, 0.0);
-        else
-            direction = float2(0.0, i);
+        const float2 direction = horizontal ? float2(i, 0.0) : float2(0.0, i);
 
         weight = gaussian(length(direction));
         color.rgb += tex2D(src, direction * ps + uv).rgb * weight;
