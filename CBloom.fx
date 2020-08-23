@@ -75,7 +75,7 @@ float3 PS_BlurV1(vs_out op) : SV_Target { return blur(sBlurB, op.uv, ReShade::Pi
 float3 PS_BlurH2(vs_out op) : SV_Target { return blur(sBlurC, op.uv, ReShade::PixelSize * 16.0, true); }
 float3 PS_BlurV2(vs_out op) : SV_Target { return blur(sBlurD, op.uv, ReShade::PixelSize * 16.0, false); }
 
-technique cBloom < ui_label = "Bloom"; >
+technique CBloom
 {
     pass { VertexShader = PostProcessVS; PixelShader = PS_Light0; RenderTarget = tBlurA; }
     pass { VertexShader = PostProcessVS; PixelShader = PS_BlurH1; RenderTarget = tBlurB; }
