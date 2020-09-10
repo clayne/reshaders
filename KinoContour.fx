@@ -1,4 +1,25 @@
-// https://github.com/keijiro/Kino :: Unlicense
+/*
+    KinoContour - Contour line effect
+
+    Copyright (C) 2015 Keijiro Takahashi
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy of
+    this software and associated documentation files (the "Software"), to deal in
+    the Software without restriction, including without limitation the rights to
+    use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+    the Software, and to permit persons to whom the Software is furnished to do so,
+    subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in all
+    copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+    FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+    COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+    IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+    CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+*/
 
 #include "ReShade.fxh"
 
@@ -6,47 +27,55 @@ uniform float4 _Color <
     ui_label = "Color";
     ui_type = "slider";
     ui_min = 0.0; ui_max = 1.0;
-> = float4(0.0, 0.0, 0.0, 0.0);
+> = float4(1.0, 1.0, 1.0, 1.0);
 
 uniform float4 _Background <
     ui_label = "Background";
     ui_type = "slider";
     ui_min = 0.0; ui_max = 1.0;
-> = float4(1.0, 1.0, 1.0, 0.0);
+> = float4(0.0, 0.0, 0.0, 0.0);
 
-uniform float _upperThreshold <
+uniform float _Threshold <
     ui_label = "Threshold";
     ui_type = "slider";
     ui_min = 0.0; ui_max = 1.0;
 > = 0.05f;
 
-uniform float _lowerThreshold <
-    ui_label = "Threshold";
+uniform float _InvRange <
+    ui_label = "Inverse Range";
     ui_type = "slider";
     ui_min = 0.0; ui_max = 1.0;
 > = 0.05f;
 
 uniform float _ColorSensitivity <
-    ui_label = "ColorSensitivity";
+    ui_label = "Color Sensitivity";
     ui_type = "slider";
     ui_min = 0.0; ui_max = 1.0;
 > = 0.0f;
 
 sampler _MainTex { Texture = ReShade::BackBufferTex; SRGBTexture = true; };
-static const float2 _MainTex_TexelSize = ReShade::ScreenSize;
+static const float2 _MainTex_TexelSize = BUFFER_PIXEL_SIZE;
 
-struct VS_OUTPUT { float4 vpos : SV_Position; float2 uv : TEXCOORD0; };
+struct v2f_img { float4 vpos : SV_Position; float2 uv : TEXCOORD0; };
 
-void PS_Contour(VS_OUTPUT i, out float4 c : SV_Target)
+float4 PS_Contour(v2f_img i) : SV_Target
 {
-    // Color samples
-    float4 c0 = tex2Doffset(_MainTex, i.uv, float2(0.0, 0.0));
-    float3 c1 = tex2Doffset(_MainTex, i.uv, _MainTex_TexelSize.xy).rgb;
-    float3 c2 = tex2Doffset(_MainTex, i.uv, float2(_MainTex_TexelSize.x, 0)).rgb;
-    float3 c3 = tex2Doffset(_MainTex, i.uv, float2(0, _MainTex_TexelSize.y)).rgb;
+    // Source color
+    float4 c0 = tex2D(_MainTex, i.uv);
 
-    float edge;
-    const float _InvRange = rcp(_upperThreshold - _lowerThreshold);
+    // Four sample points of the roberts cross operator
+    float2 uv0 = i.uv;                                   // TL
+    float2 uv1 = i.uv + _MainTex_TexelSize.xy;           // BR
+    float2 uv2 = i.uv + float2(_MainTex_TexelSize.x, 0); // TR
+    float2 uv3 = i.uv + float2(0, _MainTex_TexelSize.y); // BL
+
+    float edge = 0;
+
+    // Color samples
+    float3 c1 = tex2D(_MainTex, uv1).rgb;
+    float3 c2 = tex2D(_MainTex, uv2).rgb;
+    float3 c3 = tex2D(_MainTex, uv3).rgb;
+
     // Roberts cross operator
     float3 cg1 = c1 - c0.rgb;
     float3 cg2 = c3 - c2;
@@ -59,9 +88,14 @@ void PS_Contour(VS_OUTPUT i, out float4 c : SV_Target)
 
     float3 cb = lerp(c0.rgb, _Background.rgb, _Background.a);
     float3 co = lerp(cb, _Color.rgb, edge * _Color.a);
-    c = float4(co, c0.a);
+    return float4(co, c0.a);
 }
 
-technique KinoSharpen < ui_label = "KinoSharpen"; > {
-    pass { VertexShader = PostProcessVS; PixelShader = PS_Contour; SRGBWriteEnable = true; }
+technique KinoContour {
+    pass
+    {
+        VertexShader = PostProcessVS;
+        PixelShader = PS_Contour;
+        SRGBWriteEnable = true;
+    }
 }

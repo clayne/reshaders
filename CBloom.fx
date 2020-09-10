@@ -18,9 +18,9 @@
 #include "ReShade.fxh"
 
 texture tBlurA < pooled = true; > { Width = BUFFER_WIDTH/2.0; Height = BUFFER_HEIGHT/2.0; Format = RGB10A2; };
-texture tBlurB < pooled = true; > { Width = BUFFER_WIDTH/2.0; Height = BUFFER_HEIGHT/2.0; Format = RGB10A2; MipLevels = 4; };
-texture tBlurC < pooled = true; > { Width = BUFFER_WIDTH/8.0; Height = BUFFER_HEIGHT/8.0; Format = RGB10A2; };
-texture tBlurD < pooled = true; > { Width = BUFFER_WIDTH/8.0; Height = BUFFER_HEIGHT/8.0; Format = RGB10A2; };
+texture tBlurB < pooled = true; > { Width = BUFFER_WIDTH/2.0; Height = BUFFER_HEIGHT/2.0; Format = RGB10A2; MipLevels = 8; };
+texture tBlurC < pooled = true; > { Width = BUFFER_WIDTH/16.0; Height = BUFFER_HEIGHT/16.0; Format = RGB10A2; };
+texture tBlurD < pooled = true; > { Width = BUFFER_WIDTH/16.0; Height = BUFFER_HEIGHT/16.0; Format = RGB10A2; };
 
 // NOTE: Process display-referred images into linear light, no matter the shader
 sampler sLinear { Texture = ReShade::BackBufferTex; SRGBTexture = true; };
@@ -68,12 +68,11 @@ float3 blur(sampler src,  float2 uv, float2 ps, bool horizontal)
 
 /* [ Pixel Shaders -> Techniques ] */
 
-float max3(float3 i) { return max(max(i.r, i.g), i.b); }
-float3 PS_Light0(vs_out op) : SV_Target { float3 c = tex2D(sLinear, op.uv).rgb; return (c - 0.666) * lerp(c, dot(c, max3(c)), c) * c; }
-float3 PS_BlurH1(vs_out op) : SV_Target { return blur(sBlurA, op.uv, ReShade::PixelSize * 4.0, true); }
-float3 PS_BlurV1(vs_out op) : SV_Target { return blur(sBlurB, op.uv, ReShade::PixelSize * 4.0, false); }
-float3 PS_BlurH2(vs_out op) : SV_Target { return blur(sBlurC, op.uv, ReShade::PixelSize * 16.0, true); }
-float3 PS_BlurV2(vs_out op) : SV_Target { return blur(sBlurD, op.uv, ReShade::PixelSize * 16.0, false); }
+float3 PS_Light0(vs_out o) : SV_Target { float3 c = tex2D(sLinear, o.uv).rgb; return (c - 0.75) * lerp(c, dot(c, c), c) * c; }
+float3 PS_BlurH1(vs_out o) : SV_Target { return blur(sBlurA, o.uv, BUFFER_PIXEL_SIZE * 8.0, true); }
+float3 PS_BlurV1(vs_out o) : SV_Target { return blur(sBlurB, o.uv, BUFFER_PIXEL_SIZE * 8.0, false); }
+float3 PS_BlurH2(vs_out o) : SV_Target { return blur(sBlurC, o.uv, BUFFER_PIXEL_SIZE * 32.0, true); }
+float3 PS_BlurV2(vs_out o) : SV_Target { return blur(sBlurD, o.uv, BUFFER_PIXEL_SIZE * 32.0, false); }
 
 technique CBloom
 {
