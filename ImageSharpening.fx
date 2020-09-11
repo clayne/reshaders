@@ -131,6 +131,12 @@ void PS_ImageSharpening(in float4 i_pos : SV_POSITION, in float2 i_uv : TEXCOORD
     o_rgba = x;
 }
 
-technique ImageSharpening {
-    pass { VertexShader = PostProcessVS; PixelShader = PS_ImageSharpening; SRGBWriteEnable = true; }
+technique ImageSharpening
+{
+    pass
+    {
+        VertexShader = PostProcessVS;
+        PixelShader = PS_ImageSharpening;
+        SRGBWriteEnable = true;
+    }
 }

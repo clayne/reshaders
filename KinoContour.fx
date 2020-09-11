@@ -1,3 +1,4 @@
+
 /*
     KinoContour - Contour line effect
 
@@ -29,6 +30,7 @@ uniform float4 _Color <
     ui_min = 0.0; ui_max = 1.0;
 > = float4(1.0, 1.0, 1.0, 1.0);
 
+
 uniform float4 _Background <
     ui_label = "Background";
     ui_type = "slider";
@@ -56,18 +58,16 @@ uniform float _ColorSensitivity <
 sampler _MainTex { Texture = ReShade::BackBufferTex; SRGBTexture = true; };
 static const float2 _MainTex_TexelSize = BUFFER_PIXEL_SIZE;
 
-struct v2f_img { float4 vpos : SV_Position; float2 uv : TEXCOORD0; };
-
-float4 PS_Contour(v2f_img i) : SV_Target
+float4 PS_Contour(in float4 vpos : SV_Position, in float2 uv : TEXCOORD) : SV_Target
 {
     // Source color
-    float4 c0 = tex2D(_MainTex, i.uv);
+    float4 c0 = tex2D(_MainTex, uv);
 
     // Four sample points of the roberts cross operator
-    float2 uv0 = i.uv;                                   // TL
-    float2 uv1 = i.uv + _MainTex_TexelSize.xy;           // BR
-    float2 uv2 = i.uv + float2(_MainTex_TexelSize.x, 0); // TR
-    float2 uv3 = i.uv + float2(0, _MainTex_TexelSize.y); // BL
+    float2 uv0 = uv;                                   // TL
+    float2 uv1 = uv + _MainTex_TexelSize.xy;           // BR
+    float2 uv2 = uv + float2(_MainTex_TexelSize.x, 0); // TR
+    float2 uv3 = uv + float2(0, _MainTex_TexelSize.y); // BL
 
     float edge = 0;
 
@@ -85,13 +85,13 @@ float4 PS_Contour(v2f_img i) : SV_Target
 
     // Thresholding
     edge = saturate((edge - _Threshold) * _InvRange);
-
     float3 cb = lerp(c0.rgb, _Background.rgb, _Background.a);
     float3 co = lerp(cb, _Color.rgb, edge * _Color.a);
     return float4(co, c0.a);
 }
 
-technique KinoContour {
+technique KinoContour
+{
     pass
     {
         VertexShader = PostProcessVS;
