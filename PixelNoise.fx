@@ -16,8 +16,6 @@ uniform float blurSeed <
 // NOTE: Process display-referred images into linear light, no matter the shader
 sampler sLinear { Texture = ReShade::BackBufferTex; SRGBTexture = true; };
 
-struct vs_out { float4 vpos : SV_POSITION; float2 uv : TEXCOORD; };
-
 float2 hash23(float3 p3)
 {
     p3 = frac(p3 * float3(443.897, 441.423, .0973));
@@ -25,18 +23,23 @@ float2 hash23(float3 p3)
     return frac((p3.xx+p3.yz)*p3.zy);
 }
 
-float3 PS_Noise(vs_out op) : SV_Target
+float3 PS_Noise(in float4 vpos : SV_POSITION, in float2 uv : TEXCOORD) : SV_Target
 {
-    float2 r = hash23(float3(op.uv, blurSeed));
+    float2 r = hash23(float3(uv, blurSeed));
     r.x*=6.28305308;
 
     // uniform sample the circle
     float2 cr = float2(sin(r.x),cos(r.x))*sqrt(r.y);
 
-    return tex2D(sLinear, op.uv + cr * (blurRadius/ReShade::ScreenSize)).rgb;
+    return tex2D(sLinear, uv + cr * (blurRadius/BUFFER_SCREEN_SIZE)).rgb;
 }
 
 technique OneDotRead
 {
-    pass { VertexShader = PostProcessVS; PixelShader = PS_Noise; SRGBWriteEnable = true; }
+    pass
+    {
+        VertexShader = PostProcessVS;
+        PixelShader = PS_Noise;
+        SRGBWriteEnable = true;
+    }
 }
