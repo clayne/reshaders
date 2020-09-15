@@ -1,84 +1,67 @@
+
 /*
-    CBloom, by copingMechanism with good help from CeeJayDK! :)
-    - Mix of ThinMatrix's traditional progressive downscaling with mipmap levels
-    - Blur optimized for bilinear filtering
+    Nyctalopia, by CopingMechanism
 
-    Why MipMap?
-    - Mipmaps progressively downsample the texture - more blurry and accurate than direct downscaling
-    - Mipmaps also reduces aliasing at the expense of memory and a little more CPU
-
-    Passes:
-    1. Threshold pass -> downscale to 1/2 resolution texture (tBlurA). No mipmaps because 1/2 resolution samples 4 pixels
-    2. Horizontally blur tBlurA to tBlurB
-    3. Vertically blur tBlurB -> make 3 mipmap levels (1/4-1/6-1/8) -> use 4th level to downscale to 1/8 resolution texture (tBlurC)
-    4. Horizontally blur tBlurC to tBlurD
-    5. Vertically blur tBlurD and do a BlendOp to the source buffer
+    Process:
+    Pass 1. Threshold and downscale to 256x256 -> t_LOD_9
+    Pass 2. t_LOD_9 prepates and outputs the last LOD level -> t_BlurH
+    Pass 3. Horizontally blur t_BlurH -> t_BlurV
+    Pass 4. Vertically blur t_BlurV -> t_Image
+    Pass 5. t_Image composites the result, stretches to screen, and BlendOp
 */
 
 #include "ReShade.fxh"
 
-texture tBlurA < pooled = true; > { Width = BUFFER_WIDTH/2.0; Height = BUFFER_HEIGHT/2.0; Format = RGB10A2; };
-texture tBlurB < pooled = true; > { Width = BUFFER_WIDTH/2.0; Height = BUFFER_HEIGHT/2.0; Format = RGB10A2; MipLevels = 8; };
-texture tBlurC < pooled = true; > { Width = BUFFER_WIDTH/16.0; Height = BUFFER_HEIGHT/16.0; Format = RGB10A2; };
-texture tBlurD < pooled = true; > { Width = BUFFER_WIDTH/16.0; Height = BUFFER_HEIGHT/16.0; Format = RGB10A2; };
+#define size 256.0
+#define rcp_size 1.0/pSize
+#define wrapUVW AddressU = MIRROR; AddressV = MIRROR; AddressW = MIRROR
 
-// NOTE: Process display-referred images into linear light, no matter the shader
-sampler sLinear { Texture = ReShade::BackBufferTex; SRGBTexture = true; };
-sampler sBlurA { Texture = tBlurA; };
-sampler sBlurB { Texture = tBlurB; };
-sampler sBlurC { Texture = tBlurC; };
-sampler sBlurD { Texture = tBlurD; };
+/* Process display-referred images to linear space. */
+sampler s_Linear { Texture = ReShade::BackBufferTex; SRGBTexture = true; };
+
+texture t_LOD_9 < pooled = true; > { Width = size; Height = size; MipLevels = 9; Format = RGBA16F; };
+texture t_BlurH < pooled = true; > { Width = size/16; Height = size/16; };
+texture t_BlurV < pooled = true; > { Width = size/16; Height = size/16; };
+texture t_Image < pooled = true; > { Width = size/16; Height = size/16; };
+
+sampler s_LOD_9 { Texture = t_LOD_9; wrapUVW; };
+sampler s_BlurH { Texture = t_BlurH; wrapUVW; };
+sampler s_BlurV { Texture = t_BlurV; wrapUVW; };
+sampler s_Image { Texture = t_Image; wrapUVW; };
 
 struct vs_out { float4 vpos : SV_POSITION; float2 uv : TEXCOORD; };
 
-/* [ Seperated Blur :: https://www.shadertoy.com/view/ltBcDm :: Bilinear Adaption by CeeJayDK] */
+/* [ Gaussian Blur Function by SleepKiller's shaderpatch] */
 
-static const float samples = 16.0;
-#define sigma sqrt(samples)
-
-float gaussian(float x) { return exp(-(x*x) / (2.0*sigma*sigma)); } // Simple(r) gaussian hill curve - start with horizontal (x), turn direction 180 degrees
-
-float3 blur(sampler src,  float2 uv, float2 ps, bool horizontal)
+float3 PS_Blur(vs_out o, sampler src, float2 pSize) : SV_TARGET
 {
-    // Initialize 3 starters that will accumilate overtime, then divided
-    float3 color;
-    float accum;
-    float weight;
+    const int steps = 6;
+    const float weights[steps] = { 0.16501, 0.17507, 0.10112, 0.04268, 0.01316, 0.002960 };
+    const float offsets[steps] = { 0.65772, 2.45017, 4.41096, 6.37285, 8.33626, 10.30153 };
 
-    const float iter = samples * 0.5; // We're halving the amount of samples we got to loop
-
-    /*  Why 0.5 offset? Sample on the center of each pixel, then account for the adjacent directions:
-        110   011   [121]   000   000   [121]
-        110 + 011 = [121] + 110 + 011 = [242]
-        000   000   [000]   110   011   [121]
-                      ^ Pass 1 Accum      ^ Pass 2 Accum
-    */
-
-    [loop] for (float i = -iter + 0.5; i <= iter; i+=2.0)
-    {
-        const float2 direction = horizontal ? float2(i, 0.0) : float2(0.0, i);
-
-        weight = gaussian(length(direction));
-        color.rgb += tex2D(src, direction * ps + uv).rgb * weight;
-        accum += weight;
+    float3 result;
+    for (int i = 0; i < steps; ++i) {
+        const float2 uv_offset = offsets[i] * pSize;
+        const float3 samples = tex2D(src,o.uv + uv_offset).rgb + tex2D(src, o.uv - uv_offset).rgb;
+        result += weights[i] * samples;
     }
 
-    return color.rgb /= accum;
+    return result;
 }
 
 /* [ Pixel Shaders -> Techniques ] */
 
-float3 PS_Light0(vs_out o) : SV_Target { float3 c = tex2D(sLinear, o.uv).rgb; return (c - 0.75) * lerp(c, dot(c, c), c) * c; }
-float3 PS_BlurH1(vs_out o) : SV_Target { return blur(sBlurA, o.uv, BUFFER_PIXEL_SIZE * 8.0, true); }
-float3 PS_BlurV1(vs_out o) : SV_Target { return blur(sBlurB, o.uv, BUFFER_PIXEL_SIZE * 8.0, false); }
-float3 PS_BlurH2(vs_out o) : SV_Target { return blur(sBlurC, o.uv, BUFFER_PIXEL_SIZE * 32.0, true); }
-float3 PS_BlurV2(vs_out o) : SV_Target { return blur(sBlurD, o.uv, BUFFER_PIXEL_SIZE * 32.0, false); }
+float4 PS_Light(vs_out o) : SV_Target { float3 c = tex2D(s_Linear, o.uv).rgb; return float4(lerp(c-1.0, dot(c, c), c*c), 1.0); }
+float4 PS_LOD_9(vs_out o) : SV_Target { return float4(tex2D(s_LOD_9, o.uv).rgb, 1.0); }
+float4 PS_BlurV(vs_out o) : SV_Target { return float4(PS_Blur(o, s_BlurH, float2(rcp_size * 16, 0.0)), 1.0); }
+float4 PS_BlurH(vs_out o) : SV_Target { return float4(PS_Blur(o, s_BlurV, float2(0.0, rcp_size * 16)), 1.0); }
+float4 PS_Image(vs_out o) : SV_Target { return float4(tex2D(s_Image, o.uv).rgb, 1.0); }
 
 technique CBloom
 {
-    pass { VertexShader = PostProcessVS; PixelShader = PS_Light0; RenderTarget = tBlurA; }
-    pass { VertexShader = PostProcessVS; PixelShader = PS_BlurH1; RenderTarget = tBlurB; }
-    pass { VertexShader = PostProcessVS; PixelShader = PS_BlurV1; RenderTarget = tBlurC; }
-    pass { VertexShader = PostProcessVS; PixelShader = PS_BlurH2; RenderTarget = tBlurD; }
-    pass { VertexShader = PostProcessVS; PixelShader = PS_BlurV2; SRGBWriteEnable = true; BlendEnable = true; DestBlend = INVSRCColor; }
+    pass { VertexShader = PostProcessVS; PixelShader = PS_Light; RenderTarget = t_LOD_9; }
+    pass { VertexShader = PostProcessVS; PixelShader = PS_LOD_9; RenderTarget = t_BlurH; }
+    pass { VertexShader = PostProcessVS; PixelShader = PS_BlurV; RenderTarget = t_BlurV; }
+    pass { VertexShader = PostProcessVS; PixelShader = PS_BlurH; RenderTarget = t_Image; }
+    pass { VertexShader = PostProcessVS; PixelShader = PS_Image; BlendEnable = true; DestBlend = INVSRCColor; }
 }
