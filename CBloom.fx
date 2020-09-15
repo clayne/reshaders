@@ -51,11 +51,11 @@ float3 PS_Blur(vs_out o, sampler src, float2 pSize) : SV_TARGET
     return result;
 }
 
-float4 PS_Light(vs_out o) : SV_Target { float3 c = tex2D(s_Linear, o.uv).rgb; return float4(lerp(c-1.0, dot(c, c), c*c), 1.0); }
-float4 PS_LOD_9(vs_out o) : SV_Target { return float4(tex2D(s_LOD_9, o.uv).rgb, 1.0); }
-float4 PS_BlurH(vs_out o) : SV_Target { return float4(PS_Blur(o, s_BlurH, float2(rcp_size * 16, 0.0)), 1.0); }
-float4 PS_BlurV(vs_out o) : SV_Target { return float4(PS_Blur(o, s_BlurV, float2(0.0, rcp_size * 16)), 1.0); }
-float4 PS_Image(vs_out o) : SV_Target { return float4(tex2D(s_Image, o.uv).rgb, 1.0); }
+float4 PS_Light(vs_out o) : COLOR { float3 c = tex2D(s_Linear, o.uv).rgb; return float4(lerp(c-1.0, dot(c, c), c*c), 1.0); }
+float4 PS_LOD_9(vs_out o) : COLOR { return float4(tex2D(s_LOD_9, o.uv).rgb, 1.0); }
+float4 PS_BlurH(vs_out o) : COLOR { return float4(PS_Blur(o, s_BlurH, float2(rcp_size * 16, 0.0)), 1.0); }
+float4 PS_BlurV(vs_out o) : COLOR { return float4(PS_Blur(o, s_BlurV, float2(0.0, rcp_size * 16)), 1.0); }
+float4 PS_Image(vs_out o) : COLOR { return float4(tex2D(s_Image, o.uv).rgb, 1.0); }
 
 technique CBloom
 {
