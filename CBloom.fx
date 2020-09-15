@@ -1,7 +1,8 @@
 
 /*
     Nyctalopia, by CopingMechanism
-
+    Gaussian Blur by SleepKiller's shaderpatch
+    
     Process:
     Pass 1. Threshold and downscale to 256x256 -> t_LOD_9
     Pass 2. t_LOD_9 prepates and outputs the last LOD level -> t_BlurH
@@ -14,24 +15,25 @@
 
 #define size 256.0
 #define rcp_size 1.0/pSize
-#define wrapUVW AddressU = MIRROR; AddressV = MIRROR; AddressW = MIRROR
+#define mirror AddressU = MIRROR; AddressV = MIRROR; AddressW = MIRROR
 
-/* Process display-referred images to linear space. */
+// [ Textures and Samplers ]
+
 sampler s_Linear { Texture = ReShade::BackBufferTex; SRGBTexture = true; };
 
 texture t_LOD_9 < pooled = true; > { Width = size; Height = size; MipLevels = 9; Format = RGBA16F; };
-texture t_BlurH < pooled = true; > { Width = size/16; Height = size/16; };
-texture t_BlurV < pooled = true; > { Width = size/16; Height = size/16; };
-texture t_Image < pooled = true; > { Width = size/16; Height = size/16; };
+texture t_BlurH < pooled = true; > { Width = size/16; Height = size/16; Format = RGB10A2; };
+texture t_BlurV < pooled = true; > { Width = size/16; Height = size/16; Format = RGB10A2; };
+texture t_Image < pooled = true; > { Width = size/16; Height = size/16; Format = RGB10A2; };
 
-sampler s_LOD_9 { Texture = t_LOD_9; wrapUVW; };
-sampler s_BlurH { Texture = t_BlurH; wrapUVW; };
-sampler s_BlurV { Texture = t_BlurV; wrapUVW; };
-sampler s_Image { Texture = t_Image; wrapUVW; };
+sampler s_LOD_9 { Texture = t_LOD_9; mirror; };
+sampler s_BlurH { Texture = t_BlurH; mirror; };
+sampler s_BlurV { Texture = t_BlurV; mirror; };
+sampler s_Image { Texture = t_Image; mirror; };
+
+// [ Pixel Shaders -> Techniques ]
 
 struct vs_out { float4 vpos : SV_POSITION; float2 uv : TEXCOORD; };
-
-/* [ Gaussian Blur Function by SleepKiller's shaderpatch] */
 
 float3 PS_Blur(vs_out o, sampler src, float2 pSize) : SV_TARGET
 {
@@ -49,19 +51,17 @@ float3 PS_Blur(vs_out o, sampler src, float2 pSize) : SV_TARGET
     return result;
 }
 
-/* [ Pixel Shaders -> Techniques ] */
-
 float4 PS_Light(vs_out o) : SV_Target { float3 c = tex2D(s_Linear, o.uv).rgb; return float4(lerp(c-1.0, dot(c, c), c*c), 1.0); }
 float4 PS_LOD_9(vs_out o) : SV_Target { return float4(tex2D(s_LOD_9, o.uv).rgb, 1.0); }
-float4 PS_BlurV(vs_out o) : SV_Target { return float4(PS_Blur(o, s_BlurH, float2(rcp_size * 16, 0.0)), 1.0); }
-float4 PS_BlurH(vs_out o) : SV_Target { return float4(PS_Blur(o, s_BlurV, float2(0.0, rcp_size * 16)), 1.0); }
+float4 PS_BlurH(vs_out o) : SV_Target { return float4(PS_Blur(o, s_BlurH, float2(rcp_size * 16, 0.0)), 1.0); }
+float4 PS_BlurV(vs_out o) : SV_Target { return float4(PS_Blur(o, s_BlurV, float2(0.0, rcp_size * 16)), 1.0); }
 float4 PS_Image(vs_out o) : SV_Target { return float4(tex2D(s_Image, o.uv).rgb, 1.0); }
 
 technique CBloom
 {
     pass { VertexShader = PostProcessVS; PixelShader = PS_Light; RenderTarget = t_LOD_9; }
-    pass { VertexShader = PostProcessVS; PixelShader = PS_LOD_9; RenderTarget = t_BlurH; }
-    pass { VertexShader = PostProcessVS; PixelShader = PS_BlurV; RenderTarget = t_BlurV; }
-    pass { VertexShader = PostProcessVS; PixelShader = PS_BlurH; RenderTarget = t_Image; }
+    pass { VertexShader = PostProcessVS; PixelShader = PS_LOD_9; RenderTarget = t_BlurH; SRGBWriteEnable = true; }
+    pass { VertexShader = PostProcessVS; PixelShader = PS_BlurH; RenderTarget = t_BlurV; }
+    pass { VertexShader = PostProcessVS; PixelShader = PS_BlurV; RenderTarget = t_Image; }
     pass { VertexShader = PostProcessVS; PixelShader = PS_Image; BlendEnable = true; DestBlend = INVSRCColor; }
 }
