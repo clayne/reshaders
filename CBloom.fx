@@ -28,7 +28,7 @@ sampler s_BlurH { Texture = t_BlurH; };
 sampler s_BlurV { Texture = t_BlurV; };
 sampler s_Image { Texture = t_Image; };
 
-struct vs_out { float4 vpos : SV_POSITION; float2 uv : TEXCOORD; };
+// [ Pixel Shaders -> Techniques ]
 
 /*
     [ Pixel Shaders -> Techniques ]
@@ -86,8 +86,8 @@ float4 PS_Image(vs_out o) : SV_Target { return float4(tex2D(s_Image, o.uv).rgb, 
 technique CBloom2
 {
     pass { VertexShader = PostProcessVS; PixelShader = PS_Light; RenderTarget = t_LOD_9; }
-    pass { VertexShader = PostProcessVS; PixelShader = PS_LOD_9; RenderTarget = t_BlurH; }
-    pass { VertexShader = PostProcessVS; PixelShader = PS_BlurV; RenderTarget = t_BlurV; }
-    pass { VertexShader = PostProcessVS; PixelShader = PS_BlurH; RenderTarget = t_Image; }
+    pass { VertexShader = PostProcessVS; PixelShader = PS_LOD_9; RenderTarget = t_BlurH; SRGBWriteEnable = true; }
+    pass { VertexShader = PostProcessVS; PixelShader = PS_BlurH; RenderTarget = t_BlurV; }
+    pass { VertexShader = PostProcessVS; PixelShader = PS_BlurV; RenderTarget = t_Image; }
     pass { VertexShader = PostProcessVS; PixelShader = PS_Image; BlendEnable = true; DestBlend = INVSRCColor; }
 }
