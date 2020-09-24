@@ -3,64 +3,33 @@
     Nyctalopia, by CopingMechanism
     This bloom's [--]ed up, as expected from an amatuer. Help is welcome! :)
 
-    Process:
-        Pass 1. Threshold in linear and downscale to 256x256 -> t_LOD_9
-        Pass 2. t_LOD_9 prepates and outputs the last LOD level -> t_BlurH
-        Pass 3. Horizontally blur t_BlurH -> t_BlurV
-        Pass 4. Vertically blur t_BlurV -> t_Image
-        Pass 5. t_Image composites the result, stretches to screen, and BlendOp
+    PS_Blur() Function by SleepKiller's shaderpatch (MIT License)
+    aces_main_bakinglab() by MJP and David Neubelt (MIT License)
 */
 
 #include "ReShade.fxh"
 
-#define size 256.0
+#define size 512.0
 #define rcp_size 1.0/size
 
 sampler s_Linear { Texture = ReShade::BackBufferTex; SRGBTexture = true; };
 
-texture t_LOD_9 < pooled = true; > { Width = size; Height = size; MipLevels = 9; Format = RGBA16F; };
-texture t_BlurH < pooled = true; > { Width = size/16; Height = size/16; Format = RGB10A2; };
-texture t_BlurV < pooled = true; > { Width = size/16; Height = size/16; Format = RGB10A2; };
-texture t_Image < pooled = true; > { Width = size/16; Height = size/16; Format = RGB10A2; };
+texture t_LOD_6 < pooled = true; > { Width = size; Height = size; MipLevels = 6; Format = RGBA16F; };
+texture t_BlurH < pooled = true; > { Width = size/32; Height = size/32; Format = RGBA16F; };
+texture t_BlurV < pooled = true; > { Width = size/32; Height = size/32; Format = RGBA16F; };
 
-sampler s_LOD_9 { Texture = t_LOD_9; };
+sampler s_LOD_6 { Texture = t_LOD_6; };
 sampler s_BlurH { Texture = t_BlurH; };
 sampler s_BlurV { Texture = t_BlurV; };
-sampler s_Image { Texture = t_Image; };
+
+struct vs_out { float4 vpos : SV_POSITION; float2 uv : TEXCOORD; };
 
 // [ Pixel Shaders -> Techniques ]
 
-/*
-    [ Pixel Shaders -> Techniques ]
-    [ Gaussian Blur Function by SleepKiller's shaderpatch ]
-    [ PS_LOD_9 techniques by Keijiro Takahashi ]
-*/
-
 float4 PS_Light(vs_out o) : SV_Target
 {
-    float3 x = tex2D(s_Linear, o.uv).rgb;
-    return float4((-0.1*x)/(x-1.1)*dot(x,x), 1.0);
-}
-
-float Brightness(float3 c) { return max(max(c.r, c.g), c.b); }
-
-float4 PS_LOD_9(vs_out o) : SV_Target
-{
-    float4 d = (rcp_size * 8) * float4(-1, -1, +1, +1);
-
-    float3 s1 = tex2D(s_LOD_9, o.uv + d.xy).rgb;
-    float3 s2 = tex2D(s_LOD_9, o.uv + d.zy).rgb;
-    float3 s3 = tex2D(s_LOD_9, o.uv + d.xw).rgb;
-    float3 s4 = tex2D(s_LOD_9, o.uv + d.zw).rgb;
-
-    // Karis's luma weighted average (using brightness instead of luma)
-    float s1w = 1 / (Brightness(s1) + 1);
-    float s2w = 1 / (Brightness(s2) + 1);
-    float s3w = 1 / (Brightness(s3) + 1);
-    float s4w = 1 / (Brightness(s4) + 1);
-    float one_div_wsum = 1 / (s1w + s2w + s3w + s4w);
-
-    return float4((s1 * s1w + s2 * s2w + s3 * s3w + s4 * s4w) * one_div_wsum, 1.0);
+    float3 m = tex2D(s_Linear, o.uv).rgb;
+    return float4((saturate(lerp(-dot(m,m), m, m)))*dot( m, m), 1.0);
 }
 
 float3 PS_Blur(vs_out o, sampler src, float2 pSize)
@@ -79,15 +48,111 @@ float3 PS_Blur(vs_out o, sampler src, float2 pSize)
     return result;
 }
 
-float4 PS_BlurV(vs_out o) : SV_Target { return float4(PS_Blur(o, s_BlurH, float2(rcp_size * 16, 0.0)), 1.0); }
-float4 PS_BlurH(vs_out o) : SV_Target { return float4(PS_Blur(o, s_BlurV, float2(0.0, rcp_size * 16)), 1.0); }
-float4 PS_Image(vs_out o) : SV_Target { return float4(tex2D(s_Image, o.uv).rgb, 1.0); }
+// sRGB => XYZ => D65_2_D60 => AP1 => RRT_SAT
+static const float3x3 ACESInputMat = float3x3(
+    0.59719, 0.35458, 0.04823,
+    0.07600, 0.90834, 0.01566,
+    0.02840, 0.13383, 0.83777
+);
+
+// ODT_SAT => XYZ => D60_2_D65 => sRGB
+static const float3x3 ACESOutputMat = float3x3(
+     1.60475, -0.53108, -0.07367,
+    -0.10208,  1.10813, -0.00605,
+    -0.00327, -0.07276,  1.07602
+);
+
+float3 RRTAndODTFit(float3 v)
+{
+    float3 a = v * (v + 0.0245786f) - 0.000090537f;
+    float3 b = v * (0.983729f * v + 0.4329510f) + 0.238081f;
+    return a / b;
+}
+
+float3 aces_main_bakinglab(float3 texColor)
+{
+    texColor = mul(ACESInputMat, texColor);
+    texColor = RRTAndODTFit(texColor);
+    return mul(ACESOutputMat, texColor);
+}
+
+/*
+   The following code is licensed under the MIT license: https://gist.github.com/TheRealMJP/bc503b0b87b643d3505d41eab8b332ae
+   Samples a texture with Catmull-Rom filtering, using 9 texture fetches instead of 16.
+   See http://vec3.ca/bicubic-filtering-in-fewer-taps/ for more details
+*/
+
+float4 SampleTextureCatmullRom(vs_out o) : SV_Target
+{
+    /*
+        We're going to sample a a 4x4 grid of texels surrounding the target UV coordinate. We'll do this by rounding
+        down the sample location to get the exact center of our "starting" texel. The starting texel will be at
+        location [1, 1] in the grid, where [0, 0] is the top left corner.
+    */
+
+    const float2 texSize = tex2Dsize(s_BlurV, 0.0);
+    float2 samplePos = o.uv * texSize;
+    float2 texPos1 = floor(samplePos - 0.5f) + 0.5f;
+
+    /*
+        Compute the fractional offset from our starting texel to our original sample location, which we'll
+        feed into the Catmull-Rom spline function to get our filter weights.
+    */
+
+    float2 f = samplePos - texPos1;
+
+    /*
+        Compute the Catmull-Rom weights using the fractional offset that we calculated earlier.
+        These equations are pre-expanded based on our knowledge of where the texels will be located,
+        which lets us avoid having to evaluate a piece-wise function.
+    */
+
+    float2 w0 = f * (-0.5f + f * (1.0f - 0.5f * f));
+    float2 w1 = 1.0f + f * f * (-2.5f + 1.5f * f);
+    float2 w2 = f * (0.5f + f * (2.0f - 1.5f * f));
+    float2 w3 = f * f * (-0.5f + 0.5f * f);
+
+    /*
+        Work out weighting factors and sampling offsets that will let us use bilinear filtering to
+        simultaneously evaluate the middle 2 samples from the 4x4 grid.
+    */
+
+    float2 w12 = w1 + w2;
+    float2 offset12 = w2 / (w1 + w2);
+
+    // Compute the final UV coordinates we'll use for sampling the texture
+
+    float2 texPos0 = texPos1 - 1;
+    float2 texPos3 = texPos1 + 2;
+    float2 texPos12 = texPos1 + offset12;
+
+    texPos0 /= texSize;
+    texPos3 /= texSize;
+    texPos12 /= texSize;
+
+    float4 result;
+    result += tex2D(s_BlurV, float2(texPos0.x,  texPos0.y)) * w0.x  * w0.y;
+    result += tex2D(s_BlurV, float2(texPos12.x, texPos0.y)) * w12.x * w0.y;
+    result += tex2D(s_BlurV, float2(texPos3.x,  texPos0.y)) * w3.x  * w0.y;
+
+    result += tex2D(s_BlurV, float2(texPos0.x,  texPos12.y)) * w0.x  * w12.y;
+    result += tex2D(s_BlurV, float2(texPos12.x, texPos12.y)) * w12.x * w12.y;
+    result += tex2D(s_BlurV, float2(texPos3.x,  texPos12.y)) * w3.x  * w12.y;
+
+    result += tex2D(s_BlurV, float2(texPos0.x,  texPos3.y)) * w0.x  * w3.y;
+    result += tex2D(s_BlurV, float2(texPos12.x, texPos3.y)) * w12.x * w3.y;
+    result += tex2D(s_BlurV, float2(texPos3.x,  texPos3.y)) * w3.x  * w3.y;
+
+    return float4(aces_main_bakinglab(result.rgb), 1.0);
+}
+
+float4 PS_BlurH(vs_out o) : SV_Target { return float4(PS_Blur(o, s_LOD_6, float2(rcp_size * 32, 0.0)), 1.0); }
+float4 PS_BlurV(vs_out o) : SV_Target { return float4(PS_Blur(o, s_BlurH, float2(0.0, rcp_size * 32)), 1.0); }
 
 technique CBloom2
 {
-    pass { VertexShader = PostProcessVS; PixelShader = PS_Light; RenderTarget = t_LOD_9; }
-    pass { VertexShader = PostProcessVS; PixelShader = PS_LOD_9; RenderTarget = t_BlurH; SRGBWriteEnable = true; }
-    pass { VertexShader = PostProcessVS; PixelShader = PS_BlurH; RenderTarget = t_BlurV; }
-    pass { VertexShader = PostProcessVS; PixelShader = PS_BlurV; RenderTarget = t_Image; }
-    pass { VertexShader = PostProcessVS; PixelShader = PS_Image; BlendEnable = true; DestBlend = INVSRCColor; }
+    pass { VertexShader = PostProcessVS; PixelShader = PS_Light; RenderTarget = t_LOD_6; } // Generate 6 Mipmaps from a 512x512 texture
+    pass { VertexShader = PostProcessVS; PixelShader = PS_BlurH; RenderTarget = t_BlurH; } // Horizontal Blur
+    pass { VertexShader = PostProcessVS; PixelShader = PS_BlurV; RenderTarget = t_BlurV; } // Vertical Blur - Write Back to t_BlurH
+    pass { VertexShader = PostProcessVS; PixelShader = SampleTextureCatmullRom; SRGBWriteEnable = true; BlendEnable = true; DestBlend = INVSRCColor; } // Catmull-Rom Upsample
 }
