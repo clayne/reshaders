@@ -71,5 +71,10 @@ float4 Fragment(vs_out op) : SV_Target
 
 technique KinoGlitch
 {
-    pass { VertexShader = PostProcessVS; PixelShader = Fragment; SRGBWriteEnable = true; }
+    pass
+    {
+        VertexShader = PostProcessVS;
+        PixelShader = Fragment;
+        SRGBWriteEnable = true;
+    }
 }

@@ -27,7 +27,12 @@
 
 #include "ReShade.fxh"
 
+#define d_scale 4
+
+texture t_Downscaled { Width = BUFFER_WIDTH / 4; Height = BUFFER_HEIGHT / 4; };
+
 sampler s_Linear { Texture = ReShade::BackBufferTex; SRGBTexture = true; };
+sampler s_Downscaled { Texture = t_Downscaled }
 
 /*
     The following code is licensed under the MIT license: https://gist.github.com/TheRealMJP/bc503b0b87b643d3505d41eab8b332ae
@@ -35,9 +40,14 @@ sampler s_Linear { Texture = ReShade::BackBufferTex; SRGBTexture = true; };
     See http://vec3.ca/bicubic-filtering-in-fewer-taps/ for more details
 */
 
+float4 PS_Empty(in float4 v : SV_POSITION, in float2 uv : TEXCOORD) : SV_Target
+{
+    return tex2D(s_Linear, uv);
+}
+
 float4 PS_SampleTextureCatmullRom(in float4 v : SV_POSITION, in float2 uv : TEXCOORD) : SV_Target
 {
-    const float2 texSize = tex2Dsize(s_Linear, 0.0);
+    const float2 texSize = tex2Dsize(s_Downscaled, 0.0);
 
     /*
         We're going to sample a a 4x4 grid of texels surrounding the target UV coordinate. We'll do this by rounding
@@ -84,17 +94,17 @@ float4 PS_SampleTextureCatmullRom(in float4 v : SV_POSITION, in float2 uv : TEXC
     texPos12 /= texSize;
 
     float4 result;
-    result += tex2D(s_Linear, float2(texPos0.x,  texPos0.y)) * w0.x * w0.y;
-    result += tex2D(s_Linear, float2(texPos12.x, texPos0.y)) * w12.x * w0.y;
-    result += tex2D(s_Linear, float2(texPos3.x,  texPos0.y)) * w3.x * w0.y;
+    result += tex2D(s_Downscaled, float2(texPos0.x,  texPos0.y)) * w0.x * w0.y;
+    result += tex2D(s_Downscaled, float2(texPos12.x, texPos0.y)) * w12.x * w0.y;
+    result += tex2D(s_Downscaled, float2(texPos3.x,  texPos0.y)) * w3.x * w0.y;
 
-    result += tex2D(s_Linear, float2(texPos0.x,  texPos12.y)) * w0.x * w12.y;
-    result += tex2D(s_Linear, float2(texPos12.x, texPos12.y)) * w12.x * w12.y;
-    result += tex2D(s_Linear, float2(texPos3.x,  texPos12.y)) * w3.x * w12.y;
+    result += tex2D(s_Downscaled, float2(texPos0.x,  texPos12.y)) * w0.x * w12.y;
+    result += tex2D(s_Downscaled, float2(texPos12.x, texPos12.y)) * w12.x * w12.y;
+    result += tex2D(s_Downscaled, float2(texPos3.x,  texPos12.y)) * w3.x * w12.y;
 
-    result += tex2D(s_Linear, float2(texPos0.x,  texPos3.y)) * w0.x * w3.y;
-    result += tex2D(s_Linear, float2(texPos12.x, texPos3.y)) * w12.x * w3.y;
-    result += tex2D(s_Linear, float2(texPos3.x,  texPos3.y)) * w3.x * w3.y;
+    result += tex2D(s_Downscaled, float2(texPos0.x,  texPos3.y)) * w0.x * w3.y;
+    result += tex2D(s_Downscaled, float2(texPos12.x, texPos3.y)) * w12.x * w3.y;
+    result += tex2D(s_Downscaled, float2(texPos3.x,  texPos3.y)) * w3.x * w3.y;
 
     return result;
 }
@@ -104,7 +114,14 @@ technique Cubic
     pass
     {
         VertexShader = PostProcessVS;
+        PixelShader = PS_Empty;
+        RenderTarget = t_Downscaled;
+    }
+
+    pass
+    {
+        VertexShader = PostProcessVS;
         PixelShader = PS_SampleTextureCatmullRom;
-        SRGBWriteEnable = true;
+        SRGBTexture = true;
     }
 }
