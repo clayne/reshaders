@@ -3,80 +3,107 @@
     Nyctalopia, by CopingMechanism
     This bloom's [--]ed up, as expected from an amatuer. Help is welcome! :)
 
-    PS_Blur() by ShaderPatch https://github.com/SleepKiller/shaderpatch (MIT License)
-    aces_main_bakinglab() by TheRealMJP https://github.com/TheRealMJP/BakingLab (MIT License)
+    PS_Blur() by ShaderPatch https://github.com/SleepKiller/shaderpatch [MIT License]
 */
 
 #include "ReShade.fxh"
 
-#define size 512.0
-#define rcp_size 1.0/size
+#define size 1024 // Must be multiples of 16!
+#define size_d size / 32
 
-texture t_LOD_6 < pooled = true; > { Width = size; Height = size; MipLevels = 6; Format = RGB10A2; };
-texture t_BlurH < pooled = true; > { Width = size/32; Height = size/32; Format = RGB10A2; };
-texture t_BlurV < pooled = true; > { Width = size/32; Height = size/32; Format = RGB10A2; };
+texture t_LOD_ < pooled = true; > { Width = size; Height = size; MipLevels = 5; Format = RGBA16F; };
+texture t_BlurH < pooled = true; > { Width = size_d; Height = size_d; Format = RGBA16F; };
+texture t_BlurV < pooled = true; > { Width = size_d; Height = size_d; Format = RGBA16F; };
 
 sampler s_Linear { Texture = ReShade::BackBufferTex; SRGBTexture = true; };
-sampler s_LOD_6 { Texture = t_LOD_6; AddressU = BORDER; AddressV = BORDER; AddressW = BORDER; };
+sampler s_LOD_ { Texture = t_LOD_; AddressU = BORDER; AddressV = BORDER; AddressW = BORDER; };
 sampler s_BlurH { Texture = t_BlurH; AddressU = BORDER; AddressV = BORDER; AddressW = BORDER; };
 sampler s_BlurV { Texture = t_BlurV; AddressU = BORDER; AddressV = BORDER; AddressW = BORDER; };
 
-// [ Pixel Shaders -> Techniques ]
+// [ Helper Functions ]
 
-struct vs_out { float4 vpos : SV_POSITION; float2 uv : TEXCOORD; };
+struct vs_in { uint id : SV_VertexID; float4 vpos : SV_POSITION; float2 uv : TEXCOORD; };
+struct vs_out { float4 vpos : SV_POSITION; float2 uv : TEXCOORD; float4 b_uv[6] : TEXCOORD1; };
 
-float4 PS_Light(vs_out o) : SV_Target
+void VS_BlurH(vs_in input, out float4 position : SV_Position, out float4 b_uv[6] : TEXCOORD1)
 {
-    float3 m = tex2D(s_Linear, o.uv).rgb;
-    m = saturate(lerp(-dot(m,m)-m, m, m)) * dot(m, m); // Threshold by Lerp (), Intensify by Dot()
-    return float4(m, 1.0);
+    PostProcessVS(input.id, position, input.uv);
+    const float offsets[6] = { 0.65772, 2.45017, 4.41096, 6.37285, 8.33626, 10.30153 };
+    const float2 direction = float2(rcp(size_d), 0.0);
+    for(int i = 0; i < 6; i++) {
+    	b_uv[i].xy = input.uv - offsets[i] * direction;
+    	b_uv[i].zw = input.uv + offsets[i] * direction;
+	}
 }
 
-float3 PS_Blur(vs_out o, sampler src, float2 pSize)
+void VS_BlurV(vs_in input, out float4 position : SV_Position, out float4 b_uv[6] : TEXCOORD1)
 {
+    PostProcessVS(input.id, position, input.uv);
     const int steps = 6;
-    const float weights[steps] = { 0.16501, 0.17507, 0.10112, 0.04268, 0.01316, 0.002960 };
     const float offsets[steps] = { 0.65772, 2.45017, 4.41096, 6.37285, 8.33626, 10.30153 };
+    const float2 direction = float2(0.0, rcp(size_d));
+    for(int i = 0; i < 6; i++) {
+    	b_uv[i].xy = input.uv - offsets[i] * direction;
+    	b_uv[i].zw = input.uv + offsets[i] * direction;
+	}
+}
+
+float3 PS_Blur(sampler src, float4 b_uv[6] : TEXCOORD1)
+{
+    const float weights[6] = { 0.16501, 0.17507, 0.10112, 0.04268, 0.01316, 0.002960 };
 
     float3 result;
-    for (int i = 0; i < steps; ++i) {
-        const float2 uv_offset = offsets[i] * pSize;
-        const float3 samples = tex2D(src,o.uv + uv_offset).rgb + tex2D(src, o.uv - uv_offset).rgb;
-        result += weights[i] * samples;
-    }
-
+	result += tex2D(src, b_uv[0].xy).rgb * weights[0];
+	result += tex2D(src, b_uv[1].xy).rgb * weights[1];
+	result += tex2D(src, b_uv[2].xy).rgb * weights[2];
+	result += tex2D(src, b_uv[3].xy).rgb * weights[3];
+	result += tex2D(src, b_uv[4].xy).rgb * weights[4];
+	result += tex2D(src, b_uv[5].xy).rgb * weights[5];
+	result += tex2D(src, b_uv[0].zw).rgb * weights[0];
+	result += tex2D(src, b_uv[1].zw).rgb * weights[1];
+	result += tex2D(src, b_uv[2].zw).rgb * weights[2];
+	result += tex2D(src, b_uv[3].zw).rgb * weights[3];
+	result += tex2D(src, b_uv[4].zw).rgb * weights[4];
+	result += tex2D(src, b_uv[5].zw).rgb * weights[5];
     return result;
 }
 
-float4 PS_BlurH(vs_out o) : SV_Target { return float4(PS_Blur(o, s_LOD_6, float2(rcp_size * 32, 0.0)), 1.0); }
-float4 PS_BlurV(vs_out o) : SV_Target { return float4(PS_Blur(o, s_BlurH, float2(0.0, rcp_size * 32)), 1.0); }
+/*
+	Reference: https://github.com/dmnsgn/glsl-tone-map [MIT License]
+	Uchimura 2017, "HDR theory and practice"
+	Math: https://www.desmos.com/calculator/gslcdxvipg
+	Source: https://www.slideshare.net/nikuque/hdr-theory-and-practicce-jp
+*/
 
-// sRGB => XYZ => D65_2_D60 => AP1 => RRT_SAT
-static const float3x3 ACESInputMat = float3x3(
-    0.59719, 0.35458, 0.04823,
-    0.07600, 0.90834, 0.01566,
-    0.02840, 0.13383, 0.83777
-);
+float3 uchimura(float3 x, float P, float a, float m, float l, float c, float b) {
+  const float l0 = ((P - m) * l) / a;
+  const float L0 = m - m / a;
+  const float L1 = m + (1.0 - m) / a;
+  const float S0 = m + l0;
+  const float S1 = m + a * l0;
+  const float C2 = (a * P) / (P - S1);
+  const float CP = -C2 / P;
 
-// ODT_SAT => XYZ => D60_2_D65 => sRGB
-static const float3x3 ACESOutputMat = float3x3(
-     1.60475, -0.53108, -0.07367,
-    -0.10208,  1.10813, -0.00605,
-    -0.00327, -0.07276,  1.07602
-);
+  float3 w0 = 1.0 - smoothstep(0.0, m, x);
+  float3 w2 = step(m + l0, x);
+  float3 w1 = 1.0 - w0 - w2;
 
-float3 RRTAndODTFit(float3 v)
-{
-    float3 a = v * (v + 0.0245786f) - 0.000090537f;
-    float3 b = v * (0.983729f * v + 0.4329510f) + 0.238081f;
-    return a / b;
+  float3 T = m * pow(abs(x / m), c) + b;
+  float3 S = P - (P - S1) * exp(CP * (x - S0));
+  float3 L = m + a * (x - m);
+
+  return T * w0 + L * w1 + S * w2;
 }
 
-float3 aces_main_bakinglab(float3 texColor)
-{
-    texColor = mul(ACESInputMat, texColor);
-    texColor = RRTAndODTFit(texColor);
-    return mul(ACESOutputMat, texColor);
+float3 uchimura(float3 x) {
+  const float P = 1.0;  // max display brightness
+  const float a = 1.0;  // contrast
+  const float m = 0.22; // linear section start
+  const float l = 0.4;  // linear section length
+  const float c = 1.33; // black
+  const float b = 0.0;  // pedestal
+
+  return uchimura(x, P, a, m, l, c, b);
 }
 
 /*
@@ -85,10 +112,20 @@ float3 aces_main_bakinglab(float3 texColor)
     Polynomials converted to hornerform using wolfram-alpha hornerform()
 */
 
-float4 PS_CatmullRom(vs_out o) : SV_Target
+float4 PS_Light(vs_out ip) : SV_Target
 {
-    float2 texSize = size / 32;
-    float2 iTc = o.uv * texSize;
+    float3 m = tex2D(s_Linear, ip.uv).rgb;
+    m = saturate(lerp(-dot(dot(m,m),m), m, m)) * dot(m,m);
+    return float4(m, 1.0);
+}
+
+float4 PS_BlurH(vs_out op) : SV_Target { return float4(PS_Blur(s_LOD_, op.b_uv), 1.0); }
+float4 PS_BlurV(vs_out op) : SV_Target { return float4(PS_Blur(s_BlurH, op.b_uv), 1.0); }
+
+float4 PS_CatmullRom(vs_in ip) : SV_Target
+{
+    const float texSize = size_d;
+    float2 iTc = ip.uv * texSize;
     float2 tc = floor(iTc - 0.5) + 0.5;
 
     float2 f = iTc - tc;
@@ -104,19 +141,20 @@ float4 PS_CatmullRom(vs_out o) : SV_Target
     float2 t0 = tc - 1.0 + f0;
     float2 t1 = tc + 1.0 + f1;
 
+	float3 b = tex2D(s_Linear, ip.uv).rgb;
     float4 c =
              (tex2D(s_BlurV, float2(t0.x, t0.y) / texSize) * s0.x
            +  tex2D(s_BlurV, float2(t1.x, t0.y) / texSize) * s1.x) * s0.y
            + (tex2D(s_BlurV, float2(t0.x, t1.y) / texSize) * s0.x
            +  tex2D(s_BlurV, float2(t1.x, t1.y) / texSize) * s1.x ) * s1.y;
 
-    return float4(aces_main_bakinglab(c.rgb), 1.0);
+    return float4(uchimura(c.rgb), 1.0);
 }
 
 technique CBloom
 {
-    pass { VertexShader = PostProcessVS; PixelShader = PS_Light; RenderTarget = t_LOD_6; } // Generate 6 Mipmaps from a 512x512 texture
-    pass { VertexShader = PostProcessVS; PixelShader = PS_BlurH; RenderTarget = t_BlurH; } // Horizontal Blur
-    pass { VertexShader = PostProcessVS; PixelShader = PS_BlurV; RenderTarget = t_BlurV; } // Vertical Blur - Write Back to t_BlurH
-    pass { VertexShader = PostProcessVS; PixelShader = PS_CatmullRom; SRGBWriteEnable = true; BlendEnable = true; DestBlend = INVSRCColor; } // Catmull-Rom Upsample and Tonemap
+    pass { VertexShader = PostProcessVS; PixelShader = PS_Light; RenderTarget = t_LOD_; } // Generate Mipmaps from a square texture
+    pass { VertexShader = VS_BlurH; PixelShader = PS_BlurH; RenderTarget = t_BlurH; } // Horizontal Blur
+    pass { VertexShader = VS_BlurV; PixelShader = PS_BlurV; RenderTarget = t_BlurV; } // Vertical Blur
+    pass { VertexShader = PostProcessVS; PixelShader = PS_CatmullRom; SRGBWriteEnable = true; BlendEnable = true; DestBlend = INVSRCCOLOR; } // C-Rom Upsample + Tonemap
 }
