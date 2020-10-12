@@ -20,7 +20,7 @@ sampler s_LOD_0 { Texture = t_LOD_0; AddressU = BORDER; AddressV = BORDER; Addre
 sampler s_BlurH { Texture = t_BlurH; AddressU = BORDER; AddressV = BORDER; AddressW = BORDER; };
 sampler s_BlurV { Texture = t_BlurV; AddressU = BORDER; AddressV = BORDER; AddressW = BORDER; };
 
-// [ Vertex Shaders ]
+/* [ Vertex Shaders ] */
 
 struct vs_in { uint id : SV_VertexID; float4 vpos : SV_POSITION; float2 uv : TEXCOORD; };
 struct vs_out { float4 vpos : SV_POSITION; float2 uv : TEXCOORD0; float4 b_uv[6] : TEXCOORD1; };
@@ -32,10 +32,10 @@ void VS_BlurH(vs_in input, out float4 position : SV_Position, out float4 b_uv[6]
     const float offsets[steps] = { 0.65772, 2.45017, 4.41096, 6.37285, 8.33626, 10.30153 };
     const float2 direction = float2(rcp(size_d), 0.0);
     for(int i = 0; i < steps; i++)
-	{
-    	b_uv[i].xy = input.uv - offsets[i] * direction;
-    	b_uv[i].zw = input.uv + offsets[i] * direction;
-	}
+    {
+        b_uv[i].xy = input.uv - offsets[i] * direction;
+        b_uv[i].zw = input.uv + offsets[i] * direction;
+    }
 }
 
 void VS_BlurV(vs_in input, out float4 position : SV_Position, out float4 b_uv[6] : TEXCOORD1)
@@ -45,11 +45,13 @@ void VS_BlurV(vs_in input, out float4 position : SV_Position, out float4 b_uv[6]
     const float offsets[steps] = { 0.65772, 2.45017, 4.41096, 6.37285, 8.33626, 10.30153 };
     const float2 direction = float2(0.0, rcp(size_d));
     for(int i = 0; i < steps; i++)
-	{
-    	b_uv[i].xy = input.uv - offsets[i] * direction;
-    	b_uv[i].zw = input.uv + offsets[i] * direction;
-	}
+    {
+        b_uv[i].xy = input.uv - offsets[i] * direction;
+        b_uv[i].zw = input.uv + offsets[i] * direction;
+    }
 }
+
+/* [ Helper Functions ] */
 
 float3 PS_Blur(sampler src, float4 b_uv[6] : TEXCOORD1)
 {
@@ -58,22 +60,23 @@ float3 PS_Blur(sampler src, float4 b_uv[6] : TEXCOORD1)
 
     float3 result;
     for (int i = 0; i < steps; i++)
-	{
-    	result += tex2D(src, b_uv[i].xy).rgb * weights[i];
-    	result += tex2D(src, b_uv[i].zw).rgb * weights[i];
+    {
+        result += tex2D(src, b_uv[i].xy).rgb * weights[i];
+        result += tex2D(src, b_uv[i].zw).rgb * weights[i];
     }
-    
+
     return result;
 }
 
 /*
-	Reference: https://github.com/dmnsgn/glsl-tone-map [MIT License]
-	Uchimura 2017, "HDR theory and practice"
-	Math: https://www.desmos.com/calculator/gslcdxvipg
-	Source: https://www.slideshare.net/nikuque/hdr-theory-and-practicce-jp
+    Reference: https://github.com/dmnsgn/glsl-tone-map [MIT License]
+    Uchimura 2017, "HDR theory and practice"
+    Math: https://www.desmos.com/calculator/gslcdxvipg
+    Source: https://www.slideshare.net/nikuque/hdr-theory-and-practicce-jp
 */
 
-float3 uchimura(float3 x, float P, float a, float m, float l, float c, float b) {
+float3 uchimura(float3 x, float P, float a, float m, float l, float c, float b)
+{
     const float l0 = ((P - m) * l) / a;
     const float L0 = m - m / a;
     const float L1 = m + (1.0 - m) / a;
@@ -93,7 +96,8 @@ float3 uchimura(float3 x, float P, float a, float m, float l, float c, float b) 
     return T * w0 + L * w1 + S * w2;
 }
 
-float3 uchimura(float3 x) {
+float3 uchimura(float3 x)
+{
     const float P = 1.0;  // max display brightness
     const float a = 1.0;  // contrast
     const float m = 0.22; // linear section start
@@ -104,11 +108,7 @@ float3 uchimura(float3 x) {
     return uchimura(x, P, a, m, l, c, b);
 }
 
-/*
-    https://www.shadertoy.com/view/tlXSR2
-    For more details, see [ vec3.ca/bicubic-filtering-in-fewer-taps/ ] & [ mate.tue.nl/mate/pdfs/10318.pdf ]
-    Polynomials converted to hornerform using wolfram-alpha hornerform()
-*/
+/* [ Pixel Shaders ] */
 
 float4 PS_Light(vs_out output) : SV_Target
 {
@@ -119,6 +119,12 @@ float4 PS_Light(vs_out output) : SV_Target
 
 float4 PS_BlurH(vs_out output) : SV_Target { return float4(PS_Blur(s_LOD_0, output.b_uv), 1.0); }
 float4 PS_BlurV(vs_out output) : SV_Target { return float4(PS_Blur(s_BlurH, output.b_uv), 1.0); }
+
+/*
+    https://www.shadertoy.com/view/tlXSR2
+    For more details, see [ vec3.ca/bicubic-filtering-in-fewer-taps/ ] & [ mate.tue.nl/mate/pdfs/10318.pdf ]
+    Polynomials converted to hornerform using wolfram-alpha hornerform()
+*/
 
 float4 PS_CatmullRom(vs_out output) : SV_Target
 {
@@ -144,6 +150,13 @@ float4 PS_CatmullRom(vs_out output) : SV_Target
            +  tex2D(s_BlurV, float2(t1.x, t0.y) / texSize) * s1.x) * s0.y
            + (tex2D(s_BlurV, float2(t0.x, t1.y) / texSize) * s0.x
            +  tex2D(s_BlurV, float2(t1.x, t1.y) / texSize) * s1.x ) * s1.y;
+
+    // Interleaved gradient noise by Jorge Jimenez
+    // Function by bacondither [BSD-3 License]
+    const float3 magic = float3(0.06711056, 0.00583715, 52.9829189);
+    float xy_magic = dot(output.vpos.xy, magic.xy);
+    float noise = (frac(magic.z*frac(xy_magic)) - 0.5)/(exp2(8) - 1);
+    c += float3(-noise, noise, -noise);
 
     return float4(uchimura(c.rgb), 1.0);
 }
