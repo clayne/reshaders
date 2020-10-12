@@ -7,8 +7,8 @@
 
 #include "ReShade.fxh"
 
-#define size 1024 // Must be multiples of 16!
-#define size_d size / 32
+#define size 1024.0 // Must be multiples of 16!
+#define size_d size / 32.0
 
 texture t_LOD_0 < pooled = true; > { Width = size; Height = size; MipLevels = 6; Format = RGBA16F; };
 texture t_BlurH < pooled = true; > { Width = size_d; Height = size_d; Format = RGBA16F; };
@@ -162,5 +162,5 @@ technique CBloom
     pass { VertexShader = PostProcessVS; PixelShader = PS_Light; RenderTarget = t_LOD_0; } // Generate Mipmaps from a square texture
     pass { VertexShader = VS_BlurH; PixelShader = PS_BlurH; RenderTarget = t_BlurH; } // Horizontal Blur
     pass { VertexShader = VS_BlurV; PixelShader = PS_BlurV; RenderTarget = t_BlurV; } // Vertical Blur
-    pass { VertexShader = PostProcessVS; PixelShader = PS_CatmullRom; SRGBWriteEnable = true; BlendEnable = true; DestBlend = INVSRCCOLOR; } // C-Rom Upsample + Tonemap
+    pass { VertexShader = PostProcessVS; PixelShader = PS_CatmullRom; SRGBWriteEnable = true; BlendEnable = true; DestBlend = INVSRCCOLOR; } // Upsample + Dither + Tonemap
 }
