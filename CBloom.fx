@@ -1,8 +1,6 @@
 /*
     Nyctalopia, by CopingMechanism
     This bloom's [--]ed up, as expected from an amatuer. Help is welcome! :)
-
-    PS_Blur() by ShaderPatch https://github.com/SleepKiller/shaderpatch [MIT License]
 */
 
 #include "ReShade.fxh"
@@ -24,9 +22,9 @@ sampler s_BlurV { Texture = t_BlurV; AddressU = BORDER; AddressV = BORDER; Addre
 struct vs_in { uint id : SV_VertexID; float4 vpos : SV_POSITION; float2 uv : TEXCOORD; };
 struct vs_out { float4 vpos : SV_POSITION; float2 uv : TEXCOORD0; float4 b_uv[6] : TEXCOORD1; };
 
-void VS_BlurH(vs_in input, out float4 position : SV_Position, out float4 b_uv[6] : TEXCOORD1)
+void VS_BlurH(vs_in input, out float4 vpos : SV_Position, out float4 b_uv[6] : TEXCOORD1)
 {
-    PostProcessVS(input.id, position, input.uv);
+    PostProcessVS(input.id, vpos, input.uv);
     const int steps = 6;
     const float offsets[steps] = { 0.65772, 2.45017, 4.41096, 6.37285, 8.33626, 10.30153 };
     const float2 direction = float2(rcp(size_d), 0.0);
@@ -37,9 +35,9 @@ void VS_BlurH(vs_in input, out float4 position : SV_Position, out float4 b_uv[6]
     }
 }
 
-void VS_BlurV(vs_in input, out float4 position : SV_Position, out float4 b_uv[6] : TEXCOORD1)
+void VS_BlurV(vs_in input, out float4 vpos : SV_Position, out float4 b_uv[6] : TEXCOORD1)
 {
-    PostProcessVS(input.id, position, input.uv);
+    PostProcessVS(input.id, vpos, input.uv);
     const int steps = 6;
     const float offsets[steps] = { 0.65772, 2.45017, 4.41096, 6.37285, 8.33626, 10.30153 };
     const float2 direction = float2(0.0, rcp(size_d));
@@ -50,7 +48,10 @@ void VS_BlurV(vs_in input, out float4 position : SV_Position, out float4 b_uv[6]
     }
 }
 
-/* [ Helper Functions ] */
+/*
+    [ Helper Functions ]
+    PS_Blur() by ShaderPatch https://github.com/SleepKiller/shaderpatch [MIT License]
+*/
 
 float3 PS_Blur(sampler src, float4 b_uv[6] : TEXCOORD1)
 {
@@ -68,32 +69,11 @@ float3 PS_Blur(sampler src, float4 b_uv[6] : TEXCOORD1)
 }
 
 /*
+    [ Uchimura 2017, "HDR theory and practice" ]
     Reference: https://github.com/dmnsgn/glsl-tone-map [MIT License]
-    Uchimura 2017, "HDR theory and practice"
     Math: https://www.desmos.com/calculator/gslcdxvipg
     Source: https://www.slideshare.net/nikuque/hdr-theory-and-practicce-jp
 */
-
-float3 uchimura(float3 x, float P, float a, float m, float l, float c, float b)
-{
-    const float l0 = ((P - m) * l) / a;
-    const float L0 = m - m / a;
-    const float L1 = m + (1.0 - m) / a;
-    const float S0 = m + l0;
-    const float S1 = m + a * l0;
-    const float C2 = (a * P) / (P - S1);
-    const float CP = -C2 / P;
-
-    float3 w0 = 1.0 - smoothstep(0.0, m, x);
-    float3 w2 = step(m + l0, x);
-    float3 w1 = 1.0 - w0 - w2;
-
-    float3 T = m * pow(abs(x / m), c) + b;
-    float3 S = P - (P - S1) * exp(CP * (x - S0));
-    float3 L = m + a * (x - m);
-
-    return T * w0 + L * w1 + S * w2;
-}
 
 float3 uchimura(float3 x)
 {
@@ -102,9 +82,20 @@ float3 uchimura(float3 x)
     const float m = 0.22; // linear section start
     const float l = 0.4;  // linear section length
     const float c = 1.33; // black
-    const float b = 0.0;  // pedestal
 
-    return uchimura(x, P, a, m, l, c, b);
+    const float l0 = ((P - m) * l) / a;
+    const float2 S0 = float2(m + l0, m + a * l0);
+    const float CP = -((a * P) / (P - S1));
+
+    float3 w0 = 1.0 - smoothstep(0.0, m, x);
+    float3 w2 = step(m + l0, x);
+    float3 w1 = 1.0 - w0 - w2;
+
+    float3 T = m * pow(abs(x / m), c);
+    float3 S = P - (P - S0.y) * exp(CP * (x - S0.x));
+    float3 L = m + a * (x - m);
+
+    return T * w0 + L * w1 + S * w2;
 }
 
 /* [ Pixel Shaders ] */
@@ -138,20 +129,18 @@ float4 PS_CatmullRom(vs_out output) : SV_Target
 
     float2 s0 = w0 + w1;
     float2 s1 = w2 + w3;
-    float2 f0 = w1 / s0;
-    float2 f1 = w3 / s1;
-    float2 t0 = tc - 1.0 + f0;
-    float2 t1 = tc + 1.0 + f1;
+    float2 t0 = tc - 1.0 + (w1 / s0);
+    float2 t1 = tc + 1.0 + (w3 / s1);
 
     float4 c = (tex2D(s_BlurV, float2(t0.x, t0.y) / texSize) * s0.x
              +  tex2D(s_BlurV, float2(t1.x, t0.y) / texSize) * s1.x) * s0.y
              + (tex2D(s_BlurV, float2(t0.x, t1.y) / texSize) * s0.x
-             +  tex2D(s_BlurV, float2(t1.x, t1.y) / texSize) * s1.x ) * s1.y;
+             +  tex2D(s_BlurV, float2(t1.x, t1.y) / texSize) * s1.x) * s1.y;
 
     // Interleaved gradient noise by Jorge Jimenez :: Function by bacondither [BSD-3 License]
     const float3 magic = float3(0.06711056, 0.00583715, 52.9829189);
     float xy_magic = dot(output.vpos.xy, magic.xy);
-    float noise = (frac(magic.z*frac(xy_magic)) - 0.5)/(exp2(8.0) - 1.0);
+    float noise = (frac(magic.z * frac(xy_magic)) - 0.5) / (exp2(8.0) - 1.0);
     c += float3(-noise, noise, -noise);
 
     return float4(uchimura(c.rgb), 1.0);
@@ -159,8 +148,8 @@ float4 PS_CatmullRom(vs_out output) : SV_Target
 
 technique CBloom
 {
-    pass { VertexShader = PostProcessVS; PixelShader = PS_Light; RenderTarget = t_LOD_0; } // Generate Mipmaps from a square texture
-    pass { VertexShader = VS_BlurH; PixelShader = PS_BlurH; RenderTarget = t_BlurH; } // Horizontal Blur
-    pass { VertexShader = VS_BlurV; PixelShader = PS_BlurV; RenderTarget = t_BlurV; } // Vertical Blur
-    pass { VertexShader = PostProcessVS; PixelShader = PS_CatmullRom; SRGBWriteEnable = true; BlendEnable = true; DestBlend = INVSRCCOLOR; } // Upsample + Dither + Tonemap
+    pass Mipmaps { VertexShader = PostProcessVS; PixelShader = PS_Light; RenderTarget = t_LOD_0; }
+    pass HorizontalBlur { VertexShader = VS_BlurH; PixelShader = PS_BlurH; RenderTarget = t_BlurH; }
+    pass VerticalBlur { VertexShader = VS_BlurV; PixelShader = PS_BlurV; RenderTarget = t_BlurV; }
+    pass UpsampleDitherTonemap { VertexShader = PostProcessVS; PixelShader = PS_CatmullRom; SRGBWriteEnable = true; BlendEnable = true; DestBlend = INVSRCCOLOR; }
 }
