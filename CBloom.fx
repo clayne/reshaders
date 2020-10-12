@@ -143,17 +143,15 @@ float4 PS_CatmullRom(vs_out output) : SV_Target
     float2 t0 = tc - 1.0 + f0;
     float2 t1 = tc + 1.0 + f1;
 
-    float4 c =
-             (tex2D(s_BlurV, float2(t0.x, t0.y) / texSize) * s0.x
-           +  tex2D(s_BlurV, float2(t1.x, t0.y) / texSize) * s1.x) * s0.y
-           + (tex2D(s_BlurV, float2(t0.x, t1.y) / texSize) * s0.x
-           +  tex2D(s_BlurV, float2(t1.x, t1.y) / texSize) * s1.x ) * s1.y;
+    float4 c = (tex2D(s_BlurV, float2(t0.x, t0.y) / texSize) * s0.x
+             +  tex2D(s_BlurV, float2(t1.x, t0.y) / texSize) * s1.x) * s0.y
+             + (tex2D(s_BlurV, float2(t0.x, t1.y) / texSize) * s0.x
+             +  tex2D(s_BlurV, float2(t1.x, t1.y) / texSize) * s1.x ) * s1.y;
 
-    // Interleaved gradient noise by Jorge Jimenez
-    // Function by bacondither [BSD-3 License]
+    // Interleaved gradient noise by Jorge Jimenez :: Function by bacondither [BSD-3 License]
     const float3 magic = float3(0.06711056, 0.00583715, 52.9829189);
     float xy_magic = dot(output.vpos.xy, magic.xy);
-    float noise = (frac(magic.z*frac(xy_magic)) - 0.5)/(exp2(8) - 1);
+    float noise = (frac(magic.z*frac(xy_magic)) - 0.5)/(exp2(8.0) - 1.0);
     c += float3(-noise, noise, -noise);
 
     return float4(uchimura(c.rgb), 1.0);
