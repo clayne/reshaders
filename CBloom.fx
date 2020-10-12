@@ -1,4 +1,3 @@
-
 /*
     Nyctalopia, by CopingMechanism
     This bloom's [--]ed up, as expected from an amatuer. Help is welcome! :)
@@ -113,8 +112,7 @@ float3 uchimura(float3 x)
 float4 PS_Light(vs_out output) : SV_Target
 {
     float3 m = tex2D(s_Linear, output.uv).rgb;
-    m = step(0.9, m) * dot(m, m);
-    return float4(m, 1.0);
+    return float4(step(1.0, m) * dot(m, m), 1.0);
 }
 
 float4 PS_BlurH(vs_out output) : SV_Target { return float4(PS_Blur(s_LOD_0, output.b_uv), 1.0); }
