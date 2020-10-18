@@ -8,7 +8,7 @@
 #define size 1024.0 // Must be multiples of 16!
 #define size_d size / 32.0
 
-texture t_Mip0 < pooled = true; > { Width = size; Height = size; MipLevels = 6; Format = RGBA16F; };
+texture t_Mip0 < pooled = true; > { Width = size; Height = size; MipLevels = 5; Format = RGBA16F; };
 texture t_BlurH < pooled = true; > { Width = size_d; Height = size_d; Format = RGBA16F; };
 texture t_BlurV < pooled = true; > { Width = size_d; Height = size_d; Format = RGBA16F; };
 
@@ -22,7 +22,6 @@ sampler s_BlurV { Texture = t_BlurV; AddressU = BORDER; AddressV = BORDER; Addre
 struct vs_in
 {
     uint id : SV_VertexID;
-    float4 vpos : SV_POSITION;
     float2 uv : TEXCOORD0;
 };
 
@@ -30,7 +29,6 @@ struct vs_out
 {
     float4 vpos : SV_POSITION;
     float2 uv : TEXCOORD0;
-    float2 m_uv[4] : TEXCOORD1; // Median TEXCOORD
     float4 b_uv[6] : TEXCOORD2; // Blur TEXCOORD
 };
 
@@ -91,48 +89,18 @@ float3 Blur(sampler src, float4 b_uv[6])
     return result;
 }
 
-/*
-    [ Uchimura 2017, "HDR theory and practice" ]
-    Reference: https://github.com/dmnsgn/glsl-tone-map [MIT License]
-    Math: https://www.desmos.com/calculator/gslcdxvipg
-    Source: https://www.slideshare.net/nikuque/hdr-theory-and-practicce-jp
-*/
-
-float3 uchimura(float3 x)
-{
-    const float P = 1.0;  // max display brightness
-    const float a = 1.0;  // contrast
-    const float m = 0.22; // linear section start
-    const float l = 0.4;  // linear section length
-    const float c = 1.33; // black
-
-    const float l0 = ((P - m) * l) / a;
-    const float2 S0 = float2(m + l0, m + a * l0);
-    const float CP = -((a * P) / (P - S0.y));
-
-    float3 w0 = 1.0 - smoothstep(0.0, m, x);
-    float3 w2 = step(m + l0, x);
-    float3 w1 = 1.0 - w0 - w2;
-
-    float3 T = m * pow(abs(x / m), c);
-    float3 S = P - (P - S0.y) * exp(CP * (x - S0.x));
-    float3 L = m + a * (x - m);
-
-    return T * w0 + L * w1 + S * w2;
-}
-
 /* [ Pixel Shaders ] */
 
-float4 PS_Light(vs_out output) : SV_Target
+float4 PS_Light(vs_out output, float4 m_uv[4] : TEXCOORD1) : SV_Target
 {
-    float4 _s0 = tex2D(s_Linear, output.uv);
-    float3 _s1 = tex2D(s_Linear, output.m_uv[0]).rgb;
-    float3 _s2 = tex2D(s_Linear, output.m_uv[1]).rgb;
-    float3 _s3 = tex2D(s_Linear, output.m_uv[2]).rgb;
-    float3 _s4 = tex2D(s_Linear, output.m_uv[3]).rgb;
-    float3 m = Median(Median(_s0.rgb, _s1, _s2), _s3, _s4);
-    m = saturate((m * -0.1) / (max(m, 0.01) - 1.01));
-    return float4(lerp(0.0, m, dot(m, m)), 1.0);
+    float3 _s0 = tex2D(s_Linear, output.uv).rgb;
+    float3 _s1 = tex2D(s_Linear, m_uv[0].xy).rgb;
+    float3 _s2 = tex2D(s_Linear, m_uv[1].xy).rgb;
+    float3 _s3 = tex2D(s_Linear, m_uv[2].xy).rgb;
+    float3 _s4 = tex2D(s_Linear, m_uv[3].xy).rgb;
+    float3 m = Median(Median(_s0, _s1, _s2), _s3, _s4);
+    m = saturate(0.01 * m / (1.0 - m));
+    return float4(m * 1.8, 1.0);
 }
 
 float4 PS_BlurH(vs_out output) : SV_Target { return float4(Blur(s_Mip0, output.b_uv), 1.0); }
@@ -168,16 +136,23 @@ float4 PS_CatmullRom(vs_out output) : SV_Target
              + (tex2D(s_BlurV, float2(t0.x, t1.y) / texSize) * s0.x
              +  tex2D(s_BlurV, float2(t1.x, t1.y) / texSize) * s1.x) * s1.y;
 
-    // Interleaved Gradient Noise
+    // Interleaved Gradient Noise by Jorge Jimenez
     const float3 magic = float3(0.06711056, 0.00583715, 52.9829189);
     float xy_magic = dot(output.vpos.xy, magic.xy);
     float noise = frac(magic.z * frac(xy_magic)) - 0.5;
     c += float3(-noise, noise, -noise) / 255;
 
-    return float4(uchimura(c.rgb), 1.0);
+    // Tonemap from [ https://github.com/GPUOpen-Tools/compressonator ]
+    const float MIDDLE_GRAY = 0.72f;
+    const float LUM_WHITE = 1.5f;
+    c.rgb *= MIDDLE_GRAY;
+    c.rgb *= (1.0f + c.rgb/LUM_WHITE);
+    c.rgb /= (1.0f + c.rgb);
+    c.rgb * 1.8;
+
+    return float4(c.rgb, 1.0);
 }
 
-//  SRGBWriteEnable = true; BlendEnable = true; DestBlend = INVSRCCOLOR;
 technique CBloom
 {
     pass { VertexShader = VS_Median; PixelShader = PS_Light; RenderTarget = t_Mip0; }
