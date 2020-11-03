@@ -27,9 +27,7 @@
 
 #include "ReShade.fxh"
 
-#define d_scale 4
-
-texture t_Downscaled { Width = BUFFER_WIDTH / 4; Height = BUFFER_HEIGHT / 4; };
+texture t_Downscaled { Width = BUFFER_WIDTH / 2.0; Height = BUFFER_HEIGHT / 2.0; };
 
 sampler s_Linear { Texture = ReShade::BackBufferTex; SRGBTexture = true; };
 sampler s_Downscaled { Texture = t_Downscaled }
@@ -47,7 +45,7 @@ float4 PS_Empty(in float4 v : SV_POSITION, in float2 uv : TEXCOORD) : SV_Target
 
 float4 PS_SampleTextureCatmullRom(in float4 v : SV_POSITION, in float2 uv : TEXCOORD) : SV_Target
 {
-    const float2 texSize = tex2Dsize(s_Downscaled, 0.0);
+    const float2 texSize = BUFFER_SCREEN_SIZE / 2.0;
 
     /*
         We're going to sample a a 4x4 grid of texels surrounding the target UV coordinate. We'll do this by rounding
