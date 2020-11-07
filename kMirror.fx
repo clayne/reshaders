@@ -45,7 +45,7 @@ uniform bool _SYMMETRY_ON <
 
 sampler _MainTex { Texture = ReShade::BackBufferTex; SRGBTexture = true; };
 
-float4 PS_Mirror(in float4 vpos : SV_Position, in float2 uv : TEXCOORD) : SV_Target
+void PS_Mirror(in float4 vpos : SV_Position, in float2 uv : TEXCOORD, out float4 c : SV_Target)
 {
     // Convert to the polar coordinate.
     float2 sc = uv - 0.5;
@@ -68,7 +68,7 @@ float4 PS_Mirror(in float4 vpos : SV_Position, in float2 uv : TEXCOORD) : SV_Tar
     // Reflection at the border of the screen.
     uv = max(min(uv, 2.0 - uv), -uv);
 
-    return tex2D(_MainTex, uv);
+    c = tex2D(_MainTex, uv);
 }
 
 technique KinoContour

@@ -38,7 +38,7 @@ struct vs_out { float4 vpos : SV_POSITION; float2 uv : TEXCOORD; };
 
 float4 Fragment(vs_out op) : SV_Target
 {
-    float2 _ScreenSize = ReShade::ScreenSize;
+    const float2 _ScreenSize = BUFFER_SCREEN_SIZE;
     // Texture space position
     float tx = op.uv.x;
     float ty = op.y;

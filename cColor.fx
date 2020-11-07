@@ -1,9 +1,9 @@
 
 #include "ReShade.fxh"
 
-float3 PS_Color(in float4 v : SV_POSITION, in float2 uv : TEXCOORD) : SV_Target
+void PS_Color(in float4 v : SV_POSITION, in float2 uv : TEXCOORD, out float3 c : SV_Target0)
 {
-    return uv.xyx;
+    c = uv.xyx;
 }
 
 technique LinearCompare

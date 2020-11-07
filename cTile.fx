@@ -34,7 +34,7 @@ sampler tex0 { Texture = ReShade::BackBufferTex; SRGBTexture = true; };
 // glsl style mod
 #define mod(x, y) (x - y * floor(x / y))
 
-float4 PS_Tile(float4 v : SV_POSITION, in float2 uv : TEXCOORD) : SV_Target
+void PS_Tile(float4 v : SV_POSITION, in float2 uv : TEXCOORD, out float4 c : SV_Target0)
 {
     float adj_scale = scale * 0.01;
     float2 coord = (uv/adj_scale - 0.5/adj_scale) + float2(-centerx, -centery) + 0.5;

@@ -30,17 +30,17 @@ uniform float _Falloff <
 > = 0.5f;
 
 sampler _MainTex { Texture = ReShade::BackBufferTex; SRGBTexture = true; };
-static const float2 _Aspect = BUFFER_ASPECT_RATIO;
 
-float4 PS_Vignette(in float4 vpos : SV_Position, in float2 uv : TEXCOORD) : SV_Target
+void PS_Vignette(in float4 vpos : SV_Position, in float2 uv : TEXCOORD, out float4 c : SV_Target)
 {
-    float2 coord = (uv - 0.5) * _Aspect * 2;
+    const float2 _Aspect = BUFFER_ASPECT_RATIO;
+    float2 coord = (uv - 0.5) * _Aspect * 2.0;
     float rf = sqrt(dot(coord, coord)) * _Falloff;
     float rf2_1 = rf * rf + 1.0;
     float e = 1.0 / (rf2_1 * rf2_1);
 
     float4 src = tex2D(_MainTex, uv);
-    return float4(src.rgb * e, src.a);
+    c = float4(src.rgb * e, src.a);
 }
 
 technique KinoVignette

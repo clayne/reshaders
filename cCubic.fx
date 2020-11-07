@@ -1,28 +1,7 @@
-
 /*
-    https://gist.github.com/TheRealMJP/c83b8c0f46b63f3a88a5986f4fa982b1
-
-    MIT License
-
-    Copyright (c) 2019 MJP
-
-    Permission is hereby granted, free of charge, to any person obtaining a copy
-    of this software and associated documentation files (the "Software"), to deal
-    in the Software without restriction, including without limitation the rights
-    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is
-    furnished to do so, subject to the following conditions:
-
-    The above copyright notice and this permission notice shall be included in all
-    copies or substantial portions of the Software.
-
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-    SOFTWARE.
+    https://www.shadertoy.com/view/tlXSR2
+    For more details, see [ vec3.ca/bicubic-filtering-in-fewer-taps/ ] & [ mate.tue.nl/mate/pdfs/10318.pdf ]
+    Polynomials converted to hornerform using wolfram-alpha hornerform()
 */
 
 #include "ReShade.fxh"
@@ -32,18 +11,13 @@ texture t_Downscaled { Width = BUFFER_WIDTH / 2.0; Height = BUFFER_HEIGHT / 2.0;
 sampler s_Linear { Texture = ReShade::BackBufferTex; SRGBTexture = true; };
 sampler s_Downscaled { Texture = t_Downscaled }
 
-/*
-    The following code is licensed under the MIT license: https://gist.github.com/TheRealMJP/bc503b0b87b643d3505d41eab8b332ae
-    Samples a texture with Catmull-Rom filtering, using 9 texture fetches instead of 16.
-    See http://vec3.ca/bicubic-filtering-in-fewer-taps/ for more details
-*/
 
-float4 PS_Empty(in float4 v : SV_POSITION, in float2 uv : TEXCOORD) : SV_Target
+void PS_Empty(in float4 v : SV_POSITION, in float2 uv : TEXCOORD, out float4 c : SV_Target0)
 {
-    return tex2D(s_Linear, uv);
+    c = tex2D(s_Linear, uv);
 }
 
-float4 PS_SampleTextureCatmullRom(in float4 v : SV_POSITION, in float2 uv : TEXCOORD) : SV_Target
+void PS_SampleTextureCatmullRom(in float4 v : SV_POSITION, in float2 uv : TEXCOORD, out float4 c : SV_Target0)
 {
     const float2 texSize = BUFFER_SCREEN_SIZE / 2.0;
 
@@ -104,7 +78,7 @@ float4 PS_SampleTextureCatmullRom(in float4 v : SV_POSITION, in float2 uv : TEXC
     result += tex2D(s_Downscaled, float2(texPos12.x, texPos3.y)) * w12.x * w3.y;
     result += tex2D(s_Downscaled, float2(texPos3.x,  texPos3.y)) * w3.x * w3.y;
 
-    return result;
+    c = result;
 }
 
 technique Cubic

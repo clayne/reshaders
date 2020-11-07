@@ -48,10 +48,10 @@ float MaxA(float4 a, float4 b, float4 c, float4 d) { return max(max(max(a.a, b.a
 // LinearRgbToLuminance() from UnityCG.cginc
 float Luminance(float3 linearRgb) { return dot(linearRgb, float3(0.2126729f,  0.7151522f, 0.0721750f)); }
 
-float4 ComputeLum(vs_out o) : SV_Target
+void PS_ComputeLum(vs_out o, out float4 c : SV_Target0)
 {
-    float4 c = tex2D(s_Linear, o.uv);
-    return float4(c.rgb, Luminance(c.rgb));
+    float4 col = tex2D(s_Linear, o.uv);
+    c = float4(col.rgb, Luminance(col.rgb));
 }
 
 /* [ Push.hlsl ] */
@@ -64,7 +64,7 @@ float4 Largest(float4 mc, float4 lightest, float4 a, float4 b, float4 c)
 
 static const float2 _MainTex_TexelSize = BUFFER_PIXEL_SIZE * 2.0;
 
-float4 Push(vs_out o) : SV_Target
+void PS_Push(vs_out o, out float4 c : SV_Target0)
 {
     // [tl tc tr]
     // [ml mc mr]
@@ -110,12 +110,12 @@ float4 Push(vs_out o) : SV_Target
     else if (MinA(tc, ml, tl) > MaxA(mc, mr, bc))
         lightest = Largest(mc, lightest, tc, ml, tl);
 
-    return lightest;
+    c = lightest;
 }
 
 /* [ ComputeGradient.hlsl ] */
 
-float4 ComputeGradient(vs_out o) : SV_Target
+void PS_ComputeGradient(vs_out o, out float4 c : SV_Target0)
 {
     float4 c0 = tex2D(s_Push, o.uv);
 
@@ -150,7 +150,7 @@ float4 ComputeGradient(vs_out o) : SV_Target
                          bl + bc * 2 + br - (tl + tc * 2 + tr));
 
     // Computes the luminance's gradient and saves it in the unused alpha channel
-    return float4(c0.rgb, 1 - saturate(length(grad)));
+    c = float4(c0.rgb, 1 - saturate(length(grad)));
 }
 
 /* [PushGrad.hlsl] */
@@ -160,7 +160,7 @@ float4 Average(float4 mc, float4 a, float4 b, float4 c)
     return float4(lerp(mc, (a + b + c) / 3, 1).rgb, 1);
 }
 
-float4 PushGrad(vs_out o) : SV_Target
+void PS_PushGrad(vs_out o, out float4 c : SV_Target0)
 {
     // [tl tc tr]
     // [ml mc mr]
@@ -196,7 +196,7 @@ float4 PushGrad(vs_out o) : SV_Target
     if (MinA(mr, br, bc) > MaxA(mc, ml, tc    )) return Average(mc, mr, br, bc);
     if (MinA(tc, ml, tl) > MaxA(mc, mr, bc    )) return Average(mc, tc, ml, tl);
 
-    return float4(mc.rgb, 1);
+    c = float4(mc.rgb, 1);
 }
 
 /* [ Techniques ] */
@@ -206,25 +206,25 @@ technique Anime4k
     pass
     {
         VertexShader = PostProcessVS;
-        PixelShader = ComputeLum;
+        PixelShader = PS_ComputeLum;
         RenderTarget = t_ComputeLum;
     }
     pass
     {
         VertexShader = PostProcessVS;
-        PixelShader = Push;
+        PixelShader = PS_Push;
         RenderTarget = t_Push;
     }
     pass
     {
         VertexShader = PostProcessVS;
-        PixelShader = ComputeGradient;
+        PixelShader = PS_ComputeGradient;
         RenderTarget = t_ComputeGradent;
     }
     pass
     {
         VertexShader = PostProcessVS;
-        PixelShader = PushGrad;
+        PixelShader = PS_PushGrad;
         SRGBWriteEnable = true;
     }
 }
