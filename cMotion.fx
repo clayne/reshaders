@@ -51,7 +51,7 @@ void pLOD(vs_in input, out float c : SV_Target0, out float p : SV_Target1)
 }
 
 /*
-	Taken from [https://github.com/haasn/libplacebo/blob/master/src/shaders/sampling.c], GPL 2.1
+	Taken from [https://github.com/haasn/libplacebo/blob/master/src/shaders/sampling.c] [GPL 2.1]
 	Explanation of how bicubic scaling with only 4 texel fetches is done:
 	http://www.mate.tue.nl/mate/pdfs/10318.pdf
 	'Efficient GPU-Based Texture Interpolation using Uniform B-Splines'
@@ -93,7 +93,7 @@ void pCFrame(vs_in input, out float3 c : SV_Target0)
 
 /*
 	Algorithm from [https://github.com/mattatz/unity-optical-flow] [MIT License]
-	Optimization from [https://www.shadertoy.com/view/3l2Gz1]
+	Optimization from [https://www.shadertoy.com/view/3l2Gz1] [CC BY-NC-SA 3.0]
 */
 
 float4 mFlow(vs_in input, float prev, float curr)
