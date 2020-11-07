@@ -4,29 +4,29 @@
 #include "ReShade.fxh"
 
 uniform float scale <
-    ui_label = "Scale";
-    ui_type = "drag";
-    ui_step = 0.1;
+	ui_label = "Scale";
+	ui_type = "drag";
+	ui_step = 0.1;
 > = 100.0;
 
 uniform float centerx <
-    ui_label = "Center X";
-    ui_type = "drag";
-    ui_step = 0.001;
+	ui_label = "Center X";
+	ui_type = "drag";
+	ui_step = 0.001;
 > = 0.0;
 
 uniform float centery <
-    ui_label = "Center Y";
-    ui_type = "drag";
-    ui_step = 0.001;
+	ui_label = "Center Y";
+	ui_type = "drag";
+	ui_step = 0.001;
 > = 0.0;
 
 uniform bool mirrorx <
-    ui_label = "Mirror X";
+	ui_label = "Mirror X";
 > = true;
 
 uniform bool mirrory <
-    ui_label = "Mirror Y";
+	ui_label = "Mirror Y";
 > = true;
 
 sampler tex0 { Texture = ReShade::BackBufferTex; SRGBTexture = true; };
@@ -36,22 +36,22 @@ sampler tex0 { Texture = ReShade::BackBufferTex; SRGBTexture = true; };
 
 void PS_Tile(float4 v : SV_POSITION, in float2 uv : TEXCOORD, out float4 c : SV_Target0)
 {
-    float adj_scale = scale * 0.01;
-    float2 coord = (uv/adj_scale - 0.5/adj_scale) + float2(-centerx, -centery) + 0.5;
-    float2 modcoord = mod(coord, 1.0);
+	float adj_scale = scale * 0.01;
+	float2 coord = (uv/adj_scale - 0.5/adj_scale) + float2(-centerx, -centery) + 0.5;
+	float2 modcoord = mod(coord, 1.0);
 
-    if (mirrorx && mod(coord.x, 2.0) > 1.0) { modcoord.x = 1.0 - modcoord.x; }
-    if (mirrory && mod(coord.y, 2.0) > 1.0) { modcoord.y = 1.0 - modcoord.y; }
+	if (mirrorx && mod(coord.x, 2.0) > 1.0) { modcoord.x = 1.0 - modcoord.x; }
+	if (mirrory && mod(coord.y, 2.0) > 1.0) { modcoord.y = 1.0 - modcoord.y; }
 
-    return tex2D(tex0, modcoord);
+	return tex2D(tex0, modcoord);
 }
 
 technique Tile
 {
-    pass
-    {
-        VertexShader = PostProcessVS;
-        PixelShader = PS_Tile;
-        SRGBWriteEnable = true;
-    }
+	pass
+	{
+		VertexShader = PostProcessVS;
+		PixelShader = PS_Tile;
+		SRGBWriteEnable = true;
+	}
 }

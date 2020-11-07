@@ -22,7 +22,7 @@ float4 PS_AMBCombine(float4 vpos : SV_Position, float2 texcoord : TEXCOORD) : SV
 	float4 prev = tex2D(ambPrevBlurColor, texcoord);
 	float4 curr = tex2D(s_Linear, texcoord);
 	float4 currBlur = tex2D(ambCurrBlurColor, texcoord);
-	
+
 	float diff = (abs(currBlur.r - prev.r) + abs(currBlur.g - prev.g) + abs(currBlur.b - prev.b)) / 3.0;
 	diff = min(max(diff - ambPrecision, 0.0f) * ambSmartMult, ambRecall);
 
@@ -36,7 +36,7 @@ void PS_AMBCopyPreviousFrame(float4 vpos : SV_Position, float2 texcoord : TEXCOO
 
 void PS_AMBBlur(float4 vpos : SV_Position, float2 texcoord : TEXCOORD, out float4 curr : SV_Target0, out float4 prev : SV_Target1)
 {
-	
+
 
 	float4 currVal = tex2D(s_Linear, texcoord);
 	float4 prevVal = tex2D(ambPrevColor, texcoord);
@@ -47,7 +47,7 @@ void PS_AMBBlur(float4 vpos : SV_Position, float2 texcoord : TEXCOORD, out float
 
 	float ratio = -1.0f;
 
-	float pixelBlur = ambSoftness/max(1.0f,1.0f+(-1.0f)*ratio) * (BUFFER_RCP_HEIGHT); 
+	float pixelBlur = ambSoftness/max(1.0f,1.0f+(-1.0f)*ratio) * (BUFFER_RCP_HEIGHT);
 
 	[unroll]
 	for (int z = 1; z < 11; z++) //set quality level by user
@@ -56,7 +56,7 @@ void PS_AMBBlur(float4 vpos : SV_Position, float2 texcoord : TEXCOORD, out float
 		currVal += tex2D(s_Linear, texcoord - float2(z * pixelBlur, 0.0)) * weight[z];
 		currVal += tex2D(s_Linear, texcoord + float2(0.0, z * pixelBlur)) * weight[z];
 		currVal += tex2D(s_Linear, texcoord - float2(0.0, z * pixelBlur)) * weight[z];
-		
+
 		prevVal += tex2D(ambPrevColor, texcoord + float2(z * pixelBlur, 0.0)) * weight[z];
 		prevVal += tex2D(ambPrevColor, texcoord - float2(z * pixelBlur, 0.0)) * weight[z];
 		prevVal += tex2D(ambPrevColor, texcoord + float2(0.0, z * pixelBlur)) * weight[z];
@@ -81,7 +81,7 @@ technique AdvancedMotionBlur < ui_tooltip = "Color-Based MotionBlur"; >
 	{
 		VertexShader = ReShade::VS_PostProcess;
 		PixelShader = PS_AMBCombine;
-        SRGBWriteEnable = true;
+		SRGBWriteEnable = true;
 	}
 
 	pass AMBPrev
