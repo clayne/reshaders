@@ -1,25 +1,50 @@
 
+/*
+	This work is licensed under a Creative Commons Attribution 3.0 Unported License.
+	So you are free to share, modify and adapt it for your needs, and even use it for commercial use.
+	https://creativecommons.org/licenses/by/3.0/us/
+
+	ds(), pMFlow(), and pFlowBlur()
+	derived from Jose Negrete AKA BlueSkyDefender [https://github.com/BlueSkyDefender/AstrayFX]
+*/
+
 #include "ReShade.fxh"
 
-uniform int Blur_Amount <
+uniform float _Scale <
 	ui_type = "drag";
-	ui_min = 0; ui_max = 32;
+	ui_label = "Scale";
+	ui_category = "Optical Flow";
+> = 6.0;
+
+uniform float _Lambda <
+	ui_type = "drag";
+	ui_label = "Lambda";
+	ui_category = "Optical Flow";
+> = 0.3;
+
+uniform float _Threshold <
+	ui_type = "drag";
+	ui_label = "Threshold";
+	ui_category = "Optical Flow";
+> = 0.0;
+
+uniform int _Samples <
+	ui_type = "drag";
+	ui_min = 0; ui_max = 16;
 	ui_label = "Blur Amount";
-	ui_tooltip = "Blur Step Ammount";
-	ui_category = "Motion Blur";
+	ui_category = "Blur Composite";
 > = 8;
 
 uniform int Debug <
 	ui_type = "combo";
 	ui_items = "Off\0Depth\0Direction\0";
 	ui_label = "Debug View";
-	ui_tooltip = "View Debug Buffers.";
-	ui_category = "Debug Buffer";
+	ui_category = "Blur Composite";
 > = 0;
 
 #define size 1024
 
-texture2D t_LOD    < pooled = true; > { Width = size; Height = size; Format = R32F; MipLevels = 5; };
+texture2D t_LOD    < pooled = true; > { Width = size; Height = size; Format = R32F; MipLevels = 5.0; };
 texture2D t_cFrame < pooled = true; > { Width = size; Height = size; Format = R32F; };
 texture2D t_pFrame < pooled = true; > { Width = size; Height = size; Format = R32F; };
 texture2D t_mInfo  < pooled = true; > { Width = size; Height = size; Format = RGBA16F; };
@@ -41,27 +66,33 @@ struct vs_in
 
 float ds(float2 uv) { return tex2Dlod(s_cFrame, float4(uv, 0.0, 0.0)).x; }
 
-// Empty shader to generate mipmaps and previous frame
+// Empty shader to generate brightpass, mipmaps, and previous frame
 
 void pLOD(vs_in input, out float c : SV_Target0, out float p : SV_Target1)
 {
-	float3 col = tex2D(s_Linear, input.uv).rgb;
-	c = length(col);
+	float3 col = tex2Dlod(s_Linear, float4(input.uv, 0.0, 0.0)).rgb;
+	c = dot(col, col); // dot() to make it grey and bright
 	p = ds(input.uv);
 }
 
 /*
+	- Color optical flow, by itself, is too small to make motion blur
+	- BSD's eMotion does not have this issue because depth textures are flat
+	- Gaussian blur is expensive and we do not want more passes
+
+	Question: What is the fastest way to smoothly blur a picture?
+	Answer: Cubic-filtered texture LOD
+
 	Taken from [https://github.com/haasn/libplacebo/blob/master/src/shaders/sampling.c] [GPL 2.1]
-	Explanation of how bicubic scaling with only 4 texel fetches is done:
-	http://www.mate.tue.nl/mate/pdfs/10318.pdf
+	How bicubic scaling with 4 texel fetches is done [http://www.mate.tue.nl/mate/pdfs/10318.pdf]
 	'Efficient GPU-Based Texture Interpolation using Uniform B-Splines'
 */
 
 float4 calcweights(float s)
 {
-	float4 t = float4(-0.5, 0.1666, 0.3333, -0.3333) * s + float4(1, 0, -0.5, 0.5);
-	t = t * s + float4(0, 0, -0.5, 0.5);
-	t = t * s + float4(-0.6666, 0, 0.8333, 0.1666);
+	float4 t = float4(-0.5, 0.1666, 0.3333, -0.3333) * s + float4(1.0, 0.0, -0.5, 0.5);
+	t = t * s + float4(0.0, 0.0, -0.5, 0.5);
+	t = t * s + float4(-0.6666, 0.0, 0.8333, 0.1666);
 	float2 a = 1.0 / t.zw;
 	t.xy = t.xy * a + 1.0;
 	t.x = t.x + s;
@@ -71,8 +102,8 @@ float4 calcweights(float s)
 
 void pCFrame(vs_in input, out float3 c : SV_Target0)
 {
-	float2 texsize = tex2Dsize(s_LOD, 4.0);
-	float2 pt = 1.0 / texsize;
+	const float2 texsize = tex2Dsize(s_LOD, 4.0);
+	const float2 pt = 1.0 / texsize;
 	float2 fcoord = frac(input.uv * texsize + 0.5);
 	float4 parmx = calcweights(fcoord.x);
 	float4 parmy = calcweights(fcoord.y);
@@ -93,35 +124,33 @@ void pCFrame(vs_in input, out float3 c : SV_Target0)
 
 /*
 	Algorithm from [https://github.com/mattatz/unity-optical-flow] [MIT License]
-	Optimization from [https://www.shadertoy.com/view/3l2Gz1] [CC BY-NC-SA 3.0]
+	Optimization from [https://www.shadertoy.com/view/3l2Gz1] []
 */
 
 float4 mFlow(vs_in input, float prev, float curr)
 {
-	const float _Scale = 4.0;
-	const float _Lambda = 0.1;
-	const float _Threshold = 0.0;
-
+	// Sobel operator gradient
 	float2 currdd = float2(ddx(curr), ddy(curr));
 	float2 prevdd = float2(ddx(prev), ddy(prev));
 
-	float dt = curr - prev; // dt
-	float dx = currdd.x + prevdd.x; // dx_curr + dx_prev
-	float dy = currdd.y + prevdd.y; // dy_curr + dy_prev
+	float dt = curr - prev; // dt (difference)
 
-	float gmag = sqrt(dx * dx + dy * dy + _Lambda);
-	float invGmag = rcp(gmag);
-	float3 vx = dt * (dx * invGmag);
-	float3 vy = dt * (dy * invGmag);
+	float2 d;
+	d.x = currdd.x + prevdd.x; // dx_curr + dx_prev
+	d.y = currdd.y + prevdd.y; // dy_curr + dy_prev
+
+	float gmag = sqrt(d.x * d.x + d.y * d.y + _Lambda);
+	float3 vx = dt * (d.x / gmag);
+	float3 vy = dt * (d.y / gmag);
 
 	float2 flow;
 	const float inv3 = rcp(3.0);
 	flow.x = -(vx.x + vx.y + vx.z) * inv3;
 	flow.y = -(vy.x + vy.y + vy.z) * inv3;
 
-	float w = length(flow);
+	float w = length(flow); // Gradient length
 	float nw = (w - _Threshold) / (1.0 - _Threshold);
-	flow = lerp(float2(0.0, 0.0), normalize(flow) * nw * _Scale, step(_Threshold, w));
+	flow = lerp(0.0, normalize(flow) * nw * _Scale, step(_Threshold, w));
 	return float4(flow, 0.0, 1.0);
 }
 
@@ -134,31 +163,30 @@ void pMFlow(vs_in input, out float4 c : SV_Target0)
 
 void pFlowBlur(vs_in input, out float3 c : SV_Target0)
 {
-	float weight = 1.0, blursamples = Blur_Amount;
-	// Direction of blur and assumption that blur should be stronger near the cam.
+	const float weight = 1.0;
+	// Blur Direction
 	float2 uvoffsets = tex2Dlod(s_mInfo, float4(input.uv, 0.0, 0.0)).xy;
 	// Apply motion blur
 	float3 sum, accumulation, weightsum;
 
 	[loop]
-	for (float i = -blursamples; i <= blursamples; i++)
+	for (float i = -_Samples; i <= _Samples; i++)
 	{
-	  float3 currsample = tex2Dlod(s_Linear, float4(input.uv + (i * uvoffsets) * rcp(size), 0, 0)).rgb;
-	  accumulation += currsample * weight;
-	  weightsum += weight;
+		float3 currsample = tex2Dlod(s_Linear, float4(input.uv + (i * uvoffsets) * rcp(size), 0.0, 0.0)).rgb;
+		accumulation += currsample * weight;
+		weightsum += weight;
 	}
 
-	if(Debug == 0)
-	  c = accumulation / weightsum;
-	else if(Debug == 1)
-	  c = ds(input.uv).x;
+	if (Debug == 0)
+		c = accumulation / weightsum;
+	else if (Debug == 1)
+		c = ds(input.uv).x;
 	else
-	  c = float3(mad(uvoffsets, 0.5, 0.5), 0.0);
+		c = float3(mad(uvoffsets, 0.5, 0.5), 0.0);
 }
 
 technique cMotionBlur < ui_tooltip = "Color-Based Motion Blur"; >
 {
-
 	pass LOD
 	{
 		VertexShader = PostProcessVS;
