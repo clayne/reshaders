@@ -136,15 +136,17 @@ void PS_ComputeGradient(vs_out o, out float4 c : SV_Target0)
 	float bc = tex2D(s_Push, o.uv + duv.wy).a;
 	float br = tex2D(s_Push, o.uv + duv.xy).a;
 
-	// Horizontal gradient
-	// [-1  0  1]
-	// [-2  0  2]
-	// [-1  0  1]
+	/*
+		Horizontal gradient:
+			[-1  0  1]
+			[-2  0  2]
+			[-1  0  1]
 
-	// Vertical gradient
-	// [-1 -2 -1]
-	// [ 0  0  0]
-	// [ 1  2  1]
+		Vertical gradient:
+			[-1 -2 -1]
+			[ 0  0  0]
+			[ 1  2  1]
+	*/
 
 	float2 grad = float2(tr + mr * 2 + br - (tl + ml * 2 + bl),
 						 bl + bc * 2 + br - (tl + tc * 2 + tr));
@@ -162,10 +164,12 @@ float4 Average(float4 mc, float4 a, float4 b, float4 c)
 
 void PS_PushGrad(vs_out o, out float4 c : SV_Target0)
 {
-	// [tl tc tr]
-	// [ml mc mr]
-	// [bl bc br]
-
+	/*
+		[tl tc tr]
+		[ml mc mr]
+		[bl bc br]
+	*/
+	
 	float4 duv = _MainTex_TexelSize.xyxy * float4(1, 1, -1, 0);
 
 	float4 tl = tex2D(s_ComputeGradent, o.uv - duv.xy);
@@ -209,18 +213,21 @@ technique Anime4k
 		PixelShader = PS_ComputeLum;
 		RenderTarget = t_ComputeLum;
 	}
+	
 	pass
 	{
 		VertexShader = PostProcessVS;
 		PixelShader = PS_Push;
 		RenderTarget = t_Push;
 	}
+
 	pass
 	{
 		VertexShader = PostProcessVS;
 		PixelShader = PS_ComputeGradient;
 		RenderTarget = t_ComputeGradent;
 	}
+
 	pass
 	{
 		VertexShader = PostProcessVS;

@@ -1,15 +1,15 @@
 /*
-	Taken from [https://github.com/haasn/libplacebo/blob/master/src/shaders/sampling.c], GPL 2.1
-	Explanation of how bicubic scaling with only 4 texel fetches is done:
-	http://www.mate.tue.nl/mate/pdfs/10318.pdf
+	Taken from [https://github.com/haasn/libplacebo/blob/master/src/shaders/sampling.c] [GPL 2.1]
+	How bicubic scaling with only 4 texel fetches is done: [http://www.mate.tue.nl/mate/pdfs/10318.pdf]
 	'Efficient GPU-Based Texture Interpolation using Uniform B-Splines'
 */
 
 #include "ReShade.fxh"
 
-// Hardcoded because the filter doesn't work on non-integer pixels
-texture t_Downscaled { Width = 1024; Height = 1024; MipLevels = 5.0; };
-sampler s_Downscaled { Texture = t_Downscaled; MipLODBias = 4.0; SRGBTexture = true; };
+sampler2D s_Linear { Texture = ReShade::BackBufferTex; SRGBTexture = true; };
+// Hardcoded resulotion because the filter works on integer pixels
+texture2D t_Downscaled { Width = 1024; Height = 1024; MipLevels = 5.0; };
+sampler2D s_Downscaled { Texture = t_Downscaled; MipLODBias = 4.0; };
 
 struct vs_in
 {
@@ -20,7 +20,7 @@ struct vs_in
 
 // Empty shader to generate mipmaps.
 
-void PS_MipGen(vs_in input, out float4 c : SV_Target0) { c = tex2D(ReShade::BackBuffer, input.uv).rgb; }
+void PS_MipGen(vs_in input, out float4 c : SV_Target0) { c = tex2D(s_Linear, input.uv).rgb; }
 
 float4 calcweights(float s)
 {
@@ -33,6 +33,8 @@ float4 calcweights(float s)
 	t.y = t.y - s;
 	return t;
 }
+
+// Could calculate float3s for a bit more performance
 
 void PS_Cubic(vs_in input, out float4 c : SV_Target0)
 {

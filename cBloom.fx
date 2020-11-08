@@ -6,7 +6,7 @@
 #include "ReShade.fxh"
 
 #define size 1024.0 // Must be multiples of 16!
-#define size_d size / 32.0
+#define size_d size / 16.0
 
 texture t_Mip0 < pooled = true; > { Width = size; Height = size; MipLevels = 5; Format = RGBA16F; };
 texture t_BlurH < pooled = true; > { Width = size_d; Height = size_d; Format = RGBA16F; };
@@ -99,55 +99,54 @@ void PS_Light(vs_out output, float4 m_uv[4] : TEXCOORD1, out float4 c : SV_Targe
 	float3 _s3 = tex2D(s_Linear, m_uv[2].xy).rgb;
 	float3 _s4 = tex2D(s_Linear, m_uv[3].xy).rgb;
 	float3 m = Median(Median(_s0, _s1, _s2), _s3, _s4);
-	m = saturate(0.001 * m / (1.0 - m));
-	c = float4(m, 1.0);
+	m = max(m - 0.9, 0.0);
+	c = float4(m * exp(2.4 + 0.9), 1.0);
 }
 
 void PS_BlurH(vs_out output, out float4 c : SV_Target0) { c = float4(Blur(s_Mip0, output.b_uv), 1.0); }
 void PS_BlurV(vs_out output, out float4 c : SV_Target0) { c = float4(Blur(s_BlurH, output.b_uv), 1.0); }
 
 /*
-	https://www.shadertoy.com/view/tlXSR2
-	For more details, see [ vec3.ca/bicubic-filtering-in-fewer-taps/ ] & [ mate.tue.nl/mate/pdfs/10318.pdf ]
-	Polynomials converted to hornerform using wolfram-alpha hornerform()
+	Taken from [https://github.com/haasn/libplacebo/blob/master/src/shaders/sampling.c], GPL 2.1
+	Explanation of how bicubic scaling with only 4 texel fetches is done:
+	http://www.mate.tue.nl/mate/pdfs/10318.pdf
+	'Efficient GPU-Based Texture Interpolation using Uniform B-Splines'
 */
 
-void PS_CatmullRom(vs_out output, out float4 c : SV_Target0)
+float4 calcweights(float s)
 {
-	const float texSize = size_d;
-	float2 iTc = output.uv * texSize;
-	float2 tc = floor(iTc - 0.5) + 0.5;
+	float4 t = float4(-0.5, 0.1666, 0.3333, -0.3333) * s + float4(1.0, 0.0, -0.5, 0.5);
+	t = t * s + float4(0.0, 0.0, -0.5, 0.5);
+	t = t * s + float4(-0.6666, 0.0, 0.8333, 0.1666);
+	float2 a = 1.0 / t.zw;
+	t.xy = t.xy * a + 1.0;
+	t.x = t.x + s;
+	t.y = t.y - s;
+	return t;
+}
 
-	float2 f = iTc - tc;
-	float2 f2 = f * f;
-	float2 f3 = f2 * f;
+void PS_Cubic(vs_out output, out float4 c : SV_Target0)
+{
+	const float2 texsize = tex2Dsize(s_BlurV, 0.0);
+	const float2 pt = 1.0 / texsize;
+	float2 fcoord = frac(output.uv * texsize + 0.5);
+	float4 parmx = calcweights(fcoord.x);
+	float4 parmy = calcweights(fcoord.y);
+	float4 cdelta;
+	cdelta.xz = parmx.rg * float2(-pt.x, pt.x);
+	cdelta.yw = parmy.rg * float2(-pt.y, pt.y);
+	// first y-interpolation
+	float4 ar = tex2Dlod(s_BlurV, float4(output.uv + cdelta.xy, 0.0, 0.0));
+	float4 ag = tex2Dlod(s_BlurV, float4(output.uv + cdelta.xw, 0.0, 0.0));
+	float4 ab = lerp(ag, ar, parmy.b);
+	// second y-interpolation
+	float4 br = tex2Dlod(s_BlurV, float4(output.uv + cdelta.zy, 0.0, 0.0));
+	float4 bg = tex2Dlod(s_BlurV, float4(output.uv + cdelta.zw, 0.0, 0.0));
+	float4 aa = lerp(bg, br, parmy.b);
+	// x-interpolation
+	c = lerp(aa, ab, parmx.b);
 
-	float2 w3 = f3 / 6.0;
-	float2 w0 = -w3 + f2 * 0.5 - f * 0.5 + 1.0 / 6.0;
-	float2 w1 = f3 * 0.5 - f2 * 1.0 + 2.0 / 3.0;
-	float2 w2 = 1.0 - w0 - w1 - w3;
-
-	float4 s0, f0, t0;
-	s0.xy = w0 + w1;
-	s0.zw = w2 + w3;
-	f0.xy = w1 / s0.xy;
-	f0.zw = w3 / s0.zw;
-	t0.xy = tc - 1.0 + f0.xy;
-	t0.zw = tc + 1.0 + f0.zw;
-	t0 /= texSize;
-
-	float4 c = (tex2D(s_BlurV, t0.xy) * s0.x
-			 +  tex2D(s_BlurV, t0.zy) * s0.z) * s0.y
-			 + (tex2D(s_BlurV, t0.xw) * s0.x
-			 +  tex2D(s_BlurV, t0.zw) * s0.z) * s0.w;
-
-	c.rgb *= exp(2.2);
-
-	// Interleaved Gradient Noise by Jorge Jimenez
-	const float3 magic = float3(0.06711056, 0.00583715, 52.9829189);
-	float xy_magic = dot(output.vpos.xy, magic.xy);
-	float noise = frac(magic.z * frac(xy_magic)) - 0.5;
-	c += float3(-noise, noise, -noise) / 255;
+	c.rgb *= exp(1.0);
 
 	// Tonemap from [ https://github.com/GPUOpen-Tools/compressonator ]
 	const float MIDDLE_GRAY = 0.72f;
@@ -156,13 +155,44 @@ void PS_CatmullRom(vs_out output, out float4 c : SV_Target0)
 	c.rgb *= (1.0f + c.rgb/LUM_WHITE);
 	c.rgb /= (1.0f + c.rgb);
 
+	// Interleaved Gradient Noise by Jorge Jimenez
+	const float3 magic = float3(0.06711056, 0.00583715, 52.9829189);
+	float xy_magic = dot(output.vpos.xy, magic.xy);
+	float noise = frac(magic.z * frac(xy_magic)) - 0.5;
+	c += float3(-noise, noise, -noise) / 255;
+	
 	c = float4(c.rgb, 1.0);
 }
 
 technique CBloom
 {
-	pass { VertexShader = VS_Median; PixelShader = PS_Light; RenderTarget = t_Mip0; }
-	pass { VertexShader = VS_BlurH; PixelShader = PS_BlurH; RenderTarget = t_BlurH; }
-	pass { VertexShader = VS_BlurV; PixelShader = PS_BlurV; RenderTarget = t_BlurV; }
-	pass { VertexShader = PostProcessVS; PixelShader = PS_CatmullRom; SRGBWriteEnable = true; BlendEnable = true; DestBlend = INVSRCCOLOR; }
+	pass
+	{
+		VertexShader = VS_Median;
+		PixelShader = PS_Light;
+		RenderTarget = t_Mip0;
+	}
+
+	pass
+	{
+		VertexShader = VS_BlurH;
+		PixelShader = PS_BlurH;
+		RenderTarget = t_BlurH;
+	}
+
+	pass
+	{
+		VertexShader = VS_BlurV;
+		PixelShader = PS_BlurV;
+		RenderTarget = t_BlurV;
+	}
+
+	pass
+	{
+		VertexShader = PostProcessVS;
+		PixelShader = PS_Cubic;
+		SRGBWriteEnable = true;
+		BlendEnable = true;
+		DestBlend = INVSRCCOLOR;
+	}
 }
