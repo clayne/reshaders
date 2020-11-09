@@ -1,6 +1,6 @@
 
 /*
-	KinoContour - Natural vignetting effect
+	KinoVignette - Natural vignetting effect
 
 	Copyright (C) 2015 Keijiro Takahashi
 

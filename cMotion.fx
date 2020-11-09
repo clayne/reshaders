@@ -47,13 +47,11 @@ uniform int Debug <
 texture2D t_LOD    < pooled = true; > { Width = size; Height = size; Format = R32F; MipLevels = 5.0; };
 texture2D t_cFrame < pooled = true; > { Width = size; Height = size; Format = R32F; };
 texture2D t_pFrame < pooled = true; > { Width = size; Height = size; Format = R32F; };
-texture2D t_mInfo  < pooled = true; > { Width = size; Height = size; Format = RGBA16F; };
 
 sampler2D s_Linear { Texture = ReShade::BackBufferTex; SRGBTexture = true; };
 sampler2D s_LOD    { Texture = t_LOD; MipLODBias = 4.0; };
 sampler2D s_cFrame { Texture = t_cFrame; };
 sampler2D s_pFrame { Texture = t_pFrame; };
-sampler2D s_mInfo  { Texture = t_mInfo; };
 
 struct vs_in
 {
@@ -154,18 +152,14 @@ float4 mFlow(vs_in input, float prev, float curr)
 	return float4(flow, 0.0, 1.0);
 }
 
-void pMFlow(vs_in input, out float4 c : SV_Target0)
+void pFlowBlur(vs_in input, out float3 c : SV_Target0)
 {
 	float Current = ds(input.uv);
 	float Past = tex2D(s_pFrame, input.uv).x;
-	c = float4(mFlow(input, Past, Current).xy, 0.0, 1.0);
-}
-
-void pFlowBlur(vs_in input, out float3 c : SV_Target0)
-{
+	// Calculate optical flow and blur Direction
+	float2 uvoffsets = mFlow(input, Past, Current).xy;
 	const float weight = 1.0;
-	// Blur Direction
-	float2 uvoffsets = tex2Dlod(s_mInfo, float4(input.uv, 0.0, 0.0)).xy;
+
 	// Apply motion blur
 	float3 sum, accumulation, weightsum;
 
@@ -187,6 +181,7 @@ void pFlowBlur(vs_in input, out float3 c : SV_Target0)
 
 technique cMotionBlur < ui_tooltip = "Color-Based Motion Blur"; >
 {
+
 	pass LOD
 	{
 		VertexShader = PostProcessVS;
@@ -200,13 +195,6 @@ technique cMotionBlur < ui_tooltip = "Color-Based Motion Blur"; >
 		VertexShader = PostProcessVS;
 		PixelShader = pCFrame;
 		RenderTarget0 = t_cFrame;
-	}
-
-	pass Flow
-	{
-		VertexShader = PostProcessVS;
-		PixelShader = pMFlow;
-		RenderTarget0 = t_mInfo;
 	}
 
 	pass MotionBlur

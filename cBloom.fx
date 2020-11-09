@@ -100,7 +100,7 @@ void PS_Light(vs_out output, float4 m_uv[4] : TEXCOORD1, out float4 c : SV_Targe
 	float3 _s4 = tex2D(s_Linear, m_uv[3].xy).rgb;
 	float3 m = Median(Median(_s0, _s1, _s2), _s3, _s4);
 	m = max(m - 0.9, 0.0);
-	c = float4(m * exp(2.4 + 0.9), 1.0);
+	c = float4(m * exp(2.2 + 0.9), 1.0);
 }
 
 void PS_BlurH(vs_out output, out float4 c : SV_Target0) { c = float4(Blur(s_Mip0, output.b_uv), 1.0); }
@@ -125,7 +125,41 @@ float4 calcweights(float s)
 	return t;
 }
 
-void PS_Cubic(vs_out output, out float4 c : SV_Target0)
+/*
+	Uchimura 2017, "HDR theory and practice"
+	Math: https://www.desmos.com/calculator/gslcdxvipg
+	Source: https://www.slideshare.net/nikuque/hdr-theory-and-practicce-jp
+*/
+
+float3 uchimura(float3 x)
+{
+  const float P = 1.0;  // max display brightness
+  const float a = 1.0;  // contrast
+  const float m = 0.22; // linear section start
+  const float l = 0.4;  // linear section length
+  const float c = 1.33; // black
+  const float b = 0.0;  // pedestal
+
+  float l0 = ((P - m) * l) / a;
+  float L0 = m - m / a;
+  float L1 = m + (1.0 - m) / a;
+  float S0 = m + l0;
+  float S1 = m + a * l0;
+  float C2 = (a * P) / (P - S1);
+  float CP = -C2 / P;
+
+  float3 w0 = float3(1.0 - smoothstep(0.0, m, x));
+  float3 w2 = float3(step(m + l0, x));
+  float3 w1 = float3(1.0 - w0 - w2);
+
+  float3 T = float3(m * pow(x / m, c) + b);
+  float3 S = float3(P - (P - S1) * exp(CP * (x - S0)));
+  float3 L = float3(m + a * (x - m));
+
+  return T * w0 + L * w1 + S * w2;
+}
+
+void PS_Cubic(vs_out output, out float3 c : SV_Target0)
 {
 	const float2 texsize = tex2Dsize(s_BlurV, 0.0);
 	const float2 pt = 1.0 / texsize;
@@ -136,32 +170,24 @@ void PS_Cubic(vs_out output, out float4 c : SV_Target0)
 	cdelta.xz = parmx.rg * float2(-pt.x, pt.x);
 	cdelta.yw = parmy.rg * float2(-pt.y, pt.y);
 	// first y-interpolation
-	float4 ar = tex2Dlod(s_BlurV, float4(output.uv + cdelta.xy, 0.0, 0.0));
-	float4 ag = tex2Dlod(s_BlurV, float4(output.uv + cdelta.xw, 0.0, 0.0));
-	float4 ab = lerp(ag, ar, parmy.b);
+	float3 ar = tex2Dlod(s_BlurV, float4(output.uv + cdelta.xy, 0.0, 0.0)).rgb;
+	float3 ag = tex2Dlod(s_BlurV, float4(output.uv + cdelta.xw, 0.0, 0.0)).rgb;
+	float3 ab = lerp(ag, ar, parmy.b);
 	// second y-interpolation
-	float4 br = tex2Dlod(s_BlurV, float4(output.uv + cdelta.zy, 0.0, 0.0));
-	float4 bg = tex2Dlod(s_BlurV, float4(output.uv + cdelta.zw, 0.0, 0.0));
-	float4 aa = lerp(bg, br, parmy.b);
+	float3 br = tex2Dlod(s_BlurV, float4(output.uv + cdelta.zy, 0.0, 0.0)).rgb;
+	float3 bg = tex2Dlod(s_BlurV, float4(output.uv + cdelta.zw, 0.0, 0.0)).rgb;
+	float3 aa = lerp(bg, br, parmy.b);
 	// x-interpolation
 	c = lerp(aa, ab, parmx.b);
-
-	c.rgb *= exp(1.0);
-
-	// Tonemap from [ https://github.com/GPUOpen-Tools/compressonator ]
-	const float MIDDLE_GRAY = 0.72f;
-	const float LUM_WHITE = 1.5f;
-	c.rgb *= MIDDLE_GRAY;
-	c.rgb *= (1.0f + c.rgb/LUM_WHITE);
-	c.rgb /= (1.0f + c.rgb);
+	c = uchimura(c);
 
 	// Interleaved Gradient Noise by Jorge Jimenez
 	const float3 magic = float3(0.06711056, 0.00583715, 52.9829189);
 	float xy_magic = dot(output.vpos.xy, magic.xy);
 	float noise = frac(magic.z * frac(xy_magic)) - 0.5;
 	c += float3(-noise, noise, -noise) / 255;
-	
-	c = float4(c.rgb, 1.0);
+
+	c = c;
 }
 
 technique CBloom

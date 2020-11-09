@@ -76,27 +76,31 @@ uniform float4 _BackColorDefault <
 > = float4(0.0, 0.0, 0.0, 0.0);
 
 sampler _MainTex { Texture = ReShade::BackBufferTex; SRGBTexture = true; };
+static const float2 _MainTex_TexelSize = BUFFER_PIXEL_SIZE;
 
-void PS_Contour(in float4 vpos : SV_Position, in float2 uv : TEXCOORD, out float4 c : SV_Target)
+float4 PS_Contour(in float4 vpos : SV_Position, in float2 uv : TEXCOORD) : SV_Target
 {
-	const float2 _MainTex_TexelSize = BUFFER_PIXEL_SIZE;
 	float4 _FrontColor, _BackColor;
 
 	switch(_FrontColorChoice)
+	{
 		case 0:
 			_FrontColor = _FrontColorDefault;
 			break;
 		case 1:
 			_FrontColor = float4(uv.xyx, 1.0);
 			break;
+	}
 
 	switch(_BackColorChoice)
+	{
 		case 0:
 			_BackColor = _BackColorDefault;
 			break;
 		case 1:
 			_BackColor = float4(uv.xyx, 1.0);
 			break;
+	}
 
 	// Source color
 	float4 c0 = tex2D(_MainTex, uv);
@@ -125,7 +129,7 @@ void PS_Contour(in float4 vpos : SV_Position, in float2 uv : TEXCOORD, out float
 	edge = saturate((edge - _Threshold) * _InvRange);
 	float3 cb = lerp(c0.rgb, _BackColor.rgb, _BackColor.a);
 	float3 co = lerp(cb, _FrontColor.rgb, edge * _FrontColor.a);
-	c = float4(co, c0.a);
+	return float4(co, c0.a);
 }
 
 technique KinoContour
