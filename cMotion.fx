@@ -62,6 +62,7 @@ struct vs_in
 
 /* [ Pixel Shaders ] */
 
+// I think ds() retreives cFrame but with specified coordinates
 float ds(float2 uv) { return tex2Dlod(s_cFrame, float4(uv, 0.0, 0.0)).x; }
 
 // Empty shader to generate brightpass, mipmaps, and previous frame
@@ -70,16 +71,19 @@ void pLOD(vs_in input, out float c : SV_Target0, out float p : SV_Target1)
 {
 	float3 col = tex2Dlod(s_Linear, float4(input.uv, 0.0, 0.0)).rgb;
 	c = dot(col, col); // dot() to make it grey and bright
-	p = ds(input.uv);
+	p = ds(input.uv);  // Output the c_Frame we got from last frame
 }
 
 /*
 	- Color optical flow, by itself, is too small to make motion blur
-	- BSD's eMotion does not have this issue because depth textures are flat
+	- BSD's eMotion does not have this issue because depth texture colors are flat
 	- Gaussian blur is expensive and we do not want more passes
 
 	Question: What is the fastest way to smoothly blur a picture?
-	Answer: Cubic-filtered texture LOD
+	Answers:
+		A. Cubic-filtered texture LOD
+		B. Threshold to black/white
+		C. A and B
 
 	Taken from [https://github.com/haasn/libplacebo/blob/master/src/shaders/sampling.c] [GPL 2.1]
 	How bicubic scaling with 4 texel fetches is done [http://www.mate.tue.nl/mate/pdfs/10318.pdf]
@@ -98,6 +102,9 @@ float4 calcweights(float s)
 	return t;
 }
 
+
+// NOTE: This is a grey cubic filter. Cubic.fx is the RGB version of this ;)
+
 void pCFrame(vs_in input, out float c : SV_Target0)
 {
 	const float2 texsize = tex2Dsize(s_LOD, 4.0);
@@ -109,15 +116,17 @@ void pCFrame(vs_in input, out float c : SV_Target0)
 	cdelta.xz = parmx.rg * float2(-pt.x, pt.x);
 	cdelta.yw = parmy.rg * float2(-pt.y, pt.y);
 	// first y-interpolation
-	float ar = tex2Dlod(s_LOD, float4(input.uv + cdelta.xy, 0.0, 0.0)).x;
-	float ag = tex2Dlod(s_LOD, float4(input.uv + cdelta.xw, 0.0, 0.0)).x;
-	float ab = lerp(ag, ar, parmy.b);
+	float3 a;
+	a.r = tex2Dlod(s_LOD, float4(input.uv + cdelta.xy, 0.0, 0.0)).x;
+	a.g = tex2Dlod(s_LOD, float4(input.uv + cdelta.xw, 0.0, 0.0)).x;
+	a.b = lerp(a.g, a.r, parmy.b);
 	// second y-interpolation
-	float br = tex2Dlod(s_LOD, float4(input.uv + cdelta.zy, 0.0, 0.0)).x;
-	float bg = tex2Dlod(s_LOD, float4(input.uv + cdelta.zw, 0.0, 0.0)).x;
-	float aa = lerp(bg, br, parmy.b);
+	float3 b;
+	b.r = tex2Dlod(s_LOD, float4(input.uv + cdelta.zy, 0.0, 0.0)).x;
+	b.g = tex2Dlod(s_LOD, float4(input.uv + cdelta.zw, 0.0, 0.0)).x;
+	b.b = lerp(b.g, b.r, parmy.b);
 	// x-interpolation
-	c = lerp(aa, ab, parmx.b).x;
+	c = lerp(b.b, a.b, parmx.b).x;
 }
 
 /*
@@ -141,8 +150,8 @@ float4 mFlow(vs_in input, float prev, float curr)
 	float3 vx = dt * (d.x / gmag);
 	float3 vy = dt * (d.y / gmag);
 
-	float2 flow;
 	const float inv3 = rcp(3.0);
+	float2 flow;
 	flow.x = -(vx.x + vx.y + vx.z) * inv3;
 	flow.y = -(vy.x + vy.y + vy.z) * inv3;
 
@@ -154,13 +163,14 @@ float4 mFlow(vs_in input, float prev, float curr)
 
 void pFlowBlur(vs_in input, out float3 c : SV_Target0)
 {
+	// Calculate optical flow and blur Direction (eMotion.fx's MotionFlow())
+	// BSD did this in a seperate pass, but I believe a few more instructions is cheaper
 	float Current = ds(input.uv);
 	float Past = tex2D(s_pFrame, input.uv).x;
-	// Calculate optical flow and blur Direction
 	float2 uvoffsets = mFlow(input, Past, Current).xy;
-	const float weight = 1.0;
 
 	// Apply motion blur
+	const float weight = 1.0;
 	float3 sum, accumulation, weightsum;
 
 	[loop]
@@ -181,7 +191,6 @@ void pFlowBlur(vs_in input, out float3 c : SV_Target0)
 
 technique cMotionBlur < ui_tooltip = "Color-Based Motion Blur"; >
 {
-
 	pass LOD
 	{
 		VertexShader = PostProcessVS;
