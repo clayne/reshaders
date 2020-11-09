@@ -14,19 +14,19 @@ uniform float _Scale <
 	ui_type = "drag";
 	ui_label = "Scale";
 	ui_category = "Optical Flow";
-> = 6.0;
+> = 3.0;
 
 uniform float _Lambda <
 	ui_type = "drag";
 	ui_label = "Lambda";
 	ui_category = "Optical Flow";
-> = 0.3;
+> = 0.03;
 
 uniform float _Threshold <
 	ui_type = "drag";
 	ui_label = "Threshold";
 	ui_category = "Optical Flow";
-> = 0.0;
+> = 0.003;
 
 uniform int _Samples <
 	ui_type = "drag";
@@ -66,7 +66,6 @@ struct vs_in
 float ds(float2 uv) { return tex2Dlod(s_cFrame, float4(uv, 0.0, 0.0)).x; }
 
 // Empty shader to generate brightpass, mipmaps, and previous frame
-
 void pLOD(vs_in input, out float c : SV_Target0, out float p : SV_Target1)
 {
 	float3 col = tex2Dlod(s_Linear, float4(input.uv, 0.0, 0.0)).rgb;
@@ -102,9 +101,7 @@ float4 calcweights(float s)
 	return t;
 }
 
-
 // NOTE: This is a grey cubic filter. Cubic.fx is the RGB version of this ;)
-
 void pCFrame(vs_in input, out float c : SV_Target0)
 {
 	const float2 texsize = tex2Dsize(s_LOD, 4.0);
