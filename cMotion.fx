@@ -69,7 +69,7 @@ float ds(float2 uv) { return tex2Dlod(s_cFrame, float4(uv, 0.0, 0.0)).x; }
 void pLOD(vs_in input, out float c : SV_Target0, out float p : SV_Target1)
 {
 	float3 col = tex2Dlod(s_Linear, float4(input.uv, 0.0, 0.0)).rgb;
-	c = dot(col, col); // dot() to make it grey and bright
+	c = col.r + col.g + col.b; // Sum RGB to make it grey and bright
 	p = ds(input.uv);  // Output the c_Frame we got from last frame
 }
 
