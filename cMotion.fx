@@ -98,7 +98,7 @@ float4 calcweights(float s)
 	return t;
 }
 
-void pCFrame(vs_in input, out float3 c : SV_Target0)
+void pCFrame(vs_in input, out float c : SV_Target0)
 {
 	const float2 texsize = tex2Dsize(s_LOD, 4.0);
 	const float2 pt = 1.0 / texsize;
@@ -109,13 +109,13 @@ void pCFrame(vs_in input, out float3 c : SV_Target0)
 	cdelta.xz = parmx.rg * float2(-pt.x, pt.x);
 	cdelta.yw = parmy.rg * float2(-pt.y, pt.y);
 	// first y-interpolation
-	float4 ar = tex2Dlod(s_LOD, float4(input.uv + cdelta.xy, 0.0, 0.0));
-	float4 ag = tex2Dlod(s_LOD, float4(input.uv + cdelta.xw, 0.0, 0.0));
-	float4 ab = lerp(ag, ar, parmy.b);
+	float ar = tex2Dlod(s_LOD, float4(input.uv + cdelta.xy, 0.0, 0.0)).x;
+	float ag = tex2Dlod(s_LOD, float4(input.uv + cdelta.xw, 0.0, 0.0)).x;
+	float ab = lerp(ag, ar, parmy.b);
 	// second y-interpolation
-	float4 br = tex2Dlod(s_LOD, float4(input.uv + cdelta.zy, 0.0, 0.0));
-	float4 bg = tex2Dlod(s_LOD, float4(input.uv + cdelta.zw, 0.0, 0.0));
-	float4 aa = lerp(bg, br, parmy.b);
+	float br = tex2Dlod(s_LOD, float4(input.uv + cdelta.zy, 0.0, 0.0)).x;
+	float bg = tex2Dlod(s_LOD, float4(input.uv + cdelta.zw, 0.0, 0.0)).x;
+	float aa = lerp(bg, br, parmy.b);
 	// x-interpolation
 	c = lerp(aa, ab, parmx.b).x;
 }
