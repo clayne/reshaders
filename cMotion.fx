@@ -44,9 +44,9 @@ uniform int Debug <
 
 #define size 1024
 
-texture2D t_LOD    < pooled = true; > { Width = size; Height = size; Format = R32F; MipLevels = 5.0; };
-texture2D t_cFrame < pooled = true; > { Width = size; Height = size; Format = R32F; };
-texture2D t_pFrame < pooled = true; > { Width = size; Height = size; Format = R32F; };
+texture2D t_LOD    { Width = size; Height = size; Format = R32F; MipLevels = 5.0; };
+texture2D t_cFrame { Width = size; Height = size; Format = R32F; };
+texture2D t_pFrame { Width = size; Height = size; Format = R32F; };
 
 sampler2D s_Linear { Texture = ReShade::BackBufferTex; SRGBTexture = true; };
 sampler2D s_LOD    { Texture = t_LOD; MipLODBias = 4.0; };
@@ -66,7 +66,6 @@ struct vs_in
 float ds(float2 uv) { return tex2Dlod(s_cFrame, float4(uv, 0.0, 0.0)).x; }
 
 // Empty shader to generate brightpass, mipmaps, and previous frame
-
 void pLOD(vs_in input, out float c : SV_Target0, out float p : SV_Target1)
 {
 	float3 col = tex2Dlod(s_Linear, float4(input.uv, 0.0, 0.0)).rgb;
@@ -102,9 +101,7 @@ float4 calcweights(float s)
 	return t;
 }
 
-
 // NOTE: This is a grey cubic filter. Cubic.fx is the RGB version of this ;)
-
 void pCFrame(vs_in input, out float c : SV_Target0)
 {
 	const float2 texsize = tex2Dsize(s_LOD, 4.0);
