@@ -14,19 +14,19 @@ uniform float _Scale <
 	ui_type = "drag";
 	ui_label = "Scale";
 	ui_category = "Optical Flow";
-> = 6.0;
+> = 3.0;
 
 uniform float _Lambda <
 	ui_type = "drag";
 	ui_label = "Lambda";
 	ui_category = "Optical Flow";
-> = 0.3;
+> = 0.03;
 
 uniform float _Threshold <
 	ui_type = "drag";
 	ui_label = "Threshold";
 	ui_category = "Optical Flow";
-> = 0.0;
+> = 0.003;
 
 uniform int _Samples <
 	ui_type = "drag";
