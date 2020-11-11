@@ -9,7 +9,7 @@
 sampler2D s_Linear { Texture = ReShade::BackBufferTex; SRGBTexture = true; };
 // Hardcoded resulotion because the filter works on integer pixels
 texture2D t_Downscaled { Width = 1024; Height = 1024; MipLevels = 5.0; };
-sampler2D s_Downscaled { Texture = t_Downscaled; MipLODBias = 4.0; };
+sampler2D s_Downscaled { Texture = t_Downscaled; };
 
 struct vs_in
 {
@@ -58,13 +58,9 @@ float3 pCubic(sampler src, float2 uv, float lod)
 	return lerp(aa, ab, parmx.b);
 }
 
-void PS_Cubic(vs_in input,
-			  out float4 c0 : SV_Target0)
+void PS_Cubic(vs_in input, out float4 c0 : SV_Target0)
 {
-	c0 = pCubic(s_Downscaled, input.uv, 0.0);
-	c0 += pCubic(s_Downscaled, input.uv, 2.0);
-	c0 += pCubic(s_Downscaled, input.uv, 4.0);
-	c0 += pCubic(s_Downscaled, input.uv, 6.0);
+	c0 = pCubic(s_Downscaled, input.uv, 4.0);
 }
 
 technique Cubic
