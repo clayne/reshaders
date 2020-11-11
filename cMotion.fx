@@ -30,7 +30,7 @@ uniform float _Threshold <
 
 uniform int _Samples <
 	ui_type = "drag";
-	ui_min = 0; ui_max = 16;
+	ui_min = 0; ui_max = 32;
 	ui_label = "Blur Amount";
 	ui_category = "Blur Composite";
 > = 8;
@@ -168,19 +168,22 @@ void pFlowBlur(vs_in input, out float3 c : SV_Target0)
 	float2 uvoffsets = mFlow(input, Past, Current).xy;
 
 	// Apply motion blur
+	const float pt = 1.0 / size;
+	float3 color;
+	float total;
 	const float weight = 1.0;
-	float3 sum, accumulation, weightsum;
 
 	[loop]
-	for (float i = -_Samples; i <= _Samples; i++)
+	for (float i = -_Samples; i <= _Samples; i ++)
 	{
-		float3 currsample = tex2Dlod(s_Linear, float4(input.uv + (i * uvoffsets) * rcp(size), 0.0, 0.0)).rgb;
-		accumulation += currsample * weight;
-		weightsum += weight;
+		float3 csample;
+		csample += tex2Dlod(s_Linear, float4(input.uv + (pt * uvoffsets * i), 0.0, 0.0)).rgb;
+		color += csample * weight;
+		total += weight;
 	}
 
 	if (Debug == 0)
-		c = accumulation / weightsum;
+		c = color / total;
 	else if (Debug == 1)
 		c = ds(input.uv).x;
 	else

@@ -36,26 +36,35 @@ float4 calcweights(float s)
 
 // Could calculate float3s for a bit more performance
 
-void PS_Cubic(vs_in input, out float4 c : SV_Target0)
+float3 pCubic(sampler src, float2 uv, float lod)
 {
-	float2 texsize = tex2Dsize(s_Downscaled, 4.0);
+	float2 texsize = tex2Dsize(src, lod);
 	float2 pt = 1 / texsize;
-	float2 fcoord = frac(input.uv * texsize + 0.5);
+	float2 fcoord = frac(uv * texsize + 0.5);
 	float4 parmx = calcweights(fcoord.x);
 	float4 parmy = calcweights(fcoord.y);
 	float4 cdelta;
 	cdelta.xz = parmx.rg * float2(-pt.x, pt.x);
 	cdelta.yw = parmy.rg * float2(-pt.y, pt.y);
 	// first y-interpolation
-	float4 ar = tex2Dlod(s_Downscaled, float4(input.uv + cdelta.xy, 0.0, 0.0));
-	float4 ag = tex2Dlod(s_Downscaled, float4(input.uv + cdelta.xw, 0.0, 0.0));
-	float4 ab = lerp(ag, ar, parmy.b);
+	float3 ar = tex2Dlod(s_Downscaled, float4(uv + cdelta.xy, 0.0, lod)).rgb;
+	float3 ag = tex2Dlod(s_Downscaled, float4(uv + cdelta.xw, 0.0, lod)).rgb;
+	float3 ab = lerp(ag, ar, parmy.b);
 	// second y-interpolation
-	float4 br = tex2Dlod(s_Downscaled, float4(input.uv + cdelta.zy, 0.0, 0.0));
-	float4 bg = tex2Dlod(s_Downscaled, float4(input.uv + cdelta.zw, 0.0, 0.0));
-	float4 aa = lerp(bg, br, parmy.b);
+	float3 br = tex2Dlod(s_Downscaled, float4(uv + cdelta.zy, 0.0, lod)).rgb;
+	float3 bg = tex2Dlod(s_Downscaled, float4(uv + cdelta.zw, 0.0, lod)).rgb;
+	float3 aa = lerp(bg, br, parmy.b);
 	// x-interpolation
-	c = lerp(aa, ab, parmx.b);
+	return lerp(aa, ab, parmx.b);
+}
+
+void PS_Cubic(vs_in input,
+			  out float4 c0 : SV_Target0)
+{
+	c0 = pCubic(s_Downscaled, input.uv, 0.0);
+	c0 += pCubic(s_Downscaled, input.uv, 2.0);
+	c0 += pCubic(s_Downscaled, input.uv, 4.0);
+	c0 += pCubic(s_Downscaled, input.uv, 6.0);
 }
 
 technique Cubic
