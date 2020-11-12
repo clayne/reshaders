@@ -115,7 +115,7 @@ void pCFrame(vs_in input, out float c : SV_Target0)
 
 /*
 	Algorithm from [https://github.com/mattatz/unity-optical-flow] [MIT License]
-	Optimization from [https://www.shadertoy.com/view/3l2Gz1] []
+	Optimization from [https://www.shadertoy.com/view/3l2Gz1] [CC BY-NC-SA 3.0]
 */
 
 float2 mFlow(vs_in input, float prev, float curr)
