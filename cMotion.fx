@@ -4,29 +4,16 @@
 	So you are free to share, modify and adapt it for your needs, and even use it for commercial use.
 	https://creativecommons.org/licenses/by/3.0/us/
 
-	ds(), pMFlow(), and pFlowBlur()
-	derived from Jose Negrete AKA BlueSkyDefender [https://github.com/BlueSkyDefender/AstrayFX]
+	ds() and pFlowBlur() from Jose Negrete AKA BlueSkyDefender [https://github.com/BlueSkyDefender/AstrayFX]
 */
 
 #include "ReShade.fxh"
-
-uniform float _Scale <
-	ui_type = "drag";
-	ui_label = "Scale";
-	ui_category = "Optical Flow";
-> = 3.0;
 
 uniform float _Lambda <
 	ui_type = "drag";
 	ui_label = "Lambda";
 	ui_category = "Optical Flow";
-> = 0.03;
-
-uniform float _Threshold <
-	ui_type = "drag";
-	ui_label = "Threshold";
-	ui_category = "Optical Flow";
-> = 0.003;
+> = 0.0;
 
 uniform int _Samples <
 	ui_type = "drag";
@@ -131,31 +118,24 @@ void pCFrame(vs_in input, out float c : SV_Target0)
 	Optimization from [https://www.shadertoy.com/view/3l2Gz1] []
 */
 
-float4 mFlow(vs_in input, float prev, float curr)
+float2 mFlow(vs_in input, float prev, float curr)
 {
 	// Sobel operator gradient
 	float2 currdd = float2(ddx(curr), ddy(curr));
 	float2 prevdd = float2(ddx(prev), ddy(prev));
 
-	float dt = curr - prev; // dt (difference)
-
 	float2 d;
 	d.x = currdd.x + prevdd.x; // dx_curr + dx_prev
 	d.y = currdd.y + prevdd.y; // dy_curr + dy_prev
 
+	float dt = curr - prev; // dt (difference)
 	float gmag = sqrt(d.x * d.x + d.y * d.y + _Lambda);
-	float3 vx = dt * (d.x / gmag);
-	float3 vy = dt * (d.y / gmag);
 
-	const float inv3 = rcp(3.0);
 	float2 flow;
-	flow.x = -(vx.x + vx.y + vx.z) * inv3;
-	flow.y = -(vy.x + vy.y + vy.z) * inv3;
+	flow.x = dt * (d.x / gmag);
+	flow.y = dt * (d.y / gmag);
 
-	float w = length(flow); // Gradient length
-	float nw = (w - _Threshold) / (1.0 - _Threshold);
-	flow = lerp(0.0, normalize(flow) * nw * _Scale, step(_Threshold, w));
-	return float4(flow, 0.0, 1.0);
+	return flow;
 }
 
 void pFlowBlur(vs_in input, out float3 c : SV_Target0)
@@ -165,7 +145,7 @@ void pFlowBlur(vs_in input, out float3 c : SV_Target0)
 	// Putting it here also means the values are no longer clamped!
 	float Current = ds(input.uv);
 	float Past = tex2D(s_pFrame, input.uv).x;
-	float2 uvoffsets = mFlow(input, Past, Current).xy;
+	float2 uvoffsets = mFlow(input, Past, Current);
 
 	// Apply motion blur
 	const float pt = 1.0 / size;
