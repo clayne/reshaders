@@ -1,10 +1,9 @@
 
 /*
 	This work is licensed under a Creative Commons Attribution 3.0 Unported License.
-	So you are free to share, modify and adapt it for your needs, and even use it for commercial use.
 	https://creativecommons.org/licenses/by/3.0/us/
 
-	ds() and pFlowBlur() from Jose Negrete AKA BlueSkyDefender [https://github.com/BlueSkyDefender/AstrayFX]
+	pFlowBlur() from Jose Negrete AKA BlueSkyDefender [https://github.com/BlueSkyDefender/AstrayFX]
 */
 
 #include "ReShade.fxh"
@@ -13,14 +12,14 @@ uniform float _Lambda <
 	ui_type = "drag";
 	ui_label = "Lambda";
 	ui_category = "Optical Flow";
-> = 0.0;
+> = 0.01;
 
 uniform int _Samples <
 	ui_type = "drag";
-	ui_min = 0; ui_max = 32;
+	ui_min = 0; ui_max = 16;
 	ui_label = "Blur Amount";
 	ui_category = "Blur Composite";
-> = 8;
+> = 4;
 
 uniform int Debug <
 	ui_type = "combo";
@@ -29,11 +28,12 @@ uniform int Debug <
 	ui_category = "Blur Composite";
 > = 0;
 
-#define size 1024
+// round(BUFFER_HEIGHT / 2) * 2
+static const int size = 1024;
 
-texture2D t_LOD    { Width = size; Height = size; Format = R32F; MipLevels = 5.0; };
-texture2D t_cFrame { Width = size; Height = size; Format = R32F; };
-texture2D t_pFrame { Width = size; Height = size; Format = R32F; };
+texture2D t_LOD    { Width = size; Height = size; Format = R16F; MipLevels = 5.0; };
+texture2D t_cFrame { Width = size; Height = size; Format = R16F; };
+texture2D t_pFrame { Width = size; Height = size; Format = R16F; };
 
 sampler2D s_Linear { Texture = ReShade::BackBufferTex; SRGBTexture = true; };
 sampler2D s_LOD    { Texture = t_LOD; MipLODBias = 4.0; };
@@ -49,15 +49,13 @@ struct vs_in
 
 /* [ Pixel Shaders ] */
 
-// I think ds() retreives cFrame but with specified coordinates
-float ds(float2 uv) { return tex2Dlod(s_cFrame, float4(uv, 0.0, 0.0)).x; }
-
 // Empty shader to generate brightpass, mipmaps, and previous frame
 void pLOD(vs_in input, out float c : SV_Target0, out float p : SV_Target1)
 {
 	float3 col = tex2Dlod(s_Linear, float4(input.uv, 0.0, 0.0)).rgb;
-	c = col.r + col.g + col.b; // Sum RGB to make it grey and bright
-	p = ds(input.uv);  // Output the c_Frame we got from last frame
+	float lum = max(max(max(col.r, col.g), col.b), 0.0001f); // Brightness filter
+	c = log2(1.0 / lum) * exp2(1.0);
+	p = tex2Dlod(s_cFrame, float4(input.uv, 0.0, 0.0)).x; // Output the last frame's cubic c_Frame
 }
 
 /*
@@ -66,10 +64,7 @@ void pLOD(vs_in input, out float c : SV_Target0, out float p : SV_Target1)
 	- Gaussian blur is expensive and we do not want more passes
 
 	Question: What is the fastest way to smoothly blur a picture?
-	Answers:
-		A. Cubic-filtered texture LOD
-		B. Threshold to black/white
-		C. A and B
+	Answer: Cubic-filtered texture LOD
 
 	Taken from [https://github.com/haasn/libplacebo/blob/master/src/shaders/sampling.c] [GPL 2.1]
 	How bicubic scaling with 4 texel fetches is done [http://www.mate.tue.nl/mate/pdfs/10318.pdf]
@@ -116,24 +111,21 @@ void pCFrame(vs_in input, out float c : SV_Target0)
 /*
 	Algorithm from [https://github.com/mattatz/unity-optical-flow] [MIT License]
 	Optimization from [https://www.shadertoy.com/view/3l2Gz1] [CC BY-NC-SA 3.0]
+
+	ISSUE:
+	mFlow combines the optical flow result of the current AND previous frame.
+	This means there are blurred ghosting that happens frame-by-frame
 */
 
-float2 mFlow(vs_in input, float prev, float curr)
+float2 mFlow(float prev, float curr)
 {
-	// Sobel operator gradient
-	float2 currdd = float2(ddx(curr), ddy(curr));
-	float2 prevdd = float2(ddx(prev), ddy(prev));
-
-	float2 d;
-	d.x = currdd.x + prevdd.x; // dx_curr + dx_prev
-	d.y = currdd.y + prevdd.y; // dy_curr + dy_prev
+	float2 d; // Sobel operator gradient
+	d.x = ddx(curr) + ddx(prev);
+	d.y = ddy(curr) + ddy(prev);
 
 	float dt = curr - prev; // dt (difference)
 	float gmag = sqrt(d.x * d.x + d.y * d.y + _Lambda);
-
-	float2 flow;
-	flow.x = dt * (d.x / gmag);
-	flow.y = dt * (d.y / gmag);
+	float2 flow = dt * (d / gmag);
 
 	return flow;
 }
@@ -143,31 +135,35 @@ void pFlowBlur(vs_in input, out float3 c : SV_Target0)
 	// Calculate optical flow and blur direction here
 	// BSD did this in another pass, but a few more instructions should be cheaper than a pass
 	// Putting it here also means the values are no longer clamped!
-	float Current = ds(input.uv);
-	float Past = tex2D(s_pFrame, input.uv).x;
-	float2 uvoffsets = mFlow(input, Past, Current);
+	float prev = tex2Dlod(s_pFrame, float4(input.uv, 0.0, 0.0)).x; // cubic from last frame
+	float curr = tex2Dlod(s_cFrame, float4(input.uv, 0.0, 0.0)).x; // cubic from this frame
+	float2 oFlow = mFlow(prev, curr);
+
+	// Interleaved Gradient Noise by Jorge Jimenez to smoothen blur samples
+	// [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
+	const float3 magic = float3(0.06711056, 0.00583715, 52.9829189);
+	float ign = frac(magic.z * frac(dot(input.vpos.xy, magic.xy)));
 
 	// Apply motion blur
 	const float pt = 1.0 / size;
-	float3 color;
-	float total;
-	const float weight = 1.0;
+	float total, weight = 1.0;
 
 	[loop]
 	for (float i = -_Samples; i <= _Samples; i ++)
 	{
 		float3 csample;
-		csample += tex2Dlod(s_Linear, float4(input.uv + (pt * uvoffsets * i), 0.0, 0.0)).rgb;
-		color += csample * weight;
+		const float offset = (i + ign);
+		csample += tex2Dlod(s_Linear, float4(input.uv + (pt * oFlow * offset), 0.0, 0.0)).rgb;
+		c += csample;
 		total += weight;
 	}
 
 	if (Debug == 0)
-		c = color / total;
+		c /= total;
 	else if (Debug == 1)
-		c = ds(input.uv).x;
+		c = curr;
 	else
-		c = float3(mad(uvoffsets, 0.5, 0.5), 0.0);
+		c = float3(oFlow, 0.0);
 }
 
 technique cMotionBlur < ui_tooltip = "Color-Based Motion Blur"; >
@@ -177,17 +173,18 @@ technique cMotionBlur < ui_tooltip = "Color-Based Motion Blur"; >
 		VertexShader = PostProcessVS;
 		PixelShader = pLOD;
 		RenderTarget0 = t_LOD;
-		RenderTarget1 = t_pFrame;
+		RenderTarget1 = t_pFrame; // Like before, store previous frame's cubic output into RT for comparison
+		ClearRenderTargets = true; // Trying to fix things, might be redundant
 	}
 
-	pass CopyFrame
+	pass cubicFrame
 	{
 		VertexShader = PostProcessVS;
 		PixelShader = pCFrame;
 		RenderTarget0 = t_cFrame;
 	}
 
-	pass MotionBlur
+	pass FlowBlur
 	{
 		VertexShader = PostProcessVS;
 		PixelShader = pFlowBlur;
