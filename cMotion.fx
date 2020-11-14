@@ -53,9 +53,9 @@ struct vs_in
 void pLOD(vs_in input, out float c : SV_Target0, out float p : SV_Target1)
 {
 	float3 col = tex2Dlod(s_Linear, float4(input.uv, 0.0, 0.0)).rgb;
-	float lum = max(max(max(col.r, col.g), col.b), 0.0001f); // Brightness filter
-	c = log2(1.0 / lum) * exp2(1.0);
-	p = tex2Dlod(s_cFrame, float4(input.uv, 0.0, 0.0)).x; // Output the last frame's cubic c_Frame
+	float lum = max(length(col), 0.0001f); // Brightness filter
+	c = log2(0.148 / lum);
+	p = tex2Dlod(s_cFrame, float4(input.uv, 0.0, 0.0)).x; // Output the c_Frame we got from last frame
 }
 
 /*
@@ -120,21 +120,21 @@ void pCFrame(vs_in input, out float c : SV_Target0)
 float2 mFlow(float prev, float curr)
 {
 	float2 d; // Sobel operator gradient
-	d.x = ddx(curr) + ddx(prev);
-	d.y = ddy(curr) + ddy(prev);
+	d.x = ddx(curr + prev);
+	d.y = ddy(curr + prev);
 
 	float dt = curr - prev; // dt (difference)
 	float gmag = sqrt(d.x * d.x + d.y * d.y + _Lambda);
-	float2 flow = dt * (d / gmag);
+	float2 flow = dt * d / gmag;
 
 	return flow;
 }
 
 void pFlowBlur(vs_in input, out float3 c : SV_Target0)
 {
-	// Calculate optical flow and blur direction here
-	// BSD did this in another pass, but a few more instructions should be cheaper than a pass
-	// Putting it here also means the values are no longer clamped!
+	// Calculate optical flow and blur direction
+	// BSD did this in another pass, but this should be cheaper
+	// Putting it here also means the values are not clamped!
 	float prev = tex2Dlod(s_pFrame, float4(input.uv, 0.0, 0.0)).x; // cubic from last frame
 	float curr = tex2Dlod(s_cFrame, float4(input.uv, 0.0, 0.0)).x; // cubic from this frame
 	float2 oFlow = mFlow(prev, curr);
@@ -163,7 +163,7 @@ void pFlowBlur(vs_in input, out float3 c : SV_Target0)
 	else if (Debug == 1)
 		c = curr;
 	else
-		c = float3(oFlow, 0.0);
+		c = float3(mad(oFlow, 0.5, 0.5), 0.0);
 }
 
 technique cMotionBlur < ui_tooltip = "Color-Based Motion Blur"; >
@@ -177,7 +177,7 @@ technique cMotionBlur < ui_tooltip = "Color-Based Motion Blur"; >
 		ClearRenderTargets = true; // Trying to fix things, might be redundant
 	}
 
-	pass cubicFrame
+	pass CubicFrame
 	{
 		VertexShader = PostProcessVS;
 		PixelShader = pCFrame;
