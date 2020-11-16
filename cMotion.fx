@@ -28,7 +28,6 @@ uniform int Debug <
 	ui_category = "Blur Composite";
 > = 0;
 
-// round(BUFFER_HEIGHT / 2) * 2
 static const int size = 1024;
 
 texture2D t_LOD    { Width = size; Height = size; Format = R16F; MipLevels = 5.0; };
@@ -53,8 +52,8 @@ struct vs_in
 void pLOD(vs_in input, out float c : SV_Target0, out float p : SV_Target1)
 {
 	float3 col = tex2Dlod(s_Linear, float4(input.uv, 0.0, 0.0)).rgb;
-	float lum = max(length(col), 0.0001f); // Brightness filter
-	c = log2(0.148 / lum);
+	float lum = max(length(col), 0.00001f); // Brightness filter
+	c = log2(1.0 / lum);
 	p = tex2Dlod(s_cFrame, float4(input.uv, 0.0, 0.0)).x; // Output the c_Frame we got from last frame
 }
 
@@ -111,7 +110,7 @@ void pCFrame(vs_in input, out float c : SV_Target0)
 /*
 	Algorithm from [https://github.com/mattatz/unity-optical-flow] [MIT License]
 	Optimization from [https://www.shadertoy.com/view/3l2Gz1] [CC BY-NC-SA 3.0]
-
+	
 	ISSUE:
 	mFlow combines the optical flow result of the current AND previous frame.
 	This means there are blurred ghosting that happens frame-by-frame
@@ -173,7 +172,7 @@ technique cMotionBlur < ui_tooltip = "Color-Based Motion Blur"; >
 		VertexShader = PostProcessVS;
 		PixelShader = pLOD;
 		RenderTarget0 = t_LOD;
-		RenderTarget1 = t_pFrame; // Like before, store previous frame's cubic output into RT for comparison
+		RenderTarget1 = t_pFrame; // Store previous frame's cubic for optical flow
 		ClearRenderTargets = true; // Trying to fix things, might be redundant
 	}
 
