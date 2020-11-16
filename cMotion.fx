@@ -41,7 +41,6 @@ sampler2D s_pFrame { Texture = t_pFrame; };
 
 struct vs_in
 {
-	uint id : SV_VertexID;
 	float4 vpos : SV_POSITION;
 	float2 uv : TEXCOORD0;
 };
