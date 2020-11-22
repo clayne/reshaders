@@ -1,17 +1,20 @@
 
 #include "ReShade.fxh"
 
-void PS_Color(in float4 v : SV_POSITION, in float2 uv : TEXCOORD, out float3 c : SV_Target0)
+struct v2f
 {
-	c = uv.xyx;
-}
+	float4 vpos : SV_POSITION;
+	float2 uv : TEXCOORD0;
+};
+
+void p_Color(v2f input, out float3 c : SV_Target0) { c = input.uv.xyx; }
 
 technique LinearCompare
 {
 	pass
 	{
 		VertexShader = PostProcessVS;
-		PixelShader = PS_Color;
+		PixelShader = p_Color;
 		SRGBWriteEnable = true;
 	}
 }

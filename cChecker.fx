@@ -13,21 +13,19 @@
 
 sampler s_Linear { Texture = ReShade::BackBufferTex; SRGBTexture = true; };
 
-struct vs_in
+struct v2f
 {
-	uint id : SV_VertexID;
 	float4 vpos : SV_POSITION;
 	float2 uv : TEXCOORD0;
 };
 
-void pChecker(vs_in input, out float4 c : SV_Target0)
+void p_Checker(v2f input, out float4 c : SV_Target0)
 {
 	// add different dimensions
-	float chessboard = floor(input.vpos.x) + floor(input.vpos.y);
 	// divide it by 2 and get the fractional part, resulting in a value of 0 for even and 0.5 for odd numbers.
-	chessboard = frac(chessboard * 0.5) ;
 	// multiply it by 2 to make odd values white instead of grey
-	chessboard *= 2.0;
+	float chessboard = floor(input.vpos.x) + floor(input.vpos.y);
+	chessboard = frac(chessboard * 0.5) * 2.0;
 	c = tex2D(s_Linear, input.uv) * chessboard;
 }
 
@@ -36,7 +34,7 @@ technique CheckerBoard
 	pass
 	{
 		VertexShader = PostProcessVS;
-		PixelShader = pChecker;
+		PixelShader = p_Checker;
 		SRGBWriteEnable = true;
 	}
 }

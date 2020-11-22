@@ -11,15 +11,14 @@ sampler2D s_Linear { Texture = ReShade::BackBufferTex; };
 texture2D t_Downscaled { Width = 1024; Height = 1024; MipLevels = 5.0; };
 sampler2D s_Downscaled { Texture = t_Downscaled; SRGBTexture = true; };
 
-struct vs_in
+struct v2f
 {
-	uint id : SV_VertexID;
 	float4 vpos : SV_POSITION;
 	float2 uv : TEXCOORD0;
 };
 
 // Empty shader to generate mipmaps.
-void PS_MipGen(vs_in input, out float4 c : SV_Target0) { c = tex2D(s_Linear, input.uv).rgb; }
+void p_MipGen(v2f input, out float4 c : SV_Target0) { c = tex2D(s_Linear, input.uv).rgb; }
 
 float4 calcweights(float s)
 {
@@ -34,9 +33,9 @@ float4 calcweights(float s)
 }
 
 // Could calculate float3s for a bit more performance
-float3 pCubic(sampler src, float2 uv, float lod)
+void p_Cubic(v2f input, out float3 c0 : SV_Target0)
 {
-	float2 texsize = tex2Dsize(src, lod);
+	float2 texsize = tex2Dsize(s_Downscaled, 4.0);
 	float2 pt = 1 / texsize;
 	float2 fcoord = frac(uv * texsize + 0.5);
 	float4 parmx = calcweights(fcoord.x);
@@ -45,20 +44,15 @@ float3 pCubic(sampler src, float2 uv, float lod)
 	cdelta.xz = parmx.rg * float2(-pt.x, pt.x);
 	cdelta.yw = parmy.rg * float2(-pt.y, pt.y);
 	// first y-interpolation
-	float3 ar = tex2Dlod(s_Downscaled, float4(uv + cdelta.xy, 0.0, lod)).rgb;
-	float3 ag = tex2Dlod(s_Downscaled, float4(uv + cdelta.xw, 0.0, lod)).rgb;
+	float3 ar = tex2Dlod(s_Downscaled, float4(input.uv + cdelta.xy, 0.0, 4.0)).rgb;
+	float3 ag = tex2Dlod(s_Downscaled, float4(input.uv + cdelta.xw, 0.0, 4.0)).rgb;
 	float3 ab = lerp(ag, ar, parmy.b);
 	// second y-interpolation
-	float3 br = tex2Dlod(s_Downscaled, float4(uv + cdelta.zy, 0.0, lod)).rgb;
-	float3 bg = tex2Dlod(s_Downscaled, float4(uv + cdelta.zw, 0.0, lod)).rgb;
+	float3 br = tex2Dlod(s_Downscaled, float4(input.uv + cdelta.zy, 0.0, 4.0)).rgb;
+	float3 bg = tex2Dlod(s_Downscaled, float4(input.uv + cdelta.zw, 0.0, 4.0)).rgb;
 	float3 aa = lerp(bg, br, parmy.b);
 	// x-interpolation
 	return lerp(aa, ab, parmx.b);
-}
-
-void PS_Cubic(vs_in input, out float4 c0 : SV_Target0)
-{
-	c0 = pCubic(s_Downscaled, input.uv, 4.0);
 }
 
 technique Cubic
@@ -66,14 +60,14 @@ technique Cubic
 	pass
 	{
 		VertexShader = PostProcessVS;
-		PixelShader = PS_MipGen;
+		PixelShader = p_MipGen;
 		RenderTarget = t_Downscaled;
 	}
 
 	pass
 	{
 		VertexShader = PostProcessVS;
-		PixelShader = PS_Cubic;
+		PixelShader = p_Cubic;
 		SRGBWriteEnable = true;
 	}
 }

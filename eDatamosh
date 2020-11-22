@@ -39,7 +39,7 @@ sampler2D s_LOD    { Texture = t_LOD; MipLODBias = 4.0; };
 sampler2D s_cFrame { Texture = t_cFrame; };
 sampler2D s_pFrame { Texture = t_pFrame; };
 
-struct v2f
+struct vs_in
 {
 	float4 vpos : SV_POSITION;
 	float2 uv : TEXCOORD0;
@@ -48,7 +48,7 @@ struct v2f
 /* [ Pixel Shaders ] */
 
 // Empty shader to generate brightpass, mipmaps, and previous frame
-void p_LOD(v2f input, out float c : SV_Target0, out float p : SV_Target1)
+void pLOD(vs_in input, out float c : SV_Target0, out float p : SV_Target1)
 {
 	float3 col = tex2Dlod(s_Linear, float4(input.uv, 0.0, 0.0)).rgb;
 	float lum = max(length(col), 0.00001f); // Brightness filter
@@ -82,7 +82,7 @@ float4 calcweights(float s)
 }
 
 // NOTE: This is a grey cubic filter. Cubic.fx is the RGB version of this ;)
-void p_cFrame(v2f input, out float c : SV_Target0)
+void pCFrame(vs_in input, out float c : SV_Target0)
 {
 	const float2 texsize = tex2Dsize(s_LOD, 4.0);
 	const float2 pt = 1.0 / texsize;
@@ -128,7 +128,7 @@ float2 mFlow(float prev, float curr)
 	return flow;
 }
 
-void p_FlowBlur(v2f input, out float3 c : SV_Target0)
+void pFlowBlur(vs_in input, out float3 c : SV_Target0)
 {
 	// Calculate optical flow and blur direction
 	// BSD did this in another pass, but this should be cheaper
@@ -137,31 +137,19 @@ void p_FlowBlur(v2f input, out float3 c : SV_Target0)
 	float curr = tex2Dlod(s_cFrame, float4(input.uv, 0.0, 0.0)).x; // cubic from this frame
 	float2 oFlow = mFlow(prev, curr);
 
-	// Interleaved Gradient Noise by Jorge Jimenez to smoothen blur samples
-	// [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
-	const float3 magic = float3(0.06711056, 0.00583715, 52.9829189);
-	float ign = frac(magic.z * frac(dot(input.vpos.xy, magic.xy)));
-
-	// Apply motion blur
-	const float pt = 1.0 / size;
-	float total, weight = 1.0;
-
-	[loop]
-	for (float i = -_Samples; i <= _Samples; i ++)
-	{
-		float3 csample;
-		const float offset = (i + ign);
-		csample += tex2Dlod(s_Linear, float4(input.uv + (pt * oFlow * offset), 0.0, 0.0)).rgb;
-		c += csample;
-		total += weight;
-	}
-
-	if (Debug == 0)
-		c /= total;
-	else if (Debug == 1)
-		c = curr;
-	else
-		c = float3(mad(oFlow, 0.5, 0.5), 0.0);
+    if(length(flow.xy) > 0.5)
+    {
+		oFlow.x = clamp(oFlow.x, -1.0, 1.0);
+		oFlow.y = clamp(oFlow.y, -1.0, 1.0);
+        float2 pos;
+		pos.x = input.vpos.x + flow.x;
+		pos.y = input.vpos.y + flow.y;
+        c = tex2D(s_Linear, float2(pos.x/BUFFER_SCREEN_SIZE.x, pos.y/BUFFER_SCREEN_SIZE.y));
+    }
+    else
+    {
+        c = tex2D(s_Linear, input.uv);
+    }
 }
 
 technique cMotionBlur < ui_tooltip = "Color-Based Motion Blur"; >
@@ -169,7 +157,7 @@ technique cMotionBlur < ui_tooltip = "Color-Based Motion Blur"; >
 	pass LOD
 	{
 		VertexShader = PostProcessVS;
-		PixelShader = p_LOD;
+		PixelShader = pLOD;
 		RenderTarget0 = t_LOD;
 		RenderTarget1 = t_pFrame; // Store previous frame's cubic for optical flow
 		ClearRenderTargets = true; // Trying to fix things, might be redundant
@@ -178,14 +166,14 @@ technique cMotionBlur < ui_tooltip = "Color-Based Motion Blur"; >
 	pass CubicFrame
 	{
 		VertexShader = PostProcessVS;
-		PixelShader = p_cFrame;
+		PixelShader = pCFrame;
 		RenderTarget0 = t_cFrame;
 	}
 
-	pass FlowBlur
+	pass Mosh
 	{
 		VertexShader = PostProcessVS;
-		PixelShader = p_FlowBlur;
+		PixelShader = pFlowBlur;
 		SRGBWriteEnable = true;
 	}
 }
