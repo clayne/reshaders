@@ -48,11 +48,15 @@ struct v2f
 /* [ Pixel Shaders ] */
 
 // Empty shader to generate brightpass, mipmaps, and previous frame
+// Exposure algorithm from http://www.elopezr.com/the-rendering-of-rise-of-the-tomb-raider/
 void p_LOD(v2f input, out float c : SV_Target0, out float p : SV_Target1)
 {
 	float3 col = tex2Dlod(s_Linear, float4(input.uv, 0.0, 0.0)).rgb;
-	float lum = max(length(col), 0.00001f); // Brightness filter
-	c = log2(1.0 / lum);
+	float max3 = max(max(col.r, col.g), col.b); // Find max component
+	float min3 = min(min(col.r, col.g), col.b); // Find min component
+	float clampedAverage = max(0.0001, (max3 + min3) / 2.0);
+	float logAverage = log2(clampedAverage); // Natural logarithm
+	c = logAverage * 2.0;
 	p = tex2Dlod(s_cFrame, float4(input.uv, 0.0, 0.0)).x; // Output the c_Frame we got from last frame
 }
 
@@ -117,14 +121,11 @@ void p_cFrame(v2f input, out float c : SV_Target0)
 
 float2 mFlow(float prev, float curr)
 {
-	float2 d; // Sobel operator gradient
-	d.x = ddx(curr + prev);
-	d.y = ddy(curr + prev);
-
 	float dt = curr - prev; // dt (difference)
-	float gmag = sqrt(d.x * d.x + d.y * d.y + _Lambda);
-	float2 flow = dt * d / gmag;
-
+	float gmag = fwidth(curr + prev) + _Lambda;
+	float2 flow;
+	flow.x = dt * ddx(curr + prev) / gmag;
+	flow.y = dt * ddy(curr + prev) / gmag;
 	return flow;
 }
 
