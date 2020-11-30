@@ -11,7 +11,7 @@
 uniform float _Lambda <
 	ui_type = "drag";
 	ui_label = "Lambda";
-> = 2.0;
+> = 4.0;
 
 uniform int _Samples <
 	ui_type = "drag";
@@ -45,14 +45,12 @@ struct v2f
 /* [ Pixel Shaders ] */
 
 // Empty shader to generate brightpass, mipmaps, and previous frame
-// Exposure algorithm from [http://www.elopezr.com/the-rendering-of-rise-of-the-tomb-raider/]
+// Exposure algorithm from [https://github.com/TheRealMJP/BakingLab] [MIT]
 void pLOD(v2f input, out float c : SV_Target0, out float p : SV_Target1)
 {
 	float3 col = tex2Dlod(s_Linear, float4(input.uv, 0.0, 0.0)).rgb;
-	float max3 = max(max(col.r, col.g), col.b); // Find max component
-	float min3 = min(min(col.r, col.g), col.b); // Find min component
-	float clampedAverage = max(0.0001, (max3 + min3) / 2.0);
-	c = log(clampedAverage) * sqrt(exp(-_Lambda)); // Natural logarithm
+	c = max(length(col), 0.0001f);
+	c = log2(1.0 / c) * sqrt(exp(-_Lambda)); // Natural logarithm
 	p = tex2Dlod(s_cFrame, float4(input.uv, 0.0, 0.0)).x; // Output the c_Frame we got from last frame
 }
 
@@ -107,7 +105,7 @@ void pCFrame(v2f input, out float c : SV_Target0)
 }
 
 /*
-	Algorithm from [https://github.com/mattatz/unity-optical-flow] [MIT License]
+	Algorithm from [https://github.com/mattatz/unity-optical-flow] [MIT]
 	Optimization from [https://www.shadertoy.com/view/3l2Gz1] [CC BY-NC-SA 3.0]
 
 	ISSUE:
@@ -117,9 +115,7 @@ void pCFrame(v2f input, out float c : SV_Target0)
 
 float2 mFlow(float prev, float curr)
 {
-	prev = mad(prev, 0.5, 0.5);
-	curr = mad(curr, 0.5, 0.5);
-	float dt = curr - prev; // dt (difference)
+	float dt = distance(curr, prev); // dt (difference)
 
 	float2 dd;
 	dd.x = ddx(curr + prev);
