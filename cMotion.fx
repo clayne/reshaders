@@ -11,24 +11,21 @@
 uniform float _Lambda <
 	ui_type = "drag";
 	ui_label = "Lambda";
-	ui_category = "Optical Flow";
-> = 0.01;
+> = 2.0;
 
 uniform int _Samples <
 	ui_type = "drag";
 	ui_min = 0; ui_max = 16;
 	ui_label = "Blur Amount";
-	ui_category = "Blur Composite";
 > = 4;
 
 uniform int Debug <
 	ui_type = "combo";
 	ui_items = "Off\0Depth\0Direction\0";
 	ui_label = "Debug View";
-	ui_category = "Blur Composite";
 > = 0;
 
-static const int size = 1024;
+static const int size = 1024; // Textures need to be powers of 2 for elegent mipmapping
 
 texture2D t_LOD    { Width = size; Height = size; Format = R16F; MipLevels = 5.0; };
 texture2D t_cFrame { Width = size; Height = size; Format = R16F; };
@@ -48,15 +45,14 @@ struct v2f
 /* [ Pixel Shaders ] */
 
 // Empty shader to generate brightpass, mipmaps, and previous frame
-// Exposure algorithm from http://www.elopezr.com/the-rendering-of-rise-of-the-tomb-raider/
-void p_LOD(v2f input, out float c : SV_Target0, out float p : SV_Target1)
+// Exposure algorithm from [http://www.elopezr.com/the-rendering-of-rise-of-the-tomb-raider/]
+void pLOD(v2f input, out float c : SV_Target0, out float p : SV_Target1)
 {
 	float3 col = tex2Dlod(s_Linear, float4(input.uv, 0.0, 0.0)).rgb;
 	float max3 = max(max(col.r, col.g), col.b); // Find max component
 	float min3 = min(min(col.r, col.g), col.b); // Find min component
 	float clampedAverage = max(0.0001, (max3 + min3) / 2.0);
-	float logAverage = log2(clampedAverage); // Natural logarithm
-	c = logAverage * 2.0;
+	c = log(clampedAverage) * sqrt(exp(-_Lambda)); // Natural logarithm
 	p = tex2Dlod(s_cFrame, float4(input.uv, 0.0, 0.0)).x; // Output the c_Frame we got from last frame
 }
 
@@ -86,9 +82,9 @@ float4 calcweights(float s)
 }
 
 // NOTE: This is a grey cubic filter. Cubic.fx is the RGB version of this ;)
-void p_cFrame(v2f input, out float c : SV_Target0)
+void pCFrame(v2f input, out float c : SV_Target0)
 {
-	const float2 texsize = tex2Dsize(s_LOD, 4.0);
+	const float2 texsize = ldexp(size, -4.0);
 	const float2 pt = 1.0 / texsize;
 	float2 fcoord = frac(input.uv * texsize + 0.5);
 	float4 parmx = calcweights(fcoord.x);
@@ -113,7 +109,7 @@ void p_cFrame(v2f input, out float c : SV_Target0)
 /*
 	Algorithm from [https://github.com/mattatz/unity-optical-flow] [MIT License]
 	Optimization from [https://www.shadertoy.com/view/3l2Gz1] [CC BY-NC-SA 3.0]
-	
+
 	ISSUE:
 	mFlow combines the optical flow result of the current AND previous frame.
 	This means there are blurred ghosting that happens frame-by-frame
@@ -121,15 +117,22 @@ void p_cFrame(v2f input, out float c : SV_Target0)
 
 float2 mFlow(float prev, float curr)
 {
+	prev = mad(prev, 0.5, 0.5);
+	curr = mad(curr, 0.5, 0.5);
 	float dt = curr - prev; // dt (difference)
-	float gmag = fwidth(curr + prev) + _Lambda;
+
+	float2 dd;
+	dd.x = ddx(curr + prev);
+	dd.y = ddy(curr + prev);
+	float gmag = length(dd) + 1.0; // length() is the same thing, but 1 less instruction
+
 	float2 flow;
-	flow.x = dt * ddx(curr + prev) / gmag;
-	flow.y = dt * ddy(curr + prev) / gmag;
+	flow.x = dt * (dd.x / gmag);
+	flow.y = dt * (dd.y / gmag);
 	return flow;
 }
 
-void p_FlowBlur(v2f input, out float3 c : SV_Target0)
+void pFlowBlur(v2f input, out float3 c : SV_Target0)
 {
 	// Calculate optical flow and blur direction
 	// BSD did this in another pass, but this should be cheaper
@@ -140,21 +143,19 @@ void p_FlowBlur(v2f input, out float3 c : SV_Target0)
 
 	// Interleaved Gradient Noise by Jorge Jimenez to smoothen blur samples
 	// [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
-	const float3 magic = float3(0.06711056, 0.00583715, 52.9829189);
-	float ign = frac(magic.z * frac(dot(input.vpos.xy, magic.xy)));
+	float ign = frac(52.9829189 * frac(dot(input.vpos.xy, float2(0.06711056, 0.00583715))));
 
 	// Apply motion blur
 	const float pt = 1.0 / size;
-	float total, weight = 1.0;
+	float total;
 
 	[loop]
 	for (float i = -_Samples; i <= _Samples; i ++)
 	{
-		float3 csample;
-		const float offset = (i + ign);
-		csample += tex2Dlod(s_Linear, float4(input.uv + (pt * oFlow * offset), 0.0, 0.0)).rgb;
-		c += csample;
-		total += weight;
+		// From [http://john-chapman-graphics.blogspot.com/2013/01/per-object-motion-blur.html]
+		float2 offset = oFlow * ((i + ign) / (_Samples - 1.0) - 0.5);
+		c += tex2Dlod(s_Linear, float4(input.uv + offset, 0.0, 0.0)).rgb;
+		total += 1.0;
 	}
 
 	if (Debug == 0)
@@ -162,7 +163,7 @@ void p_FlowBlur(v2f input, out float3 c : SV_Target0)
 	else if (Debug == 1)
 		c = curr;
 	else
-		c = float3(mad(oFlow, 0.5, 0.5), 0.0);
+		c = float3(oFlow * exp2(8.0), 0.0) + tex2Dlod(s_Linear, float4(input.uv, 0.0, 0.0)).rgb;
 }
 
 technique cMotionBlur < ui_tooltip = "Color-Based Motion Blur"; >
@@ -170,23 +171,22 @@ technique cMotionBlur < ui_tooltip = "Color-Based Motion Blur"; >
 	pass LOD
 	{
 		VertexShader = PostProcessVS;
-		PixelShader = p_LOD;
+		PixelShader = pLOD;
 		RenderTarget0 = t_LOD;
-		RenderTarget1 = t_pFrame; // Store previous frame's cubic for optical flow
-		ClearRenderTargets = true; // Trying to fix things, might be redundant
+		RenderTarget1 = t_pFrame; // Store previous frame's cubic for mFlow()
 	}
 
 	pass CubicFrame
 	{
 		VertexShader = PostProcessVS;
-		PixelShader = p_cFrame;
+		PixelShader = pCFrame;
 		RenderTarget0 = t_cFrame;
 	}
 
 	pass FlowBlur
 	{
 		VertexShader = PostProcessVS;
-		PixelShader = p_FlowBlur;
+		PixelShader = pFlowBlur;
 		SRGBWriteEnable = true;
 	}
 }
