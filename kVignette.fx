@@ -29,7 +29,13 @@ uniform float _Falloff <
 	ui_type = "drag";
 > = 0.5f;
 
-sampler _MainTex { Texture = ReShade::BackBufferTex; SRGBTexture = true; };
+sampler2D _MainTex
+{
+	Texture = ReShade::BackBufferTex;
+	#if BUFFER_COLOR_BIT_DEPTH != 10
+		SRGBTexture = true;
+	#endif
+};
 
 void PS_Vignette(in float4 vpos : SV_Position, in float2 uv : TEXCOORD, out float4 c : SV_Target)
 {
@@ -49,6 +55,8 @@ technique KinoVignette
 	{
 		VertexShader = PostProcessVS;
 		PixelShader = PS_Vignette;
-		SRGBWriteEnable = true;
+		#if BUFFER_COLOR_BIT_DEPTH != 10
+			SRGBWriteEnable = true;
+		#endif
 	}
 }

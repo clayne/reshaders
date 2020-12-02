@@ -25,14 +25,22 @@ uniform int Debug <
 	ui_label = "Debug View";
 > = 0;
 
-static const int size = 1024; // Textures need to be powers of 2 for elegent mipmapping
+#define size 1024 // Textures need to be powers of 2 for elegent mipmapping
+#define lod 4.0
 
 texture2D t_LOD    { Width = size; Height = size; Format = R16F; MipLevels = 5.0; };
 texture2D t_cFrame { Width = size; Height = size; Format = R16F; };
 texture2D t_pFrame { Width = size; Height = size; Format = R16F; };
 
-sampler2D s_Linear { Texture = ReShade::BackBufferTex; SRGBTexture = true; };
-sampler2D s_LOD    { Texture = t_LOD; MipLODBias = 4.0; };
+sampler2D s_Linear
+{
+	Texture = ReShade::BackBufferTex;
+	#if BUFFER_COLOR_BIT_DEPTH != 10
+		SRGBTexture = true;
+	#endif
+};
+
+sampler2D s_LOD    { Texture = t_LOD; };
 sampler2D s_cFrame { Texture = t_cFrame; };
 sampler2D s_pFrame { Texture = t_pFrame; };
 
@@ -50,7 +58,7 @@ void pLOD(v2f input, out float c : SV_Target0, out float p : SV_Target1)
 {
 	float3 col = tex2Dlod(s_Linear, float4(input.uv, 0.0, 0.0)).rgb;
 	c = max(length(col), 0.0001f);
-	c = log2(1.0 / c) * sqrt(exp(-_Lambda)); // Natural logarithm
+	c = log2(1.0 / c) * rsqrt(exp2(_Lambda)); // Natural logarithm
 	p = tex2Dlod(s_cFrame, float4(input.uv, 0.0, 0.0)).x; // Output the c_Frame we got from last frame
 }
 
@@ -80,9 +88,9 @@ float4 calcweights(float s)
 }
 
 // NOTE: This is a grey cubic filter. Cubic.fx is the RGB version of this ;)
-void pCFrame(v2f input, out float c : SV_Target0)
+void pCFrame(v2f input, out float c : SV_Target0, out float p : SV_Target1)
 {
-	const float2 texsize = ldexp(size, -4.0);
+	const float2 texsize = ldexp(size, -lod);
 	const float2 pt = 1.0 / texsize;
 	float2 fcoord = frac(input.uv * texsize + 0.5);
 	float4 parmx = calcweights(fcoord.x);
@@ -92,16 +100,17 @@ void pCFrame(v2f input, out float c : SV_Target0)
 	cdelta.yw = parmy.rg * float2(-pt.y, pt.y);
 	// first y-interpolation
 	float3 a;
-	a.r = tex2Dlod(s_LOD, float4(input.uv + cdelta.xy, 0.0, 0.0)).x;
-	a.g = tex2Dlod(s_LOD, float4(input.uv + cdelta.xw, 0.0, 0.0)).x;
+	a.r = tex2Dlod(s_LOD, float4(input.uv + cdelta.xy, 0.0, lod)).x;
+	a.g = tex2Dlod(s_LOD, float4(input.uv + cdelta.xw, 0.0, lod)).x;
 	a.b = lerp(a.g, a.r, parmy.b);
 	// second y-interpolation
 	float3 b;
-	b.r = tex2Dlod(s_LOD, float4(input.uv + cdelta.zy, 0.0, 0.0)).x;
-	b.g = tex2Dlod(s_LOD, float4(input.uv + cdelta.zw, 0.0, 0.0)).x;
+	b.r = tex2Dlod(s_LOD, float4(input.uv + cdelta.zy, 0.0, lod)).x;
+	b.g = tex2Dlod(s_LOD, float4(input.uv + cdelta.zw, 0.0, lod)).x;
 	b.b = lerp(b.g, b.r, parmy.b);
 	// x-interpolation
 	c = lerp(b.b, a.b, parmx.b).x;
+	p = tex2Dlod(s_pFrame, float4(input.uv, 0.0, 0.0)).x;
 }
 
 /*
@@ -113,14 +122,20 @@ void pCFrame(v2f input, out float c : SV_Target0)
 	This means there are blurred ghosting that happens frame-by-frame
 */
 
-float2 mFlow(float prev, float curr)
+float2 mFlow(float curr, float prev)
 {
-	float dt = distance(curr, prev); // dt (difference)
+	// pad vectors down a bit
+	curr = mad(curr, 0.5, 0.5);
+	prev = mad(prev, 0.5, 0.5);
+
+	// distance between current and previous frame
+	float dt = distance(curr, prev);
 
 	float2 dd;
 	dd.x = ddx(curr + prev);
 	dd.y = ddy(curr + prev);
-	float gmag = length(dd) + 1.0; // length() is the same thing, but 1 less instruction
+	// length() uses 1 dp2add instead of mul + mad
+	float gmag = length(dd) + 1.0;
 
 	float2 flow;
 	flow.x = dt * (dd.x / gmag);
@@ -128,14 +143,14 @@ float2 mFlow(float prev, float curr)
 	return flow;
 }
 
-void pFlowBlur(v2f input, out float3 c : SV_Target0)
+void pFlowBlur(v2f input, out float3 c : SV_Target0, out float p : SV_Target1)
 {
 	// Calculate optical flow and blur direction
 	// BSD did this in another pass, but this should be cheaper
 	// Putting it here also means the values are not clamped!
-	float prev = tex2Dlod(s_pFrame, float4(input.uv, 0.0, 0.0)).x; // cubic from last frame
 	float curr = tex2Dlod(s_cFrame, float4(input.uv, 0.0, 0.0)).x; // cubic from this frame
-	float2 oFlow = mFlow(prev, curr);
+	float prev = tex2Dlod(s_pFrame, float4(input.uv, 0.0, 0.0)).x; // cubic from last frame
+	float2 oFlow = mFlow(curr, prev);
 
 	// Interleaved Gradient Noise by Jorge Jimenez to smoothen blur samples
 	// [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
@@ -154,10 +169,11 @@ void pFlowBlur(v2f input, out float3 c : SV_Target0)
 		total += 1.0;
 	}
 
+	p = curr;
 	if (Debug == 0)
 		c /= total;
 	else if (Debug == 1)
-		c = curr;
+		c = prev;
 	else
 		c = float3(oFlow * exp2(8.0), 0.0) + tex2Dlod(s_Linear, float4(input.uv, 0.0, 0.0)).rgb;
 }
@@ -183,6 +199,8 @@ technique cMotionBlur < ui_tooltip = "Color-Based Motion Blur"; >
 	{
 		VertexShader = PostProcessVS;
 		PixelShader = pFlowBlur;
-		SRGBWriteEnable = true;
+		#if BUFFER_COLOR_BIT_DEPTH != 10
+			SRGBWriteEnable = true;
+		#endif
 	}
 }

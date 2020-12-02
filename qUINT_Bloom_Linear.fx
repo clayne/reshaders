@@ -74,7 +74,14 @@ texture2D _BloomTex5		{ Width = BUFFER_WIDTH/32;  Height = BUFFER_HEIGHT/32;   F
 texture2D _BloomTex6		{ Width = BUFFER_WIDTH/64;  Height = BUFFER_HEIGHT/64;   Format = RGBA16F; };
 texture2D _BloomTex7		{ Width = BUFFER_WIDTH/128; Height = BUFFER_HEIGHT/128;  Format = RGBA16F; };
 
-sampler2D s_BloomSource 	{ Texture = ReShade::BackBufferTex; SRGBTexture = true; };
+sampler2D s_BloomSource 
+{
+	Texture = ReShade::BackBufferTex;
+	#if BUFFER_COLOR_BIT_DEPTH != 10
+		SRGBTexture = true;
+	#endif
+};
+
 sampler2D s_BloomTexSource 	{ Texture = _BloomTexSource; };
 sampler2D s_BloomTex1 	   	{ Texture = _BloomTex1; };
 sampler2D s_BloomTex2		{ Texture = _BloomTex2; };
@@ -240,7 +247,9 @@ technique Bloom
 	{
 		VertexShader = PostProcessVS;
 		PixelShader  = p_Combine;
-		SRGBWriteEnable = true;
+		#if BUFFER_COLOR_BIT_DEPTH != 10
+			SRGBWriteEnable = true;
+		#endif
 		BlendEnable = true;
 		DestBlend = INVSRCCOLOR;
 	}

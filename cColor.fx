@@ -15,6 +15,8 @@ technique LinearCompare
 	{
 		VertexShader = PostProcessVS;
 		PixelShader = p_Color;
-		SRGBWriteEnable = true;
+		#if BUFFER_COLOR_BIT_DEPTH != 10
+			SRGBWriteEnable = true;
+		#endif
 	}
 }

@@ -29,7 +29,13 @@ uniform bool mirrory <
 	ui_label = "Mirror Y";
 > = true;
 
-sampler s_Linear { Texture = ReShade::BackBufferTex; SRGBTexture = true; };
+sampler s_Linear
+{
+	Texture = ReShade::BackBufferTex;
+	#if BUFFER_COLOR_BIT_DEPTH != 10
+		SRGBTexture = true;
+	#endif
+};
 
 // glsl style mod
 #define mod(x, y) (x - y * floor(x / y))
@@ -49,7 +55,7 @@ void p_Tile(v2f input, out float4 c : SV_Target0)
 	if (mirrorx && mod(coord.x, 2.0) > 1.0) { modcoord.x = 1.0 - modcoord.x; }
 	if (mirrory && mod(coord.y, 2.0) > 1.0) { modcoord.y = 1.0 - modcoord.y; }
 
-	return tex2D(s_Linear, modcoord);
+	c = tex2D(s_Linear, modcoord);
 }
 
 technique Tile
@@ -58,6 +64,8 @@ technique Tile
 	{
 		VertexShader = PostProcessVS;
 		PixelShader = p_Tile;
-		SRGBWriteEnable = true;
+		#if BUFFER_COLOR_BIT_DEPTH != 10
+			SRGBWriteEnable = true;
+		#endif
 	}
 }

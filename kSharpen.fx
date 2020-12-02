@@ -37,8 +37,13 @@ uniform float intensity <
 	ui_tooltip = "Increase to sharpen details within the image.";
 > = 0.05;
 
-texture BackBufferTex : COLOR;
-sampler sLinear { Texture = BackBufferTex; SRGBTexture = true; };
+sampler2D sLinear
+{
+	Texture = ReShade::BackBufferTex;
+	#if BUFFER_COLOR_BIT_DEPTH != 10
+		SRGBTexture = true;
+	#endif
+};
 
 int2 offset(int2 i) { return min(max(0, i), BUFFER_SCREEN_SIZE - 1); }
 
@@ -67,6 +72,8 @@ technique KinoSharpen
 	{
 		VertexShader = PostProcessVS;
 		PixelShader = PS_Fragment;
-		SRGBWriteEnable = true;
+		#if BUFFER_COLOR_BIT_DEPTH != 10
+			SRGBWriteEnable = true;
+		#endif
 	}
 }

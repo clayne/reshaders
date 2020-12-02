@@ -75,7 +75,14 @@ uniform float4 _BackColorDefault <
 	ui_min = 0.0; ui_max = 1.0;
 > = float4(0.0, 0.0, 0.0, 0.0);
 
-sampler _MainTex { Texture = ReShade::BackBufferTex; SRGBTexture = true; };
+sampler2D _MainTex
+{
+	Texture = ReShade::BackBufferTex;
+	#if BUFFER_COLOR_BIT_DEPTH != 10
+		SRGBTexture = true;
+	#endif
+};
+
 static const float2 _MainTex_TexelSize = BUFFER_PIXEL_SIZE;
 
 float4 PS_Contour(in float4 vpos : SV_Position, in float2 uv : TEXCOORD) : SV_Target
@@ -138,6 +145,8 @@ technique KinoContour
 	{
 		VertexShader = PostProcessVS;
 		PixelShader = PS_Contour;
-		SRGBWriteEnable = true;
+		#if BUFFER_COLOR_BIT_DEPTH != 10
+			SRGBWriteEnable = true;
+		#endif
 	}
 }

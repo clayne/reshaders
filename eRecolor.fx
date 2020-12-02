@@ -96,7 +96,13 @@ uniform float4 _ColorKey7 <
 	ui_label = "Color Key 7";
 > = float4(1.0, 1.0, 1.0, 1.0);
 
-sampler s_Linear { Texture = ReShade::BackBufferTex; SRGBTexture = true; };
+sampler s_Linear
+{
+	Texture = ReShade::BackBufferTex;
+	#if BUFFER_COLOR_BIT_DEPTH != 10
+		SRGBTexture = true;
+	#endif
+};
 
 void PS_Fragment(in float4 vpos : SV_Position, in float2 uv : TEXCOORD, out float4 c : SV_Target)
 {
@@ -160,6 +166,8 @@ technique KinoRecolor
 	{
 		VertexShader = PostProcessVS;
 		PixelShader = PS_Fragment;
-		SRGBWriteEnable = true;
+		#if BUFFER_COLOR_BIT_DEPTH != 10
+			SRGBWriteEnable = true;
+		#endif
 	}
 }

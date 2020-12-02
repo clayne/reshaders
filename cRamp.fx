@@ -33,7 +33,14 @@ uniform float2 _mulbias <
 
 texture2D _hBlur0 < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGB10A2; };
 
-sampler2D s_Linear { Texture = ReShade::BackBufferTex; SRGBTexture = true; };
+sampler2D s_Linear
+{
+	Texture = ReShade::BackBufferTex;
+	#if BUFFER_COLOR_BIT_DEPTH != 10
+		SRGBTexture = true;
+	#endif
+};
+
 sampler2D s_hBlur0 { Texture = _hBlur0; };
 
 struct v2f
@@ -55,7 +62,9 @@ technique cRamp
 	{
 		VertexShader = PostProcessVS;
 		PixelShader = p_ramp;
-		SRGBWriteEnable = true;
+		#if BUFFER_COLOR_BIT_DEPTH != 10
+			SRGBWriteEnable = true;
+		#endif
 		BlendEnable = true;
 		SrcBlend = ONE;
 		DestBlend = ONE;

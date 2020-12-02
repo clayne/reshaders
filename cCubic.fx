@@ -9,7 +9,14 @@
 sampler2D s_Linear { Texture = ReShade::BackBufferTex; };
 // Hardcoded resulotion because the filter works on integer pixels
 texture2D t_Downscaled { Width = 1024; Height = 1024; MipLevels = 5.0; };
-sampler2D s_Downscaled { Texture = t_Downscaled; SRGBTexture = true; };
+
+sampler2D s_Downscaled
+{
+	Texture = t_Downscaled;
+	#if BUFFER_COLOR_BIT_DEPTH != 10
+		SRGBTexture = true;
+	#endif
+};
 
 struct v2f
 {
@@ -33,11 +40,11 @@ float4 calcweights(float s)
 }
 
 // Could calculate float3s for a bit more performance
-void p_Cubic(v2f input, out float3 c0 : SV_Target0)
+void p_Cubic(v2f input, out float3 c : SV_Target0)
 {
 	float2 texsize = tex2Dsize(s_Downscaled, 4.0);
 	float2 pt = 1 / texsize;
-	float2 fcoord = frac(uv * texsize + 0.5);
+	float2 fcoord = frac(input.uv * texsize + 0.5);
 	float4 parmx = calcweights(fcoord.x);
 	float4 parmy = calcweights(fcoord.y);
 	float4 cdelta;
@@ -52,7 +59,7 @@ void p_Cubic(v2f input, out float3 c0 : SV_Target0)
 	float3 bg = tex2Dlod(s_Downscaled, float4(input.uv + cdelta.zw, 0.0, 4.0)).rgb;
 	float3 aa = lerp(bg, br, parmy.b);
 	// x-interpolation
-	return lerp(aa, ab, parmx.b);
+	c = lerp(aa, ab, parmx.b);
 }
 
 technique Cubic
@@ -68,6 +75,8 @@ technique Cubic
 	{
 		VertexShader = PostProcessVS;
 		PixelShader = p_Cubic;
-		SRGBWriteEnable = true;
+		#if BUFFER_COLOR_BIT_DEPTH != 10
+			SRGBWriteEnable = true;
+		#endif
 	}
 }

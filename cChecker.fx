@@ -11,7 +11,13 @@
 
 #include "ReShade.fxh"
 
-sampler s_Linear { Texture = ReShade::BackBufferTex; SRGBTexture = true; };
+sampler2D s_Linear
+{
+	Texture = ReShade::BackBufferTex;
+	#if BUFFER_COLOR_BIT_DEPTH != 10
+		SRGBTexture = true;
+	#endif
+};
 
 struct v2f
 {
@@ -35,6 +41,8 @@ technique CheckerBoard
 	{
 		VertexShader = PostProcessVS;
 		PixelShader = p_Checker;
-		SRGBWriteEnable = true;
+		#if BUFFER_COLOR_BIT_DEPTH != 10
+			SRGBWriteEnable = true;
+		#endif
 	}
 }

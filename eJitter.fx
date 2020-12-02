@@ -4,7 +4,13 @@
 #include "ReShade.fxh"
 
 // NOTE: Process display-referred images into linear light, no matter the shader
-sampler sLinear { Texture = ReShade::BackBufferTex; SRGBTexture = true; };
+sampler sLinear
+{
+	Texture = ReShade::BackBufferTex;
+	#if BUFFER_COLOR_BIT_DEPTH != 10
+		SRGBTexture = true;
+	#endif
+};
 
 static const uint _Seed = 0.0;
 
@@ -75,6 +81,8 @@ technique KinoGlitch
 	{
 		VertexShader = PostProcessVS;
 		PixelShader = Fragment;
-		SRGBWriteEnable = true;
+		#if BUFFER_COLOR_BIT_DEPTH != 10
+			SRGBWriteEnable = true;
+		#endif
 	}
 }

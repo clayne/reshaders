@@ -43,7 +43,13 @@ uniform bool _SYMMETRY_ON <
 	ui_label = "Symmetry?";
 > = true;
 
-sampler _MainTex { Texture = ReShade::BackBufferTex; SRGBTexture = true; };
+sampler2D _MainTex
+{
+	Texture = ReShade::BackBufferTex;
+	#if BUFFER_COLOR_BIT_DEPTH != 10
+		SRGBTexture = true;
+	#endif
+};
 
 void PS_Mirror(in float4 vpos : SV_Position, in float2 uv : TEXCOORD, out float4 c : SV_Target)
 {
@@ -77,6 +83,8 @@ technique KinoContour
 	{
 		VertexShader = PostProcessVS;
 		PixelShader = PS_Mirror;
-		SRGBWriteEnable = true;
+		#if BUFFER_COLOR_BIT_DEPTH != 10
+			SRGBWriteEnable = true;
+		#endif
 	}
 }
