@@ -17,7 +17,7 @@ uniform int _Samples <
 	ui_type = "drag";
 	ui_min = 0; ui_max = 16;
 	ui_label = "Blur Amount";
-> = 4;
+> = 8;
 
 uniform int Debug <
 	ui_type = "combo";
@@ -57,8 +57,8 @@ struct v2f
 void pLOD(v2f input, out float c : SV_Target0, out float p : SV_Target1)
 {
 	float3 col = tex2Dlod(s_Linear, float4(input.uv, 0.0, 0.0)).rgb;
-	c = max(length(col), 0.0001f);
-	c = log2(1.0 / c) * rsqrt(exp2(_Lambda)); // Natural logarithm
+	c = max(length(col), 0.001f);
+	c = log2(1.0 / c);
 	p = tex2Dlod(s_cFrame, float4(input.uv, 0.0, 0.0)).x; // Output the c_Frame we got from last frame
 }
 
@@ -124,12 +124,13 @@ void pCFrame(v2f input, out float c : SV_Target0, out float p : SV_Target1)
 
 float2 mFlow(float curr, float prev)
 {
-	// pad vectors down a bit
 	curr = mad(curr, 0.5, 0.5);
 	prev = mad(prev, 0.5, 0.5);
 
 	// distance between current and previous frame
 	float dt = distance(curr, prev);
+	dt *= rsqrt(exp(_Lambda));
+	dt = (dt * dt) * rsqrt(dt);
 
 	float2 dd;
 	dd.x = ddx(curr + prev);
@@ -161,10 +162,10 @@ void pFlowBlur(v2f input, out float3 c : SV_Target0, out float p : SV_Target1)
 	float total;
 
 	[loop]
-	for (float i = -_Samples; i <= _Samples; i ++)
+	for (float i = -_Samples + 0.5; i <= _Samples; i+= 2.0)
 	{
 		// From [http://john-chapman-graphics.blogspot.com/2013/01/per-object-motion-blur.html]
-		float2 offset = oFlow * ((i + ign) / (_Samples - 1.0) - 0.5);
+		float2 offset = oFlow * ((i + ign * 2.0) / (_Samples - 1.0) - 0.5);
 		c += tex2Dlod(s_Linear, float4(input.uv + offset, 0.0, 0.0)).rgb;
 		total += 1.0;
 	}
