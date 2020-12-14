@@ -17,18 +17,18 @@ uniform int _Samples <
 	ui_type = "drag";
 	ui_min = 0; ui_max = 16;
 	ui_label = "Blur Amount";
-> = 8;
+> = 16;
 
 uniform int Debug <
 	ui_type = "combo";
-	ui_items = "Off\0Depth\0Direction\0";
+	ui_items = "Off\0Direction\0";
 	ui_label = "Debug View";
 > = 0;
 
 #define size 1024 // Textures need to be powers of 2 for elegent mipmapping
-#define lod 4.0
+#define lod 5.0
 
-texture2D t_LOD    { Width = size; Height = size; Format = R16F; MipLevels = 5.0; };
+texture2D t_LOD    { Width = size; Height = size; Format = R16F; MipLevels = 6.0; };
 texture2D t_cFrame { Width = size; Height = size; Format = R16F; };
 texture2D t_pFrame { Width = size; Height = size; Format = R16F; };
 
@@ -77,13 +77,15 @@ void pLOD(v2f input, out float c : SV_Target0, out float p : SV_Target1)
 
 float4 calcweights(float s)
 {
-	float4 t = float4(-0.5, 0.1666, 0.3333, -0.3333) * s + float4(1.0, 0.0, -0.5, 0.5);
-	t = t * s + float4(0.0, 0.0, -0.5, 0.5);
-	t = t * s + float4(-0.6666, 0.0, 0.8333, 0.1666);
-	float2 a = 1.0 / t.zw;
-	t.xy = t.xy * a + 1.0;
-	t.x = t.x + s;
-	t.y = t.y - s;
+	const float4 a = float4(-0.5, 0.1666, 0.3333, -0.3333);
+	const float4 b = float4(1.0, 0.0, -0.5, 0.5);
+	const float4 c = float4(-0.6666, 0.0, 0.8333, 0.1666);
+	float4 t = mad(a, s, b);
+	t = mad(t, s, b.yyzw);
+	t = mad(t, s, c);
+	t.xy = mad(t.xy, rcp(t.zw), 1.0);
+	t.x += s;
+	t.y -= s;
 	return t;
 }
 
@@ -124,27 +126,19 @@ void pCFrame(v2f input, out float c : SV_Target0, out float p : SV_Target1)
 
 float2 mFlow(float curr, float prev)
 {
-	curr = mad(curr, 0.5, 0.5);
-	prev = mad(prev, 0.5, 0.5);
-
 	// distance between current and previous frame
 	float dt = distance(curr, prev);
-	dt *= rsqrt(exp(_Lambda));
-	dt = (dt * dt) * rsqrt(dt);
+	dt *= rsqrt(exp2(_Lambda));
 
-	float2 dd;
-	dd.x = ddx(curr + prev);
-	dd.y = ddy(curr + prev);
-	// length() uses 1 dp2add instead of mul + mad
-	float gmag = length(dd) + 1.0;
-
-	float2 flow;
-	flow.x = dt * (dd.x / gmag);
-	flow.y = dt * (dd.y / gmag);
-	return flow;
+	float4 d; // Edge detection
+	d.x = ddx(curr + prev) * 0.5;
+	d.y = ddy(curr + prev) * 0.5;
+	d.z = 1.0;
+	d.w = length(d.xyz); // magnitude :: length() uses 1 dp3add instead of mul + mad
+	return dt * (d.xy / d.w);
 }
 
-void pFlowBlur(v2f input, out float3 c : SV_Target0, out float p : SV_Target1)
+void pFlowBlur(v2f input, out float3 c : SV_Target0)
 {
 	// Calculate optical flow and blur direction
 	// BSD did this in another pass, but this should be cheaper
@@ -155,26 +149,19 @@ void pFlowBlur(v2f input, out float3 c : SV_Target0, out float p : SV_Target1)
 
 	// Interleaved Gradient Noise by Jorge Jimenez to smoothen blur samples
 	// [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
-	float ign = frac(52.9829189 * frac(dot(input.vpos.xy, float2(0.06711056, 0.00583715))));
+	float3 m = float3(52.9829189, 0.06711056, 0.00583715);
+	float ign = frac(m.x * frac(dot(input.vpos.xy, m.yz)));
 
-	// Apply motion blur
-	const float pt = 1.0 / size;
-	float total;
-
-	[loop]
-	for (float i = -_Samples + 0.5; i <= _Samples; i+= 2.0)
+	[loop] // Apply motion blur
+	for (float i = 0.0; i <= _Samples; i += 2.0)
 	{
 		// From [http://john-chapman-graphics.blogspot.com/2013/01/per-object-motion-blur.html]
-		float2 offset = oFlow * ((i + ign * 2.0) / (_Samples - 1.0) - 0.5);
+		float2 offset = oFlow * ((ign * 2.0 + i) / (_Samples - 1.0) - 0.5);
 		c += tex2Dlod(s_Linear, float4(input.uv + offset, 0.0, 0.0)).rgb;
-		total += 1.0;
 	}
 
-	p = curr;
 	if (Debug == 0)
-		c /= total;
-	else if (Debug == 1)
-		c = prev;
+		c /= (_Samples * 0.5 + 1.0);
 	else
 		c = float3(oFlow * exp2(8.0), 0.0) + tex2Dlod(s_Linear, float4(input.uv, 0.0, 0.0)).rgb;
 }
