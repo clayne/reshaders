@@ -90,7 +90,7 @@ float4 calcweights(float s)
 }
 
 // NOTE: This is a grey cubic filter. Cubic.fx is the RGB version of this ;)
-void pCFrame(v2f input, out float c : SV_Target0, out float p : SV_Target1)
+void pCFrame(v2f input, out float c : SV_Target0)
 {
 	const float2 texsize = ldexp(size, -lod);
 	const float2 pt = 1.0 / texsize;
@@ -112,7 +112,6 @@ void pCFrame(v2f input, out float c : SV_Target0, out float p : SV_Target1)
 	b.b = lerp(b.g, b.r, parmy.b);
 	// x-interpolation
 	c = lerp(b.b, a.b, parmx.b).x;
-	p = tex2Dlod(s_pFrame, float4(input.uv, 0.0, 0.0)).x;
 }
 
 /*
@@ -126,14 +125,11 @@ void pCFrame(v2f input, out float c : SV_Target0, out float p : SV_Target1)
 
 float2 mFlow(float curr, float prev)
 {
-	// distance between current and previous frame
-	float dt = distance(curr, prev);
-	dt *= rsqrt(exp2(_Lambda));
-
+	float dt = distance(curr, prev); // distance between current and previous frame
 	float4 d; // Edge detection
 	d.x = ddx(curr + prev) * 0.5;
 	d.y = ddy(curr + prev) * 0.5;
-	d.z = 1.0;
+	d.z = _Lambda;
 	d.w = length(d.xyz); // magnitude :: length() uses 1 dp3add instead of mul + mad
 	return dt * (d.xy / d.w);
 }
@@ -163,7 +159,7 @@ void pFlowBlur(v2f input, out float3 c : SV_Target0)
 	if (Debug == 0)
 		c /= (_Samples * 0.5 + 1.0);
 	else
-		c = float3(oFlow * exp2(8.0), 0.0) + tex2Dlod(s_Linear, float4(input.uv, 0.0, 0.0)).rgb;
+		c = float3(oFlow * exp2(8.0), 0.0);
 }
 
 technique cMotionBlur < ui_tooltip = "Color-Based Motion Blur"; >
