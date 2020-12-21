@@ -56,7 +56,7 @@ void PS_Mirror(in float4 vpos : SV_Position, in float2 uv : TEXCOORD, out float4
 	// Convert to the polar coordinate.
 	float2 sc = uv - 0.5;
 	float phi = atan2(sc.y, sc.x);
-	float r = sqrt(dot(sc, sc));
+	float r = length(sc);
 
 	// Angular repeating.
 	phi += _Offset;

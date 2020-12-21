@@ -11,28 +11,19 @@
 
 #include "ReShade.fxh"
 
-sampler2D s_Linear
-{
-	Texture = ReShade::BackBufferTex;
-	#if BUFFER_COLOR_BIT_DEPTH != 10
-		SRGBTexture = true;
-	#endif
-};
-
 struct v2f
 {
 	float4 vpos : SV_POSITION;
 	float2 uv : TEXCOORD0;
 };
 
-void p_Checker(v2f input, out float4 c : SV_Target0)
+void p_Checker(v2f input, out float3 c : SV_Target0)
 {
 	// add different dimensions
 	// divide it by 2 and get the fractional part, resulting in a value of 0 for even and 0.5 for odd numbers.
 	// multiply it by 2 to make odd values white instead of grey
-	float chessboard = floor(input.vpos.x) + floor(input.vpos.y);
-	chessboard = frac(chessboard * 0.5) * 2.0;
-	c = tex2D(s_Linear, input.uv) * chessboard;
+	float chessboard = floor(input.vpos.x + input.vpos.y);
+	c = frac(chessboard * 0.5) * 2.0;
 }
 
 technique CheckerBoard
@@ -44,5 +35,9 @@ technique CheckerBoard
 		#if BUFFER_COLOR_BIT_DEPTH != 10
 			SRGBWriteEnable = true;
 		#endif
+		BlendEnable = true;
+		BlendOp = MIN;
+		SrcBlend = ONE;
+		DestBlend = ONE;
 	}
 }

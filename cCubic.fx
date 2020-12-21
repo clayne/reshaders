@@ -43,7 +43,7 @@ float4 calcweights(float s)
 void p_Cubic(v2f input, out float3 c : SV_Target0)
 {
 	float2 texsize = tex2Dsize(s_Downscaled, 4.0);
-	float2 pt = 1 / texsize;
+	float2 pt = 1.0 / texsize;
 	float2 fcoord = frac(input.uv * texsize + 0.5);
 	float4 parmx = calcweights(fcoord.x);
 	float4 parmy = calcweights(fcoord.y);

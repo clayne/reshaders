@@ -29,24 +29,12 @@ uniform float _Falloff <
 	ui_type = "drag";
 > = 0.5f;
 
-sampler2D _MainTex
+void PS_Vignette(in float4 vpos : SV_Position, in float2 uv : TEXCOORD, out float3 c : SV_Target)
 {
-	Texture = ReShade::BackBufferTex;
-	#if BUFFER_COLOR_BIT_DEPTH != 10
-		SRGBTexture = true;
-	#endif
-};
-
-void PS_Vignette(in float4 vpos : SV_Position, in float2 uv : TEXCOORD, out float4 c : SV_Target)
-{
-	const float2 _Aspect = BUFFER_ASPECT_RATIO;
-	float2 coord = (uv - 0.5) * _Aspect * 2.0;
-	float rf = sqrt(dot(coord, coord)) * _Falloff;
-	float rf2_1 = rf * rf + 1.0;
-	float e = 1.0 / (rf2_1 * rf2_1);
-
-	float4 src = tex2D(_MainTex, uv);
-	c = float4(src.rgb * e, src.a);
+	float2 coord = (uv - 0.5) * BUFFER_ASPECT_RATIO * 2.0;
+	float rf = length(coord) * _Falloff;
+	float rf2_1 = mad(rf, rf, 1.0);
+	c = 1.0 / (rf2_1 * rf2_1);
 }
 
 technique KinoVignette
@@ -58,5 +46,9 @@ technique KinoVignette
 		#if BUFFER_COLOR_BIT_DEPTH != 10
 			SRGBWriteEnable = true;
 		#endif
+		BlendEnable = true;
+		BlendOp = ADD;
+		SrcBlend = DESTCOLOR;
+		DestBlend = SRCALPHA;
 	}
 }
