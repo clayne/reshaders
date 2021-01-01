@@ -46,9 +46,9 @@
 	Modified by CeeJay.dk:
 		Included a label and tooltip description. I followed AMDs official naming guidelines for FidelityFX.
 
-    Modified by Me:
-        Offload the texture coordinate math to the vertex shader
-        Made the SRGB conversion RGBA8 exclusive
+	Modified by Me:
+		Offload the texture coordinate math to the vertex shader
+		Made the SRGB conversion RGBA8 exclusive
 */
 
 uniform float Contrast <

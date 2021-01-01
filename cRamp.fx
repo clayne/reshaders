@@ -2,7 +2,7 @@
 	Material shader from https://github.com/blender/blender
 
 	Blender uses the GNU General Public License, which describes the rights
-	to distribute or change the code. 
+	to distribute or change the code.
 
 	Please read this file for the full license.
 	doc/license/GPL-license.txt
@@ -25,7 +25,7 @@ uniform float4 _color2 <
 	ui_label = "Color 2";
 > = float4(0.5, 0.5, 0.5, 0.5);
 
-uniform float2 _mulbias < 	
+uniform float2 _mulbias <
 	ui_type = "drag";
 	ui_min = 0.0; ui_max = 1.0;
 	ui_label = "MulBias";

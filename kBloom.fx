@@ -1,19 +1,19 @@
 
 /*
 	MIT License
-	
+
 	Copyright (c) 2015-2017 Keijiro Takahashi
-	
+
 	Permission is hereby granted, free of charge, to any person obtaining a copy
 	of this software and associated documentation files (the "Software"), to deal
 	in the Software without restriction, including without limitation the rights
 	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 	copies of the Software, and to permit persons to whom the Software is
 	furnished to do so, subject to the following conditions:
-	
+
 	The above copyright notice and this permission notice shall be included in all
 	copies or substantial portions of the Software.
-	
+
 	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -48,8 +48,8 @@ uniform float BLOOM_SAT <
 
 struct v2f
 {
-    float4 vpos : SV_Position;
-    float2 uv   : TEXCOORD0;
+	float4 vpos : SV_Position;
+	float2 uv   : TEXCOORD0;
 	float4 uv0  : TEXCOORD1;
 };
 
@@ -83,20 +83,20 @@ float Brightness(float3 c) { return max(max(c.r, c.g), c.b); }
 
 float3 dsamp(sampler2D src, float2 uv)
 {
-    float3 s1 = tex2D(src, uv, int2(-1.0, -1.0)).rgb;
-    float3 s2 = tex2D(src, uv, int2( 1.0, -1.0)).rgb;
-    float3 s3 = tex2D(src, uv, int2(-1.0,  1.0)).rgb;
-    float3 s4 = tex2D(src, uv, int2( 1.0,  1.0)).rgb;
+	float3 s1 = tex2D(src, uv, int2(-1.0, -1.0)).rgb;
+	float3 s2 = tex2D(src, uv, int2( 1.0, -1.0)).rgb;
+	float3 s3 = tex2D(src, uv, int2(-1.0,  1.0)).rgb;
+	float3 s4 = tex2D(src, uv, int2( 1.0,  1.0)).rgb;
 
-    // Karis's luma weighted average (using brightness instead of luma)
-    float4 sw;
-    sw.x = 1.0 / (Brightness(s1) + 1.0);
-    sw.y = 1.0 / (Brightness(s2) + 1.0);
-    sw.z = 1.0 / (Brightness(s3) + 1.0);
-    sw.w = 1.0 / (Brightness(s4) + 1.0);
-    float one_div_wsum = 1.0 / dot(1.0, sw);
+	// Karis's luma weighted average (using brightness instead of luma)
+	float4 sw;
+	sw.x = 1.0 / (Brightness(s1) + 1.0);
+	sw.y = 1.0 / (Brightness(s2) + 1.0);
+	sw.z = 1.0 / (Brightness(s3) + 1.0);
+	sw.w = 1.0 / (Brightness(s4) + 1.0);
+	float one_div_wsum = 1.0 / dot(1.0, sw);
 
-    return (s1 * sw.x + s2 * sw.y + s3 * sw.z + s4 * sw.w) * one_div_wsum;
+	return (s1 * sw.x + s2 * sw.y + s3 * sw.z + s4 * sw.w) * one_div_wsum;
 }
 
 // Instead of vanilla bilinear, we use gaussian from CeeJayDK's SweetFX LumaSharpen.
@@ -114,14 +114,14 @@ float3 usamp(sampler2D src, float2 uv)
 void p_dsamp0(v2f input, out float3 c : SV_Target0)
 {
 
-    //float2 d  = BUFFER_PIXEL_SIZE.xy * float2(1.0, 0.0);
-    float3 s0 = tex2D(s_Linear, input.uv, int2( 0.0,  0.0)).rgb;
-    float3 s1 = tex2D(s_Linear, input.uv, int2(-1.0,  0.0)).rgb;
-    float3 s2 = tex2D(s_Linear, input.uv, int2( 1.0,  0.0)).rgb;
-    float3 s3 = tex2D(s_Linear, input.uv, int2( 0.0, -1.0)).rgb;
-    float3 s4 = tex2D(s_Linear, input.uv, int2( 0.0,  1.0)).rgb;
-    float3 m = Median(Median(s0.rgb, s1, s2), s3, s4);
-    
+	//float2 d  = BUFFER_PIXEL_SIZE.xy * float2(1.0, 0.0);
+	float3 s0 = tex2D(s_Linear, input.uv, int2( 0.0,  0.0)).rgb;
+	float3 s1 = tex2D(s_Linear, input.uv, int2(-1.0,  0.0)).rgb;
+	float3 s2 = tex2D(s_Linear, input.uv, int2( 1.0,  0.0)).rgb;
+	float3 s3 = tex2D(s_Linear, input.uv, int2( 0.0, -1.0)).rgb;
+	float3 s4 = tex2D(s_Linear, input.uv, int2( 0.0,  1.0)).rgb;
+	float3 m = Median(Median(s0.rgb, s1, s2), s3, s4);
+
 	float l = dot(m, 0.333);
 	c = saturate(lerp(l, m, BLOOM_SAT));
 	c *= (pow(abs(l), BLOOM_CURVE) * BLOOM_INTENSITY) / (l + 1e-3);
@@ -145,21 +145,21 @@ void p_usamp1(v2f input, out float3 c : SV_Target0)
 	c = usamp(s_Bloom1, input.uv).rgb;
 	// sRGB => XYZ => D65_2_D60 => AP1 => RRT_SAT
 	const float3x3 ACESInputMat = float3x3(
-	    0.59719, 0.35458, 0.04823,
-	    0.07600, 0.90834, 0.01566,
-	    0.02840, 0.13383, 0.83777
+		0.59719, 0.35458, 0.04823,
+		0.07600, 0.90834, 0.01566,
+		0.02840, 0.13383, 0.83777
 	);
-	
+
 	// ODT_SAT => XYZ => D60_2_D65 => sRGB
 	const float3x3 ACESOutputMat = float3x3(
-	     1.60475, -0.53108, -0.07367,
-	    -0.10208,  1.10813, -0.00605,
-	    -0.00327, -0.07276,  1.07602
+		 1.60475, -0.53108, -0.07367,
+		-0.10208,  1.10813, -0.00605,
+		-0.00327, -0.07276,  1.07602
 	);
-	
-    float3 a = c * (c + 0.0245786f) - 0.000090537f;
-    float3 b = c * (0.983729f * c + 0.4329510f) + 0.238081f;
-    float3 RRTAndODTFit = a / b;
+
+	float3 a = c * (c + 0.0245786f) - 0.000090537f;
+	float3 b = c * (0.983729f * c + 0.4329510f) + 0.238081f;
+	float3 RRTAndODTFit = a / b;
 
 	c = mul(ACESInputMat, c);
 	c = mul(ACESOutputMat, RRTAndODTFit);
@@ -195,5 +195,4 @@ technique KinoBloom
 		BlendEnable = true;
 		DestBlend = INVSRCCOLOR;
 	}
-	
 }
