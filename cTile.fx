@@ -1,6 +1,4 @@
 
-// Tile Effect by itsmattkc (Olive 0.1.X)
-
 #include "ReShade.fxh"
 
 uniform float scale <
@@ -9,36 +7,11 @@ uniform float scale <
 	ui_step = 0.1;
 > = 100.0;
 
-uniform float centerx <
-	ui_label = "Center X";
+uniform float2 center <
+	ui_label = "Center";
 	ui_type = "drag";
 	ui_step = 0.001;
-> = 0.0;
-
-uniform float centery <
-	ui_label = "Center Y";
-	ui_type = "drag";
-	ui_step = 0.001;
-> = 0.0;
-
-uniform bool mirrorx <
-	ui_label = "Mirror X";
-> = true;
-
-uniform bool mirrory <
-	ui_label = "Mirror Y";
-> = true;
-
-sampler s_Linear
-{
-	Texture = ReShade::BackBufferTex;
-	#if BUFFER_COLOR_BIT_DEPTH != 10
-		SRGBTexture = true;
-	#endif
-};
-
-// glsl style mod
-#define mod(x, y) (x - y * floor(x / y))
+> = float2(0.0, 0.0);
 
 struct v2f
 {
@@ -46,24 +19,37 @@ struct v2f
 	float2 uv : TEXCOORD0;
 };
 
-void p_Tile(v2f input, out float4 c : SV_Target0)
+sampler2D s_Linear
 {
-	float adj_scale = scale * 0.01;
-	float2 coord = (input.uv/adj_scale - 0.5/adj_scale) + float2(-centerx, -centery) + 0.5;
-	float2 modcoord = mod(coord, 1.0);
+	Texture = ReShade::BackBufferTex;
+	#if BUFFER_COLOR_BIT_DEPTH != 10
+		SRGBTexture = true;
+	#endif
+	AddressU = MIRROR;
+	AddressV = MIRROR;
+};
 
-	if (mirrorx && mod(coord.x, 2.0) > 1.0) { modcoord.x = 1.0 - modcoord.x; }
-	if (mirrory && mod(coord.y, 2.0) > 1.0) { modcoord.y = 1.0 - modcoord.y; }
+#define vs_out() in uint id : SV_VertexID, out float4 vpos : SV_Position, out float4 uv : TEXCOORD0
 
-	c = tex2D(s_Linear, modcoord);
+void v_tile(v2f input, vs_out())
+{
+	PostProcessVS(id, vpos, input.uv);
+	input.uv += float2(center.x, -center.y);
+	float2 s = input.uv * BUFFER_SCREEN_SIZE * (scale * 0.01);
+	uv = floor(s) / BUFFER_SCREEN_SIZE;
+}
+
+void p_tile(v2f input, out float3 c : SV_Target0)
+{
+	c = tex2D(s_Linear, input.uv).rgb;
 }
 
 technique Tile
 {
 	pass
 	{
-		VertexShader = PostProcessVS;
-		PixelShader = p_Tile;
+		VertexShader = v_tile;
+		PixelShader = p_tile;
 		#if BUFFER_COLOR_BIT_DEPTH != 10
 			SRGBWriteEnable = true;
 		#endif

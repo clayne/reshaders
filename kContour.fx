@@ -115,8 +115,8 @@ float4 PS_Contour(in float4 vpos : SV_Position, in float2 uv : TEXCOORD) : SV_Ta
 	// Four sample points of the roberts cross operator
 	float2 uv0 = uv;                                   // TL
 	float2 uv1 = uv + _MainTex_TexelSize.xy;           // BR
-	float2 uv2 = uv + float2(_MainTex_TexelSize.x, 0); // TR
-	float2 uv3 = uv + float2(0, _MainTex_TexelSize.y); // BL
+	float2 uv2 = uv + float2(_MainTex_TexelSize.x, 0.0); // TR
+	float2 uv3 = uv + float2(0.0, _MainTex_TexelSize.y); // BL
 
 	float edge = 0;
 

@@ -1,11 +1,9 @@
 /*
 	Code from https://github.com/ronja-tutorials/ShaderTutorials
-
 	Note from Ronja Böhringer:
 	All code in this repository is under the CC-BY license (https://creativecommons.org/licenses/by/4.0/),
 	so do with it whatever you want, but please credit me You can credit me as Ronja Böhringer,
 	or link to my tutorial website, this repository or my twitter).
-
 	If you use/like what I do, also feel free to support my patreon if you want to https://www.patreon.com/RonjaTutorials.
 */
 
@@ -36,8 +34,8 @@ technique CheckerBoard
 			SRGBWriteEnable = true;
 		#endif
 		BlendEnable = true;
-		BlendOp = MIN;
-		SrcBlend = ONE;
-		DestBlend = ONE;
+		BlendOp = ADD;
+		SrcBlend = DESTCOLOR;
+		DestBlend = SRCALPHA;
 	}
 }
