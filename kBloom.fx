@@ -100,31 +100,32 @@ float3 dsamp(sampler2D src, float2 uv)
 }
 
 // Instead of vanilla bilinear, we use gaussian from CeeJayDK's SweetFX LumaSharpen.
-float3 usamp(sampler2D src, float2 uv)
+float4 usamp(sampler2D src, float2 uv)
 {
 	float2 ts = 1.0 / tex2Dsize(src, 0.0);
-	float3 s;
-	s  = tex2D(src, uv + float2(0.5 * ts.x,  -ts.y)).rgb; // South South East
-	s += tex2D(src, uv + float2(-ts.x, 0.5 * -ts.y)).rgb; // West South West
-	s += tex2D(src, uv + float2( ts.x, 0.5 *  ts.y)).rgb; // East North East
-	s += tex2D(src, uv + float2(0.5 * -ts.x,  ts.y)).rgb; // North North West
-	return s * 0.25;
+	float4 s;
+	s.rgb += tex2D(src, uv + float2(0.5 * ts.x,  -ts.y)).rgb; // South South East
+	s.rgb += tex2D(src, uv + float2(-ts.x, 0.5 * -ts.y)).rgb; // West South West
+	s.rgb += tex2D(src, uv + float2( ts.x, 0.5 *  ts.y)).rgb; // East North East
+	s.rgb += tex2D(src, uv + float2(0.5 * -ts.x,  ts.y)).rgb; // North North West
+	s.rgb *= 0.25;
+	s.a = BLOOM_INTENSITY;
+	return s;
 }
 
+// Use Marty McFly's qUINT_Bloom's threshold for now
 void p_dsamp0(v2f input, out float3 c : SV_Target0)
 {
-
-	//float2 d  = BUFFER_PIXEL_SIZE.xy * float2(1.0, 0.0);
-	float3 s0 = tex2D(s_Linear, input.uv, int2( 0.0,  0.0)).rgb;
-	float3 s1 = tex2D(s_Linear, input.uv, int2(-1.0,  0.0)).rgb;
-	float3 s2 = tex2D(s_Linear, input.uv, int2( 1.0,  0.0)).rgb;
-	float3 s3 = tex2D(s_Linear, input.uv, int2( 0.0, -1.0)).rgb;
-	float3 s4 = tex2D(s_Linear, input.uv, int2( 0.0,  1.0)).rgb;
+	float4 s0 = tex2D(s_Linear, input.uv, int2( 0, 0));
+	float3 s1 = tex2D(s_Linear, input.uv, int2(-1, 0)).rgb;
+	float3 s2 = tex2D(s_Linear, input.uv, int2( 1, 0)).rgb;
+	float3 s3 = tex2D(s_Linear, input.uv, int2( 0,-1)).rgb;
+	float3 s4 = tex2D(s_Linear, input.uv, int2( 0, 1)).rgb;
 	float3 m = Median(Median(s0.rgb, s1, s2), s3, s4);
 
-	float l = dot(m, 0.333);
-	c = saturate(lerp(l, m, BLOOM_SAT));
-	c *= (pow(abs(l), BLOOM_CURVE) * BLOOM_INTENSITY) / (l + 1e-3);
+	s0.a = dot(m, 0.333);
+	c  = saturate(lerp(s0.a, m, BLOOM_SAT));
+	c *= pow(abs(s0.a), BLOOM_CURVE) / (s0.a + 1e-3);
 }
 
 void p_dsamp1(v2f input, out float3 c : SV_Target0) { c = dsamp(s_Bloom1, input.uv); }
@@ -134,15 +135,17 @@ void p_dsamp4(v2f input, out float3 c : SV_Target0) { c = dsamp(s_Bloom4, input.
 void p_dsamp5(v2f input, out float3 c : SV_Target0) { c = dsamp(s_Bloom5, input.uv); }
 void p_dsamp6(v2f input, out float3 c : SV_Target0) { c = dsamp(s_Bloom6, input.uv); }
 
-void p_usamp7(v2f input, out float3 c : SV_Target0) { c = usamp(s_Bloom7, input.uv); }
-void p_usamp6(v2f input, out float3 c : SV_Target0) { c = usamp(s_Bloom6, input.uv); }
-void p_usamp5(v2f input, out float3 c : SV_Target0) { c = usamp(s_Bloom5, input.uv); }
-void p_usamp4(v2f input, out float3 c : SV_Target0) { c = usamp(s_Bloom4, input.uv); }
-void p_usamp3(v2f input, out float3 c : SV_Target0) { c = usamp(s_Bloom3, input.uv); }
-void p_usamp2(v2f input, out float3 c : SV_Target0) { c = usamp(s_Bloom2, input.uv); }
+void p_usamp7(v2f input, out float4 c : SV_Target0) { c = usamp(s_Bloom7, input.uv); }
+void p_usamp6(v2f input, out float4 c : SV_Target0) { c = usamp(s_Bloom6, input.uv); }
+void p_usamp5(v2f input, out float4 c : SV_Target0) { c = usamp(s_Bloom5, input.uv); }
+void p_usamp4(v2f input, out float4 c : SV_Target0) { c = usamp(s_Bloom4, input.uv); }
+void p_usamp3(v2f input, out float4 c : SV_Target0) { c = usamp(s_Bloom3, input.uv); }
+void p_usamp2(v2f input, out float4 c : SV_Target0) { c = usamp(s_Bloom2, input.uv); }
 void p_usamp1(v2f input, out float3 c : SV_Target0)
 {
 	c = usamp(s_Bloom1, input.uv).rgb;
+
+	// ACES Tonemap from https://github.com/TheRealMJP/BakingLab
 	// sRGB => XYZ => D65_2_D60 => AP1 => RRT_SAT
 	const float3x3 ACESInputMat = float3x3(
 		0.59719, 0.35458, 0.04823,
@@ -170,7 +173,7 @@ technique KinoBloom
 	#define vs()       VertexShader = PostProcessVS
 	#define psd(i, j)  PixelShader = p_dsamp##i; RenderTarget = _Bloom##j
 	#define psu(i, j)  PixelShader = p_usamp##i; RenderTarget = _Bloom##j
-	#define blendadd() BlendEnable = true; SrcBlend = ONE; DestBlend = ONE
+	#define blendadd() BlendEnable = true; SrcBlend = ONE; DestBlend = SRCALPHA
 
 	pass { vs(); psd(0, 1); }
 	pass { vs(); psd(1, 2); }
@@ -189,10 +192,11 @@ technique KinoBloom
 	{
 		vs();
 		PixelShader = p_usamp1;
+		BlendEnable = true;
+		DestBlend = INVSRCCOLOR;
 		#if BUFFER_COLOR_BIT_DEPTH != 10
 			SRGBWriteEnable = true;
 		#endif
-		BlendEnable = true;
-		DestBlend = INVSRCCOLOR;
 	}
+
 }
