@@ -198,5 +198,4 @@ technique KinoBloom
 			SRGBWriteEnable = true;
 		#endif
 	}
-
 }

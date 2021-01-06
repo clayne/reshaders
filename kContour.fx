@@ -41,37 +41,15 @@ uniform float _ColorSensitivity <
 	ui_min = 0.0; ui_max = 1.0;
 > = 0.0f;
 
-uniform int _FrontColorChoice <
-	ui_category = "Front Color";
-	ui_label = "Inverse Range";
-	ui_type = "combo";
-	ui_items =
-	"Custom RGB\0"
-	"UV-Based\0";
-	ui_min = 0; ui_max = 1;
-> = 0;
-
-uniform float4 _FrontColorDefault <
-	ui_category = "Front Color";
-	ui_label = "Front Color - Custom RGB";
-	ui_type = "slider";
+uniform float4 _FrontColor <
+	ui_label = "Front Color";
+	ui_type = "color";
 	ui_min = 0.0; ui_max = 1.0;
 > = float4(1.0, 1.0, 1.0, 1.0);
 
-uniform int _BackColorChoice <
-	ui_category = "Back Color";
-	ui_label = "Inverse Range";
-	ui_type = "combo";
-	ui_items =
-	"Custom RGB\0"
-	"UV-Based\0";
-	ui_min = 0; ui_max = 1;
-> = 0;
-
-uniform float4 _BackColorDefault <
-	ui_category = "Back Color";
-	ui_label = "Back Color - Custom RGB";
-	ui_type = "slider";
+uniform float4 _BackColor <
+	ui_label = "Back Color";
+	ui_type = "color";
 	ui_min = 0.0; ui_max = 1.0;
 > = float4(0.0, 0.0, 0.0, 0.0);
 
@@ -85,66 +63,60 @@ sampler2D _MainTex
 
 static const float2 _MainTex_TexelSize = BUFFER_PIXEL_SIZE;
 
-float4 PS_Contour(in float4 vpos : SV_Position, in float2 uv : TEXCOORD) : SV_Target
+struct v2f
 {
-	float4 _FrontColor, _BackColor;
+	float4 vpos : SV_Position;
+	float4 uv[2] : TEXCOORD0;
+};
 
-	switch(_FrontColorChoice)
-	{
-		case 0:
-			_FrontColor = _FrontColorDefault;
-			break;
-		case 1:
-			_FrontColor = float4(uv.xyx, 1.0);
-			break;
-	}
+v2f vs_contour(in uint id : SV_VertexID)
+{
+	v2f OUT;
+	float2 texcoord;
+	texcoord.x = (id == 2) ? 2.0 : 0.0;
+	texcoord.y = (id == 1) ? 2.0 : 0.0;
+	OUT.vpos = float4(texcoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 
-	switch(_BackColorChoice)
-	{
-		case 0:
-			_BackColor = _BackColorDefault;
-			break;
-		case 1:
-			_BackColor = float4(uv.xyx, 1.0);
-			break;
-	}
+	float2 ts = BUFFER_PIXEL_SIZE.xy;
+	OUT.uv[0].xy = texcoord.xy;
+	OUT.uv[0].zw = texcoord.xy + ts.xy;
+	OUT.uv[1].xy = texcoord.xy + float2(ts.x, 0.0);
+	OUT.uv[1].zw = texcoord.xy + float2(0.0, ts.y);
+	return OUT;
+}
 
-	// Source color
-	float4 c0 = tex2D(_MainTex, uv);
-
-	// Four sample points of the roberts cross operator
-	float2 uv0 = uv;                                   // TL
-	float2 uv1 = uv + _MainTex_TexelSize.xy;           // BR
-	float2 uv2 = uv + float2(_MainTex_TexelSize.x, 0.0); // TR
-	float2 uv3 = uv + float2(0.0, _MainTex_TexelSize.y); // BL
-
-	float edge = 0;
+void ps_contour(v2f input, out float3 c : SV_Target0)
+{
+	float edge;
 
 	// Color samples
-	float3 c1 = tex2D(_MainTex, uv1).rgb;
-	float3 c2 = tex2D(_MainTex, uv2).rgb;
-	float3 c3 = tex2D(_MainTex, uv3).rgb;
+	float3 c0 = tex2D(_MainTex, input.uv[0].xy).rgb;
+	float3 c1 = tex2D(_MainTex, input.uv[0].zw).rgb;
+	float3 c2 = tex2D(_MainTex, input.uv[1].xy).rgb;
+	float3 c3 = tex2D(_MainTex, input.uv[1].zw).rgb;
 
 	// Roberts cross operator
-	float3 cg1 = c1 - c0.rgb;
-	float3 cg2 = c3 - c2;
-	float cg = sqrt(dot(cg1, cg1) + dot(cg2, cg2));
+	float3 cg1  = c1 - c0;
+		   cg1  = dot(cg1, cg1);
+	float3 cg2  = c3 - c2;
+		   cg2  = dot(cg2, cg2);
+		   cg2 += cg1;
+	float cg = cg2 * rsqrt(cg2); // sqrt(cg2)
 
 	edge = cg * _ColorSensitivity;
 
 	// Thresholding
 	edge = saturate((edge - _Threshold) * _InvRange);
-	float3 cb = lerp(c0.rgb, _BackColor.rgb, _BackColor.a);
-	float3 co = lerp(cb, _FrontColor.rgb, edge * _FrontColor.a);
-	return float4(co, c0.a);
+	float3 cb = lerp(c0, _BackColor.rgb, _BackColor.a);
+			c = lerp(cb, _FrontColor.rgb, edge * _FrontColor.a);
 }
 
 technique KinoContour
 {
 	pass
 	{
-		VertexShader = PostProcessVS;
-		PixelShader = PS_Contour;
+		VertexShader = vs_contour;
+		PixelShader  = ps_contour;
 		#if BUFFER_COLOR_BIT_DEPTH != 10
 			SRGBWriteEnable = true;
 		#endif

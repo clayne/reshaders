@@ -77,48 +77,51 @@ sampler sTexColor
 
 struct v2f
 {
-	float2 uv0    : TEXCOORD0;
-	float4 uv1[4] : TEXCOORD1;
-	float4 vpos   : SV_Position;
+	float4 uv[5] : TEXCOORD0;
+	float4 vpos  : SV_Position;
 };
 
-void vs_cas(in  uint id : SV_VertexID,
-			out float4 vpos : SV_Position,
-			out float2 uv0 : TEXCOORD0,
-			out float4 uv1[4] : TEXCOORD1)
+v2f vs_cas(in  uint id : SV_VertexID)
 {
+	v2f OUT;
 	const float2 p = BUFFER_PIXEL_SIZE;
 	const float3 o = float3(-1.0, 0.0, 1.0);
 
-	PostProcessVS(id, vpos, uv0);
-	uv1[0].xy = o.xx * p + uv0;
-	uv1[0].zw = o.yx * p + uv0;
-	uv1[1].xy = o.zx * p + uv0;
-	uv1[1].zw = o.zy * p + uv0;
-	uv1[2].xy = o.xz * p + uv0;
-	uv1[2].zw = o.zy * p + uv0;
-	uv1[3].xy = o.yz * p + uv0;
-	uv1[3].zw = o.zz * p + uv0;
+	float2 texcoord;
+	texcoord.x = (id == 2) ? 2.0 : 0.0;
+	texcoord.y = (id == 1) ? 2.0 : 0.0;
+	OUT.vpos = float4(texcoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+
+	OUT.uv[0].xy = o.xx * p + texcoord; // (-1,-1)
+	OUT.uv[0].zw = o.yx * p + texcoord; // ( 0,-1)
+	OUT.uv[1].xy = o.zx * p + texcoord; // ( 1,-1)
+	OUT.uv[1].zw = o.zy * p + texcoord; // ( 1, 0)
+	OUT.uv[2].xy = o.xz * p + texcoord; // (-1, 1)
+	OUT.uv[2].zw = o.zy * p + texcoord; // ( 1, 0)
+	OUT.uv[3].xy = o.yz * p + texcoord; // ( 0, 1)
+	OUT.uv[3].zw = o.zz * p + texcoord; // ( 1, 1)
+	OUT.uv[4].xyzw = texcoord.xyxy;     // ( 0, 0)
+	return OUT;
 }
 
 float3 ps_cas(v2f input) : SV_Target
 {
-	//  fetch a 3x3 neighborhood around the pixel 'e',
+	// fetch a 3x3 neighborhood around the pixel 'e',
 	//  a b c
 	//  d(e)f
 	//  g h i
 
-	float3 a = tex2D(sTexColor, input.uv1[0].xy).rgb;
-	float3 b = tex2D(sTexColor, input.uv1[0].zw).rgb;
-	float3 c = tex2D(sTexColor, input.uv1[1].xy).rgb;
-	float3 d = tex2D(sTexColor, input.uv1[1].zw).rgb;
+	float3 a = tex2D(sTexColor, input.uv[0].xy).rgb;
+	float3 b = tex2D(sTexColor, input.uv[0].zw).rgb;
+	float3 c = tex2D(sTexColor, input.uv[1].xy).rgb;
+	float3 d = tex2D(sTexColor, input.uv[1].zw).rgb;
 
-	float3 g = tex2D(sTexColor, input.uv1[2].xy).rgb;
-	float3 e = tex2D(sTexColor, input.uv0).rgb;
-	float3 f = tex2D(sTexColor, input.uv1[2].zw).rgb;
+	float3 g = tex2D(sTexColor, input.uv[2].xy).rgb;
+	float3 e = tex2D(sTexColor, input.uv[4].xy).rgb;
+	float3 f = tex2D(sTexColor, input.uv[2].zw).rgb;
 
-	float3 h = tex2D(sTexColor, input.uv1[3].xy).rgb;
-	float3 i = tex2D(sTexColor, input.uv1[3].zw).rgb;
+	float3 h = tex2D(sTexColor, input.uv[3].xy).rgb;
+	float3 i = tex2D(sTexColor, input.uv[3].zw).rgb;
 
 	// Soft min and max.
 	//  a b c             b
