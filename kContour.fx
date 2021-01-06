@@ -61,8 +61,6 @@ sampler2D _MainTex
 	#endif
 };
 
-static const float2 _MainTex_TexelSize = BUFFER_PIXEL_SIZE;
-
 struct v2f
 {
 	float4 vpos : SV_Position;
