@@ -1,13 +1,13 @@
 
 #include "ReShade.fxh"
 
-uniform float scale <
+uniform float _Scale <
 	ui_label = "Scale";
 	ui_type = "drag";
 	ui_step = 0.1;
 > = 100.0;
 
-uniform float2 center <
+uniform float2 _Center <
 	ui_label = "Center";
 	ui_type = "drag";
 	ui_step = 0.001;
@@ -29,14 +29,18 @@ sampler2D s_Linear
 	AddressV = MIRROR;
 };
 
-#define vs_out() in uint id : SV_VertexID, out float4 vpos : SV_Position, out float4 uv : TEXCOORD0
-
-void v_tile(v2f input, vs_out())
+v2f v_tile(in uint id : SV_VertexID)
 {
-	PostProcessVS(id, vpos, input.uv);
-	input.uv += float2(center.x, -center.y);
-	float2 s = input.uv * BUFFER_SCREEN_SIZE * (scale * 0.01);
-	uv = floor(s) / BUFFER_SCREEN_SIZE;
+	v2f o;
+	float2 texcoord;
+	texcoord.x = (id == 2) ? 2.0 : 0.0;
+	texcoord.y = (id == 1) ? 2.0 : 0.0;
+	o.vpos = float4(texcoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+
+	o.uv += texcoord + float2(_Center.x, -_Center.y);
+	float2 s = o.uv * BUFFER_SCREEN_SIZE * (_Scale * 0.01);
+	o.uv = floor(s) / BUFFER_SCREEN_SIZE;
+	return o;
 }
 
 void p_tile(v2f input, out float3 c : SV_Target0)

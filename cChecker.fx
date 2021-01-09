@@ -15,7 +15,7 @@ struct v2f
 	float2 uv : TEXCOORD0;
 };
 
-void p_Checker(v2f input, out float3 c : SV_Target0)
+void p_checker(v2f input, out float3 c : SV_Target0)
 {
 	// add different dimensions
 	// divide it by 2 and get the fractional part, resulting in a value of 0 for even and 0.5 for odd numbers.
@@ -29,7 +29,7 @@ technique CheckerBoard
 	pass
 	{
 		VertexShader = PostProcessVS;
-		PixelShader = p_Checker;
+		PixelShader = p_checker;
 		#if BUFFER_COLOR_BIT_DEPTH != 10
 			SRGBWriteEnable = true;
 		#endif

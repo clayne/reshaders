@@ -1,5 +1,7 @@
 
 /*
+	Custom version of KinoBloom. Should be lighter than qUINT_Bloom
+
 	MIT License
 
 	Copyright (c) 2015-2017 Keijiro Takahashi
@@ -50,7 +52,6 @@ struct v2f
 {
 	float4 vpos : SV_Position;
 	float2 uv   : TEXCOORD0;
-	float4 uv0  : TEXCOORD1;
 };
 
 texture2D _Bloom1 { Width = BUFFER_WIDTH / 2;   Height = BUFFER_HEIGHT / 2;   Format = RGBA16F; };
@@ -123,9 +124,9 @@ void p_dsamp0(v2f input, out float3 c : SV_Target0)
 	float3 s4 = tex2D(s_Linear, input.uv, int2( 0, 1)).rgb;
 	float3 m = Median(Median(s0.rgb, s1, s2), s3, s4);
 
-	s0.a = dot(m, 0.333);
+	s0.a = dot(m, 1.0 / 3.0);
 	c  = saturate(lerp(s0.a, m, BLOOM_SAT));
-	c *= pow(abs(s0.a), BLOOM_CURVE) / (s0.a + 1e-3);
+	c *= pow(abs(s0.a), BLOOM_CURVE) / s0.a;
 }
 
 void p_dsamp1(v2f input, out float3 c : SV_Target0) { c = dsamp(s_Bloom1, input.uv); }

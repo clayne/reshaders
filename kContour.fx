@@ -69,18 +69,18 @@ struct v2f
 
 v2f vs_contour(in uint id : SV_VertexID)
 {
-	v2f OUT;
+	v2f o;
 	float2 texcoord;
 	texcoord.x = (id == 2) ? 2.0 : 0.0;
 	texcoord.y = (id == 1) ? 2.0 : 0.0;
-	OUT.vpos = float4(texcoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+	o.vpos = float4(texcoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 
 	float2 ts = BUFFER_PIXEL_SIZE.xy;
-	OUT.uv[0].xy = texcoord.xy;
-	OUT.uv[0].zw = texcoord.xy + ts.xy;
-	OUT.uv[1].xy = texcoord.xy + float2(ts.x, 0.0);
-	OUT.uv[1].zw = texcoord.xy + float2(0.0, ts.y);
-	return OUT;
+	o.uv[0].xy = texcoord.xy;
+	o.uv[0].zw = texcoord.xy + ts.xy;
+	o.uv[1].xy = texcoord.xy + float2(ts.x, 0.0);
+	o.uv[1].zw = texcoord.xy + float2(0.0, ts.y);
+	return o;
 }
 
 void ps_contour(v2f input, out float3 c : SV_Target0)
@@ -94,11 +94,10 @@ void ps_contour(v2f input, out float3 c : SV_Target0)
 	float3 c3 = tex2D(_MainTex, input.uv[1].zw).rgb;
 
 	// Roberts cross operator
-	float3 cg1  = c1 - c0;
-		   cg1  = dot(cg1, cg1);
-	float3 cg2  = c3 - c2;
-		   cg2  = dot(cg2, cg2);
-		   cg2 += cg1;
+	float cg1  = dot(c1 - c0, c1 - c0);
+	float cg2  = dot(c3 - c2, c3 - c2);
+		  cg2 += cg1;
+
 	float cg = cg2 * rsqrt(cg2); // sqrt(cg2)
 
 	edge = cg * _ColorSensitivity;
@@ -106,7 +105,7 @@ void ps_contour(v2f input, out float3 c : SV_Target0)
 	// Thresholding
 	edge = saturate((edge - _Threshold) * _InvRange);
 	float3 cb = lerp(c0, _BackColor.rgb, _BackColor.a);
-			c = lerp(cb, _FrontColor.rgb, edge * _FrontColor.a);
+	c = lerp(cb, _FrontColor.rgb, edge * _FrontColor.a);
 }
 
 technique KinoContour

@@ -25,13 +25,6 @@
 
 #include "ReShade.fxh"
 
-uniform float BLOOM_INTENSITY <
-	ui_type = "drag";
-	ui_min = 0.0; ui_max = 10.0;
-	ui_label = "Bloom Intensity";
-	ui_tooltip = "Scales bloom brightness.";
-> = 1.0;
-
 uniform float BLOOM_CURVE <
 	ui_type = "drag";
 	ui_min = 0.0; ui_max = 10.0;
@@ -46,15 +39,19 @@ uniform float BLOOM_SAT <
 	ui_tooltip = "Adjusts the color strength of the bloom effect";
 > = 2.0;
 
-#define size 2048
-texture2D _Bloom1 { Width = BUFFER_WIDTH / 2; Height = BUFFER_HEIGHT / 2; Format = RGBA16F; MipLevels = 2; };
-texture2D _Bloom2 { Width = size / 4;   Height = size / 4;   Format = RGBA16F; };
-texture2D _Bloom3 { Width = size / 8;   Height = size / 8;   Format = RGBA16F; };
-texture2D _Bloom4 { Width = size / 16;  Height = size / 16;  Format = RGBA16F; };
-texture2D _Bloom5 { Width = size / 32;  Height = size / 32;  Format = RGBA16F; };
-texture2D _Bloom6 { Width = size / 64;  Height = size / 64;  Format = RGBA16F; };
-texture2D _Bloom7 { Width = size / 128; Height = size / 128; Format = RGBA16F; };
-texture2D _Bloom8 { Width = size / 256; Height = size / 256; Format = RGBA16F; };
+// Use Marty McFly's mipmap calculator for now (hope he doesn't gnaw on me for that)
+#define INT_LOG2(v) (((v >> 1) != 0) + ((v >> 2) != 0) + ((v >> 3) != 0) + ((v >> 4) != 0) + ((v >> 5) != 0) + ((v >> 6) != 0) + ((v >> 7) != 0) + ((v >> 8) != 0) + ((v >> 9) != 0) + ((v >> 10) != 0) + ((v >> 11) != 0) + ((v >> 12) != 0) + ((v >> 13) != 0) + ((v >> 14) != 0) + ((v >> 15) != 0) + ((v >> 16) != 0))
+static const int BloomTex7_LowestMip = INT_LOG2(int(BUFFER_HEIGHT / 2));
+#define size 1024
+
+texture2D _Bloom1 { Width = BUFFER_WIDTH / 2; Height = BUFFER_HEIGHT / 2; Format = RGBA16F; MipLevels = BloomTex7_LowestMip; };
+texture2D _Bloom2 { Width = size / 2;   Height = size / 2;   Format = RGBA16F; };
+texture2D _Bloom3 { Width = size / 4;   Height = size / 4;   Format = RGBA16F; };
+texture2D _Bloom4 { Width = size / 8;   Height = size / 8;   Format = RGBA16F; };
+texture2D _Bloom5 { Width = size / 16;  Height = size / 16;  Format = RGBA16F; };
+texture2D _Bloom6 { Width = size / 32;  Height = size / 32;  Format = RGBA16F; };
+texture2D _Bloom7 { Width = size / 64;  Height = size / 64;  Format = RGBA16F; };
+texture2D _Bloom8 { Width = size / 128; Height = size / 128; Format = RGBA16F; };
 
 sampler2D s_Linear
 {
@@ -83,98 +80,129 @@ struct v2v
 	float4 uv[7] : TEXCOORD0;
 };
 
+struct vpf
+{
+	float4 vpos  : SV_Position;
+	float4 uv[3] : TEXCOORD0;
+};
+
 struct v2f
 {
 	float4 vpos : SV_Position;
 	float2 uv : TEXCOORD0;
 };
 
-#define vs_out() in uint id : SV_VertexID, out float4 vpos : SV_Position, out float4 uv[7] : TEXCOORD0
-
-void v_dsamp(v2v input, sampler2D src, vs_out())
+v2v v_dsamp(uint id, sampler2D src)
 {
+	v2v o;
 	float2 texcoord;
 	texcoord.x = (id == 2) ? 2.0 : 0.0;
 	texcoord.y = (id == 1) ? 2.0 : 0.0;
-	vpos = float4(texcoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+	o.vpos = float4(texcoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 
 	float2 ts = 1.0 / tex2Dsize(src, 0.0);
 
-	uv[0].xy = texcoord + int2(-1.0,-1.0) * ts;
-	uv[0].zw = texcoord + int2( 1.0,-1.0) * ts;
-	uv[1].xy = texcoord + int2(-1.0, 1.0) * ts;
-	uv[1].zw = texcoord + int2( 1.0, 1.0) * ts;
+	o.uv[0].xy = texcoord + int2(-1.0,-1.0) * ts;
+	o.uv[0].zw = texcoord + int2( 1.0,-1.0) * ts;
+	o.uv[1].xy = texcoord + int2(-1.0, 1.0) * ts;
+	o.uv[1].zw = texcoord + int2( 1.0, 1.0) * ts;
 
-	uv[2].xy = texcoord + int2(-2.0,-2.0) * ts;
-	uv[2].zw = texcoord + int2( 0.0,-2.0) * ts;
-	uv[3].xy = texcoord + int2( 2.0,-2.0) * ts;
-	uv[3].zw = texcoord + int2( 2.0, 0.0) * ts;
-	uv[4].xy = texcoord + int2( 2.0, 2.0) * ts;
-	uv[4].zw = texcoord + int2( 0.0, 2.0) * ts;
-	uv[5].xy = texcoord + int2(-2.0, 2.0) * ts;
-	uv[5].zw = texcoord + int2(-2.0, 0.0) * ts;
+	o.uv[2].xy = texcoord + int2(-2.0,-2.0) * ts;
+	o.uv[2].zw = texcoord + int2( 0.0,-2.0) * ts;
+	o.uv[3].xy = texcoord + int2( 2.0,-2.0) * ts;
+	o.uv[3].zw = texcoord + int2( 2.0, 0.0) * ts;
+	o.uv[4].xy = texcoord + int2( 2.0, 2.0) * ts;
+	o.uv[4].zw = texcoord + int2( 0.0, 2.0) * ts;
+	o.uv[5].xy = texcoord + int2(-2.0, 2.0) * ts;
+	o.uv[5].zw = texcoord + int2(-2.0, 0.0) * ts;
 
-	uv[6].xyzw = texcoord.xyxy;
+	o.uv[6].xyzw = texcoord.xyxy;
+	return o;
 }
 
-void vs_dsamp1(v2v input, vs_out()) { v_dsamp(input, s_Bloom1, id, vpos, uv); }
-void vs_dsamp2(v2v input, vs_out()) { v_dsamp(input, s_Bloom2, id, vpos, uv); }
-void vs_dsamp3(v2v input, vs_out()) { v_dsamp(input, s_Bloom3, id, vpos, uv); }
-void vs_dsamp4(v2v input, vs_out()) { v_dsamp(input, s_Bloom4, id, vpos, uv); }
-void vs_dsamp5(v2v input, vs_out()) { v_dsamp(input, s_Bloom5, id, vpos, uv); }
-void vs_dsamp6(v2v input, vs_out()) { v_dsamp(input, s_Bloom6, id, vpos, uv); }
-void vs_dsamp7(v2v input, vs_out()) { v_dsamp(input, s_Bloom7, id, vpos, uv); }
+vpf vs_dsamp0(in uint id : SV_VertexID)
+{
+	vpf o;
+	float2 texcoord;
+	texcoord.x = (id == 2) ? 2.0 : 0.0;
+	texcoord.y = (id == 1) ? 2.0 : 0.0;
+	o.vpos = float4(texcoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+
+	float2 ts = BUFFER_PIXEL_SIZE;
+
+	o.uv[0].xy = texcoord + int2( 0, 0) * ts;
+	o.uv[0].zw = texcoord + int2(-1, 0) * ts;
+	o.uv[1].xy = texcoord + int2( 1, 0) * ts;
+	o.uv[1].zw = texcoord + int2( 0,-1) * ts;
+	o.uv[2]    = texcoord + int2( 0, 1) * ts;
+	return o;
+}
+
+v2v vs_dsamp1(uint id : SV_VertexID) { return v_dsamp(id, s_Bloom1); }
+v2v vs_dsamp2(uint id : SV_VertexID) { return v_dsamp(id, s_Bloom2); }
+v2v vs_dsamp3(uint id : SV_VertexID) { return v_dsamp(id, s_Bloom3); }
+v2v vs_dsamp4(uint id : SV_VertexID) { return v_dsamp(id, s_Bloom4); }
+v2v vs_dsamp5(uint id : SV_VertexID) { return v_dsamp(id, s_Bloom5); }
+v2v vs_dsamp6(uint id : SV_VertexID) { return v_dsamp(id, s_Bloom6); }
+v2v vs_dsamp7(uint id : SV_VertexID) { return v_dsamp(id, s_Bloom7); }
 
 float3 dsamp(sampler2D src, float4 uv[7])
 {
-   float3 inner;
-   inner += tex2D(src, uv[0].xy).rgb;
-   inner += tex2D(src, uv[0].zw).rgb;
-   inner += tex2D(src, uv[1].xy).rgb;
-   inner += tex2D(src, uv[1].zw).rgb;
+	float3 inner;
+	inner += tex2D(src, uv[0].xy).rgb;
+	inner += tex2D(src, uv[0].zw).rgb;
+	inner += tex2D(src, uv[1].xy).rgb;
+	inner += tex2D(src, uv[1].zw).rgb;
 
-   float3 A = tex2D(src, uv[2].xy).rgb;
-   float3 B = tex2D(src, uv[2].zw).rgb;
-   float3 C = tex2D(src, uv[3].xy).rgb;
-   float3 D = tex2D(src, uv[3].zw).rgb;
-   float3 E = tex2D(src, uv[4].xy).rgb;
-   float3 F = tex2D(src, uv[4].zw).rgb;
-   float3 G = tex2D(src, uv[5].xy).rgb;
-   float3 H = tex2D(src, uv[5].zw).rgb;
-   float3 I = tex2D(src, uv[6].xy).rgb;
+	float3 A = tex2D(src, uv[2].xy).rgb;
+	float3 B = tex2D(src, uv[2].zw).rgb;
+	float3 C = tex2D(src, uv[3].xy).rgb;
+	float3 D = tex2D(src, uv[3].zw).rgb;
+	float3 E = tex2D(src, uv[4].xy).rgb;
+	float3 F = tex2D(src, uv[4].zw).rgb;
+	float3 G = tex2D(src, uv[5].xy).rgb;
+	float3 H = tex2D(src, uv[5].zw).rgb;
+	float3 I = tex2D(src, uv[6].xy).rgb;
 
-   float3 color = inner * 0.125;
-   color += (A + B + H + I) * (0.25 * 0.125);
-   color += (B + C + I + D) * (0.25 * 0.125);
-   color += (I + D + F + E) * (0.25 * 0.125);
-   color += (H + I + G + F) * (0.25 * 0.125);
-
-   return color;
+	const float2 div = 0.25 * float2(0.5, 0.125);
+	float3 color = inner * div.x;
+	color += (A + B + H + I) * div.y;
+	color += (B + C + I + D) * div.y;
+	color += (I + D + F + E) * div.y;
+	color += (H + I + G + F) * div.y;
+	return color;
 }
+
+/*
+	Taken from [https://github.com/haasn/libplacebo/blob/master/src/shaders/sampling.c] [GPL 2.1]
+	How bicubic scaling with only 4 texel fetches is done: [http://www.mate.tue.nl/mate/pdfs/10318.pdf]
+	'Efficient GPU-Based Texture Interpolation using Uniform B-Splines'
+*/
 
 float4 calcweights(float s)
 {
-	float4 t = float4(-0.5, 0.1666, 0.3333, -0.3333) * s + float4(1.0, 0.0, -0.5, 0.5);
-	t = t * s + float4(0.0, 0.0, -0.5, 0.5);
-	t = t * s + float4(-0.6666, 0.0, 0.8333, 0.1666);
-	float2 a = 1.0 / t.zw;
-	t.xy = t.xy * a + 1.0;
-	t.x = t.x + s;
-	t.y = t.y - s;
+	const float4 w1 = float4(-0.5, 0.1666, 0.3333, -0.3333);
+	const float4 w2 = float4( 1.0, 0.0, -0.5, 0.5);
+	const float4 w3 = float4(-0.6666, 0.0, 0.8333, 0.1666);
+	float4 t = mad(w1, s, w2);
+	t = mad(t, s, w2.yyzw);
+	t = mad(t, s, w3);
+	t.xy = mad(t.xy, rcp(t.zw), 1.0);
+	t.x += s;
+	t.y -= s;
 	return t;
 }
 
 // Could calculate float3s for a bit more performance
-float3 usamp(sampler2D src, float2 uv)
+float3 usamp(sampler2D src, float2 uv, float psize)
 {
-	float2 texsize = tex2Dsize(src, 0.0);
-	float2 pt = 1.0 / texsize;
-	float2 fcoord = frac(uv * texsize + 0.5);
+	float pt = 1.0 / psize;
+	float2 fcoord = frac(uv * psize + 0.5);
 	float4 parmx = calcweights(fcoord.x);
 	float4 parmy = calcweights(fcoord.y);
 	float4 cdelta;
-	cdelta.xz = parmx.rg * float2(-pt.x, pt.x);
-	cdelta.yw = parmy.rg * float2(-pt.y, pt.y);
+	cdelta.xz = parmx.rg * float2(-pt, pt);
+	cdelta.yw = parmy.rg * float2(-pt, pt);
 	// first y-interpolation
 	float3 ar = tex2D(src, uv + cdelta.xy).rgb;
 	float3 ag = tex2D(src, uv + cdelta.xw).rgb;
@@ -187,19 +215,18 @@ float3 usamp(sampler2D src, float2 uv)
 	return lerp(aa, ab, parmx.b);
 }
 
-// Use Marty McFly's qUINT_Bloom's threshold for now
-void p_dsamp0(v2f input, out float3 c : SV_Target0)
+void p_dsamp0(vpf input, out float3 c : SV_Target0)
 {
-	float4 s0 = tex2D(s_Linear, input.uv, int2( 0, 0));
-	float3 s1 = tex2D(s_Linear, input.uv, int2(-1, 0)).rgb;
-	float3 s2 = tex2D(s_Linear, input.uv, int2( 1, 0)).rgb;
-	float3 s3 = tex2D(s_Linear, input.uv, int2( 0,-1)).rgb;
-	float3 s4 = tex2D(s_Linear, input.uv, int2( 0, 1)).rgb;
+	float4 s0 = tex2D(s_Linear, input.uv[0].xy);
+	float3 s1 = tex2D(s_Linear, input.uv[0].zw).rgb;
+	float3 s2 = tex2D(s_Linear, input.uv[1].xy).rgb;
+	float3 s3 = tex2D(s_Linear, input.uv[1].zw).rgb;
+	float3 s4 = tex2D(s_Linear, input.uv[2].xy).rgb;
 	float3 m = Median(Median(s0.rgb, s1, s2), s3, s4);
 
-	s0.a = dot(m, 0.333);
+	s0.a = dot(m, 1.0/3.0);
 	c  = saturate(lerp(s0.a, m, BLOOM_SAT));
-	c *= pow(abs(s0.a), BLOOM_CURVE) / (s0.a + 1e-3);
+	c *= pow(abs(s0.a), BLOOM_CURVE) / s0.a;
 }
 
 void p_dsamp1(v2v input, out float3 c : SV_Target0) { c = dsamp(s_Bloom1, input.uv); }
@@ -212,14 +239,13 @@ void p_dsamp7(v2v input, out float3 c : SV_Target0) { c = dsamp(s_Bloom7, input.
 void p_usamp0(v2f input, out float3 c : SV_Target0)
 {
 	c  = 0.0;
-	c += usamp(s_Bloom8, input.uv).rgb;
-	c += usamp(s_Bloom7, input.uv).rgb;
-	c += usamp(s_Bloom6, input.uv).rgb;
-	c += usamp(s_Bloom5, input.uv).rgb;
-	c += usamp(s_Bloom4, input.uv).rgb;
-	c += usamp(s_Bloom3, input.uv).rgb;
-	c += usamp(s_Bloom2, input.uv).rgb;
-	c *= BLOOM_INTENSITY;
+	c += usamp(s_Bloom8, input.uv, size / 128).rgb;
+	c += usamp(s_Bloom7, input.uv, size / 64).rgb;
+	c += usamp(s_Bloom6, input.uv, size / 32).rgb;
+	c += usamp(s_Bloom5, input.uv, size / 16).rgb;
+	c += usamp(s_Bloom4, input.uv, size / 8).rgb;
+	c += usamp(s_Bloom3, input.uv, size / 4).rgb;
+	c += usamp(s_Bloom2, input.uv, size / 2).rgb;
 
 	// ACES Tonemap from https://github.com/TheRealMJP/BakingLab
 	// sRGB => XYZ => D65_2_D60 => AP1 => RRT_SAT
@@ -246,13 +272,12 @@ void p_usamp0(v2f input, out float3 c : SV_Target0)
 
 technique KinoBloom
 {
-	#define vsp()      VertexShader = PostProcessVS
 	#define vsd(i)     VertexShader = vs_dsamp##i
 	#define psd(i, j)  PixelShader = p_dsamp##i; RenderTarget = _Bloom##j
 	#define psu(i, j)  PixelShader = p_usamp##i; RenderTarget = _Bloom##j
 	#define blendadd() BlendEnable = true; SrcBlend = ONE; DestBlend = SRCALPHA
 
-	pass { vsp();  psd(0, 1); }
+	pass { vsd(0); psd(0, 1); }
 	pass { vsd(1); psd(1, 2); }
 	pass { vsd(2); psd(2, 3); }
 	pass { vsd(3); psd(3, 4); }
@@ -262,7 +287,7 @@ technique KinoBloom
 	pass { vsd(7); psd(7, 8); }
 	pass
 	{
-		vsp();
+		VertexShader = PostProcessVS;
 		PixelShader = p_usamp0;
 		BlendEnable = true;
 		DestBlend = INVSRCCOLOR;
