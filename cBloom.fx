@@ -39,11 +39,11 @@ uniform float BLOOM_SAT <
 	ui_tooltip = "Adjusts the color strength of the bloom effect";
 > = 2.0;
 
-// Use Marty McFly's mipmap calculator for now (hope he doesn't gnaw on me for that)
+// Use Marty McFly's mipmap calculator for now
 #define INT_LOG2(v) (((v >> 1) != 0) + ((v >> 2) != 0) + ((v >> 3) != 0) + ((v >> 4) != 0) + ((v >> 5) != 0) + ((v >> 6) != 0) + ((v >> 7) != 0) + ((v >> 8) != 0) + ((v >> 9) != 0) + ((v >> 10) != 0) + ((v >> 11) != 0) + ((v >> 12) != 0) + ((v >> 13) != 0) + ((v >> 14) != 0) + ((v >> 15) != 0) + ((v >> 16) != 0))
 static const int BloomTex7_LowestMip = INT_LOG2(int(BUFFER_HEIGHT / 2));
-#define size 1024
 
+#define size 1024
 texture2D _Bloom1 { Width = BUFFER_WIDTH / 2; Height = BUFFER_HEIGHT / 2; Format = RGBA16F; MipLevels = BloomTex7_LowestMip; };
 texture2D _Bloom2 { Width = size / 2;   Height = size / 2;   Format = RGBA16F; };
 texture2D _Bloom3 { Width = size / 4;   Height = size / 4;   Format = RGBA16F; };
@@ -71,14 +71,8 @@ sampler2D s_Bloom7 { Texture = _Bloom7; };
 sampler2D s_Bloom8 { Texture = _Bloom8; };
 
 // 3-tap median filter
-float3 Median(float3 a, float3 b, float3 c) { return a + b + c - min(min(a, b), c) - max(max(a, b), c); }
+float3 Median(float3 a, float3 b, float3 c) { return a + b + c - min(a, min(b, c)) - max(a, max(b, c)); }
 float Brightness(float3 c) { return max(max(c.r, c.g), c.b); }
-
-struct v2v
-{
-	float4 vpos  : SV_Position;
-	float4 uv[7] : TEXCOORD0;
-};
 
 struct vpf
 {
@@ -92,6 +86,12 @@ struct v2f
 	float2 uv : TEXCOORD0;
 };
 
+struct v2v
+{
+	float4 vpos  : SV_Position;
+	float4 uv[2] : TEXCOORD0;
+};
+
 v2v v_dsamp(uint id, sampler2D src)
 {
 	v2v o;
@@ -100,23 +100,13 @@ v2v v_dsamp(uint id, sampler2D src)
 	texcoord.y = (id == 1) ? 2.0 : 0.0;
 	o.vpos = float4(texcoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 
-	float2 ts = 1.0 / tex2Dsize(src, 0.0);
-
-	o.uv[0].xy = texcoord + int2(-1.0,-1.0) * ts;
-	o.uv[0].zw = texcoord + int2( 1.0,-1.0) * ts;
-	o.uv[1].xy = texcoord + int2(-1.0, 1.0) * ts;
-	o.uv[1].zw = texcoord + int2( 1.0, 1.0) * ts;
-
-	o.uv[2].xy = texcoord + int2(-2.0,-2.0) * ts;
-	o.uv[2].zw = texcoord + int2( 0.0,-2.0) * ts;
-	o.uv[3].xy = texcoord + int2( 2.0,-2.0) * ts;
-	o.uv[3].zw = texcoord + int2( 2.0, 0.0) * ts;
-	o.uv[4].xy = texcoord + int2( 2.0, 2.0) * ts;
-	o.uv[4].zw = texcoord + int2( 0.0, 2.0) * ts;
-	o.uv[5].xy = texcoord + int2(-2.0, 2.0) * ts;
-	o.uv[5].zw = texcoord + int2(-2.0, 0.0) * ts;
-
-	o.uv[6].xyzw = texcoord.xyxy;
+	// 9 tap gaussian using 4+1 texture fetches by CeeJayDK
+	// https://github.com/CeeJayDK/SweetFX - LumaSharpen.fx
+	float2 d = 1.0 / tex2Dsize(src, 0.0).xy;
+	o.uv[0].xy = texcoord + float2( d.x * 0.5,-d.y * 2.0); // South South East
+	o.uv[0].zw = texcoord + float2(-d.x * 2.0,-d.y * 0.5); // West South West
+	o.uv[1].xy = texcoord + float2( d.x * 2.0, d.y * 0.5); // East North East
+	o.uv[1].zw = texcoord + float2(-d.x * 0.5, d.y * 2.0); // North North West
 	return o;
 }
 
@@ -134,7 +124,7 @@ vpf vs_dsamp0(in uint id : SV_VertexID)
 	o.uv[0].zw = texcoord + int2(-1, 0) * ts;
 	o.uv[1].xy = texcoord + int2( 1, 0) * ts;
 	o.uv[1].zw = texcoord + int2( 0,-1) * ts;
-	o.uv[2]    = texcoord + int2( 0, 1) * ts;
+	o.uv[2].xy = texcoord + int2( 0, 1) * ts;
 	return o;
 }
 
@@ -146,31 +136,22 @@ v2v vs_dsamp5(uint id : SV_VertexID) { return v_dsamp(id, s_Bloom5); }
 v2v vs_dsamp6(uint id : SV_VertexID) { return v_dsamp(id, s_Bloom6); }
 v2v vs_dsamp7(uint id : SV_VertexID) { return v_dsamp(id, s_Bloom7); }
 
-float3 dsamp(sampler2D src, float4 uv[7])
+float3 dsamp(sampler src, float4 uv[2])
 {
-	float3 inner;
-	inner += tex2D(src, uv[0].xy).rgb;
-	inner += tex2D(src, uv[0].zw).rgb;
-	inner += tex2D(src, uv[1].xy).rgb;
-	inner += tex2D(src, uv[1].zw).rgb;
+	float3 s1 = tex2D(src, uv[0].xy).rgb;
+	float3 s2 = tex2D(src, uv[0].zw).rgb;
+	float3 s3 = tex2D(src, uv[1].xy).rgb;
+	float3 s4 = tex2D(src, uv[1].zw).rgb;
 
-	float3 A = tex2D(src, uv[2].xy).rgb;
-	float3 B = tex2D(src, uv[2].zw).rgb;
-	float3 C = tex2D(src, uv[3].xy).rgb;
-	float3 D = tex2D(src, uv[3].zw).rgb;
-	float3 E = tex2D(src, uv[4].xy).rgb;
-	float3 F = tex2D(src, uv[4].zw).rgb;
-	float3 G = tex2D(src, uv[5].xy).rgb;
-	float3 H = tex2D(src, uv[5].zw).rgb;
-	float3 I = tex2D(src, uv[6].xy).rgb;
+	// Karis's luma weighted average (using brightness instead of luma)
+	float4 s;
+	s.x = rcp(dot(s1, 1.0 / 3.0) + 1);
+	s.y = rcp(dot(s2, 1.0 / 3.0) + 1);
+	s.z = rcp(dot(s3, 1.0 / 3.0) + 1);
+	s.w = rcp(dot(s4, 1.0 / 3.0) + 1);
+	float o_div_wsum = rcp(dot(s, 1));
 
-	const float2 div = 0.25 * float2(0.5, 0.125);
-	float3 color = inner * div.x;
-	color += (A + B + H + I) * div.y;
-	color += (B + C + I + D) * div.y;
-	color += (I + D + F + E) * div.y;
-	color += (H + I + G + F) * div.y;
-	return color;
+	return (s1 * s.x + s2 * s.y + s3 * s.z + s4 * s.w) * o_div_wsum;
 }
 
 /*
@@ -179,7 +160,7 @@ float3 dsamp(sampler2D src, float4 uv[7])
 	'Efficient GPU-Based Texture Interpolation using Uniform B-Splines'
 */
 
-float4 calcweights(float s)
+float3 calcweights(float s)
 {
 	const float4 w1 = float4(-0.5, 0.1666, 0.3333, -0.3333);
 	const float4 w2 = float4( 1.0, 0.0, -0.5, 0.5);
@@ -190,7 +171,7 @@ float4 calcweights(float s)
 	t.xy = mad(t.xy, rcp(t.zw), 1.0);
 	t.x += s;
 	t.y -= s;
-	return t;
+	return t.rgb;
 }
 
 // Could calculate float3s for a bit more performance
@@ -198,8 +179,8 @@ float3 usamp(sampler2D src, float2 uv, float psize)
 {
 	float pt = 1.0 / psize;
 	float2 fcoord = frac(uv * psize + 0.5);
-	float4 parmx = calcweights(fcoord.x);
-	float4 parmy = calcweights(fcoord.y);
+	float3 parmx = calcweights(fcoord.x);
+	float3 parmy = calcweights(fcoord.y);
 	float4 cdelta;
 	cdelta.xz = parmx.rg * float2(-pt, pt);
 	cdelta.yw = parmy.rg * float2(-pt, pt);
@@ -229,13 +210,13 @@ void p_dsamp0(vpf input, out float3 c : SV_Target0)
 	c *= pow(abs(s0.a), BLOOM_CURVE) / s0.a;
 }
 
-void p_dsamp1(v2v input, out float3 c : SV_Target0) { c = dsamp(s_Bloom1, input.uv); }
-void p_dsamp2(v2v input, out float3 c : SV_Target0) { c = dsamp(s_Bloom2, input.uv); }
-void p_dsamp3(v2v input, out float3 c : SV_Target0) { c = dsamp(s_Bloom3, input.uv); }
-void p_dsamp4(v2v input, out float3 c : SV_Target0) { c = dsamp(s_Bloom4, input.uv); }
-void p_dsamp5(v2v input, out float3 c : SV_Target0) { c = dsamp(s_Bloom5, input.uv); }
-void p_dsamp6(v2v input, out float3 c : SV_Target0) { c = dsamp(s_Bloom6, input.uv); }
-void p_dsamp7(v2v input, out float3 c : SV_Target0) { c = dsamp(s_Bloom7, input.uv); }
+void p_dsamp1(v2v input, out float4 c : SV_Target0) { c = float4(dsamp(s_Bloom1, input.uv), 1.0); }
+void p_dsamp2(v2v input, out float4 c : SV_Target0) { c = float4(dsamp(s_Bloom2, input.uv), 1.0); }
+void p_dsamp3(v2v input, out float4 c : SV_Target0) { c = float4(dsamp(s_Bloom3, input.uv), 1.0); }
+void p_dsamp4(v2v input, out float4 c : SV_Target0) { c = float4(dsamp(s_Bloom4, input.uv), 1.0); }
+void p_dsamp5(v2v input, out float4 c : SV_Target0) { c = float4(dsamp(s_Bloom5, input.uv), 1.0); }
+void p_dsamp6(v2v input, out float4 c : SV_Target0) { c = float4(dsamp(s_Bloom6, input.uv), 1.0); }
+void p_dsamp7(v2v input, out float4 c : SV_Target0) { c = float4(dsamp(s_Bloom7, input.uv), 1.0); }
 void p_usamp0(v2f input, out float3 c : SV_Target0)
 {
 	c  = 0.0;
