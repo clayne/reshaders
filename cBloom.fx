@@ -42,8 +42,8 @@ uniform float BLOOM_SAT <
 // Use Marty McFly's mipmap calculator for now
 #define INT_LOG2(v) (((v >> 1) != 0) + ((v >> 2) != 0) + ((v >> 3) != 0) + ((v >> 4) != 0) + ((v >> 5) != 0) + ((v >> 6) != 0) + ((v >> 7) != 0) + ((v >> 8) != 0) + ((v >> 9) != 0) + ((v >> 10) != 0) + ((v >> 11) != 0) + ((v >> 12) != 0) + ((v >> 13) != 0) + ((v >> 14) != 0) + ((v >> 15) != 0) + ((v >> 16) != 0))
 static const int BloomTex7_LowestMip = INT_LOG2(int(BUFFER_HEIGHT / 2));
-
 #define size 1024
+
 texture2D _Bloom1 { Width = BUFFER_WIDTH / 2; Height = BUFFER_HEIGHT / 2; Format = RGBA16F; MipLevels = BloomTex7_LowestMip; };
 texture2D _Bloom2 { Width = size / 2;   Height = size / 2;   Format = RGBA16F; };
 texture2D _Bloom3 { Width = size / 4;   Height = size / 4;   Format = RGBA16F; };
@@ -70,13 +70,9 @@ sampler2D s_Bloom6 { Texture = _Bloom6; };
 sampler2D s_Bloom7 { Texture = _Bloom7; };
 sampler2D s_Bloom8 { Texture = _Bloom8; };
 
-// 3-tap median filter
-float3 Median(float3 a, float3 b, float3 c) { return a + b + c - min(a, min(b, c)) - max(a, max(b, c)); }
-float Brightness(float3 c) { return max(max(c.r, c.g), c.b); }
-
 struct vpf
 {
-	float4 vpos  : SV_Position;
+	float4 vpos : SV_Position;
 	float4 uv[3] : TEXCOORD0;
 };
 
@@ -88,7 +84,7 @@ struct v2f
 
 struct v2v
 {
-	float4 vpos  : SV_Position;
+	float4 vpos : SV_Position;
 	float4 uv[2] : TEXCOORD0;
 };
 
@@ -102,7 +98,7 @@ v2v v_dsamp(uint id, sampler2D src)
 
 	// 9 tap gaussian using 4 texture fetches by CeeJayDK
 	// https://github.com/CeeJayDK/SweetFX - LumaSharpen.fx
-	float2  ts = 1.0 / tex2Dsize(src, 0.0).xy;
+	float2 ts = 1.0 / tex2Dsize(src, 0.0).xy;
 	o.uv[0].xy = texcoord + float2( ts.x * 0.5,-ts.y * 2.0); // South South East
 	o.uv[0].zw = texcoord + float2(-ts.x * 2.0,-ts.y * 0.5); // West South West
 	o.uv[1].xy = texcoord + float2( ts.x * 2.0, ts.y * 0.5); // East North East
@@ -142,7 +138,7 @@ float4 dsamp(sampler src, float4 uv[2])
 	float4 s3 = tex2D(src, uv[1].xy);
 	float4 s4 = tex2D(src, uv[1].zw);
 
-	// Karis's luma weighted average (using brightness instead of luma)
+	// Karis's luma weighted average
 	const float4 w = float4(1.0 / 3.0.sss, 1.0);
 	s1.a = 1.0 / dot(s1, w);
 	s2.a = 1.0 / dot(s2, w);
@@ -197,6 +193,9 @@ float3 usamp(sampler2D src, float2 uv, float psize)
 	// x-interpolation
 	return lerp(aa, ab, parmx.b);
 }
+
+// 3-tap median filter
+float3 Median(float3 a, float3 b, float3 c) { return a + b + c - min(a, min(b, c)) - max(a, max(b, c)); }
 
 void p_dsamp0(vpf input, out float4 c : SV_Target0)
 {
@@ -258,8 +257,6 @@ technique KinoBloom
 {
 	#define vsd(i)     VertexShader = vs_dsamp##i
 	#define psd(i, j)  PixelShader = p_dsamp##i; RenderTarget = _Bloom##j
-	#define psu(i, j)  PixelShader = p_usamp##i; RenderTarget = _Bloom##j
-	#define blendadd() BlendEnable = true; SrcBlend = ONE; DestBlend = SRCALPHA
 
 	pass { vsd(0); psd(0, 1); }
 	pass { vsd(1); psd(1, 2); }
@@ -279,5 +276,4 @@ technique KinoBloom
 			SRGBWriteEnable = true;
 		#endif
 	}
-
 }
