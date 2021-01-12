@@ -100,13 +100,13 @@ v2v v_dsamp(uint id, sampler2D src)
 	texcoord.y = (id == 1) ? 2.0 : 0.0;
 	o.vpos = float4(texcoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 
-	// 9 tap gaussian using 4+1 texture fetches by CeeJayDK
+	// 9 tap gaussian using 4 texture fetches by CeeJayDK
 	// https://github.com/CeeJayDK/SweetFX - LumaSharpen.fx
-	float2 d = 1.0 / tex2Dsize(src, 0.0).xy;
-	o.uv[0].xy = texcoord + float2( d.x * 0.5,-d.y * 2.0); // South South East
-	o.uv[0].zw = texcoord + float2(-d.x * 2.0,-d.y * 0.5); // West South West
-	o.uv[1].xy = texcoord + float2( d.x * 2.0, d.y * 0.5); // East North East
-	o.uv[1].zw = texcoord + float2(-d.x * 0.5, d.y * 2.0); // North North West
+	float2  ts = 1.0 / tex2Dsize(src, 0.0).xy;
+	o.uv[0].xy = texcoord + float2( ts.x * 0.5,-ts.y * 2.0); // South South East
+	o.uv[0].zw = texcoord + float2(-ts.x * 2.0,-ts.y * 0.5); // West South West
+	o.uv[1].xy = texcoord + float2( ts.x * 2.0, ts.y * 0.5); // East North East
+	o.uv[1].zw = texcoord + float2(-ts.x * 0.5, ts.y * 2.0); // North North West
 	return o;
 }
 
@@ -119,7 +119,6 @@ vpf vs_dsamp0(in uint id : SV_VertexID)
 	o.vpos = float4(texcoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 
 	float2 ts = BUFFER_PIXEL_SIZE;
-
 	o.uv[0].xy = texcoord + int2( 0, 0) * ts;
 	o.uv[0].zw = texcoord + int2(-1, 0) * ts;
 	o.uv[1].xy = texcoord + int2( 1, 0) * ts;
