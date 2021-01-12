@@ -136,22 +136,25 @@ v2v vs_dsamp5(uint id : SV_VertexID) { return v_dsamp(id, s_Bloom5); }
 v2v vs_dsamp6(uint id : SV_VertexID) { return v_dsamp(id, s_Bloom6); }
 v2v vs_dsamp7(uint id : SV_VertexID) { return v_dsamp(id, s_Bloom7); }
 
-float3 dsamp(sampler src, float4 uv[2])
+float4 dsamp(sampler src, float4 uv[2])
 {
-	float3 s1 = tex2D(src, uv[0].xy).rgb;
-	float3 s2 = tex2D(src, uv[0].zw).rgb;
-	float3 s3 = tex2D(src, uv[1].xy).rgb;
-	float3 s4 = tex2D(src, uv[1].zw).rgb;
+	float4 s1 = tex2D(src, uv[0].xy);
+	float4 s2 = tex2D(src, uv[0].zw);
+	float4 s3 = tex2D(src, uv[1].xy);
+	float4 s4 = tex2D(src, uv[1].zw);
 
 	// Karis's luma weighted average (using brightness instead of luma)
-	float4 s;
-	s.x = rcp(dot(s1, 1.0 / 3.0) + 1);
-	s.y = rcp(dot(s2, 1.0 / 3.0) + 1);
-	s.z = rcp(dot(s3, 1.0 / 3.0) + 1);
-	s.w = rcp(dot(s4, 1.0 / 3.0) + 1);
-	float o_div_wsum = rcp(dot(s, 1));
+	const float4 w = float4(1.0 / 3.0.sss, 1.0);
+	s1.a = 1.0 / dot(s1, w);
+	s2.a = 1.0 / dot(s2, w);
+	s3.a = 1.0 / dot(s3, w);
+	s4.a = 1.0 / dot(s4, w);
+	float o_div_wsum = 1.0 / dot(float4(s1.a, s2.a, s3.a, s4.a), 1.0);
 
-	return (s1 * s.x + s2 * s.y + s3 * s.z + s4 * s.w) * o_div_wsum;
+	float4 s;
+	s.rgb = (s1.rgb * s1.a + s2.rgb * s2.a + s3.rgb * s3.a + s4.rgb * s4.a) * o_div_wsum;
+	s.a = 1.0;
+	return s;
 }
 
 /*
@@ -196,7 +199,7 @@ float3 usamp(sampler2D src, float2 uv, float psize)
 	return lerp(aa, ab, parmx.b);
 }
 
-void p_dsamp0(vpf input, out float3 c : SV_Target0)
+void p_dsamp0(vpf input, out float4 c : SV_Target0)
 {
 	float4 s0 = tex2D(s_Linear, input.uv[0].xy);
 	float3 s1 = tex2D(s_Linear, input.uv[0].zw).rgb;
@@ -206,17 +209,18 @@ void p_dsamp0(vpf input, out float3 c : SV_Target0)
 	float3 m = Median(Median(s0.rgb, s1, s2), s3, s4);
 
 	s0.a = dot(m, 1.0/3.0);
-	c  = saturate(lerp(s0.a, m, BLOOM_SAT));
-	c *= pow(abs(s0.a), BLOOM_CURVE) / s0.a;
+	c.rgb  = saturate(lerp(s0.a, m, BLOOM_SAT));
+	c.rgb *= pow(abs(s0.a), BLOOM_CURVE) / s0.a;
+	c.a = 1.0;
 }
 
-void p_dsamp1(v2v input, out float4 c : SV_Target0) { c = float4(dsamp(s_Bloom1, input.uv), 1.0); }
-void p_dsamp2(v2v input, out float4 c : SV_Target0) { c = float4(dsamp(s_Bloom2, input.uv), 1.0); }
-void p_dsamp3(v2v input, out float4 c : SV_Target0) { c = float4(dsamp(s_Bloom3, input.uv), 1.0); }
-void p_dsamp4(v2v input, out float4 c : SV_Target0) { c = float4(dsamp(s_Bloom4, input.uv), 1.0); }
-void p_dsamp5(v2v input, out float4 c : SV_Target0) { c = float4(dsamp(s_Bloom5, input.uv), 1.0); }
-void p_dsamp6(v2v input, out float4 c : SV_Target0) { c = float4(dsamp(s_Bloom6, input.uv), 1.0); }
-void p_dsamp7(v2v input, out float4 c : SV_Target0) { c = float4(dsamp(s_Bloom7, input.uv), 1.0); }
+void p_dsamp1(v2v input, out float4 c : SV_Target0) { c = dsamp(s_Bloom1, input.uv); }
+void p_dsamp2(v2v input, out float4 c : SV_Target0) { c = dsamp(s_Bloom2, input.uv); }
+void p_dsamp3(v2v input, out float4 c : SV_Target0) { c = dsamp(s_Bloom3, input.uv); }
+void p_dsamp4(v2v input, out float4 c : SV_Target0) { c = dsamp(s_Bloom4, input.uv); }
+void p_dsamp5(v2v input, out float4 c : SV_Target0) { c = dsamp(s_Bloom5, input.uv); }
+void p_dsamp6(v2v input, out float4 c : SV_Target0) { c = dsamp(s_Bloom6, input.uv); }
+void p_dsamp7(v2v input, out float4 c : SV_Target0) { c = dsamp(s_Bloom7, input.uv); }
 void p_usamp0(v2f input, out float3 c : SV_Target0)
 {
 	c  = 0.0;
