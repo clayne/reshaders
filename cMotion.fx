@@ -127,8 +127,9 @@ float2 mFlow(float curr, float prev)
 {
 	float dt = distance(curr, prev); // distance between current and previous frame
 	float4 d; // Edge detection
-	d.x = ddx(curr + prev) * 0.5;
-	d.y = ddy(curr + prev) * 0.5;
+	d.x = ddx(curr + prev);
+	d.y = ddy(curr + prev);
+	d.xy *= 0.5;
 	d.z = _Lambda;
 	d.w = length(d.xyz); // magnitude :: length() uses 1 dp3add instead of mul + mad
 	return dt * (d.xy / d.w);

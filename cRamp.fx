@@ -31,8 +31,6 @@ uniform float2 _mulbias <
 	ui_label = "MulBias";
 > = float2(0.5, 0.5);
 
-texture2D _hBlur0 < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGB10A2; };
-
 sampler2D s_Linear
 {
 	Texture = ReShade::BackBufferTex;
@@ -40,8 +38,6 @@ sampler2D s_Linear
 		SRGBTexture = true;
 	#endif
 };
-
-sampler2D s_hBlur0 { Texture = _hBlur0; };
 
 struct v2f
 {
@@ -51,8 +47,8 @@ struct v2f
 
 void p_ramp(v2f input, out float4 c : SV_Target0)
 {
-	c = tex2Dlod(s_Linear, float4(input.uv, 0.0, 0.0));
-	c = clamp(c * _mulbias.x + _mulbias.y, 0.0, 1.0);
+	c = tex2D(s_Linear, input.uv);
+	c = saturate(c * _mulbias.x + _mulbias.y);
 	c = lerp(_color1, _color2, c);
 }
 
@@ -65,8 +61,5 @@ technique cRamp
 		#if BUFFER_COLOR_BIT_DEPTH != 10
 			SRGBWriteEnable = true;
 		#endif
-		BlendEnable = true;
-		SrcBlend = ONE;
-		DestBlend = ONE;
 	}
 }

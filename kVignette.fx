@@ -1,5 +1,7 @@
 
 /*
+	KinoVignette ReShade port that does not require backbuffer copy
+
 	KinoVignette - Natural vignetting effect
 
 	Copyright (C) 2015 Keijiro Takahashi
@@ -34,7 +36,7 @@ void PS_Vignette(in float4 vpos : SV_Position, in float2 uv : TEXCOORD, out floa
 	float2 coord = (uv - 0.5) * BUFFER_ASPECT_RATIO * 2.0;
 	float rf = length(coord) * _Falloff;
 	float rf2_1 = mad(rf, rf, 1.0);
-	c = 1.0 / (rf2_1 * rf2_1);
+	c = rcp(rf2_1 * rf2_1);
 }
 
 technique KinoVignette
@@ -46,6 +48,7 @@ technique KinoVignette
 		#if BUFFER_COLOR_BIT_DEPTH != 10
 			SRGBWriteEnable = true;
 		#endif
+		// Multiplication blend mode
 		BlendEnable = true;
 		BlendOp = ADD;
 		SrcBlend = DESTCOLOR;

@@ -96,13 +96,13 @@ v2v v_dsamp(uint id, sampler2D src)
 	texcoord.y = (id == 1) ? 2.0 : 0.0;
 	o.vpos = float4(texcoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 
-	// 9 tap gaussian using 4 texture fetches by CeeJayDK
+	// 9 tap gaussian using 4+1 texture fetches by CeeJayDK
 	// https://github.com/CeeJayDK/SweetFX - LumaSharpen.fx
 	float2 ts = 1.0 / tex2Dsize(src, 0.0).xy;
-	o.uv[0].xy = texcoord + float2( ts.x * 0.5,-ts.y * 2.0); // South South East
-	o.uv[0].zw = texcoord + float2(-ts.x * 2.0,-ts.y * 0.5); // West South West
-	o.uv[1].xy = texcoord + float2( ts.x * 2.0, ts.y * 0.5); // East North East
-	o.uv[1].zw = texcoord + float2(-ts.x * 0.5, ts.y * 2.0); // North North West
+	o.uv[0].xy = texcoord + float2( ts.x * 0.5, -ts.y * 2.0); // South South East
+	o.uv[0].zw = texcoord + float2(-ts.x * 2.0, -ts.y * 0.5); // West South West
+	o.uv[1].xy = texcoord + float2( ts.x * 2.0,  ts.y * 0.5); // East North East
+	o.uv[1].zw = texcoord + float2(-ts.x * 0.5,  ts.y * 2.0); // North North West
 	return o;
 }
 
@@ -133,23 +133,27 @@ v2v vs_dsamp7(uint id : SV_VertexID) { return v_dsamp(id, s_Bloom7); }
 
 float4 dsamp(sampler src, float4 uv[2])
 {
-	float4 s1 = tex2D(src, uv[0].xy);
-	float4 s2 = tex2D(src, uv[0].zw);
-	float4 s3 = tex2D(src, uv[1].xy);
-	float4 s4 = tex2D(src, uv[1].zw);
+	float4x4 s = float4x4(tex2D(src, uv[0].xy),
+						  tex2D(src, uv[0].zw),
+						  tex2D(src, uv[1].xy),
+						  tex2D(src, uv[1].zw));
 
 	// Karis's luma weighted average
 	const float4 w = float4(1.0 / 3.0.sss, 1.0);
-	s1.a = 1.0 / dot(s1, w);
-	s2.a = 1.0 / dot(s2, w);
-	s3.a = 1.0 / dot(s3, w);
-	s4.a = 1.0 / dot(s4, w);
-	float o_div_wsum = 1.0 / dot(float4(s1.a, s2.a, s3.a, s4.a), 1.0);
+	s[0].a = rcp(dot(s[0], w));
+	s[1].a = rcp(dot(s[1], w));
+	s[2].a = rcp(dot(s[2], w));
+	s[3].a = rcp(dot(s[3], w));
+	float o_div_wsum = rcp(dot(float4(s[0].a, s[1].a, s[2].a, s[3].a), 1.0));
 
-	float4 s;
-	s.rgb = (s1.rgb * s1.a + s2.rgb * s2.a + s3.rgb * s3.a + s4.rgb * s4.a) * o_div_wsum;
-	s.a = 1.0;
-	return s;
+	float4 c;
+	c.rgb  = s[0].rgb * s[0].a;
+	c.rgb += s[1].rgb * s[1].a;
+	c.rgb += s[2].rgb * s[2].a;
+	c.rgb += s[3].rgb * s[3].a;
+	c.rgb *= o_div_wsum;
+	c.a = 1.0;
+	return c;
 }
 
 /*
@@ -175,7 +179,7 @@ float3 calcweights(float s)
 // Could calculate float3s for a bit more performance
 float3 usamp(sampler2D src, float2 uv, float psize)
 {
-	float pt = 1.0 / psize;
+	const float pt = rcp(psize);
 	float2 fcoord = frac(uv * psize + 0.5);
 	float3 parmx = calcweights(fcoord.x);
 	float3 parmy = calcweights(fcoord.y);
@@ -206,9 +210,9 @@ void p_dsamp0(vpf input, out float4 c : SV_Target0)
 	float3 s4 = tex2D(s_Linear, input.uv[2].xy).rgb;
 	float3 m = Median(Median(s0.rgb, s1, s2), s3, s4);
 
-	s0.a = dot(m, 1.0/3.0);
+	s0.a   = dot(m, 1.0 / 3.0);
 	c.rgb  = saturate(lerp(s0.a, m, BLOOM_SAT));
-	c.rgb *= pow(abs(s0.a), BLOOM_CURVE) / s0.a;
+	c.rgb *= pow(s0.a, BLOOM_CURVE) / s0.a;
 	c.a = 1.0;
 }
 
@@ -257,6 +261,7 @@ technique KinoBloom
 {
 	#define vsd(i)     VertexShader = vs_dsamp##i
 	#define psd(i, j)  PixelShader = p_dsamp##i; RenderTarget = _Bloom##j
+	#define blendadd() BlendEnable = true; BlendOp = ADD; SrcBlend = ONE; DestBlend = ONE
 
 	pass { vsd(0); psd(0, 1); }
 	pass { vsd(1); psd(1, 2); }
@@ -276,4 +281,5 @@ technique KinoBloom
 			SRGBWriteEnable = true;
 		#endif
 	}
+
 }
