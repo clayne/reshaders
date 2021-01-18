@@ -106,20 +106,14 @@ float4 p_dsamp(sampler src, float4 uv[2])
 
     // Karis's luma weighted average
     const float4 w = float2(1.0 / 3.0, 1.0).xxxy;
-    s[0].a = rcp(dot(s[0], w));
-    s[1].a = rcp(dot(s[1], w));
-    s[2].a = rcp(dot(s[2], w));
-    s[3].a = rcp(dot(s[3], w));
-    float o_div_wsum = rcp(dot(float4(s[0].a, s[1].a, s[2].a, s[3].a), 1.0));
+    float4 luma;
+    luma.x = rcp(dot(s[0], w));
+    luma.y = rcp(dot(s[1], w));
+    luma.z = rcp(dot(s[2], w));
+    luma.w = rcp(dot(s[3], w));
+    float o_div_wsum = rcp(dot(luma, 1.0));
 
-    float4 c;
-    c.rgb  = s[0].rgb * s[0].a;
-    c.rgb += s[1].rgb * s[1].a;
-    c.rgb += s[2].rgb * s[2].a;
-    c.rgb += s[3].rgb * s[3].a;
-    c.rgb *= o_div_wsum;
-    c.a = 1.0;
-    return c;
+    return mul(luma, s) * o_div_wsum;
 }
 
 // Instead of vanilla bilinear, we use gaussian from CeeJayDK's SweetFX LumaSharpen.
@@ -141,7 +135,7 @@ void ps_dsamp0(v2f input, out float4 c : SV_Target0)
 
     float l = dot(s, 1.0 / 3.0);
     c.rgb   = saturate(lerp(l, s, BLOOM_SAT));
-    c.rgb  *= pow(l, BLOOM_CURVE) / l;
+    c.rgb  *= pow(abs(l), BLOOM_CURVE) / l;
     c.a = 1.0;
 }
 
@@ -162,6 +156,7 @@ void ps_usamp1(v2f input, out float3 c : SV_Target0)
 {
     c = p_usamp(s_Bloom1, input.uv).rgb;
 
+    // From https://github.com/TheRealMJP/BakingLab - ACES.hlsl
     // sRGB => XYZ => D65_2_D60 => AP1 => RRT_SAT
     const float3x3 ACESInputMat = float3x3(
         0.59719, 0.35458, 0.04823,
