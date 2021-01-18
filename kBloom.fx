@@ -101,25 +101,25 @@ v2f vs_usamp1(uint id : SV_VertexID) { return v_samp(id, s_Bloom1, 1.0); }
 
 float4 p_dsamp(sampler src, float4 uv[2])
 {
-    float4x4 s = float4x4(tex2D(src, uv[0].xy), tex2D(src, uv[0].zw),
-                          tex2D(src, uv[1].xy), tex2D(src, uv[1].zw));
+    float4x4 s = float4x4(tex2D(src, uv[0].xy),
+                          tex2D(src, uv[0].zw),
+                          tex2D(src, uv[1].xy),
+                          tex2D(src, uv[1].zw));
 
     // Karis's luma weighted average
     const float4 w = float2(1.0 / 3.0, 1.0).xxxy;
-    float4 luma;
-    luma.x = rcp(dot(s[0], w));
-    luma.y = rcp(dot(s[1], w));
-    luma.z = rcp(dot(s[2], w));
-    luma.w = rcp(dot(s[3], w));
-    float o_div_wsum = rcp(dot(luma, 1.0));
+    float4 luma = rcp(mul(s, w));
 
+    float o_div_wsum = rcp(dot(luma, 1.0));
     return mul(luma, s) * o_div_wsum;
 }
 
 void ps_dsamp0(v2f input, out float4 c : SV_Target0)
 {
-    float4x3 s = float4x3(tex2D(s_Source, input.uv[0].xy).rgb, tex2D(s_Source, input.uv[0].zw).rgb,
-                          tex2D(s_Source, input.uv[1].xy).rgb, tex2D(s_Source, input.uv[1].zw).rgb);
+    float4x3 s = float4x3(tex2D(s_Source, input.uv[0].xy).rgb,
+                          tex2D(s_Source, input.uv[0].zw).rgb,
+                          tex2D(s_Source, input.uv[1].xy).rgb,
+                          tex2D(s_Source, input.uv[1].zw).rgb);
 
     float3 m = mul(0.25.rrrr, s);
     float l = dot(m, 1.0 / 3.0);
@@ -132,8 +132,10 @@ void ps_dsamp0(v2f input, out float4 c : SV_Target0)
 // Instead of vanilla bilinear, we use gaussian from CeeJayDK's SweetFX LumaSharpen.
 float3 p_usamp(sampler2D src, float4 uv[2])
 {
-    float4x3 s = float4x3(tex2D(src, uv[0].xy).rgb, tex2D(src, uv[0].zw).rgb,
-                          tex2D(src, uv[1].xy).rgb, tex2D(src, uv[1].zw).rgb);
+    float4x3 s = float4x3(tex2D(src, uv[0].xy).rgb,
+                          tex2D(src, uv[0].zw).rgb,
+                          tex2D(src, uv[1].xy).rgb,
+                          tex2D(src, uv[1].zw).rgb);
     return mul(0.25.rrrr, s);
 }
 
