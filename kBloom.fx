@@ -1,5 +1,7 @@
 
 /*
+	Custom version of KinoBloom. Should be lighter than qUINT_Bloom
+
 	MIT License
 
 	Copyright (c) 2015-2017 Keijiro Takahashi
