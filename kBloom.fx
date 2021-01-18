@@ -64,12 +64,11 @@ sampler2D s_Bloom5 { Texture = _Bloom5; };
 sampler2D s_Bloom6 { Texture = _Bloom6; };
 sampler2D s_Bloom7 { Texture = _Bloom7; };
 
-struct v2f1 { float4 vpos : SV_Position; float4 uv[3] : TEXCOORD0; };
-struct v2f2 { float4 vpos : SV_Position; float4 uv[2] : TEXCOORD0; };
+struct v2f { float4 vpos : SV_Position; float4 uv[2] : TEXCOORD0; };
 
-v2f2 v_samp(uint id, sampler2D src, float ufac)
+v2f v_samp(uint id, sampler2D src, float ufac)
 {
-    v2f2 o;
+    v2f o;
     float2 texcoord;
     texcoord.x = (id == 2) ? 2.0 : 0.0;
     texcoord.y = (id == 1) ? 2.0 : 0.0;
@@ -79,27 +78,27 @@ v2f2 v_samp(uint id, sampler2D src, float ufac)
     // https://github.com/CeeJayDK/SweetFX - LumaSharpen.fx
     float2 ts = 1.0 / tex2Dsize(src, 0.0).xy;
     o.uv[0].xy = texcoord + float2( ts.x * 0.5, -ts.y * ufac); // South South East
-    o.uv[0].zw = texcoord + float2(-ts.x * ufac, -ts.y * 0.5); // West South West
-    o.uv[1].xy = texcoord + float2( ts.x * ufac,  ts.y * 0.5); // East North East
+    o.uv[0].zw = texcoord + float2(-ts.x * ufac,-ts.y * 0.5); // West South West
+    o.uv[1].xy = texcoord + float2( ts.x * ufac, ts.y * 0.5); // East North East
     o.uv[1].zw = texcoord + float2(-ts.x * 0.5,  ts.y * ufac); // North North West
     return o;
 }
 
-v2f2 vs_dsamp0(uint id : SV_VertexID) { return v_samp(id, s_Linear, 2.0); }
-v2f2 vs_dsamp1(uint id : SV_VertexID) { return v_samp(id, s_Bloom1, 2.0); }
-v2f2 vs_dsamp2(uint id : SV_VertexID) { return v_samp(id, s_Bloom2, 2.0); }
-v2f2 vs_dsamp3(uint id : SV_VertexID) { return v_samp(id, s_Bloom3, 2.0); }
-v2f2 vs_dsamp4(uint id : SV_VertexID) { return v_samp(id, s_Bloom4, 2.0); }
-v2f2 vs_dsamp5(uint id : SV_VertexID) { return v_samp(id, s_Bloom5, 2.0); }
-v2f2 vs_dsamp6(uint id : SV_VertexID) { return v_samp(id, s_Bloom6, 2.0); }
+v2f vs_dsamp0(uint id : SV_VertexID) { return v_samp(id, s_Linear, 2.0); }
+v2f vs_dsamp1(uint id : SV_VertexID) { return v_samp(id, s_Bloom1, 2.0); }
+v2f vs_dsamp2(uint id : SV_VertexID) { return v_samp(id, s_Bloom2, 2.0); }
+v2f vs_dsamp3(uint id : SV_VertexID) { return v_samp(id, s_Bloom3, 2.0); }
+v2f vs_dsamp4(uint id : SV_VertexID) { return v_samp(id, s_Bloom4, 2.0); }
+v2f vs_dsamp5(uint id : SV_VertexID) { return v_samp(id, s_Bloom5, 2.0); }
+v2f vs_dsamp6(uint id : SV_VertexID) { return v_samp(id, s_Bloom6, 2.0); }
 
-v2f2 vs_usamp7(uint id : SV_VertexID) { return v_samp(id, s_Bloom7, 1.0); }
-v2f2 vs_usamp6(uint id : SV_VertexID) { return v_samp(id, s_Bloom6, 1.0); }
-v2f2 vs_usamp5(uint id : SV_VertexID) { return v_samp(id, s_Bloom5, 1.0); }
-v2f2 vs_usamp4(uint id : SV_VertexID) { return v_samp(id, s_Bloom4, 1.0); }
-v2f2 vs_usamp3(uint id : SV_VertexID) { return v_samp(id, s_Bloom3, 1.0); }
-v2f2 vs_usamp2(uint id : SV_VertexID) { return v_samp(id, s_Bloom2, 1.0); }
-v2f2 vs_usamp1(uint id : SV_VertexID) { return v_samp(id, s_Bloom1, 1.0); }
+v2f vs_usamp7(uint id : SV_VertexID) { return v_samp(id, s_Bloom7, 1.0); }
+v2f vs_usamp6(uint id : SV_VertexID) { return v_samp(id, s_Bloom6, 1.0); }
+v2f vs_usamp5(uint id : SV_VertexID) { return v_samp(id, s_Bloom5, 1.0); }
+v2f vs_usamp4(uint id : SV_VertexID) { return v_samp(id, s_Bloom4, 1.0); }
+v2f vs_usamp3(uint id : SV_VertexID) { return v_samp(id, s_Bloom3, 1.0); }
+v2f vs_usamp2(uint id : SV_VertexID) { return v_samp(id, s_Bloom2, 1.0); }
+v2f vs_usamp1(uint id : SV_VertexID) { return v_samp(id, s_Bloom1, 1.0); }
 
 float4 p_dsamp(sampler src, float4 uv[2])
 {
@@ -134,7 +133,7 @@ float3 p_usamp(sampler2D src, float4 uv[2])
     return s;
 }
 
-void ps_dsamp0(v2f1 input, out float4 c : SV_Target0)
+void ps_dsamp0(v2f input, out float4 c : SV_Target0)
 {
     float3 s  = tex2D(s_Linear, input.uv[0].xy).rgb * 0.25;
            s += tex2D(s_Linear, input.uv[0].zw).rgb * 0.25;
@@ -147,20 +146,20 @@ void ps_dsamp0(v2f1 input, out float4 c : SV_Target0)
     c.a = 1.0;
 }
 
-void ps_dsamp1(v2f2 input, out float4 c : SV_Target0) { c = p_dsamp(s_Bloom1, input.uv); }
-void ps_dsamp2(v2f2 input, out float4 c : SV_Target0) { c = p_dsamp(s_Bloom2, input.uv); }
-void ps_dsamp3(v2f2 input, out float4 c : SV_Target0) { c = p_dsamp(s_Bloom3, input.uv); }
-void ps_dsamp4(v2f2 input, out float4 c : SV_Target0) { c = p_dsamp(s_Bloom4, input.uv); }
-void ps_dsamp5(v2f2 input, out float4 c : SV_Target0) { c = p_dsamp(s_Bloom5, input.uv); }
-void ps_dsamp6(v2f2 input, out float4 c : SV_Target0) { c = p_dsamp(s_Bloom6, input.uv); }
+void ps_dsamp1(v2f input, out float4 c : SV_Target0) { c = p_dsamp(s_Bloom1, input.uv); }
+void ps_dsamp2(v2f input, out float4 c : SV_Target0) { c = p_dsamp(s_Bloom2, input.uv); }
+void ps_dsamp3(v2f input, out float4 c : SV_Target0) { c = p_dsamp(s_Bloom3, input.uv); }
+void ps_dsamp4(v2f input, out float4 c : SV_Target0) { c = p_dsamp(s_Bloom4, input.uv); }
+void ps_dsamp5(v2f input, out float4 c : SV_Target0) { c = p_dsamp(s_Bloom5, input.uv); }
+void ps_dsamp6(v2f input, out float4 c : SV_Target0) { c = p_dsamp(s_Bloom6, input.uv); }
 
-void ps_usamp7(v2f2 input, out float3 c : SV_Target0) { c = p_usamp(s_Bloom7, input.uv); }
-void ps_usamp6(v2f2 input, out float3 c : SV_Target0) { c = p_usamp(s_Bloom6, input.uv); }
-void ps_usamp5(v2f2 input, out float3 c : SV_Target0) { c = p_usamp(s_Bloom5, input.uv); }
-void ps_usamp4(v2f2 input, out float3 c : SV_Target0) { c = p_usamp(s_Bloom4, input.uv); }
-void ps_usamp3(v2f2 input, out float3 c : SV_Target0) { c = p_usamp(s_Bloom3, input.uv); }
-void ps_usamp2(v2f2 input, out float3 c : SV_Target0) { c = p_usamp(s_Bloom2, input.uv); }
-void ps_usamp1(v2f2 input, out float3 c : SV_Target0)
+void ps_usamp7(v2f input, out float3 c : SV_Target0) { c = p_usamp(s_Bloom7, input.uv); }
+void ps_usamp6(v2f input, out float3 c : SV_Target0) { c = p_usamp(s_Bloom6, input.uv); }
+void ps_usamp5(v2f input, out float3 c : SV_Target0) { c = p_usamp(s_Bloom5, input.uv); }
+void ps_usamp4(v2f input, out float3 c : SV_Target0) { c = p_usamp(s_Bloom4, input.uv); }
+void ps_usamp3(v2f input, out float3 c : SV_Target0) { c = p_usamp(s_Bloom3, input.uv); }
+void ps_usamp2(v2f input, out float3 c : SV_Target0) { c = p_usamp(s_Bloom2, input.uv); }
+void ps_usamp1(v2f input, out float3 c : SV_Target0)
 {
     c = p_usamp(s_Bloom1, input.uv).rgb;
 
