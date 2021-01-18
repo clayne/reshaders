@@ -1,7 +1,5 @@
 
 /*
-	Custom version of KinoBloom. Should be lighter than qUINT_Bloom
-
 	MIT License
 
 	Copyright (c) 2015-2017 Keijiro Takahashi
@@ -27,13 +25,6 @@
 
 #include "ReShade.fxh"
 
-uniform float BLOOM_INTENSITY <
-	ui_type = "drag";
-	ui_min = 0.0; ui_max = 10.0;
-	ui_label = "Bloom Intensity";
-	ui_tooltip = "Scales bloom brightness.";
-> = 1.0;
-
 uniform float BLOOM_CURVE <
 	ui_type = "drag";
 	ui_min = 0.0; ui_max = 10.0;
@@ -48,11 +39,9 @@ uniform float BLOOM_SAT <
 	ui_tooltip = "Adjusts the color strength of the bloom effect";
 > = 2.0;
 
-struct v2f
-{
-	float4 vpos : SV_Position;
-	float2 uv   : TEXCOORD0;
-};
+struct v2f0 { float4 vpos : SV_Position; float2 uv    : TEXCOORD0; };
+struct v2f1 { float4 vpos : SV_Position; float4 uv[3] : TEXCOORD0; };
+struct v2f2 { float4 vpos : SV_Position; float4 uv[2] : TEXCOORD0; };
 
 texture2D _Bloom1 { Width = BUFFER_WIDTH / 2;   Height = BUFFER_HEIGHT / 2;   Format = RGBA16F; };
 texture2D _Bloom2 { Width = BUFFER_WIDTH / 4;   Height = BUFFER_HEIGHT / 4;   Format = RGBA16F; };
@@ -78,75 +67,128 @@ sampler2D s_Bloom5 { Texture = _Bloom5; };
 sampler2D s_Bloom6 { Texture = _Bloom6; };
 sampler2D s_Bloom7 { Texture = _Bloom7; };
 
-// 3-tap median filter
-float3 Median(float3 a, float3 b, float3 c) { return a + b + c - min(min(a, b), c) - max(max(a, b), c); }
-float Brightness(float3 c) { return max(max(c.r, c.g), c.b); }
-
-float3 dsamp(sampler2D src, float2 uv)
+v2f1 vs_dsamp0(in uint id : SV_VertexID)
 {
-	float3 s1 = tex2D(src, uv, int2(-1.0, -1.0)).rgb;
-	float3 s2 = tex2D(src, uv, int2( 1.0, -1.0)).rgb;
-	float3 s3 = tex2D(src, uv, int2(-1.0,  1.0)).rgb;
-	float3 s4 = tex2D(src, uv, int2( 1.0,  1.0)).rgb;
+	v2f1 o;
+	float2 texcoord;
+	texcoord.x = (id == 2) ? 2.0 : 0.0;
+	texcoord.y = (id == 1) ? 2.0 : 0.0;
+	o.vpos = float4(texcoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 
-	// Karis's luma weighted average (using brightness instead of luma)
-	float4 sw;
-	sw.x = 1.0 / (Brightness(s1) + 1.0);
-	sw.y = 1.0 / (Brightness(s2) + 1.0);
-	sw.z = 1.0 / (Brightness(s3) + 1.0);
-	sw.w = 1.0 / (Brightness(s4) + 1.0);
-	float one_div_wsum = 1.0 / dot(1.0, sw);
+	float2 ts = BUFFER_PIXEL_SIZE;
+	o.uv[0].xy = texcoord + int2( 0, 0) * ts;
+	o.uv[0].zw = texcoord + int2(-1, 0) * ts;
+	o.uv[1].xy = texcoord + int2( 1, 0) * ts;
+	o.uv[1].zw = texcoord + int2( 0,-1) * ts;
+	o.uv[2].xy = texcoord + int2( 0, 1) * ts;
+	return o;
+}
 
-	return (s1 * sw.x + s2 * sw.y + s3 * sw.z + s4 * sw.w) * one_div_wsum;
+v2f2 v_samp(uint id, sampler2D src, float ufac)
+{
+	v2f2 o;
+	float2 texcoord;
+	texcoord.x = (id == 2) ? 2.0 : 0.0;
+	texcoord.y = (id == 1) ? 2.0 : 0.0;
+	o.vpos = float4(texcoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+
+	// 9 tap gaussian using 4 texture fetches by CeeJayDK
+	// https://github.com/CeeJayDK/SweetFX - LumaSharpen.fx
+	float2 ts = 1.0 / tex2Dsize(src, 0.0).xy;
+	o.uv[0].xy = texcoord + float2( ts.x * 0.5, -ts.y * ufac); // South South East
+	o.uv[0].zw = texcoord + float2(-ts.x * ufac, -ts.y * 0.5); // West South West
+	o.uv[1].xy = texcoord + float2( ts.x * ufac,  ts.y * 0.5); // East North East
+	o.uv[1].zw = texcoord + float2(-ts.x * 0.5,  ts.y * ufac); // North North West
+	return o;
+}
+
+v2f2 vs_dsamp1(uint id : SV_VertexID) { return v_samp(id, s_Bloom1, 2.0); }
+v2f2 vs_dsamp2(uint id : SV_VertexID) { return v_samp(id, s_Bloom2, 2.0); }
+v2f2 vs_dsamp3(uint id : SV_VertexID) { return v_samp(id, s_Bloom3, 2.0); }
+v2f2 vs_dsamp4(uint id : SV_VertexID) { return v_samp(id, s_Bloom4, 2.0); }
+v2f2 vs_dsamp5(uint id : SV_VertexID) { return v_samp(id, s_Bloom5, 2.0); }
+v2f2 vs_dsamp6(uint id : SV_VertexID) { return v_samp(id, s_Bloom6, 2.0); }
+v2f2 vs_dsamp7(uint id : SV_VertexID) { return v_samp(id, s_Bloom7, 2.0); }
+
+v2f2 vs_usamp7(uint id : SV_VertexID) { return v_samp(id, s_Bloom7, 1.0); }
+v2f2 vs_usamp6(uint id : SV_VertexID) { return v_samp(id, s_Bloom6, 1.0); }
+v2f2 vs_usamp5(uint id : SV_VertexID) { return v_samp(id, s_Bloom5, 1.0); }
+v2f2 vs_usamp4(uint id : SV_VertexID) { return v_samp(id, s_Bloom4, 1.0); }
+v2f2 vs_usamp3(uint id : SV_VertexID) { return v_samp(id, s_Bloom3, 1.0); }
+v2f2 vs_usamp2(uint id : SV_VertexID) { return v_samp(id, s_Bloom2, 1.0); }
+v2f2 vs_usamp1(uint id : SV_VertexID) { return v_samp(id, s_Bloom1, 1.0); }
+
+float4 dsamp(sampler src, float4 uv[2])
+{
+	float4x4 s = float4x4(tex2D(src, uv[0].xy),
+						  tex2D(src, uv[0].zw),
+						  tex2D(src, uv[1].xy),
+						  tex2D(src, uv[1].zw));
+
+	// Karis's luma weighted average
+	const float4 w = float4(1.0 / 3.0.sss, 1.0);
+	s[0].a = rcp(dot(s[0], w));
+	s[1].a = rcp(dot(s[1], w));
+	s[2].a = rcp(dot(s[2], w));
+	s[3].a = rcp(dot(s[3], w));
+	float o_div_wsum = rcp(dot(float4(s[0].a, s[1].a, s[2].a, s[3].a), 1.0));
+
+	float4 c;
+	c.rgb  = s[0].rgb * s[0].a;
+	c.rgb += s[1].rgb * s[1].a;
+	c.rgb += s[2].rgb * s[2].a;
+	c.rgb += s[3].rgb * s[3].a;
+	c.rgb *= o_div_wsum;
+	c.a = 1.0;
+	return c;
 }
 
 // Instead of vanilla bilinear, we use gaussian from CeeJayDK's SweetFX LumaSharpen.
-float4 usamp(sampler2D src, float2 uv)
+float3 usamp(sampler2D src, float4 uv[2])
 {
 	float2 ts = 1.0 / tex2Dsize(src, 0.0);
-	float4 s;
-	s.rgb += tex2D(src, uv + float2(0.5 * ts.x,  -ts.y)).rgb; // South South East
-	s.rgb += tex2D(src, uv + float2(-ts.x, 0.5 * -ts.y)).rgb; // West South West
-	s.rgb += tex2D(src, uv + float2( ts.x, 0.5 *  ts.y)).rgb; // East North East
-	s.rgb += tex2D(src, uv + float2(0.5 * -ts.x,  ts.y)).rgb; // North North West
-	s.rgb *= 0.25;
-	s.a = BLOOM_INTENSITY;
-	return s;
+	float3 s;
+	s  = tex2D(src, uv[0].xy).rgb; // South South East
+	s += tex2D(src, uv[0].zw).rgb; // West South West
+	s += tex2D(src, uv[1].xy).rgb; // East North East
+	s += tex2D(src, uv[1].zw).rgb; // North North West
+	return s * 0.25;
 }
 
-// Use Marty McFly's qUINT_Bloom's threshold for now
-void p_dsamp0(v2f input, out float3 c : SV_Target0)
+// 3-tap median filter
+float3 Median(float3 a, float3 b, float3 c) { return a + b + c - min(min(a, b), c) - max(max(a, b), c); }
+
+void p_dsamp0(v2f1 input, out float4 c : SV_Target0)
 {
-	float4 s0 = tex2D(s_Linear, input.uv, int2( 0, 0));
-	float3 s1 = tex2D(s_Linear, input.uv, int2(-1, 0)).rgb;
-	float3 s2 = tex2D(s_Linear, input.uv, int2( 1, 0)).rgb;
-	float3 s3 = tex2D(s_Linear, input.uv, int2( 0,-1)).rgb;
-	float3 s4 = tex2D(s_Linear, input.uv, int2( 0, 1)).rgb;
-	float3 m = Median(Median(s0.rgb, s1, s2), s3, s4);
+	float4 s0 = tex2D(s_Linear, input.uv[2].xy);
+	float4x3 s = float4x3(tex2D(s_Linear, input.uv[0].xy).rgb,
+						  tex2D(s_Linear, input.uv[0].zw).rgb,
+						  tex2D(s_Linear, input.uv[1].xy).rgb,
+						  tex2D(s_Linear, input.uv[1].zw).rgb);
+	float3 m = Median(Median(s0.rgb, s[0], s[1]), s[2], s[3]);
 
-	s0.a = dot(m, 1.0 / 3.0);
-	c  = saturate(lerp(s0.a, m, BLOOM_SAT));
-	c *= pow(abs(s0.a), BLOOM_CURVE) / s0.a;
+	s0.a   = dot(m, 1.0 / 3.0);
+	c.rgb  = saturate(lerp(s0.a, m, BLOOM_SAT));
+	c.rgb *= pow(s0.a, BLOOM_CURVE) / s0.a;
+	c.a = 1.0;
 }
 
-void p_dsamp1(v2f input, out float3 c : SV_Target0) { c = dsamp(s_Bloom1, input.uv); }
-void p_dsamp2(v2f input, out float3 c : SV_Target0) { c = dsamp(s_Bloom2, input.uv); }
-void p_dsamp3(v2f input, out float3 c : SV_Target0) { c = dsamp(s_Bloom3, input.uv); }
-void p_dsamp4(v2f input, out float3 c : SV_Target0) { c = dsamp(s_Bloom4, input.uv); }
-void p_dsamp5(v2f input, out float3 c : SV_Target0) { c = dsamp(s_Bloom5, input.uv); }
-void p_dsamp6(v2f input, out float3 c : SV_Target0) { c = dsamp(s_Bloom6, input.uv); }
+void p_dsamp1(v2f2 input, out float4 c : SV_Target0) { c = dsamp(s_Bloom1, input.uv); }
+void p_dsamp2(v2f2 input, out float4 c : SV_Target0) { c = dsamp(s_Bloom2, input.uv); }
+void p_dsamp3(v2f2 input, out float4 c : SV_Target0) { c = dsamp(s_Bloom3, input.uv); }
+void p_dsamp4(v2f2 input, out float4 c : SV_Target0) { c = dsamp(s_Bloom4, input.uv); }
+void p_dsamp5(v2f2 input, out float4 c : SV_Target0) { c = dsamp(s_Bloom5, input.uv); }
+void p_dsamp6(v2f2 input, out float4 c : SV_Target0) { c = dsamp(s_Bloom6, input.uv); }
 
-void p_usamp7(v2f input, out float4 c : SV_Target0) { c = usamp(s_Bloom7, input.uv); }
-void p_usamp6(v2f input, out float4 c : SV_Target0) { c = usamp(s_Bloom6, input.uv); }
-void p_usamp5(v2f input, out float4 c : SV_Target0) { c = usamp(s_Bloom5, input.uv); }
-void p_usamp4(v2f input, out float4 c : SV_Target0) { c = usamp(s_Bloom4, input.uv); }
-void p_usamp3(v2f input, out float4 c : SV_Target0) { c = usamp(s_Bloom3, input.uv); }
-void p_usamp2(v2f input, out float4 c : SV_Target0) { c = usamp(s_Bloom2, input.uv); }
-void p_usamp1(v2f input, out float3 c : SV_Target0)
+void p_usamp7(v2f2 input, out float3 c : SV_Target0) { c = usamp(s_Bloom7, input.uv); }
+void p_usamp6(v2f2 input, out float3 c : SV_Target0) { c = usamp(s_Bloom6, input.uv); }
+void p_usamp5(v2f2 input, out float3 c : SV_Target0) { c = usamp(s_Bloom5, input.uv); }
+void p_usamp4(v2f2 input, out float3 c : SV_Target0) { c = usamp(s_Bloom4, input.uv); }
+void p_usamp3(v2f2 input, out float3 c : SV_Target0) { c = usamp(s_Bloom3, input.uv); }
+void p_usamp2(v2f2 input, out float3 c : SV_Target0) { c = usamp(s_Bloom2, input.uv); }
+void p_usamp1(v2f2 input, out float3 c : SV_Target0)
 {
 	c = usamp(s_Bloom1, input.uv).rgb;
-
-	// ACES Tonemap from https://github.com/TheRealMJP/BakingLab
 	// sRGB => XYZ => D65_2_D60 => AP1 => RRT_SAT
 	const float3x3 ACESInputMat = float3x3(
 		0.59719, 0.35458, 0.04823,
@@ -171,32 +213,33 @@ void p_usamp1(v2f input, out float3 c : SV_Target0)
 
 technique KinoBloom
 {
-	#define vs()       VertexShader = PostProcessVS
+	#define vsd(i)     VertexShader = vs_dsamp##i
+	#define vsu(i)     VertexShader = vs_usamp##i
 	#define psd(i, j)  PixelShader = p_dsamp##i; RenderTarget = _Bloom##j
 	#define psu(i, j)  PixelShader = p_usamp##i; RenderTarget = _Bloom##j
-	#define blendadd() BlendEnable = true; SrcBlend = ONE; DestBlend = SRCALPHA
+	#define blendadd() BlendEnable = true; SrcBlend = ONE; DestBlend = ONE
 
-	pass { vs(); psd(0, 1); }
-	pass { vs(); psd(1, 2); }
-	pass { vs(); psd(2, 3); }
-	pass { vs(); psd(3, 4); }
-	pass { vs(); psd(4, 5); }
-	pass { vs(); psd(5, 6); }
-	pass { vs(); psd(6, 7); }
-	pass { vs(); psu(7, 6); blendadd(); }
-	pass { vs(); psu(6, 5); blendadd(); }
-	pass { vs(); psu(5, 4); blendadd(); }
-	pass { vs(); psu(4, 3); blendadd(); }
-	pass { vs(); psu(3, 2); blendadd(); }
-	pass { vs(); psu(2, 1); blendadd(); }
+	pass { vsd(0); psd(0, 1); }
+	pass { vsd(1); psd(1, 2); }
+	pass { vsd(2); psd(2, 3); }
+	pass { vsd(3); psd(3, 4); }
+	pass { vsd(4); psd(4, 5); }
+	pass { vsd(5); psd(5, 6); }
+	pass { vsd(6); psd(6, 7); }
+	pass { vsu(7); psu(7, 6); blendadd(); }
+	pass { vsu(6); psu(6, 5); blendadd(); }
+	pass { vsu(5); psu(5, 4); blendadd(); }
+	pass { vsu(4); psu(4, 3); blendadd(); }
+	pass { vsu(3); psu(3, 2); blendadd(); }
+	pass { vsu(2); psu(2, 1); blendadd(); }
 	pass
 	{
-		vs();
+		vsu(1);
 		PixelShader = p_usamp1;
-		BlendEnable = true;
-		DestBlend = INVSRCCOLOR;
 		#if BUFFER_COLOR_BIT_DEPTH != 10
 			SRGBWriteEnable = true;
 		#endif
+		BlendEnable = true;
+		DestBlend = INVSRCCOLOR;
 	}
 }
