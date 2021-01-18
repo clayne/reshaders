@@ -65,7 +65,6 @@ sampler2D s_Bloom5 { Texture = _Bloom5; };
 sampler2D s_Bloom6 { Texture = _Bloom6; };
 sampler2D s_Bloom7 { Texture = _Bloom7; };
 
-struct v2f0 { float4 vpos : SV_Position; float2 uv    : TEXCOORD0; };
 struct v2f1 { float4 vpos : SV_Position; float4 uv[3] : TEXCOORD0; };
 struct v2f2 { float4 vpos : SV_Position; float4 uv[2] : TEXCOORD0; };
 
