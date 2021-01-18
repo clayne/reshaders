@@ -85,26 +85,21 @@ v2f vs_contour(in uint id : SV_VertexID)
 
 void ps_contour(v2f input, out float3 c : SV_Target0)
 {
-	float edge;
-
 	// Color samples
-	float3 c0 = tex2D(_MainTex, input.uv[0].xy).rgb;
-	float3 c1 = tex2D(_MainTex, input.uv[0].zw).rgb;
-	float3 c2 = tex2D(_MainTex, input.uv[1].xy).rgb;
-	float3 c3 = tex2D(_MainTex, input.uv[1].zw).rgb;
+	float4x3 co = float4x3(tex2D(_MainTex, input.uv[0].xy).rgb, tex2D(_MainTex, input.uv[0].zw).rgb,
+						   tex2D(_MainTex, input.uv[1].xy).rgb, tex2D(_MainTex, input.uv[1].zw).rgb);
 
 	// Roberts cross operator
-	float cg1  = dot(c1 - c0, c1 - c0);
-	float cg2  = dot(c3 - c2, c3 - c2);
+	float cg1  = dot(co[1] - co[0], co[1] - co[0]);
+	float cg2  = dot(co[3] - co[2], co[3] - co[2]);
 		  cg2 += cg1;
 
 	float cg = cg2 * rsqrt(cg2); // sqrt(cg2)
-
-	edge = cg * _ColorSensitivity;
+	float edge = cg * _ColorSensitivity;
 
 	// Thresholding
 	edge = saturate((edge - _Threshold) * _InvRange);
-	float3 cb = lerp(c0, _BackColor.rgb, _BackColor.a);
+	float3 cb = lerp(co[0], _BackColor.rgb, _BackColor.a);
 	c = lerp(cb, _FrontColor.rgb, edge * _FrontColor.a);
 }
 

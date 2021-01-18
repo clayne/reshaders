@@ -48,7 +48,7 @@ struct v2f
 void p_ramp(v2f input, out float4 c : SV_Target0)
 {
 	c = tex2D(s_Linear, input.uv);
-	c = saturate(c * _mulbias.x + _mulbias.y);
+	c = saturate(mad(c, _mulbias.x, _mulbias.y));
 	c = lerp(_color1, _color2, c);
 }
 

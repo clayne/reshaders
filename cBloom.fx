@@ -133,10 +133,8 @@ v2v vs_dsamp7(uint id : SV_VertexID) { return v_dsamp(id, s_Bloom7); }
 
 float4 dsamp(sampler src, float4 uv[2])
 {
-	float4x4 s = float4x4(tex2D(src, uv[0].xy),
-						  tex2D(src, uv[0].zw),
-						  tex2D(src, uv[1].xy),
-						  tex2D(src, uv[1].zw));
+	float4x4 s = float4x4(tex2D(src, uv[0].xy), tex2D(src, uv[0].zw),
+						  tex2D(src, uv[1].xy), tex2D(src, uv[1].zw));
 
 	// Karis's luma weighted average
 	const float4 w = float4(1.0 / 3.0.sss, 1.0);
@@ -170,9 +168,8 @@ float3 calcweights(float s)
 	float4 t = mad(w1, s, w2);
 	t = mad(t, s, w2.yyzw);
 	t = mad(t, s, w3);
-	t.xy = mad(t.xy, rcp(t.zw), 1.0);
-	t.x += s;
-	t.y -= s;
+	t.xy  = mad(t.xy, rcp(t.zw), 1.0);
+	t.xy += float2(s, -s);
 	return t.rgb;
 }
 
@@ -180,22 +177,18 @@ float3 calcweights(float s)
 float3 usamp(sampler2D src, float2 uv, float psize)
 {
 	const float pt = rcp(psize);
-	float2 fcoord = frac(uv * psize + 0.5);
-	float3 parmx = calcweights(fcoord.x);
-	float3 parmy = calcweights(fcoord.y);
+	float2 fcoord = frac(mad(uv, psize, 0.5));
+	float2x3 parm = float2x3(calcweights(fcoord.x), calcweights(fcoord.y));
+
 	float4 cdelta;
-	cdelta.xz = parmx.rg * float2(-pt, pt);
-	cdelta.yw = parmy.rg * float2(-pt, pt);
-	// first y-interpolation
-	float3 ar = tex2D(src, uv + cdelta.xy).rgb;
-	float3 ag = tex2D(src, uv + cdelta.xw).rgb;
-	float3 ab = lerp(ag, ar, parmy.b);
-	// second y-interpolation
-	float3 br = tex2D(src, uv + cdelta.zy).rgb;
-	float3 bg = tex2D(src, uv + cdelta.zw).rgb;
-	float3 aa = lerp(bg, br, parmy.b);
-	// x-interpolation
-	return lerp(aa, ab, parmx.b);
+	cdelta.xz = parm[0].rg * float2(-pt, pt);
+	cdelta.yw = parm[1].rg * float2(-pt, pt);
+	float4x3 c = float4x3(tex2D(src, uv + cdelta.xy).rgb, tex2D(src, uv + cdelta.xw).rgb,
+						  tex2D(src, uv + cdelta.zy).rgb, tex2D(src, uv + cdelta.zw).rgb);
+
+	float3 ab = lerp(c[1], c[0], parm[1].b); // first y-interpolation
+	float3 aa = lerp(c[3], c[2], parm[1].b); // second y-interpolation
+	return lerp(aa, ab, parm[0].b); // x-interpolation
 }
 
 // 3-tap median filter
@@ -203,12 +196,10 @@ float3 Median(float3 a, float3 b, float3 c) { return a + b + c - min(a, min(b, c
 
 void p_dsamp0(vpf input, out float4 c : SV_Target0)
 {
-	float4 s0 = tex2D(s_Linear, input.uv[0].xy);
-	float3 s1 = tex2D(s_Linear, input.uv[0].zw).rgb;
-	float3 s2 = tex2D(s_Linear, input.uv[1].xy).rgb;
-	float3 s3 = tex2D(s_Linear, input.uv[1].zw).rgb;
-	float3 s4 = tex2D(s_Linear, input.uv[2].xy).rgb;
-	float3 m = Median(Median(s0.rgb, s1, s2), s3, s4);
+	float4 s0 = tex2D(s_Linear, input.uv[2].xy);
+	float4x3 s = float4x3(tex2D(s_Linear, input.uv[0].xy).rgb, tex2D(s_Linear, input.uv[0].zw).rgb,
+						  tex2D(s_Linear, input.uv[1].xy).rgb, tex2D(s_Linear, input.uv[1].zw).rgb);
+	float3 m = Median(Median(s0.rgb, s[0], s[1]), s[2], s[3]);
 
 	s0.a   = dot(m, 1.0 / 3.0);
 	c.rgb  = saturate(lerp(s0.a, m, BLOOM_SAT));
@@ -261,7 +252,6 @@ technique KinoBloom
 {
 	#define vsd(i)     VertexShader = vs_dsamp##i
 	#define psd(i, j)  PixelShader = p_dsamp##i; RenderTarget = _Bloom##j
-	#define blendadd() BlendEnable = true; BlendOp = ADD; SrcBlend = ONE; DestBlend = ONE
 
 	pass { vsd(0); psd(0, 1); }
 	pass { vsd(1); psd(1, 2); }
