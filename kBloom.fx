@@ -24,8 +24,6 @@
     SOFTWARE.
 */
 
-#include "ReShade.fxh"
-
 uniform float BLOOM_CURVE <
     ui_type = "drag";
     ui_min = 0.0; ui_max = 10.0;
@@ -40,6 +38,7 @@ uniform float BLOOM_SAT <
     ui_tooltip = "Adjusts the color strength of the bloom effect";
 > = 2.0;
 
+texture2D _Source : COLOR;
 texture2D _Bloom1 { Width = BUFFER_WIDTH / 2;   Height = BUFFER_HEIGHT / 2;   Format = RGBA16F; };
 texture2D _Bloom2 { Width = BUFFER_WIDTH / 4;   Height = BUFFER_HEIGHT / 4;   Format = RGBA16F; };
 texture2D _Bloom3 { Width = BUFFER_WIDTH / 8;   Height = BUFFER_HEIGHT / 8;   Format = RGBA16F; };
@@ -48,9 +47,9 @@ texture2D _Bloom5 { Width = BUFFER_WIDTH / 32;  Height = BUFFER_HEIGHT / 32;  Fo
 texture2D _Bloom6 { Width = BUFFER_WIDTH / 64;  Height = BUFFER_HEIGHT / 64;  Format = RGBA16F; };
 texture2D _Bloom7 { Width = BUFFER_WIDTH / 128; Height = BUFFER_HEIGHT / 128; Format = RGBA16F; };
 
-sampler2D s_Linear
+sampler2D s_Source
 {
-    Texture = ReShade::BackBufferTex;
+    Texture = _Source;
     #if BUFFER_COLOR_BIT_DEPTH != 10
         SRGBTexture = true;
     #endif
@@ -76,7 +75,7 @@ v2f v_samp(uint id, sampler2D src, float ufac)
 
     // 9 tap gaussian using 4 texture fetches by CeeJayDK
     // https://github.com/CeeJayDK/SweetFX - LumaSharpen.fx
-    float2 ts = 1.0 / tex2Dsize(src, 0.0).xy;
+    float2 ts = rcp(tex2Dsize(src, 0.0).xy);
     o.uv[0].xy = texcoord + float2( ts.x * 0.5, -ts.y * ufac); // South South East
     o.uv[0].zw = texcoord + float2(-ts.x * ufac,-ts.y * 0.5); // West South West
     o.uv[1].xy = texcoord + float2( ts.x * ufac, ts.y * 0.5); // East North East
@@ -84,7 +83,7 @@ v2f v_samp(uint id, sampler2D src, float ufac)
     return o;
 }
 
-v2f vs_dsamp0(uint id : SV_VertexID) { return v_samp(id, s_Linear, 2.0); }
+v2f vs_dsamp0(uint id : SV_VertexID) { return v_samp(id, s_Source, 2.0); }
 v2f vs_dsamp1(uint id : SV_VertexID) { return v_samp(id, s_Bloom1, 2.0); }
 v2f vs_dsamp2(uint id : SV_VertexID) { return v_samp(id, s_Bloom2, 2.0); }
 v2f vs_dsamp3(uint id : SV_VertexID) { return v_samp(id, s_Bloom3, 2.0); }
@@ -135,10 +134,10 @@ float3 p_usamp(sampler2D src, float4 uv[2])
 
 void ps_dsamp0(v2f input, out float4 c : SV_Target0)
 {
-    float3 s  = tex2D(s_Linear, input.uv[0].xy).rgb * 0.25;
-           s += tex2D(s_Linear, input.uv[0].zw).rgb * 0.25;
-           s += tex2D(s_Linear, input.uv[1].xy).rgb * 0.25;
-           s += tex2D(s_Linear, input.uv[1].zw).rgb * 0.25;
+    float3 s  = tex2D(s_Source, input.uv[0].xy).rgb * 0.25;
+           s += tex2D(s_Source, input.uv[0].zw).rgb * 0.25;
+           s += tex2D(s_Source, input.uv[1].xy).rgb * 0.25;
+           s += tex2D(s_Source, input.uv[1].zw).rgb * 0.25;
 
     float l = dot(s, 1.0 / 3.0);
     c.rgb   = saturate(lerp(l, s, BLOOM_SAT));

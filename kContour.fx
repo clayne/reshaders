@@ -21,8 +21,6 @@
     CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#include "ReShade.fxh"
-
 uniform float _Threshold <
     ui_label = "Threshold";
     ui_type = "slider";
@@ -53,19 +51,17 @@ uniform float4 _BackColor <
     ui_min = 0.0; ui_max = 1.0;
 > = float4(0.0, 0.0, 0.0, 0.0);
 
-sampler2D _MainTex
+texture2D _Source : COLOR;
+
+sampler2D s_Source
 {
-    Texture = ReShade::BackBufferTex;
+    Texture = _Source;
     #if BUFFER_COLOR_BIT_DEPTH != 10
         SRGBTexture = true;
     #endif
 };
 
-struct v2f
-{
-    float4 vpos : SV_Position;
-    float4 uv[2] : TEXCOORD0;
-};
+struct v2f { float4 vpos : SV_Position; float4 uv[2] : TEXCOORD0; };
 
 v2f vs_contour(in uint id : SV_VertexID)
 {
@@ -75,7 +71,7 @@ v2f vs_contour(in uint id : SV_VertexID)
     texcoord.y = (id == 1) ? 2.0 : 0.0;
     o.vpos = float4(texcoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 
-    float2 ts = BUFFER_PIXEL_SIZE.xy;
+    float2 ts = rcp(tex2Dsize(s_Source, 0.0));
     o.uv[0].xy = texcoord.xy;
     o.uv[0].zw = texcoord.xy + ts.xy;
     o.uv[1].xy = texcoord.xy + float2(ts.x, 0.0);
@@ -86,8 +82,8 @@ v2f vs_contour(in uint id : SV_VertexID)
 void ps_contour(v2f input, out float3 c : SV_Target0)
 {
     // Color samples
-    float4x3 co = float4x3(tex2D(_MainTex, input.uv[0].xy).rgb, tex2D(_MainTex, input.uv[0].zw).rgb,
-                           tex2D(_MainTex, input.uv[1].xy).rgb, tex2D(_MainTex, input.uv[1].zw).rgb);
+    float4x3 co = float4x3(tex2D(s_Source, input.uv[0].xy).rgb, tex2D(s_Source, input.uv[0].zw).rgb,
+                           tex2D(s_Source, input.uv[1].xy).rgb, tex2D(s_Source, input.uv[1].zw).rgb);
 
     // Roberts cross operator
     float cg1  = dot(co[1] - co[0], co[1] - co[0]);
@@ -95,6 +91,7 @@ void ps_contour(v2f input, out float3 c : SV_Target0)
           cg2 += cg1;
 
     float cg = cg2 * rsqrt(cg2); // sqrt(cg2)
+
     float edge = cg * _ColorSensitivity;
 
     // Thresholding
