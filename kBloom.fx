@@ -116,27 +116,25 @@ float4 p_dsamp(sampler src, float4 uv[2])
     return mul(luma, s) * o_div_wsum;
 }
 
+void ps_dsamp0(v2f input, out float4 c : SV_Target0)
+{
+    float4x3 s = float4x3(tex2D(s_Source, input.uv[0].xy).rgb, tex2D(s_Source, input.uv[0].zw).rgb,
+                          tex2D(s_Source, input.uv[1].xy).rgb, tex2D(s_Source, input.uv[1].zw).rgb);
+
+    float3 m = mul(0.25.rrrr, s);
+    float l = dot(m, 1.0 / 3.0);
+
+    c.rgb   = saturate(lerp(l, m, BLOOM_SAT));
+    c.rgb  *= pow(abs(l), BLOOM_CURVE) / l;
+    c.a = 1.0;
+}
+
 // Instead of vanilla bilinear, we use gaussian from CeeJayDK's SweetFX LumaSharpen.
 float3 p_usamp(sampler2D src, float4 uv[2])
 {
-    float3 s  = tex2D(src, uv[0].xy).rgb * 0.25; // South South East
-           s += tex2D(src, uv[0].zw).rgb * 0.25; // West South West
-           s += tex2D(src, uv[1].xy).rgb * 0.25; // East North East
-           s += tex2D(src, uv[1].zw).rgb * 0.25; // North North West
-    return s;
-}
-
-void ps_dsamp0(v2f input, out float4 c : SV_Target0)
-{
-    float3 s  = tex2D(s_Source, input.uv[0].xy).rgb * 0.25;
-           s += tex2D(s_Source, input.uv[0].zw).rgb * 0.25;
-           s += tex2D(s_Source, input.uv[1].xy).rgb * 0.25;
-           s += tex2D(s_Source, input.uv[1].zw).rgb * 0.25;
-
-    float l = dot(s, 1.0 / 3.0);
-    c.rgb   = saturate(lerp(l, s, BLOOM_SAT));
-    c.rgb  *= pow(abs(l), BLOOM_CURVE) / l;
-    c.a = 1.0;
+    float4x3 s = float4x3(tex2D(src, uv[0].xy).rgb, tex2D(src, uv[0].zw).rgb,
+                          tex2D(src, uv[1].xy).rgb, tex2D(src, uv[1].zw).rgb);
+    return mul(0.25.rrrr, s);
 }
 
 void ps_dsamp1(v2f input, out float4 c : SV_Target0) { c = p_dsamp(s_Bloom1, input.uv); }
