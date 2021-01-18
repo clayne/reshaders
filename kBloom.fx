@@ -1,4 +1,3 @@
-
 /*
     Custom version of KinoBloom. Should be lighter than qUINT_Bloom
 
@@ -93,7 +92,6 @@ v2f2 vs_dsamp3(uint id : SV_VertexID) { return v_samp(id, s_Bloom3, 2.0); }
 v2f2 vs_dsamp4(uint id : SV_VertexID) { return v_samp(id, s_Bloom4, 2.0); }
 v2f2 vs_dsamp5(uint id : SV_VertexID) { return v_samp(id, s_Bloom5, 2.0); }
 v2f2 vs_dsamp6(uint id : SV_VertexID) { return v_samp(id, s_Bloom6, 2.0); }
-v2f2 vs_dsamp7(uint id : SV_VertexID) { return v_samp(id, s_Bloom7, 2.0); }
 
 v2f2 vs_usamp7(uint id : SV_VertexID) { return v_samp(id, s_Bloom7, 1.0); }
 v2f2 vs_usamp6(uint id : SV_VertexID) { return v_samp(id, s_Bloom6, 1.0); }
@@ -103,7 +101,7 @@ v2f2 vs_usamp3(uint id : SV_VertexID) { return v_samp(id, s_Bloom3, 1.0); }
 v2f2 vs_usamp2(uint id : SV_VertexID) { return v_samp(id, s_Bloom2, 1.0); }
 v2f2 vs_usamp1(uint id : SV_VertexID) { return v_samp(id, s_Bloom1, 1.0); }
 
-float4 dsamp(sampler src, float4 uv[2])
+float4 p_dsamp(sampler src, float4 uv[2])
 {
     float4x4 s = float4x4(tex2D(src, uv[0].xy), tex2D(src, uv[0].zw),
                           tex2D(src, uv[1].xy), tex2D(src, uv[1].zw));
@@ -127,46 +125,44 @@ float4 dsamp(sampler src, float4 uv[2])
 }
 
 // Instead of vanilla bilinear, we use gaussian from CeeJayDK's SweetFX LumaSharpen.
-float3 usamp(sampler2D src, float4 uv[2])
+float3 p_usamp(sampler2D src, float4 uv[2])
 {
-    float3 s;
-    s  = tex2D(src, uv[0].xy).rgb; // South South East
-    s += tex2D(src, uv[0].zw).rgb; // West South West
-    s += tex2D(src, uv[1].xy).rgb; // East North East
-    s += tex2D(src, uv[1].zw).rgb; // North North West
-    return s * 0.25;
+    float3 s  = tex2D(src, uv[0].xy).rgb * 0.25; // South South East
+           s += tex2D(src, uv[0].zw).rgb * 0.25; // West South West
+           s += tex2D(src, uv[1].xy).rgb * 0.25; // East North East
+           s += tex2D(src, uv[1].zw).rgb * 0.25; // North North West
+    return s;
 }
 
-void p_dsamp0(v2f1 input, out float4 c : SV_Target0)
+void ps_dsamp0(v2f1 input, out float4 c : SV_Target0)
 {
-    float3 s  = tex2D(s_Linear, input.uv[0].xy).rgb;
-           s += tex2D(s_Linear, input.uv[0].zw).rgb;
-           s += tex2D(s_Linear, input.uv[1].xy).rgb;
-           s += tex2D(s_Linear, input.uv[1].zw).rgb;
-           s *= 0.25;
+    float3 s  = tex2D(s_Linear, input.uv[0].xy).rgb * 0.25;
+           s += tex2D(s_Linear, input.uv[0].zw).rgb * 0.25;
+           s += tex2D(s_Linear, input.uv[1].xy).rgb * 0.25;
+           s += tex2D(s_Linear, input.uv[1].zw).rgb * 0.25;
 
     float l = dot(s, 1.0 / 3.0);
-    c.rgb  = saturate(lerp(l, s, BLOOM_SAT));
-    c.rgb *= pow(l, BLOOM_CURVE) / l;
+    c.rgb   = saturate(lerp(l, s, BLOOM_SAT));
+    c.rgb  *= pow(l, BLOOM_CURVE) / l;
     c.a = 1.0;
 }
 
-void p_dsamp1(v2f2 input, out float4 c : SV_Target0) { c = dsamp(s_Bloom1, input.uv); }
-void p_dsamp2(v2f2 input, out float4 c : SV_Target0) { c = dsamp(s_Bloom2, input.uv); }
-void p_dsamp3(v2f2 input, out float4 c : SV_Target0) { c = dsamp(s_Bloom3, input.uv); }
-void p_dsamp4(v2f2 input, out float4 c : SV_Target0) { c = dsamp(s_Bloom4, input.uv); }
-void p_dsamp5(v2f2 input, out float4 c : SV_Target0) { c = dsamp(s_Bloom5, input.uv); }
-void p_dsamp6(v2f2 input, out float4 c : SV_Target0) { c = dsamp(s_Bloom6, input.uv); }
+void ps_dsamp1(v2f2 input, out float4 c : SV_Target0) { c = p_dsamp(s_Bloom1, input.uv); }
+void ps_dsamp2(v2f2 input, out float4 c : SV_Target0) { c = p_dsamp(s_Bloom2, input.uv); }
+void ps_dsamp3(v2f2 input, out float4 c : SV_Target0) { c = p_dsamp(s_Bloom3, input.uv); }
+void ps_dsamp4(v2f2 input, out float4 c : SV_Target0) { c = p_dsamp(s_Bloom4, input.uv); }
+void ps_dsamp5(v2f2 input, out float4 c : SV_Target0) { c = p_dsamp(s_Bloom5, input.uv); }
+void ps_dsamp6(v2f2 input, out float4 c : SV_Target0) { c = p_dsamp(s_Bloom6, input.uv); }
 
-void p_usamp7(v2f2 input, out float3 c : SV_Target0) { c = usamp(s_Bloom7, input.uv); }
-void p_usamp6(v2f2 input, out float3 c : SV_Target0) { c = usamp(s_Bloom6, input.uv); }
-void p_usamp5(v2f2 input, out float3 c : SV_Target0) { c = usamp(s_Bloom5, input.uv); }
-void p_usamp4(v2f2 input, out float3 c : SV_Target0) { c = usamp(s_Bloom4, input.uv); }
-void p_usamp3(v2f2 input, out float3 c : SV_Target0) { c = usamp(s_Bloom3, input.uv); }
-void p_usamp2(v2f2 input, out float3 c : SV_Target0) { c = usamp(s_Bloom2, input.uv); }
-void p_usamp1(v2f2 input, out float3 c : SV_Target0)
+void ps_usamp7(v2f2 input, out float3 c : SV_Target0) { c = p_usamp(s_Bloom7, input.uv); }
+void ps_usamp6(v2f2 input, out float3 c : SV_Target0) { c = p_usamp(s_Bloom6, input.uv); }
+void ps_usamp5(v2f2 input, out float3 c : SV_Target0) { c = p_usamp(s_Bloom5, input.uv); }
+void ps_usamp4(v2f2 input, out float3 c : SV_Target0) { c = p_usamp(s_Bloom4, input.uv); }
+void ps_usamp3(v2f2 input, out float3 c : SV_Target0) { c = p_usamp(s_Bloom3, input.uv); }
+void ps_usamp2(v2f2 input, out float3 c : SV_Target0) { c = p_usamp(s_Bloom2, input.uv); }
+void ps_usamp1(v2f2 input, out float3 c : SV_Target0)
 {
-    c = usamp(s_Bloom1, input.uv).rgb;
+    c = p_usamp(s_Bloom1, input.uv).rgb;
 
     // sRGB => XYZ => D65_2_D60 => AP1 => RRT_SAT
     const float3x3 ACESInputMat = float3x3(
@@ -190,12 +186,12 @@ void p_usamp1(v2f2 input, out float3 c : SV_Target0)
     c = mul(ACESOutputMat, RRTAndODTFit);
 }
 
-technique KinoBloom
+technique KBloom
 {
     #define vsd(i)     VertexShader = vs_dsamp##i
     #define vsu(i)     VertexShader = vs_usamp##i
-    #define psd(i, j)  PixelShader = p_dsamp##i; RenderTarget = _Bloom##j
-    #define psu(i, j)  PixelShader = p_usamp##i; RenderTarget = _Bloom##j
+    #define psd(i, j)  PixelShader = ps_dsamp##i; RenderTarget = _Bloom##j
+    #define psu(i, j)  PixelShader = ps_usamp##i; RenderTarget = _Bloom##j
     #define blendadd() BlendEnable = true; SrcBlend = ONE; DestBlend = ONE
 
     pass { vsd(0); psd(0, 1); }
@@ -214,7 +210,7 @@ technique KinoBloom
     pass
     {
         vsu(1);
-        PixelShader = p_usamp1;
+        PixelShader = ps_usamp1;
         #if BUFFER_COLOR_BIT_DEPTH != 10
             SRGBWriteEnable = true;
         #endif
