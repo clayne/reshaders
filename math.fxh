@@ -3,10 +3,17 @@
 namespace math
 {
     // sqrt(a)
-    float  sqrt(float  a) { return a * rsqrt(a); }
-    float2 sqrt(float2 a) { return a * rsqrt(a); }
-    float3 sqrt(float3 a) { return a * rsqrt(a); }
-    float4 sqrt(float4 a) { return a * rsqrt(a); }
+    #if __RENDERER__ >= 0xa000
+        float  sqrt(float  a) { return sqrt(a); }
+        float2 sqrt(float2 a) { return sqrt(a); }
+        float3 sqrt(float3 a) { return sqrt(a); }
+        float4 sqrt(float4 a) { return sqrt(a); }
+    #else
+        float  sqrt(float  a) { return a * rsqrt(a); }
+        float2 sqrt(float2 a) { return a * rsqrt(a); }
+        float3 sqrt(float3 a) { return a * rsqrt(a); }
+        float4 sqrt(float4 a) { return a * rsqrt(a); }
+    #endif
 
     // a.x + a.y + a.z + a.w
     float2 dpadd(float2 a) { return dot(a, 1.0); }
@@ -23,6 +30,11 @@ namespace math
     float2 ccross(float2 a, float2 b, float2 c) { return b * dot(a, c) - c * dot(a, b); }
     float3 ccross(float3 a, float3 b, float3 c) { return b * dot(a, c) - c * dot(a, b); }
     float4 ccross(float4 a, float4 b, float4 c) { return b * dot(a, c) - c * dot(a, b); }
+
+    float  pow(float  a, float  b) { return exp2(log2(a) * b); }
+    float2 pow(float2 a, float2 b) { return exp2(log2(a) * b); }
+    float3 pow(float3 a, float3 b) { return exp2(log2(a) * b); }
+    float4 pow(float4 a, float4 b) { return exp2(log2(a) * b); }
 
     namespace exp
     {

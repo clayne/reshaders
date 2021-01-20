@@ -29,14 +29,14 @@ uniform float BLOOM_CURVE <
     ui_min = 0.0; ui_max = 10.0;
     ui_label = "Bloom Curve";
     ui_tooltip = "Higher values limit bloom to bright light sources only.";
-> = 8.0;
+> = 0.5;
 
 uniform float BLOOM_SAT <
     ui_type = "drag";
     ui_min = 0.0; ui_max = 5.0;
     ui_label = "Bloom Saturation";
     ui_tooltip = "Adjusts the color strength of the bloom effect";
-> = 2.0;
+> = 1.0;
 
 texture2D _Source : COLOR;
 texture2D _Bloom1 { Width = BUFFER_WIDTH / 2;   Height = BUFFER_HEIGHT / 2;   Format = RGBA16F; };
@@ -121,21 +121,23 @@ void ps_dsamp0(v2f input, out float4 c : SV_Target0)
                           tex2D(s_Source, input.uv[1].xy).rgb,
                           tex2D(s_Source, input.uv[1].zw).rgb);
 
+    // Threshold function from https://catlikecoding.com/unity/tutorials/advanced-rendering/bloom/
     float3 m = mul(0.25.rrrr, s);
-    float l = dot(m, 1.0 / 3.0);
+    float bright = dot(m, 1.0 / 3.0);
+    m = saturate(lerp(bright, m, BLOOM_SAT));
 
-    c.rgb   = saturate(lerp(l, m, BLOOM_SAT));
-    c.rgb  *= pow(abs(l), BLOOM_CURVE) / l;
+    float thresh = 1.0 - BLOOM_CURVE * rcp(bright);
+    c.rgb = saturate(m * thresh);
     c.a = 1.0;
 }
 
 // Instead of vanilla bilinear, we use gaussian from CeeJayDK's SweetFX LumaSharpen.
-float3 p_usamp(sampler2D src, float4 uv[2])
+float4 p_usamp(sampler2D src, float4 uv[2])
 {
-    float4x3 s = float4x3(tex2D(src, uv[0].xy).rgb,
-                          tex2D(src, uv[0].zw).rgb,
-                          tex2D(src, uv[1].xy).rgb,
-                          tex2D(src, uv[1].zw).rgb);
+    float4x4 s = float4x4(tex2D(src, uv[0].xy),
+                          tex2D(src, uv[0].zw),
+                          tex2D(src, uv[1].xy),
+                          tex2D(src, uv[1].zw));
     return mul(0.25.rrrr, s);
 }
 
@@ -146,12 +148,12 @@ void ps_dsamp4(v2f input, out float4 c : SV_Target0) { c = p_dsamp(s_Bloom4, inp
 void ps_dsamp5(v2f input, out float4 c : SV_Target0) { c = p_dsamp(s_Bloom5, input.uv); }
 void ps_dsamp6(v2f input, out float4 c : SV_Target0) { c = p_dsamp(s_Bloom6, input.uv); }
 
-void ps_usamp7(v2f input, out float3 c : SV_Target0) { c = p_usamp(s_Bloom7, input.uv); }
-void ps_usamp6(v2f input, out float3 c : SV_Target0) { c = p_usamp(s_Bloom6, input.uv); }
-void ps_usamp5(v2f input, out float3 c : SV_Target0) { c = p_usamp(s_Bloom5, input.uv); }
-void ps_usamp4(v2f input, out float3 c : SV_Target0) { c = p_usamp(s_Bloom4, input.uv); }
-void ps_usamp3(v2f input, out float3 c : SV_Target0) { c = p_usamp(s_Bloom3, input.uv); }
-void ps_usamp2(v2f input, out float3 c : SV_Target0) { c = p_usamp(s_Bloom2, input.uv); }
+void ps_usamp7(v2f input, out float4 c : SV_Target0) { c = p_usamp(s_Bloom7, input.uv); }
+void ps_usamp6(v2f input, out float4 c : SV_Target0) { c = p_usamp(s_Bloom6, input.uv); }
+void ps_usamp5(v2f input, out float4 c : SV_Target0) { c = p_usamp(s_Bloom5, input.uv); }
+void ps_usamp4(v2f input, out float4 c : SV_Target0) { c = p_usamp(s_Bloom4, input.uv); }
+void ps_usamp3(v2f input, out float4 c : SV_Target0) { c = p_usamp(s_Bloom3, input.uv); }
+void ps_usamp2(v2f input, out float4 c : SV_Target0) { c = p_usamp(s_Bloom2, input.uv); }
 void ps_usamp1(v2f input, out float3 c : SV_Target0)
 {
     c = p_usamp(s_Bloom1, input.uv).rgb;
@@ -161,15 +163,13 @@ void ps_usamp1(v2f input, out float3 c : SV_Target0)
     const float3x3 ACESInputMat = float3x3(
         0.59719, 0.35458, 0.04823,
         0.07600, 0.90834, 0.01566,
-        0.02840, 0.13383, 0.83777
-    );
+        0.02840, 0.13383, 0.83777);
 
     // ODT_SAT => XYZ => D60_2_D65 => sRGB
     const float3x3 ACESOutputMat = float3x3(
          1.60475, -0.53108, -0.07367,
         -0.10208,  1.10813, -0.00605,
-        -0.00327, -0.07276,  1.07602
-    );
+        -0.00327, -0.07276,  1.07602);
 
     float3 a = c * (c + 0.0245786f) - 0.000090537f;
     float3 b = c * (0.983729f * c + 0.4329510f) + 0.238081f;

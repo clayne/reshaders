@@ -51,6 +51,8 @@ uniform float4 _BackColor <
     ui_min = 0.0; ui_max = 1.0;
 > = float4(0.0, 0.0, 0.0, 0.0);
 
+#include "math.fxh"
+
 texture2D _Source : COLOR;
 
 sampler2D s_Source
@@ -82,15 +84,17 @@ v2f vs_contour(in uint id : SV_VertexID)
 void ps_contour(v2f input, out float3 c : SV_Target0)
 {
     // Color samples
-    float4x3 co = float4x3(tex2D(s_Source, input.uv[0].xy).rgb, tex2D(s_Source, input.uv[0].zw).rgb,
-                           tex2D(s_Source, input.uv[1].xy).rgb, tex2D(s_Source, input.uv[1].zw).rgb);
+    float4x3 co = float4x3(tex2D(s_Source, input.uv[0].xy).rgb,
+                           tex2D(s_Source, input.uv[0].zw).rgb,
+                           tex2D(s_Source, input.uv[1].xy).rgb,
+                           tex2D(s_Source, input.uv[1].zw).rgb);
 
     // Roberts cross operator
     float cg1  = dot(co[1] - co[0], co[1] - co[0]);
     float cg2  = dot(co[3] - co[2], co[3] - co[2]);
           cg2 += cg1;
 
-    float cg = cg2 * rsqrt(cg2); // sqrt(cg2)
+    float cg = math::sqrt(cg2);
 
     float edge = cg * _ColorSensitivity;
 
