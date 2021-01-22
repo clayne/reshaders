@@ -75,7 +75,7 @@ v2f v_samp(uint id, sampler2D src, float ufac)
 
     // 9 tap gaussian using 4 texture fetches by CeeJayDK
     // https://github.com/CeeJayDK/SweetFX - LumaSharpen.fx
-    float2 ts = ufac / tex2Dsize(src, 0.0);
+    float2  ts = ufac / tex2Dsize(src, 0.0);
     o.uv[0].xy = texcoord + float2( ts.x * 0.5, -ts.y); // South South East
     o.uv[0].zw = texcoord + float2(-ts.x ,-ts.y * 0.5); // West  South West
     o.uv[1].xy = texcoord + float2( ts.x,  ts.y * 0.5); // East  North East
