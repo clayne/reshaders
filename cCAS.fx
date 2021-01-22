@@ -87,15 +87,15 @@ v2f vs_cas(in uint id : SV_VertexID)
     texcoord.y = (id == 1) ? 2.0 : 0.0;
     o.vpos = float4(texcoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 
-    o.uv[0].xy = offset.xx * p + texcoord; // (-1,-1)
-    o.uv[0].zw = offset.yx * p + texcoord; // ( 0,-1)
-    o.uv[1].xy = offset.zx * p + texcoord; // ( 1,-1)
-    o.uv[1].zw = offset.zy * p + texcoord; // ( 1, 0)
-    o.uv[2].xy = offset.xz * p + texcoord; // (-1, 1)
-    o.uv[2].zw = offset.zy * p + texcoord; // ( 1, 0)
-    o.uv[3].xy = offset.yz * p + texcoord; // ( 0, 1)
-    o.uv[3].zw = offset.zz * p + texcoord; // ( 1, 1)
-    o.uv[4].xyzw = texcoord.xyxy;     // ( 0, 0)
+    o.uv[0].xy = mad(offset.xx, p, texcoord); // (-1,-1)
+    o.uv[0].zw = mad(offset.yx, p, texcoord); // ( 0,-1)
+    o.uv[1].xy = mad(offset.zx, p, texcoord); // ( 1,-1)
+    o.uv[1].zw = mad(offset.zy, p, texcoord); // ( 1, 0)
+    o.uv[2].xy = mad(offset.xz, p, texcoord); // (-1, 1)
+    o.uv[2].zw = mad(offset.zy, p, texcoord); // ( 1, 0)
+    o.uv[3].xy = mad(offset.yz, p, texcoord); // ( 0, 1)
+    o.uv[3].zw = mad(offset.zz, p, texcoord); // ( 1, 1)
+    o.uv[4].xyzw = texcoord.xyxy;             // ( 0, 0)
     return o;
 }
 

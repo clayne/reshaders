@@ -76,10 +76,10 @@ v2f v_samp(uint id, sampler2D src, float ufac)
     // 9 tap gaussian using 4 texture fetches by CeeJayDK
     // https://github.com/CeeJayDK/SweetFX - LumaSharpen.fx
     float2 ts = rcp(tex2Dsize(src, 0.0).xy);
-    o.uv[0].xy = texcoord + float2( ts.x * 0.5, -ts.y * ufac); // South South East
-    o.uv[0].zw = texcoord + float2(-ts.x * ufac,-ts.y * 0.5); // West South West
-    o.uv[1].xy = texcoord + float2( ts.x * ufac, ts.y * 0.5); // East North East
-    o.uv[1].zw = texcoord + float2(-ts.x * 0.5,  ts.y * ufac); // North North West
+    o.uv[0].xy = float2( ts.x * 0.5, -ts.y * ufac) + texcoord; // South South East
+    o.uv[0].zw = float2(-ts.x * ufac,-ts.y * 0.5)  + texcoord; // West  South West
+    o.uv[1].xy = float2( ts.x * ufac, ts.y * 0.5)  + texcoord; // East  North East
+    o.uv[1].zw = float2(-ts.x * 0.5,  ts.y * ufac) + texcoord; // North North West
     return o;
 }
 
@@ -106,29 +106,9 @@ float4 p_dsamp(sampler src, float4 uv[2])
                           tex2D(src, uv[1].xy),
                           tex2D(src, uv[1].zw));
 
-    // Karis's luma weighted average
-    const float4 w = float2(1.0 / 3.0, 1.0).xxxy;
-    float4 luma = rcp(mul(s, w));
-
-    float o_div_wsum = rcp(dot(luma, 1.0));
-    return mul(luma, s) * o_div_wsum;
-}
-
-void ps_dsamp0(v2f input, out float4 c : SV_Target0)
-{
-    float4x3 s = float4x3(tex2D(s_Source, input.uv[0].xy).rgb,
-                          tex2D(s_Source, input.uv[0].zw).rgb,
-                          tex2D(s_Source, input.uv[1].xy).rgb,
-                          tex2D(s_Source, input.uv[1].zw).rgb);
-
-    // Threshold function from https://catlikecoding.com/unity/tutorials/advanced-rendering/bloom/
-    float3 m = mul(0.25.rrrr, s);
-    float bright = dot(m, 1.0 / 3.0);
-    m = saturate(lerp(bright, m, BLOOM_SAT));
-
-    float thresh = 1.0 - BLOOM_CURVE * rcp(bright);
-    c.rgb = saturate(m * thresh);
-    c.a = 1.0;
+    // Karis' luma weighted average
+    float4 luma = rcp(mul(s, float2(1.0 / 3.0, 1.0).xxxy));
+    return mul(luma, s) / dot(luma, 1.0);
 }
 
 // Instead of vanilla bilinear, we use gaussian from CeeJayDK's SweetFX LumaSharpen.
@@ -139,6 +119,21 @@ float4 p_usamp(sampler2D src, float4 uv[2])
                           tex2D(src, uv[1].xy),
                           tex2D(src, uv[1].zw));
     return mul(0.25.rrrr, s);
+}
+
+void ps_dsamp0(v2f input, out float4 c : SV_Target0)
+{
+    float4x3 s = float4x3(tex2D(s_Source, input.uv[0].xy).rgb,
+                          tex2D(s_Source, input.uv[0].zw).rgb,
+                          tex2D(s_Source, input.uv[1].xy).rgb,
+                          tex2D(s_Source, input.uv[1].zw).rgb);
+
+    float3 m = mul(0.25.rrrr, s);
+    float bright = dot(m, 1.0 / 3.0);
+    c.rgb = saturate(lerp(bright, m, BLOOM_SAT));
+    c.a = log2(bright);
+    c.rgb *= exp2(mad(c.a, BLOOM_CURVE, -c.a)) ;
+    c.a = 1.0;
 }
 
 void ps_dsamp1(v2f input, out float4 c : SV_Target0) { c = p_dsamp(s_Bloom1, input.uv); }
@@ -156,9 +151,8 @@ void ps_usamp3(v2f input, out float4 c : SV_Target0) { c = p_usamp(s_Bloom3, inp
 void ps_usamp2(v2f input, out float4 c : SV_Target0) { c = p_usamp(s_Bloom2, input.uv); }
 void ps_usamp1(v2f input, out float3 c : SV_Target0)
 {
-    c = p_usamp(s_Bloom1, input.uv).rgb;
-
     // From https://github.com/TheRealMJP/BakingLab - ACES.hlsl
+
     // sRGB => XYZ => D65_2_D60 => AP1 => RRT_SAT
     const float3x3 ACESInputMat = float3x3(
         0.59719, 0.35458, 0.04823,
@@ -171,6 +165,7 @@ void ps_usamp1(v2f input, out float3 c : SV_Target0)
         -0.10208,  1.10813, -0.00605,
         -0.00327, -0.07276,  1.07602);
 
+    c = p_usamp(s_Bloom1, input.uv).rgb;
     float3 a = c * (c + 0.0245786f) - 0.000090537f;
     float3 b = c * (0.983729f * c + 0.4329510f) + 0.238081f;
     float3 RRTAndODTFit = a / b;
@@ -181,33 +176,29 @@ void ps_usamp1(v2f input, out float3 c : SV_Target0)
 
 technique KBloom
 {
-    #define vsd(i)     VertexShader = vs_dsamp##i
-    #define vsu(i)     VertexShader = vs_usamp##i
-    #define psd(i, j)  PixelShader = ps_dsamp##i; RenderTarget = _Bloom##j
-    #define psu(i, j)  PixelShader = ps_usamp##i; RenderTarget = _Bloom##j
-    #define blendadd() BlendEnable = true; SrcBlend = ONE; DestBlend = ONE
+    #define vsd(i)   VertexShader = vs_dsamp##i
+    #define vsu(i)   VertexShader = vs_usamp##i
+    #define psd(i)   PixelShader  = ps_dsamp##i
+    #define psu(i)   PixelShader  = ps_usamp##i
+    #define rt(i)    RenderTarget = _Bloom##i
+    #define blend(i) BlendEnable  = true; DestBlend = ##i
 
-    pass { vsd(0); psd(0, 1); }
-    pass { vsd(1); psd(1, 2); }
-    pass { vsd(2); psd(2, 3); }
-    pass { vsd(3); psd(3, 4); }
-    pass { vsd(4); psd(4, 5); }
-    pass { vsd(5); psd(5, 6); }
-    pass { vsd(6); psd(6, 7); }
-    pass { vsu(7); psu(7, 6); blendadd(); }
-    pass { vsu(6); psu(6, 5); blendadd(); }
-    pass { vsu(5); psu(5, 4); blendadd(); }
-    pass { vsu(4); psu(4, 3); blendadd(); }
-    pass { vsu(3); psu(3, 2); blendadd(); }
-    pass { vsu(2); psu(2, 1); blendadd(); }
-    pass
-    {
-        vsu(1);
-        PixelShader = ps_usamp1;
+    pass { vsd(0); psd(0); rt(1); }
+    pass { vsd(1); psd(1); rt(2); }
+    pass { vsd(2); psd(2); rt(3); }
+    pass { vsd(3); psd(3); rt(4); }
+    pass { vsd(4); psd(4); rt(5); }
+    pass { vsd(5); psd(5); rt(6); }
+    pass { vsd(6); psd(6); rt(7); }
+    pass { vsu(7); psu(7); rt(6); blend(ONE); }
+    pass { vsu(6); psu(6); rt(5); blend(ONE); }
+    pass { vsu(5); psu(5); rt(4); blend(ONE); }
+    pass { vsu(4); psu(4); rt(3); blend(ONE); }
+    pass { vsu(3); psu(3); rt(2); blend(ONE); }
+    pass { vsu(2); psu(2); rt(1); blend(ONE); }
+    pass { vsu(1); psu(1); blend(INVSRCCOLOR);
         #if BUFFER_COLOR_BIT_DEPTH != 10
             SRGBWriteEnable = true;
         #endif
-        BlendEnable = true;
-        DestBlend = INVSRCCOLOR;
     }
 }
