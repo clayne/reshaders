@@ -75,11 +75,11 @@ v2f v_samp(uint id, sampler2D src, float ufac)
 
     // 9 tap gaussian using 4 texture fetches by CeeJayDK
     // https://github.com/CeeJayDK/SweetFX - LumaSharpen.fx
-    float2 ts = rcp(tex2Dsize(src, 0.0).xy);
-    o.uv[0].xy = float2( ts.x * 0.5, -ts.y * ufac) + texcoord; // South South East
-    o.uv[0].zw = float2(-ts.x * ufac,-ts.y * 0.5)  + texcoord; // West  South West
-    o.uv[1].xy = float2( ts.x * ufac, ts.y * 0.5)  + texcoord; // East  North East
-    o.uv[1].zw = float2(-ts.x * 0.5,  ts.y * ufac) + texcoord; // North North West
+    float2 ts = ufac / tex2Dsize(src, 0.0);
+    o.uv[0].xy = texcoord + float2( ts.x * 0.5, -ts.y); // South South East
+    o.uv[0].zw = texcoord + float2(-ts.x ,-ts.y * 0.5); // West  South West
+    o.uv[1].xy = texcoord + float2( ts.x,  ts.y * 0.5); // East  North East
+    o.uv[1].zw = texcoord + float2(-ts.x * 0.5,  ts.y); // North North West
     return o;
 }
 
@@ -123,16 +123,14 @@ float4 p_usamp(sampler2D src, float4 uv[2])
 
 void ps_dsamp0(v2f input, out float4 c : SV_Target0)
 {
-    float4x3 s = float4x3(tex2D(s_Source, input.uv[0].xy).rgb,
-                          tex2D(s_Source, input.uv[0].zw).rgb,
-                          tex2D(s_Source, input.uv[1].xy).rgb,
-                          tex2D(s_Source, input.uv[1].zw).rgb);
-
-    float3 m = mul(0.25.rrrr, s);
-    float bright = dot(m, 1.0 / 3.0);
-    c.rgb = saturate(lerp(bright, m, BLOOM_SAT));
-    c.a = log2(bright);
-    c.rgb *= exp2(mad(c.a, BLOOM_CURVE, -c.a)) ;
+    float4x4 s = float4x4(tex2D(s_Source, input.uv[0].xy),
+                          tex2D(s_Source, input.uv[0].zw),
+                          tex2D(s_Source, input.uv[1].xy),
+                          tex2D(s_Source, input.uv[1].zw));
+    float4 m = mul(0.25.rrrr, s);
+    m.a    = dot(m.rgb, 1.0 / 3.0);
+    c.rgb  = saturate(lerp(m.a, m.rgb, BLOOM_SAT));
+    c.rgb *= exp2(mad(log2(m.a), BLOOM_CURVE, -log2(m.a))) ;
     c.a = 1.0;
 }
 
