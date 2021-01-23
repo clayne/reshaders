@@ -104,7 +104,6 @@ float4 p_dsamp(sampler src, float4 uv[2])
     return mul(luma, s) / dot(luma, 1.0);
 }
 
-// Instead of vanilla bilinear, we use gaussian from CeeJayDK's SweetFX LumaSharpen.
 float4 p_usamp(sampler2D src, float4 uv[2])
 {
     float4x4 s = float4x4(tex2D(src, uv[0].xy),
