@@ -24,19 +24,12 @@
     SOFTWARE.
 */
 
-uniform float BLOOM_CURVE <
+uniform float _Curve <
     ui_type = "drag";
-    ui_min = 0.0; ui_max = 10.0;
+    ui_min = 0.01; ui_max = 0.1; ui_step = 0.001;
     ui_label = "Bloom Curve";
-    ui_tooltip = "Higher values limit bloom to bright light sources only.";
-> = 0.5;
-
-uniform float BLOOM_SAT <
-    ui_type = "drag";
-    ui_min = 0.0; ui_max = 5.0;
-    ui_label = "Bloom Saturation";
-    ui_tooltip = "Adjusts the color strength of the bloom effect";
-> = 1.0;
+    ui_tooltip = "Lower values limit bloom to bright light sources only.";
+> = 0.025;
 
 texture2D _Source : COLOR;
 texture2D _Bloom1 { Width = BUFFER_WIDTH / 2;   Height = BUFFER_HEIGHT / 2;   Format = RGBA16F; };
@@ -68,18 +61,18 @@ struct v2f { float4 vpos : SV_Position; float4 uv[2] : TEXCOORD0; };
 v2f v_samp(uint id, sampler2D src, float ufac)
 {
     v2f o;
-    float2 texcoord;
-    texcoord.x = (id == 2) ? 2.0 : 0.0;
-    texcoord.y = (id == 1) ? 2.0 : 0.0;
-    o.vpos = float4(texcoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    float2 coord;
+    coord.x = (id == 2) ? 2.0 : 0.0;
+    coord.y = (id == 1) ? 2.0 : 0.0;
+    o.vpos = float4(coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 
-    // 9 tap gaussian using 4 texture fetches by CeeJayDK
+    // 17 tap gaussian using 4 texture fetches by CeeJayDK
     // https://github.com/CeeJayDK/SweetFX - LumaSharpen.fx
-    float2  ts = ufac / tex2Dsize(src, 0.0);
-    o.uv[0].xy = texcoord + float2( ts.x * 0.5, -ts.y); // South South East
-    o.uv[0].zw = texcoord + float2(-ts.x ,-ts.y * 0.5); // West  South West
-    o.uv[1].xy = texcoord + float2( ts.x,  ts.y * 0.5); // East  North East
-    o.uv[1].zw = texcoord + float2(-ts.x * 0.5,  ts.y); // North North West
+    const float2 ts = ufac / tex2Dsize(src, 0.0);
+    o.uv[0].xy = coord + ts * float2(0.4, -1.2); // South South East
+    o.uv[0].zw = coord - ts * float2(1.2,  0.4); // West  South West
+    o.uv[1].xy = coord + ts * float2(1.2,  0.4); // East  North East
+    o.uv[1].zw = coord - ts * float2(0.4, -1.2); // North North West
     return o;
 }
 
@@ -107,7 +100,7 @@ float4 p_dsamp(sampler src, float4 uv[2])
                           tex2D(src, uv[1].zw));
 
     // Karis' luma weighted average
-    float4 luma = rcp(mul(s, float2(1.0 / 3.0, 1.0).xxxy));
+    float4 luma = rcp(mul(s, float2(rcp(3.0), 1.0).xxxy));
     return mul(luma, s) / dot(luma, 1.0);
 }
 
@@ -121,55 +114,37 @@ float4 p_usamp(sampler2D src, float4 uv[2])
     return mul(0.25.rrrr, s);
 }
 
-void ps_dsamp0(v2f input, out float4 c : SV_Target0)
+void ps_dsamp0(v2f input, out float4 o : SV_Target0)
 {
     float4x4 s = float4x4(tex2D(s_Source, input.uv[0].xy),
                           tex2D(s_Source, input.uv[0].zw),
                           tex2D(s_Source, input.uv[1].xy),
                           tex2D(s_Source, input.uv[1].zw));
     float4 m = mul(0.25.rrrr, s);
-    m.a    = dot(m.rgb, 1.0 / 3.0);
-    c.rgb  = saturate(lerp(m.a, m.rgb, BLOOM_SAT));
-    c.rgb *= exp2(mad(log2(m.a), BLOOM_CURVE, -log2(m.a))) ;
-    c.a = 1.0;
+    o.rgb = (m.rgb * -_Curve) * rcp(m.rgb - (1.0 + _Curve));
+    o.a = 1.0;
 }
 
-void ps_dsamp1(v2f input, out float4 c : SV_Target0) { c = p_dsamp(s_Bloom1, input.uv); }
-void ps_dsamp2(v2f input, out float4 c : SV_Target0) { c = p_dsamp(s_Bloom2, input.uv); }
-void ps_dsamp3(v2f input, out float4 c : SV_Target0) { c = p_dsamp(s_Bloom3, input.uv); }
-void ps_dsamp4(v2f input, out float4 c : SV_Target0) { c = p_dsamp(s_Bloom4, input.uv); }
-void ps_dsamp5(v2f input, out float4 c : SV_Target0) { c = p_dsamp(s_Bloom5, input.uv); }
-void ps_dsamp6(v2f input, out float4 c : SV_Target0) { c = p_dsamp(s_Bloom6, input.uv); }
+void ps_dsamp1(v2f input, out float4 o : SV_Target0) { o = p_dsamp(s_Bloom1, input.uv); }
+void ps_dsamp2(v2f input, out float4 o : SV_Target0) { o = p_dsamp(s_Bloom2, input.uv); }
+void ps_dsamp3(v2f input, out float4 o : SV_Target0) { o = p_dsamp(s_Bloom3, input.uv); }
+void ps_dsamp4(v2f input, out float4 o : SV_Target0) { o = p_dsamp(s_Bloom4, input.uv); }
+void ps_dsamp5(v2f input, out float4 o : SV_Target0) { o = p_dsamp(s_Bloom5, input.uv); }
+void ps_dsamp6(v2f input, out float4 o : SV_Target0) { o = p_dsamp(s_Bloom6, input.uv); }
 
-void ps_usamp7(v2f input, out float4 c : SV_Target0) { c = p_usamp(s_Bloom7, input.uv); }
-void ps_usamp6(v2f input, out float4 c : SV_Target0) { c = p_usamp(s_Bloom6, input.uv); }
-void ps_usamp5(v2f input, out float4 c : SV_Target0) { c = p_usamp(s_Bloom5, input.uv); }
-void ps_usamp4(v2f input, out float4 c : SV_Target0) { c = p_usamp(s_Bloom4, input.uv); }
-void ps_usamp3(v2f input, out float4 c : SV_Target0) { c = p_usamp(s_Bloom3, input.uv); }
-void ps_usamp2(v2f input, out float4 c : SV_Target0) { c = p_usamp(s_Bloom2, input.uv); }
-void ps_usamp1(v2f input, out float3 c : SV_Target0)
+void ps_usamp7(v2f input, out float4 o : SV_Target0) { o = p_usamp(s_Bloom7, input.uv); }
+void ps_usamp6(v2f input, out float4 o : SV_Target0) { o = p_usamp(s_Bloom6, input.uv); }
+void ps_usamp5(v2f input, out float4 o : SV_Target0) { o = p_usamp(s_Bloom5, input.uv); }
+void ps_usamp4(v2f input, out float4 o : SV_Target0) { o = p_usamp(s_Bloom4, input.uv); }
+void ps_usamp3(v2f input, out float4 o : SV_Target0) { o = p_usamp(s_Bloom3, input.uv); }
+void ps_usamp2(v2f input, out float4 o : SV_Target0) { o = p_usamp(s_Bloom2, input.uv); }
+void ps_usamp1(v2f input, out float3 o : SV_Target0)
 {
-    // From https://github.com/TheRealMJP/BakingLab - ACES.hlsl
-
-    // sRGB => XYZ => D65_2_D60 => AP1 => RRT_SAT
-    const float3x3 ACESInputMat = float3x3(
-        0.59719, 0.35458, 0.04823,
-        0.07600, 0.90834, 0.01566,
-        0.02840, 0.13383, 0.83777);
-
-    // ODT_SAT => XYZ => D60_2_D65 => sRGB
-    const float3x3 ACESOutputMat = float3x3(
-         1.60475, -0.53108, -0.07367,
-        -0.10208,  1.10813, -0.00605,
-        -0.00327, -0.07276,  1.07602);
-
-    c = p_usamp(s_Bloom1, input.uv).rgb;
-    float3 a = c * (c + 0.0245786f) - 0.000090537f;
-    float3 b = c * (0.983729f * c + 0.4329510f) + 0.238081f;
-    float3 RRTAndODTFit = a / b;
-
-    c = mul(ACESInputMat, c);
-    c = mul(ACESOutputMat, RRTAndODTFit);
+    // ACES Filmic Tone Mapping Curve from
+    // https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/
+    const float c[5] = { 2.51, 0.03, 2.43, 0.59, 0.14 };
+    o = p_usamp(s_Bloom1, input.uv).rgb;
+    o = saturate(o * mad(c[0], o, c[1]) / mad(o, mad(c[2], o, c[3]), c[4]));
 }
 
 technique KBloom
