@@ -149,7 +149,6 @@ void ps_dsamp0(v2f input, out float4 o : SV_Target0)
     // Combine and apply the brightness response curve
     o.rgb  = saturate(lerp(m.a, m.rgb, _Saturation));
     o.rgb *= max(rq, m.a - _Threshold) / m.a;
-
     o.a = 1.0;
 }
 
