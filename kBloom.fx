@@ -24,21 +24,33 @@
     SOFTWARE.
 */
 
-uniform float _Curve <
+uniform float _Threshold <
     ui_type = "drag";
-    ui_min = 0.01; ui_max = 0.1; ui_step = 0.001;
-    ui_label = "Bloom Curve";
-    ui_tooltip = "Lower values limit bloom to bright light sources only.";
-> = 0.025;
+    ui_min = 0.0;
+    ui_label = "Threshold";
+> = 0.8;
+
+uniform float _Knee <
+    ui_type = "drag";
+    ui_min = 0.0;
+    ui_label = "Knee";
+    ui_tooltip = "Threshold smoothing factor";
+> = 0.5;
+
+uniform float _Saturation <
+    ui_type = "drag";
+    ui_min = 0.0;
+    ui_label = "Saturation";
+> = 2.0;
 
 texture2D _Source : COLOR;
-texture2D _Bloom1 { Width = BUFFER_WIDTH / 2;   Height = BUFFER_HEIGHT / 2;   Format = RGBA16F; };
-texture2D _Bloom2 { Width = BUFFER_WIDTH / 4;   Height = BUFFER_HEIGHT / 4;   Format = RGBA16F; };
-texture2D _Bloom3 { Width = BUFFER_WIDTH / 8;   Height = BUFFER_HEIGHT / 8;   Format = RGBA16F; };
-texture2D _Bloom4 { Width = BUFFER_WIDTH / 16;  Height = BUFFER_HEIGHT / 16;  Format = RGBA16F; };
-texture2D _Bloom5 { Width = BUFFER_WIDTH / 32;  Height = BUFFER_HEIGHT / 32;  Format = RGBA16F; };
-texture2D _Bloom6 { Width = BUFFER_WIDTH / 64;  Height = BUFFER_HEIGHT / 64;  Format = RGBA16F; };
-texture2D _Bloom7 { Width = BUFFER_WIDTH / 128; Height = BUFFER_HEIGHT / 128; Format = RGBA16F; };
+texture2D _Bloom1 { Width = BUFFER_WIDTH / 2;   Height = BUFFER_HEIGHT / 2;   Format = RGB10A2; };
+texture2D _Bloom2 { Width = BUFFER_WIDTH / 4;   Height = BUFFER_HEIGHT / 4;   Format = RGB10A2; };
+texture2D _Bloom3 { Width = BUFFER_WIDTH / 8;   Height = BUFFER_HEIGHT / 8;   Format = RGB10A2; };
+texture2D _Bloom4 { Width = BUFFER_WIDTH / 16;  Height = BUFFER_HEIGHT / 16;  Format = RGB10A2; };
+texture2D _Bloom5 { Width = BUFFER_WIDTH / 32;  Height = BUFFER_HEIGHT / 32;  Format = RGB10A2; };
+texture2D _Bloom6 { Width = BUFFER_WIDTH / 64;  Height = BUFFER_HEIGHT / 64;  Format = RGB10A2; };
+texture2D _Bloom7 { Width = BUFFER_WIDTH / 128; Height = BUFFER_HEIGHT / 128; Format = RGB10A2; };
 
 sampler2D s_Source
 {
@@ -113,6 +125,9 @@ float4 p_usamp(sampler2D src, float4 uv[2])
     return mul(0.25.rrrr, s);
 }
 
+// Quadratic color thresholding from
+// https://github.com/Unity-Technologies/Graphics
+
 void ps_dsamp0(v2f input, out float4 o : SV_Target0)
 {
     float4x4 s = float4x4(tex2D(s_Source, input.uv[0].xy),
@@ -120,7 +135,21 @@ void ps_dsamp0(v2f input, out float4 o : SV_Target0)
                           tex2D(s_Source, input.uv[1].xy),
                           tex2D(s_Source, input.uv[1].zw));
     float4 m = mul(0.25.rrrr, s);
-    o.rgb = (m.rgb * -_Curve) * rcp(m.rgb - (1.0 + _Curve));
+
+    const float  knee = _Threshold * _Knee + 1e-5f;
+    const float3 curve = float3(_Threshold - knee, knee * 2.0, 0.25 / knee);
+
+    // Pixel brightness
+    m.a = max(m.r, max(m.g, m.b));
+
+    // Under-threshold part
+    float rq = clamp(m.a - curve.x, 0.0, curve.y);
+    rq = curve.z * rq * rq;
+
+    // Combine and apply the brightness response curve
+    o.rgb  = saturate(lerp(m.a, m.rgb, _Saturation));
+    o.rgb *= max(rq, m.a - _Threshold) / m.a;
+
     o.a = 1.0;
 }
 
