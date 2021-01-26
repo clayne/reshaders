@@ -30,7 +30,7 @@
 
 #include "ReShade.fxh"
 
-uniform float intensity <
+uniform float kIntensity <
     ui_type = "slider";
     ui_min = 0.0; ui_max = 1.0;
     ui_label = "Sharpen";
@@ -63,7 +63,7 @@ void PS_Fragment(in float4 vpos : SV_Position, in float2 uv : TEXCOORD, out floa
     float4 c7 = tex2Doffset(sLinear, uv, + offset(int2( 0, +1)));
     float4 c8 = tex2Doffset(sLinear, uv, + offset(int2(+1, +1)));
 
-    c = c4 - (c0 + c1 + c2 + c3 - 8 * c4 + c5 + c6 + c7 + c8) * intensity;
+    c = c4 - (c0 + c1 + c2 + c3 - 8 * c4 + c5 + c6 + c7 + c8) * kIntensity;
 }
 
 technique KinoSharpen

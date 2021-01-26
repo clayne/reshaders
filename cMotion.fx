@@ -8,18 +8,18 @@
 
 #include "ReShade.fxh"
 
-uniform float _Lambda <
+uniform float kLambda <
     ui_type = "drag";
     ui_label = "Lambda";
 > = 4.0;
 
-uniform int _Samples <
+uniform int kSamples <
     ui_type = "drag";
     ui_min = 0; ui_max = 16;
     ui_label = "Blur Amount";
 > = 16;
 
-uniform int Debug <
+uniform int kDebug <
     ui_type = "combo";
     ui_items = "Off\0Direction\0";
     ui_label = "Debug View";
@@ -130,7 +130,7 @@ float2 mFlow(float curr, float prev)
     d.x = ddx(curr + prev);
     d.y = ddy(curr + prev);
     d.xy *= 0.5;
-    d.z = _Lambda;
+    d.z = kLambda;
     d.w = length(d.xyz); // magnitude :: length() uses 1 dp3add instead of mul + mad
     return dt * (d.xy / d.w);
 }
@@ -150,15 +150,15 @@ void pFlowBlur(v2f input, out float3 c : SV_Target0)
     float ign = frac(m.x * frac(dot(input.vpos.xy, m.yz)));
 
     [loop] // Apply motion blur
-    for (float i = 0.0; i <= _Samples; i += 2.0)
+    for (float i = 0.0; i <= kSamples; i += 2.0)
     {
         // From [http://john-chapman-graphics.blogspot.com/2013/01/per-object-motion-blur.html]
-        float2 offset = oFlow * ((ign * 2.0 + i) / (_Samples - 1.0) - 0.5);
+        float2 offset = oFlow * ((ign * 2.0 + i) / (kSamples - 1.0) - 0.5);
         c += tex2Dlod(s_Linear, float4(input.uv + offset, 0.0, 0.0)).rgb;
     }
 
-    if (Debug == 0)
-        c /= (_Samples * 0.5 + 1.0);
+    if (kDebug == 0)
+        c /= mad(kSamples, 0.5, 1.0);
     else
         c = float3(oFlow * exp2(8.0), 0.0);
 }

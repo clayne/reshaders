@@ -15,17 +15,17 @@
 
 #include "ReShade.fxh"
 
-uniform float4 _color1 <
+uniform float4 kColor1 <
     ui_type = "color";
     ui_label = "Color 1";
 > = float4(0.5, 0.5, 0.5, 0.5);
 
-uniform float4 _color2 <
+uniform float4 kColor2 <
     ui_type = "color";
     ui_label = "Color 2";
 > = float4(0.5, 0.5, 0.5, 0.5);
 
-uniform float2 _mulbias <
+uniform float2 kMulBias <
     ui_type = "drag";
     ui_min = 0.0; ui_max = 1.0;
     ui_label = "MulBias";
@@ -48,8 +48,8 @@ struct v2f
 void p_ramp(v2f input, out float4 c : SV_Target0)
 {
     c = tex2D(s_Linear, input.uv);
-    c = saturate(mad(c, _mulbias.x, _mulbias.y));
-    c = lerp(_color1, _color2, c);
+    c = saturate(mad(c, kMulBias.x, kMulBias.y));
+    c = lerp(kColor1, kColor2, c);
 }
 
 technique cRamp

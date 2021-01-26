@@ -50,14 +50,14 @@
     because of the texture operation that was optimized away.
 */
 
-uniform float Contrast <
+uniform float kContrast <
     ui_type = "drag";
     ui_label = "Contrast Adaptation";
     ui_tooltip = "Adjusts the range the shader adapts to high contrast (0 is not all the way off).  Higher values = more high contrast sharpening.";
     ui_min = 0.0; ui_max = 1.0;
 > = 0.0;
 
-uniform float Sharpening <
+uniform float kSharpening <
     ui_type = "drag";
     ui_label = "Sharpening intensity";
     ui_tooltip = "Adjusts sharpening intensity by averaging the original pixels to the sharpened result.  1.0 is the unmodified default.";
@@ -138,16 +138,18 @@ float3 ps_cas(v2f input) : SV_Target
     // Shaping amount of sharpening.
     ampRGB = rsqrt(ampRGB);
 
-    float peak = -3.0 * Contrast + 8.0;
+    float peak = mad(-3.0, kContrast, 8.0);
     float3 wRGB = -rcp(ampRGB * peak);
 
-    float3 rcpWeightRGB = rcp(4.0 * wRGB + 1.0);
+    float3 rcpWeightRGB = rcp(mad(4.0, wRGB, 1.0));
 
     //                          0 w 0
     //  Filter shape:           w 1 w
     //                          0 w 0
     float3 window = b + d + f + h;
-    return (window * wRGB + e) * rcpWeightRGB;
+    float3 outColor = saturate(mad(window, wRGB, e) * rcpWeightRGB);
+    
+	return lerp(e, outColor, kSharpening);
 }
 
 technique ContrastAdaptiveSharpen

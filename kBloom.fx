@@ -24,20 +24,19 @@
     SOFTWARE.
 */
 
-uniform float _Threshold <
+uniform float kThreshold <
     ui_type = "drag";
     ui_min = 0.0;
     ui_label = "Threshold";
 > = 0.8;
 
-uniform float _Knee <
+uniform float kSmooth <
     ui_type = "drag";
     ui_min = 0.0;
-    ui_label = "Knee";
-    ui_tooltip = "Threshold smoothing factor";
+    ui_label = "Smoothing";
 > = 0.5;
 
-uniform float _Saturation <
+uniform float kSaturation <
     ui_type = "drag";
     ui_min = 0.0;
     ui_label = "Saturation";
@@ -136,8 +135,8 @@ void ps_dsamp0(v2f input, out float4 o : SV_Target0)
                           tex2D(s_Source, input.uv[1].zw));
     float4 m = mul(0.25.rrrr, s);
 
-    const float  knee = _Threshold * _Knee + 1e-5f;
-    const float3 curve = float3(_Threshold - knee, knee * 2.0, 0.25 / knee);
+    const float  knee = kThreshold * kSmooth + 1e-5f;
+    const float3 curve = float3(kThreshold - knee, knee * 2.0, 0.25 / knee);
 
     // Pixel brightness
     m.a = max(m.r, max(m.g, m.b));
@@ -147,8 +146,8 @@ void ps_dsamp0(v2f input, out float4 o : SV_Target0)
     rq = curve.z * rq * rq;
 
     // Combine and apply the brightness response curve
-    o.rgb  = saturate(lerp(m.a, m.rgb, _Saturation));
-    o.rgb *= max(rq, m.a - _Threshold) / m.a;
+    o.rgb  = saturate(lerp(m.a, m.rgb, kSaturation));
+    o.rgb *= max(rq, m.a - kThreshold) / m.a;
     o.a = 1.0;
 }
 

@@ -84,12 +84,12 @@ namespace ReShade
         float depth = tex2Dlod(DepthBuffer, float4(texcoord, 0, 0)).x * RESHADE_DEPTH_MULTIPLIER;
 
         #if RESHADE_DEPTH_INPUT_IS_LOGARITHMIC
-                const float C = 0.01;
-                depth = (exp(depth * log(C + 1.0)) - 1.0) / C;
+            const float C = 0.01;
+            depth = (exp(depth * log(C + 1.0)) - 1.0) / C;
         #endif
 
         #if RESHADE_DEPTH_INPUT_IS_REVERSED
-                depth = 1.0 - depth;
+            depth = 1.0 - depth;
         #endif
 
         const float N = 1.0;

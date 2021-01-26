@@ -26,7 +26,7 @@
 
 #include "ReShade.fxh"
 
-uniform float _Falloff <
+uniform float kFalloff <
     ui_label = "Falloff";
     ui_type = "drag";
 > = 0.5f;
@@ -34,7 +34,7 @@ uniform float _Falloff <
 void PS_Vignette(in float4 vpos : SV_Position, in float2 uv : TEXCOORD, out float3 c : SV_Target)
 {
     float2 coord = (uv - 0.5) * BUFFER_ASPECT_RATIO * 2.0;
-    float rf = length(coord) * _Falloff;
+    float rf = length(coord) * kFalloff;
     float rf2_1 = mad(rf, rf, 1.0);
     c = rcp(rf2_1 * rf2_1);
 }

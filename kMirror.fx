@@ -24,22 +24,22 @@
 
 #include "ReShade.fxh"
 
-uniform float _Divisor <
+uniform float kDivisor <
     ui_label = "Divisor";
     ui_type = "drag";
 > = 0.05f;
 
-uniform float _Offset <
+uniform float kOffset <
     ui_label = "Offset";
     ui_type = "drag";
 > = 0.05f;
 
-uniform float _Roll <
+uniform float kRoll <
     ui_label = "Roll";
     ui_type = "drag";
 > = 0.0f;
 
-uniform bool _SYMMETRY_ON <
+uniform bool kSymmetry <
     ui_label = "Symmetry?";
 > = true;
 
@@ -59,14 +59,14 @@ void PS_Mirror(in float4 vpos : SV_Position, in float2 uv : TEXCOORD, out float4
     float r = length(sc);
 
     // Angular repeating.
-    phi += _Offset;
-    phi = phi - _Divisor * floor(phi / _Divisor);
+    phi += kOffset;
+    phi = phi - kDivisor * floor(phi / kDivisor);
 
-    if(_SYMMETRY_ON) {
-        phi = min(phi, _Divisor - phi);
+    if(kSymmetry) {
+        phi = min(phi, kDivisor - phi);
     }
 
-    phi += _Roll - _Offset;
+    phi += kRoll - kOffset;
 
     // Convert back to the texture coordinate.
     uv = float2(cos(phi), sin(phi)) * r + 0.5;

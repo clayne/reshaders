@@ -21,31 +21,31 @@
     CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-uniform float _Threshold <
+uniform float kThreshold <
     ui_label = "Threshold";
     ui_type = "slider";
     ui_min = 0.0; ui_max = 1.0;
 > = 0.05f;
 
-uniform float _InvRange <
+uniform float kInvRange <
     ui_label = "Inverse Range";
     ui_type = "slider";
     ui_min = 0.0; ui_max = 1.0;
 > = 0.05f;
 
-uniform float _ColorSensitivity <
+uniform float kColorSensitivity <
     ui_label = "Color Sensitivity";
     ui_type = "slider";
     ui_min = 0.0; ui_max = 1.0;
 > = 0.0f;
 
-uniform float4 _FrontColor <
+uniform float4 kFrontColor <
     ui_label = "Front Color";
     ui_type = "color";
     ui_min = 0.0; ui_max = 1.0;
 > = float4(1.0, 1.0, 1.0, 1.0);
 
-uniform float4 _BackColor <
+uniform float4 kBackColor <
     ui_label = "Back Color";
     ui_type = "color";
     ui_min = 0.0; ui_max = 1.0;
@@ -96,12 +96,12 @@ void ps_contour(v2f input, out float3 c : SV_Target0)
 
     float cg = math::sqrt(cg2);
 
-    float edge = cg * _ColorSensitivity;
+    float edge = cg * kColorSensitivity;
 
     // Thresholding
-    edge = saturate((edge - _Threshold) * _InvRange);
-    float3 cb = lerp(co[0], _BackColor.rgb, _BackColor.a);
-    c = lerp(cb, _FrontColor.rgb, edge * _FrontColor.a);
+    edge = saturate((edge - kThreshold) * kInvRange);
+    float3 cb = lerp(co[0], kBackColor.rgb, kBackColor.a);
+    c = lerp(cb, kFrontColor.rgb, edge * kFrontColor.a);
 }
 
 technique KinoContour

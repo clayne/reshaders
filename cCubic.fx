@@ -6,7 +6,7 @@
 
 #include "ReShade.fxh"
 
-uniform int _lod <
+uniform int kLod <
     ui_type = "drag";
     ui_label = "Level of Detail";
     ui_min = 0;
@@ -50,7 +50,7 @@ float4 calcweights(float s)
 // Could calculate float3s for a bit more performance
 void p_Cubic(v2f input, out float3 c : SV_Target0)
 {
-    float2 texsize = tex2Dsize(s_Downscaled, _lod);
+    float2 texsize = tex2Dsize(s_Downscaled, kLod);
     float2 pt = 1.0 / texsize;
     float2 fcoord = frac(input.uv * texsize + 0.5);
     float4 parmx = calcweights(fcoord.x);
@@ -59,12 +59,12 @@ void p_Cubic(v2f input, out float3 c : SV_Target0)
     cdelta.xz = parmx.rg * float2(-pt.x, pt.x);
     cdelta.yw = parmy.rg * float2(-pt.y, pt.y);
     // first y-interpolation
-    float3 ar = tex2Dlod(s_Downscaled, float4(input.uv + cdelta.xy, 0.0, _lod)).rgb;
-    float3 ag = tex2Dlod(s_Downscaled, float4(input.uv + cdelta.xw, 0.0, _lod)).rgb;
+    float3 ar = tex2Dlod(s_Downscaled, float4(input.uv + cdelta.xy, 0.0, kLod)).rgb;
+    float3 ag = tex2Dlod(s_Downscaled, float4(input.uv + cdelta.xw, 0.0, kLod)).rgb;
     float3 ab = lerp(ag, ar, parmy.b);
     // second y-interpolation
-    float3 br = tex2Dlod(s_Downscaled, float4(input.uv + cdelta.zy, 0.0, _lod)).rgb;
-    float3 bg = tex2Dlod(s_Downscaled, float4(input.uv + cdelta.zw, 0.0, _lod)).rgb;
+    float3 br = tex2Dlod(s_Downscaled, float4(input.uv + cdelta.zy, 0.0, kLod)).rgb;
+    float3 bg = tex2Dlod(s_Downscaled, float4(input.uv + cdelta.zw, 0.0, kLod)).rgb;
     float3 aa = lerp(bg, br, parmy.b);
     // x-interpolation
     c = lerp(aa, ab, parmx.b);
