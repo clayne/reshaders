@@ -9,7 +9,7 @@
 uniform float2 kScale <
     ui_label = "Falloff";
     ui_type = "drag";
-> = float2(0.5, 0.5);
+> = float2(1.0, 0.8);
 
 struct v2f
 {
