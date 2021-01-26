@@ -43,13 +43,13 @@ uniform float kSaturation <
 > = 2.0;
 
 texture2D _Source : COLOR;
-texture2D _Bloom1 { Width = BUFFER_WIDTH / 2;   Height = BUFFER_HEIGHT / 2;   Format = RGB10A2; };
-texture2D _Bloom2 { Width = BUFFER_WIDTH / 4;   Height = BUFFER_HEIGHT / 4;   Format = RGB10A2; };
-texture2D _Bloom3 { Width = BUFFER_WIDTH / 8;   Height = BUFFER_HEIGHT / 8;   Format = RGB10A2; };
-texture2D _Bloom4 { Width = BUFFER_WIDTH / 16;  Height = BUFFER_HEIGHT / 16;  Format = RGB10A2; };
-texture2D _Bloom5 { Width = BUFFER_WIDTH / 32;  Height = BUFFER_HEIGHT / 32;  Format = RGB10A2; };
-texture2D _Bloom6 { Width = BUFFER_WIDTH / 64;  Height = BUFFER_HEIGHT / 64;  Format = RGB10A2; };
-texture2D _Bloom7 { Width = BUFFER_WIDTH / 128; Height = BUFFER_HEIGHT / 128; Format = RGB10A2; };
+texture2D _Bloom1 { Width = BUFFER_WIDTH / 2;   Height = BUFFER_HEIGHT / 2;   Format = RGBA16F; };
+texture2D _Bloom2 { Width = BUFFER_WIDTH / 4;   Height = BUFFER_HEIGHT / 4;   Format = RGBA16F; };
+texture2D _Bloom3 { Width = BUFFER_WIDTH / 8;   Height = BUFFER_HEIGHT / 8;   Format = RGBA16F; };
+texture2D _Bloom4 { Width = BUFFER_WIDTH / 16;  Height = BUFFER_HEIGHT / 16;  Format = RGBA16F; };
+texture2D _Bloom5 { Width = BUFFER_WIDTH / 32;  Height = BUFFER_HEIGHT / 32;  Format = RGBA16F; };
+texture2D _Bloom6 { Width = BUFFER_WIDTH / 64;  Height = BUFFER_HEIGHT / 64;  Format = RGBA16F; };
+texture2D _Bloom7 { Width = BUFFER_WIDTH / 128; Height = BUFFER_HEIGHT / 128; Format = RGBA16F; };
 
 sampler2D s_Source
 {
@@ -117,11 +117,10 @@ float4 p_dsamp(sampler src, float4 uv[2])
 
 float4 p_usamp(sampler2D src, float4 uv[2])
 {
-    float4x4 s = float4x4(tex2D(src, uv[0].xy),
-                          tex2D(src, uv[0].zw),
-                          tex2D(src, uv[1].xy),
-                          tex2D(src, uv[1].zw));
-    return mul(0.25.rrrr, s);
+    float4 s  = tex2D(src, uv[0].xy) * 0.25;
+           s += tex2D(src, uv[0].zw) * 0.25;
+           s += tex2D(src, uv[1].xy) * 0.25;
+    return s +  tex2D(src, uv[1].zw) * 0.25;
 }
 
 // Quadratic color thresholding from
@@ -129,25 +128,24 @@ float4 p_usamp(sampler2D src, float4 uv[2])
 
 void ps_dsamp0(v2f input, out float4 o : SV_Target0)
 {
-    float4x4 s = float4x4(tex2D(s_Source, input.uv[0].xy),
-                          tex2D(s_Source, input.uv[0].zw),
-                          tex2D(s_Source, input.uv[1].xy),
-                          tex2D(s_Source, input.uv[1].zw));
-    float4 m = mul(0.25.rrrr, s);
+    float4 s  = tex2D(s_Source, input.uv[0].xy) * 0.25;
+           s += tex2D(s_Source, input.uv[0].zw) * 0.25;
+           s += tex2D(s_Source, input.uv[1].xy) * 0.25;
+           s += tex2D(s_Source, input.uv[1].zw) * 0.25;
 
     const float  knee = kThreshold * kSmooth + 1e-5f;
     const float3 curve = float3(kThreshold - knee, knee * 2.0, 0.25 / knee);
 
     // Pixel brightness
-    m.a = max(m.r, max(m.g, m.b));
+    s.a = max(s.r, max(s.g, s.b));
 
     // Under-threshold part
-    float rq = clamp(m.a - curve.x, 0.0, curve.y);
+    float rq = clamp(s.a - curve.x, 0.0, curve.y);
     rq = curve.z * rq * rq;
 
     // Combine and apply the brightness response curve
-    o.rgb  = saturate(lerp(m.a, m.rgb, kSaturation));
-    o.rgb *= max(rq, m.a - kThreshold) / m.a;
+    o.rgb = s.rgb * max(rq, s.a - kThreshold) / s.a;
+    o.rgb = saturate(lerp(dot(o.rgb, rcp(3.0)), o.rgb, kSaturation));
     o.a = 1.0;
 }
 
