@@ -50,6 +50,7 @@ texture2D _Bloom4 { Width = BUFFER_WIDTH / 16;  Height = BUFFER_HEIGHT / 16;  Fo
 texture2D _Bloom5 { Width = BUFFER_WIDTH / 32;  Height = BUFFER_HEIGHT / 32;  Format = RGBA16F; };
 texture2D _Bloom6 { Width = BUFFER_WIDTH / 64;  Height = BUFFER_HEIGHT / 64;  Format = RGBA16F; };
 texture2D _Bloom7 { Width = BUFFER_WIDTH / 128; Height = BUFFER_HEIGHT / 128; Format = RGBA16F; };
+texture2D _Bloom8 { Width = BUFFER_WIDTH / 256; Height = BUFFER_HEIGHT / 256; Format = RGBA16F; };
 
 sampler2D s_Source
 {
@@ -66,6 +67,7 @@ sampler2D s_Bloom4 { Texture = _Bloom4; };
 sampler2D s_Bloom5 { Texture = _Bloom5; };
 sampler2D s_Bloom6 { Texture = _Bloom6; };
 sampler2D s_Bloom7 { Texture = _Bloom7; };
+sampler2D s_Bloom8 { Texture = _Bloom8; };
 
 struct v2f { float4 vpos : SV_Position; float4 uv[2] : TEXCOORD0; };
 
@@ -94,7 +96,9 @@ v2f vs_dsamp3(uint id : SV_VertexID) { return v_samp(id, s_Bloom3, 2.0); }
 v2f vs_dsamp4(uint id : SV_VertexID) { return v_samp(id, s_Bloom4, 2.0); }
 v2f vs_dsamp5(uint id : SV_VertexID) { return v_samp(id, s_Bloom5, 2.0); }
 v2f vs_dsamp6(uint id : SV_VertexID) { return v_samp(id, s_Bloom6, 2.0); }
+v2f vs_dsamp7(uint id : SV_VertexID) { return v_samp(id, s_Bloom7, 2.0); }
 
+v2f vs_usamp8(uint id : SV_VertexID) { return v_samp(id, s_Bloom8, 1.0); }
 v2f vs_usamp7(uint id : SV_VertexID) { return v_samp(id, s_Bloom7, 1.0); }
 v2f vs_usamp6(uint id : SV_VertexID) { return v_samp(id, s_Bloom6, 1.0); }
 v2f vs_usamp5(uint id : SV_VertexID) { return v_samp(id, s_Bloom5, 1.0); }
@@ -111,7 +115,9 @@ float4 p_dsamp(sampler src, float4 uv[2])
                           tex2D(src, uv[1].zw));
 
     // Karis' luma weighted average
-    float4 luma = rcp(mul(s, float2(rcp(3.0), 1.0).xxxy));
+    const float4 w = float2(rcp(3.0), 1.0).xxxy;
+    float4 luma = mul(s, w);
+           luma = rcp(luma);
     return mul(luma, s) / dot(luma, 1.0);
 }
 
@@ -145,7 +151,8 @@ void ps_dsamp0(v2f input, out float4 o : SV_Target0)
 
     // Combine and apply the brightness response curve
     o.rgb = s.rgb * max(rq, s.a - kThreshold) / s.a;
-    o.rgb = saturate(lerp(dot(o.rgb, rcp(3.0)), o.rgb, kSaturation));
+    o.a   = dot(o.rgb, rcp(3.0));
+    o.rgb = saturate(lerp(o.a, o.rgb, kSaturation));
     o.a = 1.0;
 }
 
@@ -155,7 +162,9 @@ void ps_dsamp3(v2f input, out float4 o : SV_Target0) { o = p_dsamp(s_Bloom3, inp
 void ps_dsamp4(v2f input, out float4 o : SV_Target0) { o = p_dsamp(s_Bloom4, input.uv); }
 void ps_dsamp5(v2f input, out float4 o : SV_Target0) { o = p_dsamp(s_Bloom5, input.uv); }
 void ps_dsamp6(v2f input, out float4 o : SV_Target0) { o = p_dsamp(s_Bloom6, input.uv); }
+void ps_dsamp7(v2f input, out float4 o : SV_Target0) { o = p_dsamp(s_Bloom7, input.uv); }
 
+void ps_usamp8(v2f input, out float4 o : SV_Target0) { o = p_usamp(s_Bloom8, input.uv); }
 void ps_usamp7(v2f input, out float4 o : SV_Target0) { o = p_usamp(s_Bloom7, input.uv); }
 void ps_usamp6(v2f input, out float4 o : SV_Target0) { o = p_usamp(s_Bloom6, input.uv); }
 void ps_usamp5(v2f input, out float4 o : SV_Target0) { o = p_usamp(s_Bloom5, input.uv); }
@@ -166,9 +175,8 @@ void ps_usamp1(v2f input, out float3 o : SV_Target0)
 {
     // ACES Filmic Tone Mapping Curve from
     // https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/
-    const float c[5] = { 2.51, 0.03, 2.43, 0.59, 0.14 };
     o = p_usamp(s_Bloom1, input.uv).rgb;
-    o = saturate(o * mad(c[0], o, c[1]) / mad(o, mad(c[2], o, c[3]), c[4]));
+    o = saturate(o * mad(2.51, o, 0.03) / mad(o, mad(2.43, o, 0.59), 0.14));
 }
 
 technique KBloom
@@ -187,6 +195,8 @@ technique KBloom
     pass { vsd(4); psd(4); rt(5); }
     pass { vsd(5); psd(5); rt(6); }
     pass { vsd(6); psd(6); rt(7); }
+    pass { vsd(7); psd(7); rt(8); }
+    pass { vsu(8); psu(8); rt(7); blend(ONE); }
     pass { vsu(7); psu(7); rt(6); blend(ONE); }
     pass { vsu(6); psu(6); rt(5); blend(ONE); }
     pass { vsu(5); psu(5); rt(4); blend(ONE); }
