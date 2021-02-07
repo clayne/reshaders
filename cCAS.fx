@@ -64,11 +64,11 @@ uniform float kSharpening <
     ui_min = 0.0; ui_max = 1.0;
 > = 1.0;
 
-texture2D _Source : COLOR;
+texture2D r_source : COLOR;
 
-sampler s_Source
+sampler s_source
 {
-    Texture = _Source;
+    Texture = r_source;
     #if BUFFER_COLOR_BIT_DEPTH != 10
         SRGBTexture = true;
     #endif
@@ -79,7 +79,7 @@ struct v2f { float4 vpos  : SV_Position; float4 uv[5] : TEXCOORD0; };
 v2f vs_cas(in uint id : SV_VertexID)
 {
     v2f o;
-    const float2 p = rcp(tex2Dsize(s_Source, 0.0));
+    const float2 p = rcp(tex2Dsize(s_source, 0.0));
     const float3 offset = float3(-1.0, 0.0, 1.0);
 
     float2 texcoord;
@@ -106,17 +106,17 @@ float3 ps_cas(v2f input) : SV_Target
     //  d(e)f
     //  g h i
 
-    float3 a = tex2D(s_Source, input.uv[0].xy).rgb;
-    float3 b = tex2D(s_Source, input.uv[0].zw).rgb;
-    float3 c = tex2D(s_Source, input.uv[1].xy).rgb;
-    float3 d = tex2D(s_Source, input.uv[1].zw).rgb;
+    float3 a = tex2D(s_source, input.uv[0].xy).rgb;
+    float3 b = tex2D(s_source, input.uv[0].zw).rgb;
+    float3 c = tex2D(s_source, input.uv[1].xy).rgb;
+    float3 d = tex2D(s_source, input.uv[1].zw).rgb;
 
-    float3 g = tex2D(s_Source, input.uv[2].xy).rgb;
-    float3 e = tex2D(s_Source, input.uv[4].xy).rgb;
-    float3 f = tex2D(s_Source, input.uv[2].zw).rgb;
+    float3 g = tex2D(s_source, input.uv[2].xy).rgb;
+    float3 e = tex2D(s_source, input.uv[4].xy).rgb;
+    float3 f = tex2D(s_source, input.uv[2].zw).rgb;
 
-    float3 h = tex2D(s_Source, input.uv[3].xy).rgb;
-    float3 i = tex2D(s_Source, input.uv[3].zw).rgb;
+    float3 h = tex2D(s_source, input.uv[3].xy).rgb;
+    float3 i = tex2D(s_source, input.uv[3].zw).rgb;
 
     // Soft min and max.
     //  a b c             b
@@ -148,8 +148,7 @@ float3 ps_cas(v2f input) : SV_Target
     //                          0 w 0
     float3 window = b + d + f + h;
     float3 outColor = saturate(mad(window, wRGB, e) * rcpWeightRGB);
-    
-	return lerp(e, outColor, kSharpening);
+    return lerp(e, outColor, kSharpening);
 }
 
 technique ContrastAdaptiveSharpen

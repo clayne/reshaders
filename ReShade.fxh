@@ -74,7 +74,7 @@ namespace ReShade
     float GetLinearizedDepth(float2 texcoord)
     {
         #if RESHADE_DEPTH_INPUT_IS_UPSIDE_DOWN
-                texcoord.y = 1.0 - texcoord.y;
+            texcoord.y = 1.0 - texcoord.y;
         #endif
 
         texcoord.x /= RESHADE_DEPTH_INPUT_X_SCALE;
@@ -94,7 +94,6 @@ namespace ReShade
 
         const float N = 1.0;
         depth /= RESHADE_DEPTH_LINEARIZATION_FAR_PLANE - depth * (RESHADE_DEPTH_LINEARIZATION_FAR_PLANE - N);
-
         return depth;
     }
 }

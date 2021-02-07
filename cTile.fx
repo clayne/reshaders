@@ -11,11 +11,11 @@ uniform float2 kCenter <
     ui_step = 0.001;
 > = float2(0.0, 0.0);
 
-texture2D _Source : COLOR;
+texture2D r_source : COLOR;
 
-sampler2D s_Source
+sampler2D s_source
 {
-    Texture = _Source;
+    Texture = r_source;
     AddressU = MIRROR;
     AddressV = MIRROR;
     #if BUFFER_COLOR_BIT_DEPTH != 10
@@ -45,7 +45,7 @@ v2f v_tile(in uint id : SV_VertexID)
 
 void p_tile(v2f input, out float3 c : SV_Target0)
 {
-    c = tex2D(s_Source, input.uv).rgb;
+    c = tex2D(s_source, input.uv).rgb;
 }
 
 technique Tile
