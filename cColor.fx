@@ -1,20 +1,36 @@
 
 #include "ReShade.fxh"
 
-struct v2f
+uniform float4 kColor <
+    ui_min = 0.0;
+    ui_label = "Color";
+    ui_type = "color";
+> = 1.0;
+
+struct v2f { float4 vpos : SV_Position; };
+
+v2f vs_color(const uint id : SV_VertexID)
 {
-    float4 vpos : SV_POSITION;
-    float2 uv : TEXCOORD0;
-};
+    v2f o;
+    float2 coord;
+    coord.x = (id == 2) ? 2.0 : 0.0;
+    coord.y = (id == 1) ? 2.0 : 0.0;
+    o.vpos = float4(coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    return o;
+}
 
-void p_Color(v2f input, out float3 c : SV_Target0) { c = input.uv.xyx; }
+float4 ps_color(v2f input) : SV_Target { return kColor; }
 
-technique LinearCompare
+technique cColor
 {
     pass
     {
-        VertexShader = PostProcessVS;
-        PixelShader = p_Color;
+        VertexShader = vs_color;
+        PixelShader = ps_color;
+        BlendEnable = true;
+        BlendOp = ADD;
+        SrcBlend = DESTCOLOR;
+        DestBlend = SRCALPHA;
         #if BUFFER_COLOR_BIT_DEPTH != 10
             SRGBWriteEnable = true;
         #endif

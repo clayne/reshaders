@@ -69,6 +69,8 @@ sampler2D s_bloom6 { Texture = r_bloom6; };
 sampler2D s_bloom7 { Texture = r_bloom7; };
 sampler2D s_bloom8 { Texture = r_bloom8; };
 
+/* - VERTEX SHADERS - */
+
 struct v2f { float4 vpos : SV_Position; float4 uv[2] : TEXCOORD0; };
 
 v2f v_samp(const uint id, sampler2D src, const float ufac)
@@ -107,7 +109,9 @@ v2f vs_usamp3(uint id : SV_VertexID) { return v_samp(id, s_bloom3, 1.0); }
 v2f vs_usamp2(uint id : SV_VertexID) { return v_samp(id, s_bloom2, 1.0); }
 v2f vs_usamp1(uint id : SV_VertexID) { return v_samp(id, s_bloom1, 1.0); }
 
-float4 p_dsamp(sampler src, const float4 uv[2])
+/* - PIXEL SHADERS - */
+
+float4 p_dsamp(sampler2D src, const float4 uv[2])
 {
     float4x4 s = float4x4(tex2D(src, uv[0].xy),
                           tex2D(src, uv[0].zw),
@@ -132,7 +136,7 @@ float4 p_usamp(sampler2D src, const float4 uv[2])
 // Quadratic color thresholding from
 // https://github.com/Unity-Technologies/Graphics
 
-void ps_dsamp0(v2f input, out float4 o : SV_Target0)
+float4 ps_dsamp0(v2f input): SV_TARGET
 {
     float4 s  = tex2D(s_source, input.uv[0].xy) * 0.25;
            s += tex2D(s_source, input.uv[0].zw) * 0.25;
@@ -140,7 +144,7 @@ void ps_dsamp0(v2f input, out float4 o : SV_Target0)
            s += tex2D(s_source, input.uv[1].zw) * 0.25;
 
     const float2 n = float2(1.0, 0.0);
-    const float  knee = kThreshold * kSmooth + 1e-5f;
+    const float  knee = mad(kThreshold, kSmooth, 1e-5f);
     const float3 curve = float3(kThreshold - knee, knee * 2.0, 0.25 / knee);
 
     // Pixel brightness
@@ -151,34 +155,36 @@ void ps_dsamp0(v2f input, out float4 o : SV_Target0)
     rq = curve.z * rq * rq;
 
     // Combine and apply the brightness response curve
-    o = s.rgb * max(rq, s.a - kThreshold) / s.a;
-    o.a = dot(o.rgb, rcp(3.0));
-    o = saturate(lerp(o.a, o.rgb, kSaturation));
-    o = mad(o.xyzw, n.xxxy, n.yyyx);
+    s.rgb *= max(rq, s.a - kThreshold) / s.a;
+    s.a = dot(s.rgb, rcp(3.0));
+    s = saturate(lerp(s.a, s.rgb, kSaturation));
+    return mad(o, n.xxxy, n.yyyx);
 }
 
-void ps_dsamp1(v2f input, out float4 o : SV_Target0) { o = p_dsamp(s_bloom1, input.uv); }
-void ps_dsamp2(v2f input, out float4 o : SV_Target0) { o = p_dsamp(s_bloom2, input.uv); }
-void ps_dsamp3(v2f input, out float4 o : SV_Target0) { o = p_dsamp(s_bloom3, input.uv); }
-void ps_dsamp4(v2f input, out float4 o : SV_Target0) { o = p_dsamp(s_bloom4, input.uv); }
-void ps_dsamp5(v2f input, out float4 o : SV_Target0) { o = p_dsamp(s_bloom5, input.uv); }
-void ps_dsamp6(v2f input, out float4 o : SV_Target0) { o = p_dsamp(s_bloom6, input.uv); }
-void ps_dsamp7(v2f input, out float4 o : SV_Target0) { o = p_dsamp(s_bloom7, input.uv); }
+float4 ps_dsamp1(v2f input) : SV_Target { return p_dsamp(s_bloom1, input.uv); }
+float4 ps_dsamp2(v2f input) : SV_Target { return p_dsamp(s_bloom2, input.uv); }
+float4 ps_dsamp3(v2f input) : SV_Target { return p_dsamp(s_bloom3, input.uv); }
+float4 ps_dsamp4(v2f input) : SV_Target { return p_dsamp(s_bloom4, input.uv); }
+float4 ps_dsamp5(v2f input) : SV_Target { return p_dsamp(s_bloom5, input.uv); }
+float4 ps_dsamp6(v2f input) : SV_Target { return p_dsamp(s_bloom6, input.uv); }
+float4 ps_dsamp7(v2f input) : SV_Target { return p_dsamp(s_bloom7, input.uv); }
 
-void ps_usamp8(v2f input, out float4 o : SV_Target0) { o = p_usamp(s_bloom8, input.uv); }
-void ps_usamp7(v2f input, out float4 o : SV_Target0) { o = p_usamp(s_bloom7, input.uv); }
-void ps_usamp6(v2f input, out float4 o : SV_Target0) { o = p_usamp(s_bloom6, input.uv); }
-void ps_usamp5(v2f input, out float4 o : SV_Target0) { o = p_usamp(s_bloom5, input.uv); }
-void ps_usamp4(v2f input, out float4 o : SV_Target0) { o = p_usamp(s_bloom4, input.uv); }
-void ps_usamp3(v2f input, out float4 o : SV_Target0) { o = p_usamp(s_bloom3, input.uv); }
-void ps_usamp2(v2f input, out float4 o : SV_Target0) { o = p_usamp(s_bloom2, input.uv); }
-void ps_usamp1(v2f input, out float4 o : SV_Target0)
+float4 ps_usamp8(v2f input) : SV_Target { return p_usamp(s_bloom8, input.uv); }
+float4 ps_usamp7(v2f input) : SV_Target { return p_usamp(s_bloom7, input.uv); }
+float4 ps_usamp6(v2f input) : SV_Target { return p_usamp(s_bloom6, input.uv); }
+float4 ps_usamp5(v2f input) : SV_Target { return p_usamp(s_bloom5, input.uv); }
+float4 ps_usamp4(v2f input) : SV_Target { return p_usamp(s_bloom4, input.uv); }
+float4 ps_usamp3(v2f input) : SV_Target { return p_usamp(s_bloom3, input.uv); }
+float4 ps_usamp2(v2f input) : SV_Target { return p_usamp(s_bloom2, input.uv); }
+float4 ps_usamp1(v2f input) : SV_Target
 {
     // ACES Filmic Tone Mapping Curve from
     // https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/
-    o = p_usamp(s_bloom1, input.uv).rgb;
-    o = saturate(o * mad(2.51, o, 0.03) / mad(o, mad(2.43, o, 0.59), 0.14));
+    float4 o = p_usamp(s_bloom1, input.uv);
+    return saturate(o * mad(2.51, o, 0.03) / mad(o, mad(2.43, o, 0.59), 0.14));
 }
+
+/* - TECHNIQUE - */
 
 technique KinoBloom
 {
