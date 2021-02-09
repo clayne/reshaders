@@ -24,11 +24,7 @@ sampler2D s_dscale
     #endif
 };
 
-struct v2f
-{
-    float4 vpos : SV_POSITION;
-    float2 uv : TEXCOORD0;
-};
+struct v2f { float4 vpos : SV_POSITION; float2 uv : TEXCOORD0; };
 
 // Empty shader to generate mipmaps.
 void ps_mipgen(v2f input, out float4 c : SV_Target0) { c = tex2D(s_Linear, input.uv).rgb; }

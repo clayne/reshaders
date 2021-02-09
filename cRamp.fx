@@ -39,11 +39,7 @@ sampler2D s_source
     #endif
 };
 
-struct v2f
-{
-    float4 vpos : SV_POSITION;
-    float2 uv : TEXCOORD0;
-};
+struct v2f { float4 vpos : SV_POSITION; float2 uv : TEXCOORD0; };
 
 void p_ramp(v2f input, out float4 c : SV_Target0)
 {

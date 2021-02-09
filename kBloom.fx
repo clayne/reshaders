@@ -158,7 +158,7 @@ float4 ps_dsamp0(v2f input): SV_TARGET
     s.rgb *= max(rq, s.a - kThreshold) / s.a;
     s.a = dot(s.rgb, rcp(3.0));
     s = saturate(lerp(s.a, s.rgb, kSaturation));
-    return mad(o, n.xxxy, n.yyyx);
+    return mad(s, n.xxxy, n.yyyx);
 }
 
 float4 ps_dsamp1(v2f input) : SV_Target { return p_dsamp(s_bloom1, input.uv); }

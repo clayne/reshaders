@@ -38,11 +38,7 @@ sampler2D s_lod    { Texture = r_lod; };
 sampler2D s_cframe { Texture = r_cframe; };
 sampler2D s_pframe { Texture = r_pframe; };
 
-struct v2f
-{
-    float4 vpos : SV_POSITION;
-    float2 uv : TEXCOORD0;
-};
+struct v2f { float4 vpos : SV_POSITION; float2 uv : TEXCOORD0; };
 
 /* [ Pixel Shaders ] */
 

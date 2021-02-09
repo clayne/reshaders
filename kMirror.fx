@@ -51,7 +51,7 @@ sampler2D s_source
     #endif
 };
 
-void PS_Mirror(in float4 vpos : SV_Position, in float2 uv : TEXCOORD, out float4 c : SV_Target)
+void ps_mirror(in float4 vpos : SV_Position, in float2 uv : TEXCOORD, out float4 c : SV_Target)
 {
     // Convert to the polar coordinate.
     float2 sc = uv - 0.5;
@@ -62,9 +62,7 @@ void PS_Mirror(in float4 vpos : SV_Position, in float2 uv : TEXCOORD, out float4
     phi += kOffset;
     phi = phi - kDivisor * floor(phi / kDivisor);
 
-    if(kSymmetry) {
-        phi = min(phi, kDivisor - phi);
-    }
+    if(kSymmetry) { phi = min(phi, kDivisor - phi); }
 
     phi += kRoll - kOffset;
 
@@ -82,7 +80,7 @@ technique KinoContour
     pass
     {
         VertexShader = PostProcessVS;
-        PixelShader = PS_Mirror;
+        PixelShader = ps_mirror;
         #if BUFFER_COLOR_BIT_DEPTH != 10
             SRGBWriteEnable = true;
         #endif

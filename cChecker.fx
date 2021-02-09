@@ -9,13 +9,9 @@
 
 #include "ReShade.fxh"
 
-struct v2f
-{
-    float4 vpos : SV_POSITION;
-    float2 uv : TEXCOORD0;
-};
+struct v2f { float4 vpos : SV_POSITION; float2 uv : TEXCOORD0; };
 
-void p_checker(v2f input, out float3 c : SV_Target0)
+void ps_checker(v2f input, out float3 c : SV_Target0)
 {
     // add different dimensions
     // divide it by 2 and get the fractional part, resulting in a value of 0 for even and 0.5 for odd numbers.
@@ -29,7 +25,7 @@ technique CheckerBoard
     pass
     {
         VertexShader = PostProcessVS;
-        PixelShader = p_checker;
+        PixelShader = ps_checker;
         #if BUFFER_COLOR_BIT_DEPTH != 10
             SRGBWriteEnable = true;
         #endif

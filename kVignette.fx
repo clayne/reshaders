@@ -31,7 +31,7 @@ uniform float kFalloff <
     ui_type = "drag";
 > = 0.5f;
 
-void PS_Vignette(in float4 vpos : SV_Position, in float2 uv : TEXCOORD, out float3 c : SV_Target)
+void ps_vignette(in float4 vpos : SV_Position, in float2 uv : TEXCOORD, out float3 c : SV_Target)
 {
     float2 coord = (uv - 0.5) * BUFFER_ASPECT_RATIO * 2.0;
     float rf = length(coord) * kFalloff;
@@ -44,7 +44,7 @@ technique KinoVignette
     pass
     {
         VertexShader = PostProcessVS;
-        PixelShader = PS_Vignette;
+        PixelShader = ps_vignette;
         #if BUFFER_COLOR_BIT_DEPTH != 10
             SRGBWriteEnable = true;
         #endif

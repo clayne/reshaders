@@ -28,50 +28,72 @@
     For more information, please refer to <http://unlicense.org/>
 */
 
-#include "ReShade.fxh"
-
-uniform float kIntensity <
+uniform float intensity <
     ui_type = "slider";
     ui_min = 0.0; ui_max = 1.0;
     ui_label = "Sharpen";
     ui_tooltip = "Increase to sharpen details within the image.";
 > = 0.05;
 
+texture2D r_source : COLOR;
 sampler2D s_source
 {
-    Texture = ReShade::BackBufferTex;
+    Texture = r_source;
     #if BUFFER_COLOR_BIT_DEPTH != 10
         SRGBTexture = true;
     #endif
 };
 
-int2 offset(int2 i) { return min(max(0, i), BUFFER_SCREEN_SIZE - 1); }
+struct v2f { float4 vpos  : SV_Position; float4 uv[5] : TEXCOORD0; };
 
-void PS_Fragment(in float4 vpos : SV_Position, in float2 uv : TEXCOORD, out float4 c : SV_Target)
+static const float2 s = float2(BUFFER_WIDTH, BUFFER_HEIGHT);
+
+int2 offset(int2 i) { return min(max(0, i), s - 1); }
+
+v2f vs_sharpen(in uint id : SV_VertexID)
 {
-    int2 positionSS = uv * BUFFER_SCREEN_SIZE;
+    v2f o;
+    float2 texcoord;
+    texcoord.x = (id == 2) ? 2.0 : 0.0;
+    texcoord.y = (id == 1) ? 2.0 : 0.0;
+    o.vpos = float4(texcoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 
-    float4 c0 = tex2Doffset(s_source, uv, + offset(int2(-1, -1)));
-    float4 c1 = tex2Doffset(s_source, uv, + offset(int2( 0, -1)));
-    float4 c2 = tex2Doffset(s_source, uv, + offset(int2(+1, -1)));
+    const float2 p = 1.0 / s;
+    o.uv[0].xy   = offset(int2(-1, -1)) * p + texcoord; // (-1,-1)
+    o.uv[0].zw   = offset(int2( 0, -1)) * p + texcoord; // ( 0,-1)
+    o.uv[1].xy   = offset(int2(+1, -1)) * p + texcoord; // ( 1,-1)
+    o.uv[1].zw   = offset(int2(-1,  0)) * p + texcoord; // ( 1, 0)
+    o.uv[2].xy   = offset(int2( 0,  0)) * p + texcoord; // (-1, 1)
+    o.uv[2].zw   = offset(int2(+1,  0)) * p + texcoord; // ( 1, 0)
+    o.uv[3].xy   = offset(int2(-1, +1)) * p + texcoord; // ( 0, 1)
+    o.uv[3].zw   = offset(int2( 0, +1)) * p + texcoord; // ( 1, 1)
+    o.uv[4]      = (offset(int2(+1, +1)) * p + texcoord).xyxy; // ( 0, 0)
+    return o;
+}
 
-    float4 c3 = tex2Doffset(s_source, uv, + offset(int2(-1, 0)));
-    float4 c4 = tex2Doffset(s_source, uv, + offset(int2( 0, 0)));
-    float4 c5 = tex2Doffset(s_source, uv, + offset(int2(+1, 0)));
+void ps_sharpen(v2f input, out float4 c : SV_Target)
+{
+    float4 c0 = tex2D(s_source, input.uv[0].xy);
+    float4 c1 = tex2D(s_source, input.uv[0].zw);
+    float4 c2 = tex2D(s_source, input.uv[1].xy);
 
-    float4 c6 = tex2Doffset(s_source, uv, + offset(int2(-1, +1)));
-    float4 c7 = tex2Doffset(s_source, uv, + offset(int2( 0, +1)));
-    float4 c8 = tex2Doffset(s_source, uv, + offset(int2(+1, +1)));
+    float4 c3 = tex2D(s_source, input.uv[1].zw);
+    float4 c4 = tex2D(s_source, input.uv[2].xy);
+    float4 c5 = tex2D(s_source, input.uv[2].zw);
 
-    c = c4 - (c0 + c1 + c2 + c3 - 8 * c4 + c5 + c6 + c7 + c8) * kIntensity;
+    float4 c6 = tex2D(s_source, input.uv[3].xy);
+    float4 c7 = tex2D(s_source, input.uv[3].zw);
+    float4 c8 = tex2D(s_source, input.uv[4].xy);
+
+    c = c4 - (c0 + c1 + c2 + c3 - 8 * c4 + c5 + c6 + c7 + c8) * intensity;
 }
 
 technique KinoSharpen
 {
     pass
     {
-        VertexShader = PostProcessVS;
-        PixelShader = PS_Fragment;
+        VertexShader = vs_sharpen;
+        PixelShader = ps_sharpen;
         #if BUFFER_COLOR_BIT_DEPTH != 10
             SRGBWriteEnable = true;
         #endif
