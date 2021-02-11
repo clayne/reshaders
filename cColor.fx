@@ -1,6 +1,4 @@
 
-#include "ReShade.fxh"
-
 uniform float4 kColor <
     ui_min = 0.0;
     ui_label = "Color";
