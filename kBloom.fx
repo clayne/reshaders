@@ -155,7 +155,7 @@ float4 ps_usamp1(v2f input) : SV_Target
 
 /* - TECHNIQUE - */
 
-technique KinoBloom
+technique kBloom
 {
     #define vsd(i)   VertexShader = vs_dsamp##i
     #define vsu(i)   VertexShader = vs_usamp##i
