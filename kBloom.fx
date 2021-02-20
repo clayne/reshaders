@@ -68,11 +68,11 @@ v2f v_samp(const uint id, sampler2D src, const float ufac)
     coord.y = (id == 1) ? 2.0 : 0.0;
     o.vpos = float4(coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 
-    // 9 tap gaussian using 4 texture fetches by CeeJayDK
+    // 9 tap pyramid filter using 4 texture fetches by CeeJayDK
     // https://github.com/CeeJayDK/SweetFX - LumaSharpen.fx
     const float2 ts = ufac / tex2Dsize(src, 0.0);
     o.uv[0].xy = coord + float2( ts.x * 0.5, -ts.y); // South South East
-    o.uv[0].zw = coord + float2(-ts.x ,-ts.y * 0.5); // West  South West
+    o.uv[0].zw = coord + float2(-ts.x, -ts.y * 0.5); // West  South West
     o.uv[1].xy = coord + float2( ts.x,  ts.y * 0.5); // East  North East
     o.uv[1].zw = coord + float2(-ts.x * 0.5,  ts.y); // North North West
     return o;
