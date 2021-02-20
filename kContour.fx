@@ -51,8 +51,6 @@ uniform float4 kBackColor <
     ui_min = 0.0; ui_max = 1.0;
 > = float4(0.0, 0.0, 0.0, 0.0);
 
-#include "math.fxh"
-
 texture2D r_source : COLOR;
 
 sampler2D s_source
@@ -94,8 +92,7 @@ void ps_contour(v2f input, out float3 c : SV_Target0)
     float cg2  = dot(co[3] - co[2], co[3] - co[2]);
           cg2 += cg1;
 
-    float cg = math::sqrt(cg2);
-
+    float cg = cg2 * rsqrt(cg2);
     float edge = cg * kColorSensitivity;
 
     // Thresholding
