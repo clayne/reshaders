@@ -58,7 +58,11 @@ sampler2D s_bloom8 { Texture = r_bloom8; };
 
 /* - VERTEX SHADERS - */
 
-struct v2f { float4 vpos : SV_Position; float4 uv[2] : TEXCOORD0; };
+struct v2f
+{
+    float4 vpos : SV_Position;
+    float4 uv[2] : TEXCOORD0;
+};
 
 v2f v_samp(const uint id, sampler2D src, const float ufac)
 {
@@ -68,7 +72,7 @@ v2f v_samp(const uint id, sampler2D src, const float ufac)
     coord.y = (id == 1) ? 2.0 : 0.0;
     o.vpos = float4(coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 
-    // 9 tap pyramid filter using 4 texture fetches by CeeJayDK
+    // 9-tap pyramid filter using 4 texture fetches by CeeJayDK
     // https://github.com/CeeJayDK/SweetFX - LumaSharpen.fx
     const float2 ts = ufac / tex2Dsize(src, 0.0);
     o.uv[0].xy = coord + float2( ts.x * 0.5, -ts.y); // South South East
@@ -103,7 +107,7 @@ float4 p_samp(sampler2D src, const float4 uv[2])
     float4 s  = tex2D(src, uv[0].xy) * 0.25;
            s += tex2D(src, uv[0].zw) * 0.25;
            s += tex2D(src, uv[1].xy) * 0.25;
-    return s +  tex2D(src, uv[1].zw) * 0.25;
+    return s += tex2D(src, uv[1].zw) * 0.25;
 }
 
 // Quadratic color thresholding
@@ -147,10 +151,16 @@ float4 ps_usamp3(v2f input) : SV_Target { return p_samp(s_bloom3, input.uv); }
 float4 ps_usamp2(v2f input) : SV_Target { return p_samp(s_bloom2, input.uv); }
 float4 ps_usamp1(v2f input) : SV_Target
 {
+    // Interleaved Gradient Noise from
+    // http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare
+    const float4 n = float4(0.06711056, 0.00583715, 52.9829189, 0.5 / 255);
+    float f = frac(n.z * frac(dot(input.vpos.xy, n.xy))) * n.w;
+
     // ACES Filmic Tone Mapping Curve from
     // https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/
     float4 o = p_samp(s_bloom1, input.uv);
-    return saturate(o * mad(2.51, o, 0.03) / mad(o, mad(2.43, o, 0.59), 0.14));
+    o = saturate(o * mad(2.51, o, 0.03) / mad(o, mad(2.43, o, 0.59), 0.14));
+    return o + f;
 }
 
 /* - TECHNIQUE - */
