@@ -75,10 +75,10 @@ v2f v_samp(const uint id, sampler2D src, const float ufac)
     // 9-tap pyramid filter using 4 texture fetches by CeeJayDK
     // https://github.com/CeeJayDK/SweetFX - LumaSharpen.fx
     const float2 ts = ufac / tex2Dsize(src, 0.0);
-    o.uv[0].xy = coord + float2( ts.x * 0.5, -ts.y); // South South East
-    o.uv[0].zw = coord + float2(-ts.x, -ts.y * 0.5); // West  South West
-    o.uv[1].xy = coord + float2( ts.x,  ts.y * 0.5); // East  North East
-    o.uv[1].zw = coord + float2(-ts.x * 0.5,  ts.y); // North North West
+    o.uv[0].xy = coord + float2( ts.x * 0.5, -ts.y); // ( 1, -2)
+    o.uv[0].zw = coord + float2(-ts.x, -ts.y * 0.5); // (-2, -1)
+    o.uv[1].xy = coord + float2( ts.x,  ts.y * 0.5); // ( 2,  1)
+    o.uv[1].zw = coord + float2(-ts.x * 0.5,  ts.y); // (-1,  2)
     return o;
 }
 
