@@ -73,7 +73,7 @@ v2f v_samp(const uint id, sampler2D src, const float ufac)
     o.vpos = float4(coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 
     // 9-tap pyramid filter using 4 texture fetches by CeeJayDK
-    // https://github.com/CeeJayDK/SweetFX - LumaSharpen.fx
+    // https://github.com/CeeJayDK/SweetFX/blob/master/Shaders/LumaSharpen.fx
     const float2 ts = ufac / tex2Dsize(src, 0.0);
     o.uv[0].xy = coord + float2( ts.x * 0.5, -ts.y); // ( 1, -2)
     o.uv[0].zw = coord + float2(-ts.x, -ts.y * 0.5); // (-2, -1)
