@@ -58,15 +58,40 @@ sampler2D s_bloom8 { Texture = r_bloom8; };
 
 /* - VERTEX SHADERS - */
 
-struct v2f
+struct v2fd
+{
+    float4 vpos : SV_Position;
+    float4 uv[3] : TEXCOORD0;
+};
+
+struct v2fu
 {
     float4 vpos : SV_Position;
     float4 uv[2] : TEXCOORD0;
 };
 
-v2f v_samp(const uint id, sampler2D src, const float ufac)
+v2fd v_dsamp(const uint id, sampler2D src)
 {
-    v2f o;
+    v2fd o;
+    float2 coord;
+    coord.x = (id == 2) ? 2.0 : 0.0;
+    coord.y = (id == 1) ? 2.0 : 0.0;
+    o.vpos = float4(coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+
+    // Kawase dual-filter downsampling kernel from StreamFX
+    // https://github.com/Xaymar/obs-StreamFX
+    const float2 ts = 2.0 / tex2Dsize(src, 0.0);
+    o.uv[0]    = coord.xyxy;
+    o.uv[1].xy = coord - ts;
+    o.uv[1].zw = coord + ts;
+    o.uv[2].xy = coord + float2(ts.x, -ts.y);
+    o.uv[2].zw = coord - float2(ts.x, -ts.y);
+    return o;
+}
+
+v2fu v_usamp(const uint id, sampler2D src)
+{
+    v2fu o;
     float2 coord;
     coord.x = (id == 2) ? 2.0 : 0.0;
     coord.y = (id == 1) ? 2.0 : 0.0;
@@ -74,7 +99,7 @@ v2f v_samp(const uint id, sampler2D src, const float ufac)
 
     // 9-tap pyramid filter using 4 texture fetches by CeeJayDK
     // https://github.com/CeeJayDK/SweetFX/blob/master/Shaders/LumaSharpen.fx
-    const float2 ts = ufac / tex2Dsize(src, 0.0);
+    const float2 ts = 1.0 / tex2Dsize(src, 0.0);
     o.uv[0].xy = coord + float2( ts.x * 0.5, -ts.y); // ( 1, -2)
     o.uv[0].zw = coord + float2(-ts.x, -ts.y * 0.5); // (-2, -1)
     o.uv[1].xy = coord + float2( ts.x,  ts.y * 0.5); // ( 2,  1)
@@ -82,27 +107,37 @@ v2f v_samp(const uint id, sampler2D src, const float ufac)
     return o;
 }
 
-v2f vs_dsamp0(uint id : SV_VertexID) { return v_samp(id, s_source, 2.0); }
-v2f vs_dsamp1(uint id : SV_VertexID) { return v_samp(id, s_bloom1, 2.0); }
-v2f vs_dsamp2(uint id : SV_VertexID) { return v_samp(id, s_bloom2, 2.0); }
-v2f vs_dsamp3(uint id : SV_VertexID) { return v_samp(id, s_bloom3, 2.0); }
-v2f vs_dsamp4(uint id : SV_VertexID) { return v_samp(id, s_bloom4, 2.0); }
-v2f vs_dsamp5(uint id : SV_VertexID) { return v_samp(id, s_bloom5, 2.0); }
-v2f vs_dsamp6(uint id : SV_VertexID) { return v_samp(id, s_bloom6, 2.0); }
-v2f vs_dsamp7(uint id : SV_VertexID) { return v_samp(id, s_bloom7, 2.0); }
+v2fd vs_dsamp0(uint id : SV_VertexID) { return v_dsamp(id, s_source); }
+v2fd vs_dsamp1(uint id : SV_VertexID) { return v_dsamp(id, s_bloom1); }
+v2fd vs_dsamp2(uint id : SV_VertexID) { return v_dsamp(id, s_bloom2); }
+v2fd vs_dsamp3(uint id : SV_VertexID) { return v_dsamp(id, s_bloom3); }
+v2fd vs_dsamp4(uint id : SV_VertexID) { return v_dsamp(id, s_bloom4); }
+v2fd vs_dsamp5(uint id : SV_VertexID) { return v_dsamp(id, s_bloom5); }
+v2fd vs_dsamp6(uint id : SV_VertexID) { return v_dsamp(id, s_bloom6); }
+v2fd vs_dsamp7(uint id : SV_VertexID) { return v_dsamp(id, s_bloom7); }
 
-v2f vs_usamp8(uint id : SV_VertexID) { return v_samp(id, s_bloom8, 1.0); }
-v2f vs_usamp7(uint id : SV_VertexID) { return v_samp(id, s_bloom7, 1.0); }
-v2f vs_usamp6(uint id : SV_VertexID) { return v_samp(id, s_bloom6, 1.0); }
-v2f vs_usamp5(uint id : SV_VertexID) { return v_samp(id, s_bloom5, 1.0); }
-v2f vs_usamp4(uint id : SV_VertexID) { return v_samp(id, s_bloom4, 1.0); }
-v2f vs_usamp3(uint id : SV_VertexID) { return v_samp(id, s_bloom3, 1.0); }
-v2f vs_usamp2(uint id : SV_VertexID) { return v_samp(id, s_bloom2, 1.0); }
-v2f vs_usamp1(uint id : SV_VertexID) { return v_samp(id, s_bloom1, 1.0); }
+v2fu vs_usamp8(uint id : SV_VertexID) { return v_usamp(id, s_bloom8); }
+v2fu vs_usamp7(uint id : SV_VertexID) { return v_usamp(id, s_bloom7); }
+v2fu vs_usamp6(uint id : SV_VertexID) { return v_usamp(id, s_bloom6); }
+v2fu vs_usamp5(uint id : SV_VertexID) { return v_usamp(id, s_bloom5); }
+v2fu vs_usamp4(uint id : SV_VertexID) { return v_usamp(id, s_bloom4); }
+v2fu vs_usamp3(uint id : SV_VertexID) { return v_usamp(id, s_bloom3); }
+v2fu vs_usamp2(uint id : SV_VertexID) { return v_usamp(id, s_bloom2); }
+v2fu vs_usamp1(uint id : SV_VertexID) { return v_usamp(id, s_bloom1); }
 
 /* - PIXEL SHADERS - */
 
-float4 p_samp(sampler2D src, const float4 uv[2])
+float4 p_dsamp(sampler2D src, const float4 uv[3])
+{
+    float4 s  = tex2D(src, uv[0].xy) * 4.0;
+           s += tex2D(src, uv[1].xy);
+           s += tex2D(src, uv[1].zw);
+           s += tex2D(src, uv[2].xy);
+           s += tex2D(src, uv[2].zw);
+    return s / 8.0;
+}
+
+float4 p_usamp(sampler2D src, const float4 uv[2])
 {
     float4 s  = tex2D(src, uv[0].xy) * 0.25;
            s += tex2D(src, uv[0].zw) * 0.25;
@@ -112,13 +147,13 @@ float4 p_samp(sampler2D src, const float4 uv[2])
 
 // Quadratic color thresholding
 
-float4 ps_dsamp0(v2f input): SV_TARGET
+float4 ps_dsamp0(v2fd input): SV_TARGET
 {
     const float2 n = float2(1.0, 0.0);
     const float  knee = mad(kThreshold, kSmooth, 1e-5f);
     const float3 curve = float3(kThreshold - knee, knee * 2.0, 0.25 / knee);
 
-    float4 s = p_samp(s_source, input.uv);
+    float4 s = p_dsamp(s_source, input.uv);
 
     // Pixel brightness
     s.a = max(s.r, max(s.g, s.b));
@@ -134,22 +169,22 @@ float4 ps_dsamp0(v2f input): SV_TARGET
     return mad(s, n.xxxy, n.yyyx);
 }
 
-float4 ps_dsamp1(v2f input) : SV_Target { return p_samp(s_bloom1, input.uv); }
-float4 ps_dsamp2(v2f input) : SV_Target { return p_samp(s_bloom2, input.uv); }
-float4 ps_dsamp3(v2f input) : SV_Target { return p_samp(s_bloom3, input.uv); }
-float4 ps_dsamp4(v2f input) : SV_Target { return p_samp(s_bloom4, input.uv); }
-float4 ps_dsamp5(v2f input) : SV_Target { return p_samp(s_bloom5, input.uv); }
-float4 ps_dsamp6(v2f input) : SV_Target { return p_samp(s_bloom6, input.uv); }
-float4 ps_dsamp7(v2f input) : SV_Target { return p_samp(s_bloom7, input.uv); }
+float4 ps_dsamp1(v2fd input) : SV_Target { return p_dsamp(s_bloom1, input.uv); }
+float4 ps_dsamp2(v2fd input) : SV_Target { return p_dsamp(s_bloom2, input.uv); }
+float4 ps_dsamp3(v2fd input) : SV_Target { return p_dsamp(s_bloom3, input.uv); }
+float4 ps_dsamp4(v2fd input) : SV_Target { return p_dsamp(s_bloom4, input.uv); }
+float4 ps_dsamp5(v2fd input) : SV_Target { return p_dsamp(s_bloom5, input.uv); }
+float4 ps_dsamp6(v2fd input) : SV_Target { return p_dsamp(s_bloom6, input.uv); }
+float4 ps_dsamp7(v2fd input) : SV_Target { return p_dsamp(s_bloom7, input.uv); }
 
-float4 ps_usamp8(v2f input) : SV_Target { return p_samp(s_bloom8, input.uv); }
-float4 ps_usamp7(v2f input) : SV_Target { return p_samp(s_bloom7, input.uv); }
-float4 ps_usamp6(v2f input) : SV_Target { return p_samp(s_bloom6, input.uv); }
-float4 ps_usamp5(v2f input) : SV_Target { return p_samp(s_bloom5, input.uv); }
-float4 ps_usamp4(v2f input) : SV_Target { return p_samp(s_bloom4, input.uv); }
-float4 ps_usamp3(v2f input) : SV_Target { return p_samp(s_bloom3, input.uv); }
-float4 ps_usamp2(v2f input) : SV_Target { return p_samp(s_bloom2, input.uv); }
-float4 ps_usamp1(v2f input) : SV_Target
+float4 ps_usamp8(v2fu input) : SV_Target { return p_usamp(s_bloom8, input.uv); }
+float4 ps_usamp7(v2fu input) : SV_Target { return p_usamp(s_bloom7, input.uv); }
+float4 ps_usamp6(v2fu input) : SV_Target { return p_usamp(s_bloom6, input.uv); }
+float4 ps_usamp5(v2fu input) : SV_Target { return p_usamp(s_bloom5, input.uv); }
+float4 ps_usamp4(v2fu input) : SV_Target { return p_usamp(s_bloom4, input.uv); }
+float4 ps_usamp3(v2fu input) : SV_Target { return p_usamp(s_bloom3, input.uv); }
+float4 ps_usamp2(v2fu input) : SV_Target { return p_usamp(s_bloom2, input.uv); }
+float4 ps_usamp1(v2fu input) : SV_Target
 {
     // Interleaved Gradient Noise from
     // http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare
@@ -158,7 +193,7 @@ float4 ps_usamp1(v2f input) : SV_Target
 
     // ACES Filmic Tone Mapping Curve from
     // https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/
-    float4 o = p_samp(s_bloom1, input.uv);
+    float4 o = p_usamp(s_bloom1, input.uv);
     o = saturate(o * mad(2.51, o, 0.03) / mad(o, mad(2.43, o, 0.59), 0.14));
     return o + f;
 }
