@@ -33,10 +33,6 @@
     removed the saturate() from the control var as it is clamped
     by UI manager already, 48 -> 47 instructions
 
-    replaced tex2D with tex2Doffset intrinsic (address offset by immediate integer)
-    47 -> 43 instructions
-    9 -> 8 registers
-
     Further modified by OopyDoopy and Lord of Lunacy:
         Changed wording in the UI for the existing variable and added a new variable and relevant code to adjust sharpening strength.
 
@@ -46,8 +42,8 @@
     Modified by CeeJay.dk:
         Included a label and tooltip description. I followed AMDs official naming guidelines for FidelityFX.
 
-    Used gather trick to reduce the number of texture operations by one (9 -> 8). It's now 42 -> 51 instructions but still faster
-    because of the texture operation that was optimized away.
+    Modified by Brimson:
+        Calculate offsets in the Vertex Shader. Should yield a ~10-20% performance increase as we're on D3D9
 */
 
 uniform float kContrast <
@@ -79,23 +75,22 @@ struct v2f { float4 vpos  : SV_Position; float4 uv[5] : TEXCOORD0; };
 v2f vs_cas(in uint id : SV_VertexID)
 {
     v2f o;
-    const float2 p = rcp(tex2Dsize(s_source, 0.0));
-    const float3 offset = float3(-1.0, 0.0, 1.0);
+    float2 coord;
+    coord.x = (id == 2) ? 2.0 : 0.0;
+    coord.y = (id == 1) ? 2.0 : 0.0;
+    o.vpos = float4(coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 
-    float2 texcoord;
-    texcoord.x = (id == 2) ? 2.0 : 0.0;
-    texcoord.y = (id == 1) ? 2.0 : 0.0;
-    o.vpos = float4(texcoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
-
-    o.uv[0].xy = mad(offset.xx, p, texcoord); // (-1,-1)
-    o.uv[0].zw = mad(offset.yx, p, texcoord); // ( 0,-1)
-    o.uv[1].xy = mad(offset.zx, p, texcoord); // ( 1,-1)
-    o.uv[1].zw = mad(offset.zy, p, texcoord); // ( 1, 0)
-    o.uv[2].xy = mad(offset.xz, p, texcoord); // (-1, 1)
-    o.uv[2].zw = mad(offset.zy, p, texcoord); // ( 1, 0)
-    o.uv[3].xy = mad(offset.yz, p, texcoord); // ( 0, 1)
-    o.uv[3].zw = mad(offset.zz, p, texcoord); // ( 1, 1)
-    o.uv[4].xyzw = texcoord.xyxy;             // ( 0, 0)
+    const float2 ts = 1.0 / tex2Dsize(s_source, 0.0);
+    o.uv[0].xy = mad(ts, float2(-1.0,-1.0), coord);
+    o.uv[0].zw = mad(ts, float2( 0.0,-1.0), coord);
+    o.uv[1].xy = mad(ts, float2( 1.0,-1.0), coord);
+    o.uv[1].zw = mad(ts, float2(-1.0, 0.0), coord);
+    o.uv[2].xy = mad(ts, float2(-1.0, 1.0), coord);
+    o.uv[2].zw = coord;
+    o.uv[3].xy = mad(ts, float2( 1.0, 0.0), coord);
+    o.uv[3].zw = mad(ts, float2( 0.0, 1.0), coord);
+    o.uv[4].xy = mad(ts, float2( 1.0, 1.0), coord);
+    o.uv[4].xw = 0.0;
     return o;
 }
 
@@ -112,11 +107,11 @@ float3 ps_cas(v2f input) : SV_Target
     float3 d = tex2D(s_source, input.uv[1].zw).rgb;
 
     float3 g = tex2D(s_source, input.uv[2].xy).rgb;
-    float3 e = tex2D(s_source, input.uv[4].xy).rgb;
-    float3 f = tex2D(s_source, input.uv[2].zw).rgb;
+    float3 e = tex2D(s_source, input.uv[2].zw).rgb;
+    float3 f = tex2D(s_source, input.uv[3].xy).rgb;
 
-    float3 h = tex2D(s_source, input.uv[3].xy).rgb;
-    float3 i = tex2D(s_source, input.uv[3].zw).rgb;
+    float3 h = tex2D(s_source, input.uv[3].zw).rgb;
+    float3 i = tex2D(s_source, input.uv[4].xy).rgb;
 
     // Soft min and max.
     //  a b c             b
@@ -147,8 +142,8 @@ float3 ps_cas(v2f input) : SV_Target
     //  Filter shape:           w 1 w
     //                          0 w 0
     float3 window = b + d + f + h;
-    float3 outColor = saturate(mad(window, wRGB, e) * rcpWeightRGB);
-    return lerp(e, outColor, kSharpening);
+    float3 o = mad(window, wRGB, e) * rcpWeightRGB;
+    return saturate(lerp(e, o, kSharpening));
 }
 
 technique ContrastAdaptiveSharpen
