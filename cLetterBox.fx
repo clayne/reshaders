@@ -29,9 +29,9 @@ technique cLetterBox
         VertexShader = PostProcessVS;
         PixelShader = ps_letterbox;
         BlendEnable = true;
-        BlendOp = SUBTRACT;
+        BlendOp = ADD;
         SrcBlend = DESTCOLOR;
-        DestBlend = SRCALPHA;
+        DestBlend = ZERO;
         #if BUFFER_COLOR_BIT_DEPTH != 10
             SRGBWriteEnable = true;
         #endif
