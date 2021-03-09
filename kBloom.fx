@@ -149,10 +149,8 @@ float4 p_usamp(sampler2D src, const float4 uv[2])
 
 float4 ps_dsamp0(v2fd input): SV_TARGET
 {
-    const float2 n = float2(1.0, 0.0);
     const float  knee = mad(kThreshold, kSmooth, 1e-5f);
     const float3 curve = float3(kThreshold - knee, knee * 2.0, 0.25 / knee);
-
     float4 s = p_dsamp(s_source, input.uv);
 
     // Pixel brightness
@@ -163,10 +161,9 @@ float4 ps_dsamp0(v2fd input): SV_TARGET
     rq = curve.z * rq * rq;
 
     // Combine and apply the brightness response curve
-    s.rgb *= max(rq, s.a - kThreshold) / s.a;
+    s.rgb *= max(rq, s.a - kThreshold) / max(s.a, 1e-4);
     s.a = dot(s.rgb, rcp(3.0));
-    s = saturate(lerp(s.a, s.rgb, kSaturation));
-    return mad(s, n.xxxy, n.yyyx);
+    return saturate(lerp(s.a, s.rgb, kSaturation)).rgbr;
 }
 
 float4 ps_dsamp1(v2fd input) : SV_Target { return p_dsamp(s_bloom1, input.uv); }
