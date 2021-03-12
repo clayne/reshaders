@@ -163,7 +163,9 @@ float4 ps_dsamp0(v2fd input): SV_TARGET
     // Combine and apply the brightness response curve
     s.rgb *= max(rq, s.a - kThreshold) / max(s.a, 1e-4);
     s.a = dot(s.rgb, rcp(3.0));
-    return saturate(lerp(s.a, s.rgb, kSaturation)).rgbr;
+    s.rgb = saturate(lerp(s.a, s.rgb, kSaturation));
+    s.a = 1.0;
+    return s;
 }
 
 float4 ps_dsamp1(v2fd input) : SV_Target { return p_dsamp(s_bloom1, input.uv); }
