@@ -4,7 +4,7 @@
     - Do gamma conversions in samplerstate and renderstate (should be free)
     - Calculate texture coordinates in vertex shader (~20% performance boost)
     - Replace original 9-tap upsampler with custom 4-tap version
-    - Use renderstate instead of pixelshader to blend (deducts a tap for each upsample)
+    - Blend with renderstate instead of pixelshader (deducts a tap for each upsample)
 
     Copyright © 2020 Unity Technologies ApS
 
