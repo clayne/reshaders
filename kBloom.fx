@@ -1,13 +1,18 @@
 /*
-    Custom version of Unity's bloom. Should be lighter than qUINT_Bloom :^)
+    Custom version of Unity's bloom
+    Differences:
+    - Do gamma conversions in samplerstate and renderstate (should be free)
+    - Calculate texture coordinates in vertex shader (~20% performance boost)
+    - Replace original 9-tap upsampler with custom 4-tap version
+    - Use renderstate instead of pixelshader to blend (deducts a tap for each upsample)
 
     Copyright © 2020 Unity Technologies ApS
 
     Licensed under the Unity Companion License for Unity-dependent projects
     -- see https://unity3d.com/legal/licenses/Unity_Companion_License
 
-    Unless expressly provided otherwise, the Software under this license
-    is made available strictly on an “AS IS” BASIS WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED.
+    Unless expressly provided otherwise, the Software under this license is made available
+    strictly on an “AS IS” BASIS WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED.
     Please review the license for details on these and other terms and conditions.
 */
 
