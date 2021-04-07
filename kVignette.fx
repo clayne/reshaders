@@ -52,6 +52,6 @@ technique KinoVignette
         BlendEnable = true;
         BlendOp = ADD;
         SrcBlend = DESTCOLOR;
-        DestBlend = SRCALPHA;
+        DestBlend = ZERO;
     }
 }
