@@ -90,7 +90,7 @@ v2f vs_cas(in uint id : SV_VertexID)
     o.uv[3].xy = mad(ts, float2( 1.0, 0.0), coord);
     o.uv[3].zw = mad(ts, float2( 0.0, 1.0), coord);
     o.uv[4].xy = mad(ts, float2( 1.0, 1.0), coord);
-    o.uv[4].xw = 0.0;
+    o.uv[4].zw = 0.0;
     return o;
 }
 
