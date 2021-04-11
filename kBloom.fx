@@ -86,7 +86,8 @@ v2fd v_dsamp(const uint id, sampler2D src)
     // Kawase dual-filter downsampling kernel from StreamFX
     // https://github.com/Xaymar/obs-StreamFX
     const float2 ts = 2.0 / tex2Dsize(src, 0.0);
-    o.uv[0]    = coord.xyxy;
+    o.uv[0].xy = coord;
+    o.uv[0].zw = 0.0;
     o.uv[1].xy = coord - ts;
     o.uv[1].zw = coord + ts;
     o.uv[2].xy = coord + float2(ts.x, -ts.y);

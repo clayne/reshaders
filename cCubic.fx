@@ -12,10 +12,11 @@ uniform int kLod <
     ui_min = 0;
 > = 0;
 
-sampler2D s_source { Texture = ReShade::BackBufferTex; };
+texture2D r_source : COLOR;
+sampler2D s_source { Texture = r_source; };
+
 // Hardcoded resolution because the filter works on power of 2.
 texture2D r_dscale { Width = 1024; Height = 1024; MipLevels = 11; };
-
 sampler2D s_dscale
 {
     Texture = r_dscale;
@@ -27,7 +28,7 @@ sampler2D s_dscale
 struct v2f { float4 vpos : SV_POSITION; float2 uv : TEXCOORD0; };
 
 // Empty shader to generate mipmaps.
-void ps_mipgen(v2f input, out float4 c : SV_Target0) { c = tex2D(s_Linear, input.uv).rgb; }
+void ps_mipgen(v2f input, out float4 c : SV_Target0) { c = tex2D(s_source, input.uv).rgb; }
 
 float4 calcweights(float s)
 {
