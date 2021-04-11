@@ -25,7 +25,7 @@ sampler2D s_source
 
 struct v2f { float4 vpos : SV_POSITION; float2 uv : TEXCOORD0; };
 
-v2f v_tile(in uint id : SV_VertexID)
+v2f vs_tile(in uint id : SV_VertexID)
 {
     const float2 size = float2(BUFFER_WIDTH, BUFFER_HEIGHT);
 
@@ -43,7 +43,7 @@ v2f v_tile(in uint id : SV_VertexID)
     return o;
 }
 
-void p_tile(v2f input, out float3 c : SV_Target0)
+void ps_tile(v2f input, out float3 c : SV_Target0)
 {
     c = tex2D(s_source, input.uv).rgb;
 }
@@ -52,8 +52,8 @@ technique Tile
 {
     pass
     {
-        VertexShader = v_tile;
-        PixelShader = p_tile;
+        VertexShader = vs_tile;
+        PixelShader = ps_tile;
         #if BUFFER_COLOR_BIT_DEPTH != 10
             SRGBWriteEnable = true;
         #endif

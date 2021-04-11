@@ -119,7 +119,6 @@ float2 mFlow(float curr, float prev)
     float4 d; // Edge detection
     d.x = ddx(curr + prev);
     d.y = ddy(curr + prev);
-    d.xy *= 0.5;
     d.z = kLambda;
     d.w = length(d.xyz); // magnitude :: length() uses 1 dp3add instead of mul + mad
     return dt * (d.xy / d.w);

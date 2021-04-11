@@ -59,15 +59,16 @@ v2f vs_sharpen(in uint id : SV_VertexID)
     o.vpos = float4(texcoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 
     const float2 p = 1.0 / s;
-    o.uv[0].xy   = offset(int2(-1, -1)) * p + texcoord; // (-1,-1)
-    o.uv[0].zw   = offset(int2( 0, -1)) * p + texcoord; // ( 0,-1)
-    o.uv[1].xy   = offset(int2(+1, -1)) * p + texcoord; // ( 1,-1)
-    o.uv[1].zw   = offset(int2(-1,  0)) * p + texcoord; // ( 1, 0)
-    o.uv[2].xy   = offset(int2( 0,  0)) * p + texcoord; // (-1, 1)
-    o.uv[2].zw   = offset(int2(+1,  0)) * p + texcoord; // ( 1, 0)
-    o.uv[3].xy   = offset(int2(-1, +1)) * p + texcoord; // ( 0, 1)
-    o.uv[3].zw   = offset(int2( 0, +1)) * p + texcoord; // ( 1, 1)
-    o.uv[4]      = (offset(int2(+1, +1)) * p + texcoord).xyxy; // ( 0, 0)
+    o.uv[0].xy = offset(int2(-1, -1)) * p + texcoord; // (-1,-1)
+    o.uv[0].zw = offset(int2( 0, -1)) * p + texcoord; // ( 0,-1)
+    o.uv[1].xy = offset(int2(+1, -1)) * p + texcoord; // ( 1,-1)
+    o.uv[1].zw = offset(int2(-1,  0)) * p + texcoord; // ( 1, 0)
+    o.uv[2].xy = offset(int2( 0,  0)) * p + texcoord; // (-1, 1)
+    o.uv[2].zw = offset(int2(+1,  0)) * p + texcoord; // ( 1, 0)
+    o.uv[3].xy = offset(int2(-1, +1)) * p + texcoord; // ( 0, 1)
+    o.uv[3].zw = offset(int2( 0, +1)) * p + texcoord; // ( 1, 1)
+    o.uv[4].xy = offset(int2(+1, +1)) * p + texcoord; // ( 0, 0)
+    o.uv[4].zw = 0.0;
     return o;
 }
 

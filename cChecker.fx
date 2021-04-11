@@ -7,24 +7,20 @@
     If you use/like what I do, also feel free to support my patreon if you want to https://www.patreon.com/RonjaTutorials.
 */
 
-struct v2f { float4 vpos : SV_Position; };
-
-v2f vs_checker(const uint id : SV_VertexID)
+float4 vs_checker(const uint id : SV_VertexID) : SV_Position
 {
-    v2f o;
     float2 coord;
     coord.x = (id == 2) ? 2.0 : 0.0;
     coord.y = (id == 1) ? 2.0 : 0.0;
-    o.vpos = float4(coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
-    return o;
+    return float4(coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
 
-float4 ps_checker(v2f input) : SV_Target
+float4 ps_checker(float4 vpos : SV_Position) : SV_Target
 {
     // add different dimensions
     // divide it by 2 and get the fractional part, resulting in a value of 0 for even and 0.5 for odd numbers.
     // multiply it by 2 to make odd values white instead of grey
-    float chessboard = floor(input.vpos.x + input.vpos.y);
+    float chessboard = floor(dot(vpos.xy, 1.0));
     return frac(chessboard * 0.5) * 2.0;
 }
 
