@@ -1,4 +1,17 @@
 
+
+/*
+uniform float kRadius <
+	ui_label = "Radius";
+	ui_type = "Slider";
+	ui_min = 0.0;
+> = 1.0;
+*/
+
+uniform int framecount < source = "framecount"; >;
+
+#define alternate framecount % 2 == 0
+
 texture2D r_source : COLOR;
 sampler2D s_source
 {
@@ -8,14 +21,15 @@ sampler2D s_source
 
 texture2D r_mip
 {
-    Width = BUFFER_WIDTH / 2.0;
-    Height = BUFFER_HEIGHT / 2.0;
-    MipLevels = 11;
+    Width = BUFFER_WIDTH;
+    Height = BUFFER_HEIGHT;
+    MipLevels = 3;
 };
 
 sampler2D s_mip
 {
     Texture = r_mip;
+    MipLODBias = 1.0;
 };
 
 struct v2f
@@ -43,7 +57,7 @@ float4 ps_mip(v2f input) : SV_TARGET
 static const float2 PoissonTaps[12] =
 {
     float2(-0.326,-0.406), //This Distribution seems faster.....
-    float2(-0.840,-0.074), //Tried many from https://github.com/bartwronski/PoissonSamplingGenerator
+	    float2(-0.840,-0.074), //Tried many from https://github.com/bartwronski/PoissonSamplingGenerator
     float2(-0.696, 0.457), //But they seems slower then this one I found online..... WTF
     float2(-0.203, 0.621),
     float2( 0.962,-0.195),
@@ -65,14 +79,22 @@ float2 Rotate2D_B(float2 r, float l)
 
 float4 p_poission(sampler2D src, float2 uv, float2 pos)
 {
-    const int    kSampleCount = 12;
-    const float  kRadius = 128.0;
-    const float2 kPixSize = 1.0 / float2(BUFFER_WIDTH, BUFFER_HEIGHT);
-    const float  kSampleArea = 3.14159265359f * (kRadius * kRadius) / kSampleCount;
-    const float  kLod = log2(sqrt(kSampleArea));
+	float kRadius = 64.0;
+    int    kSampleCount = 12;
+    float2 kPixSize = 1.0 / float2(BUFFER_WIDTH, BUFFER_HEIGHT);
 
+	if(alternate)
+	{
+		kRadius *= 1;
+	}
+
+	// noise function
     const float3 kValue = float3(52.9829189, 0.06711056, 0.00583715);
     float kTheta = frac(kValue.x * frac(dot(pos, kValue.yz)));
+
+    // Calculate mip levels
+    float kSampleArea = 3.14159265359f * (kRadius * kRadius) / kSampleCount;
+    int kLod = log2(sqrt(kSampleArea));
 
     float4 kColor;
     for(uint i = 0; i < kSampleCount; ++i)
