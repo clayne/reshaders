@@ -10,6 +10,7 @@ texture2D r_mip
 {
     Width = BUFFER_WIDTH / 2.0;
     Height = BUFFER_HEIGHT / 2.0;
+    MipLevels = 11;
 };
 
 sampler2D s_mip
@@ -37,52 +38,50 @@ float4 ps_mip(v2f input) : SV_TARGET
     return tex2D(s_source, input.uv);
 }
 
-/*
-    Use EPIC poission function from BSD
-*/
+// Use EPIC poission function from BSD
 
-static const float kPi = 3.14159265359f;
-
-float3 Sampling_Hemisphere_Uniform(float2 uv)
+static const float2 PoissonTaps[12] =
 {
-	float phi = uv.y * 2.0 * kPi;
-	float ct = 1.0 - uv.x;
-	float st = sqrt(1.0 - ct * ct);
+    float2(-0.326,-0.406), //This Distribution seems faster.....
+    float2(-0.840,-0.074), //Tried many from https://github.com/bartwronski/PoissonSamplingGenerator
+    float2(-0.696, 0.457), //But they seems slower then this one I found online..... WTF
+    float2(-0.203, 0.621),
+    float2( 0.962,-0.195),
+    float2( 0.473,-0.480),
+    float2( 0.519, 0.767),
+    float2( 0.185,-0.893),
+    float2( 0.507, 0.064),
+    float2( 0.896, 0.412),
+    float2(-0.322,-0.933),
+    float2(-0.792,-0.598)
+};
 
-    float cosphi, sinphi;
-    sincos(phi, sinphi * st, cosphi * st);
-	return float3(cosphi, sinphi , ct);
+float2 Rotate2D_B(float2 r, float l)
+{
+    float2 Directions;
+    sincos(l, Directions[0], Directions[1]);//same as float2(cos(l),sin(l))
+    return float2(dot(r, float2(Directions[1], -Directions[0])), dot(r, Directions.xy));
 }
 
 float4 p_poission(sampler2D src, float2 uv, float2 pos)
 {
-    const float2 kTexSize = float2(BUFFER_WIDTH, BUFFER_HEIGHT);
-    const float2 kPixSize = 1.0 / kTexSize;
-    const int kSampleCount = 16;
-    const float kRadius = 16.0;
+    const int    kSampleCount = 12;
+    const float  kRadius = 128.0;
+    const float2 kPixSize = 1.0 / float2(BUFFER_WIDTH, BUFFER_HEIGHT);
+    const float  kSampleArea = 3.14159265359f * (kRadius * kRadius) / kSampleCount;
+    const float  kLod = log2(sqrt(kSampleArea));
 
     const float3 kValue = float3(52.9829189, 0.06711056, 0.00583715);
     float kTheta = frac(kValue.x * frac(dot(pos, kValue.yz)));
 
-    float kSinTheta, kCosTheta;
-    sincos(kTheta, kSinTheta, kCosTheta);
-    float2x2 kRotation = float2x2(kCosTheta, kSinTheta,
-                                 -kSinTheta, kCosTheta);
-
-    float4 kColor = 0.0;
-    float kRN = 1.0 / float(kSampleCount);
-
-    float kSampleArea = kPi * (kRadius * kRadius) / kSampleCount;
-    float kLod = log2(sqrt(kSampleArea));
-
+    float4 kColor;
     for(uint i = 0; i < kSampleCount; ++i)
     {
-        float2 kOffset = Sampling_Hemisphere_Uniform(uv).xy; // TODO: harass BSD on ReShade lounge about this
-        kOffset = mul(kOffset, kRotation);
+        float2 kOffset = Rotate2D_B(PoissonTaps[i], kTheta); // TODO: harass BSD on ReShade lounge about this
         kColor += tex2Dlod(s_mip, float4(uv + kOffset * kRadius * kPixSize, 0.0, kLod));
     }
 
-    return kColor * kRN;
+    return kColor / float(kSampleCount);
 }
 
 float4 ps_blur(v2f input) : SV_TARGET
