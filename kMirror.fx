@@ -75,7 +75,7 @@ void ps_mirror(in float4 vpos : SV_Position, in float2 uv : TEXCOORD, out float4
     c = tex2D(s_source, uv);
 }
 
-technique KinoContour
+technique KinoMirror
 {
     pass
     {

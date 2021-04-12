@@ -1,50 +1,56 @@
 
+/*
+    Unlimited 9-Tap blur using mipmaps
+    Based on https://github.com/spite/Wagner/blob/master/fragment-shaders/box-blur-fs.glsl
+    Special Thanks to BlueSkyDefender for help and patience
+*/
+
 uniform float kRadius <
-	ui_label = "Radius";
-	ui_type = "slider";
-	ui_step = 0.01;
+    ui_label = "Radius";
+    ui_type = "slider";
+    ui_step = 0.01;
 > = 0.1;
 
 texture2D r_source : COLOR;
 
 texture2D r_mip
 {
-	Width = BUFFER_WIDTH / 2.0;
-	Height = BUFFER_HEIGHT / 2.0;
-	MipLevels = 3;
-	Format = RGB10A2;
+    Width = BUFFER_WIDTH / 2.0;
+    Height = BUFFER_HEIGHT / 2.0;
+    MipLevels = 3;
+    Format = RGB10A2;
 };
 
 texture2D r_blur
 {
-	Width = BUFFER_WIDTH / 2.0;
-	Height = BUFFER_HEIGHT / 2.0;
-	MipLevels = 3;
-	Format = RGB10A2;
+    Width = BUFFER_WIDTH / 2.0;
+    Height = BUFFER_HEIGHT / 2.0;
+    MipLevels = 3;
+    Format = RGB10A2;
 };
 
 sampler2D s_source
 {
-	Texture = r_source;
-	AddressU = MIRROR;
-	AddressV = MIRROR;
-	SRGBTexture = true;
+    Texture = r_source;
+    AddressU = MIRROR;
+    AddressV = MIRROR;
+    SRGBTexture = true;
 };
 
 sampler2D s_mip
 {
-	Texture = r_mip;
-	MipLODBias = 2.0;
-	AddressU = MIRROR;
-	AddressV = MIRROR;
+    Texture = r_mip;
+    MipLODBias = 2.0;
+    AddressU = MIRROR;
+    AddressV = MIRROR;
 };
 
 sampler2D s_blur
 {
-	Texture = r_blur;
-	MipLODBias = 2.0;
-	AddressU = MIRROR;
-	AddressV = MIRROR;
+    Texture = r_blur;
+    MipLODBias = 2.0;
+    AddressU = MIRROR;
+    AddressV = MIRROR;
 };
 
 struct v2f
@@ -67,41 +73,40 @@ float4 ps_mip(v2f input) : SV_TARGET
     return tex2D(s_source, input.uv);
 }
 
-// Modified
-
-float4 p_blur(sampler2D src, float2 uv, float2 pos, float2 delta)
+float4 p_noiseblur(sampler2D src, float2 uv, float2 pos, float2 delta)
 {
-    float4 kColor = 0.0;
-	float  kTotal = 0.0;
-	const float kSampleCount = 2.0;
+    float4 kColor;
+    float kTotal;
+    const float kSampleCount = 2.0;
 
-	// noise function
+    // Interleaved Gradient Noise from
+    // http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare
     const float3 kValue = float3(52.9829189, 0.06711056, 0.00583715);
     float kOffset = frac(kValue.x * frac(dot(pos, kValue.yz)));
 
-	for(float t= -kSampleCount; t <= kSampleCount; t++)
-	{
-		float kPercent = (t + kOffset - 0.5) / (kSampleCount * 2.0);
-		float kWeight = 1.0 - abs(kPercent);
+    for(float t= -kSampleCount; t <= kSampleCount; t++)
+    {
+        float kPercent = (t + kOffset - 0.5) / (kSampleCount * 2.0);
+        float kWeight = 1.0 - abs(kPercent);
 
-		float4 kSample = tex2D(src, uv + delta * kPercent);
-		kColor += kSample * kWeight;
-		kTotal += kWeight;
-	}
+        float4 kSample = tex2D(src, uv + delta * kPercent);
+        kColor += kSample * kWeight;
+        kTotal += kWeight;
+    }
 
     return kColor / kTotal;
 }
 
 float4 ps_blurh(v2f input) : SV_TARGET
 {
-	float2 sc; sincos(radians(0.0), sc[0], sc[1]);
-    return p_blur(s_mip, input.uv, input.vpos.xy, sc.yx * kRadius);
+    float2 sc; sincos(radians(0.0), sc[0], sc[1]);
+    return p_noiseblur(s_mip, input.uv, input.vpos.xy, sc.yx * kRadius);
 }
 
 float4 ps_blurv(v2f input) : SV_TARGET
 {
-	float2 sc; sincos(radians(90.0), sc[0], sc[1]);
-    return p_blur(s_blur, input.uv, input.vpos.xy, sc.yx * kRadius);
+    float2 sc; sincos(radians(90.0), sc[0], sc[1]);
+    return p_noiseblur(s_blur, input.uv, input.vpos.xy, sc.yx * kRadius);
 }
 
 technique cBlur
