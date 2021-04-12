@@ -11,16 +11,16 @@ texture2D r_normal { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; };
 sampler2D s_source { Texture = r_source; };
 sampler2D s_normal { Texture = r_normal; };
 
-struct vs2ps
+struct v2f
 {
     float4 vpos : SV_POSITION;
     float2 uv : TEXCOORD0;
 };
 
 // Algorithm 6: Neighbourhood blending
-vs2ps vs_sraa(const uint id : SV_VERTEXID)
+v2f vs_sraa(const uint id : SV_VERTEXID)
 {
-    vs2ps output;
+    v2f output;
     output.uv.x = (id == 2) ? 2.0 : 0.0;
     output.uv.y = (id == 1) ? 2.0 : 0.0;
     output.vpos = float4(output.uv * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
@@ -43,7 +43,7 @@ float Bilateral(
 
 // Wait a second, this is done in one pass ?!?
 
-float4 ps_sraa(vs2ps input) : COLOR
+float4 ps_sraa(v2f input) : COLOR
 {
     /*
         Algorithm 7: Getting the information of the surrounding pixels
