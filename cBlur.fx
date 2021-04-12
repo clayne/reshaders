@@ -1,35 +1,50 @@
 
-
-/*
 uniform float kRadius <
 	ui_label = "Radius";
-	ui_type = "Slider";
-	ui_min = 0.0;
-> = 1.0;
-*/
-
-uniform int framecount < source = "framecount"; >;
-
-#define alternate framecount % 2 == 0
+	ui_type = "slider";
+	ui_step = 0.01;
+> = 0.1;
 
 texture2D r_source : COLOR;
-sampler2D s_source
-{
-    Texture = r_source;
-    SRGBTexture = true;
-};
 
 texture2D r_mip
 {
-    Width = BUFFER_WIDTH;
-    Height = BUFFER_HEIGHT;
-    MipLevels = 3;
+	Width = BUFFER_WIDTH / 2.0;
+	Height = BUFFER_HEIGHT / 2.0;
+	MipLevels = 3;
+	Format = RGB10A2;
+};
+
+texture2D r_blur
+{
+	Width = BUFFER_WIDTH / 2.0;
+	Height = BUFFER_HEIGHT / 2.0;
+	MipLevels = 3;
+	Format = RGB10A2;
+};
+
+sampler2D s_source
+{
+	Texture = r_source;
+	AddressU = MIRROR;
+	AddressV = MIRROR;
+	SRGBTexture = true;
 };
 
 sampler2D s_mip
 {
-    Texture = r_mip;
-    MipLODBias = 1.0;
+	Texture = r_mip;
+	MipLODBias = 2.0;
+	AddressU = MIRROR;
+	AddressV = MIRROR;
+};
+
+sampler2D s_blur
+{
+	Texture = r_blur;
+	MipLODBias = 2.0;
+	AddressU = MIRROR;
+	AddressV = MIRROR;
 };
 
 struct v2f
@@ -52,66 +67,44 @@ float4 ps_mip(v2f input) : SV_TARGET
     return tex2D(s_source, input.uv);
 }
 
-// Use EPIC poission function from BSD
+// Modified
 
-static const float2 PoissonTaps[12] =
+float4 p_blur(sampler2D src, float2 uv, float2 pos, float2 delta)
 {
-    float2(-0.326,-0.406), //This Distribution seems faster.....
-	    float2(-0.840,-0.074), //Tried many from https://github.com/bartwronski/PoissonSamplingGenerator
-    float2(-0.696, 0.457), //But they seems slower then this one I found online..... WTF
-    float2(-0.203, 0.621),
-    float2( 0.962,-0.195),
-    float2( 0.473,-0.480),
-    float2( 0.519, 0.767),
-    float2( 0.185,-0.893),
-    float2( 0.507, 0.064),
-    float2( 0.896, 0.412),
-    float2(-0.322,-0.933),
-    float2(-0.792,-0.598)
-};
-
-float2 Rotate2D_B(float2 r, float l)
-{
-    float2 Directions;
-    sincos(l, Directions[0], Directions[1]);//same as float2(cos(l),sin(l))
-    return float2(dot(r, float2(Directions[1], -Directions[0])), dot(r, Directions.xy));
-}
-
-float4 p_poission(sampler2D src, float2 uv, float2 pos)
-{
-	float kRadius = 64.0;
-    int    kSampleCount = 12;
-    float2 kPixSize = 1.0 / float2(BUFFER_WIDTH, BUFFER_HEIGHT);
-
-	if(alternate)
-	{
-		kRadius *= 1;
-	}
+    float4 kColor = 0.0;
+	float  kTotal = 0.0;
+	const float kSampleCount = 2.0;
 
 	// noise function
     const float3 kValue = float3(52.9829189, 0.06711056, 0.00583715);
-    float kTheta = frac(kValue.x * frac(dot(pos, kValue.yz)));
+    float kOffset = frac(kValue.x * frac(dot(pos, kValue.yz)));
 
-    // Calculate mip levels
-    float kSampleArea = 3.14159265359f * (kRadius * kRadius) / kSampleCount;
-    int kLod = log2(sqrt(kSampleArea));
+	for(float t= -kSampleCount; t <= kSampleCount; t++)
+	{
+		float kPercent = (t + kOffset - 0.5) / (kSampleCount * 2.0);
+		float kWeight = 1.0 - abs(kPercent);
 
-    float4 kColor;
-    for(uint i = 0; i < kSampleCount; ++i)
-    {
-        float2 kOffset = Rotate2D_B(PoissonTaps[i], kTheta); // TODO: harass BSD on ReShade lounge about this
-        kColor += tex2Dlod(s_mip, float4(uv + kOffset * kRadius * kPixSize, 0.0, kLod));
-    }
+		float4 kSample = tex2D(src, uv + delta * kPercent);
+		kColor += kSample * kWeight;
+		kTotal += kWeight;
+	}
 
-    return kColor / float(kSampleCount);
+    return kColor / kTotal;
 }
 
-float4 ps_blur(v2f input) : SV_TARGET
+float4 ps_blurh(v2f input) : SV_TARGET
 {
-    return p_poission(s_mip, input.uv, input.vpos.xy);
+	float2 sc; sincos(radians(0.0), sc[0], sc[1]);
+    return p_blur(s_mip, input.uv, input.vpos.xy, sc.yx * kRadius);
 }
 
-technique BlurTorture
+float4 ps_blurv(v2f input) : SV_TARGET
+{
+	float2 sc; sincos(radians(90.0), sc[0], sc[1]);
+    return p_blur(s_blur, input.uv, input.vpos.xy, sc.yx * kRadius);
+}
+
+technique cBlur
 {
     pass
     {
@@ -123,7 +116,14 @@ technique BlurTorture
     pass
     {
         VertexShader = vs_basic;
-        PixelShader = ps_blur;
+        PixelShader = ps_blurh;
+        RenderTarget = r_blur;
+    }
+
+    pass
+    {
+        VertexShader = vs_basic;
+        PixelShader = ps_blurv;
         SRGBWriteEnable = true;
     }
 }
