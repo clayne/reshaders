@@ -136,7 +136,7 @@ float2 calcFlow(float2 uv, float2 vpos, float2 flow, float i)
 {
     // From [http://john-chapman-graphics.blogspot.com/2013/01/per-object-motion-blur.html]
     const float kSamples = 1.0 / (16.0 - 1.0);
-    float2 kCalc = (pnoise(vpos) * 4.0 + i) * kSamples - 0.5;
+    float2 kCalc = (pnoise(vpos) * 2.0 + i) * kSamples - 0.5;
     return flow * kCalc + uv;
 }
 
