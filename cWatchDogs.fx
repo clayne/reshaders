@@ -44,7 +44,8 @@ float3 ps_tonemap(v2f input) : SV_Target
 {
     float3 kLinear = tex2D(s_source, input.uv).rgb;
     const float3 kWhitePoint = 1.0 / p_tone(float3(2.80f, 2.90f, 3.10f));
-    return pow((p_tone(kLinear) * 1.25 * kWhitePoint), 1.25);
+    kLinear = p_tone(kLinear) * 1.25 * kWhitePoint;
+    return pow(abs(kLinear), 1.25);
 }
 
 technique WatchDogsTonemap

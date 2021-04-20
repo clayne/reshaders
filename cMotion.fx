@@ -6,8 +6,6 @@
     pFlowBlur() from Jose Negrete AKA BlueSkyDefender [https://github.com/BlueSkyDefender/AstrayFX]
 */
 
-#include "ReShade.fxh"
-
 uniform float kLambda <
     ui_type = "drag";
     ui_label = "Lambda";
@@ -20,15 +18,15 @@ uniform int kDebug <
 > = 0;
 
 #define size 1024 // Textures need to be powers of 2 for elegent mipmapping
-#define lod 5.0
 
-texture2D r_lod    { Width = size; Height = size; Format = R16F; MipLevels = 6.0; };
+texture2D r_color  : COLOR;
+texture2D r_lod    { Width = size; Height = size; Format = R16F; MipLevels = 7.0; };
 texture2D r_cframe { Width = size; Height = size; Format = R16F; };
 texture2D r_pframe { Width = size; Height = size; Format = R16F; };
 
-sampler2D s_source
+sampler2D s_color
 {
-    Texture = ReShade::BackBufferTex;
+    Texture = r_color;
     #if BUFFER_COLOR_BIT_DEPTH != 10
         SRGBTexture = true;
     #endif
@@ -38,18 +36,39 @@ sampler2D s_lod    { Texture = r_lod; };
 sampler2D s_cframe { Texture = r_cframe; };
 sampler2D s_pframe { Texture = r_pframe; };
 
-struct v2f { float4 vpos : SV_POSITION; float2 uv : TEXCOORD0; };
+struct v2f
+{
+    float4 vpos : SV_POSITION;
+    float2 uv : TEXCOORD0;
+};
+
+struct p2mrt
+{
+	float4 cframe : SV_Target0;
+	float4 pframe : SV_Target1;
+};
+
+v2f vs_basic(const uint id : SV_VertexID)
+{
+    v2f o;
+    o.uv.x = (id == 2) ? 2.0 : 0.0;
+    o.uv.y = (id == 1) ? 2.0 : 0.0;
+    o.vpos = float4(o.uv * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    return o;
+}
 
 /* [ Pixel Shaders ] */
 
 // Empty shader to generate brightpass, mipmaps, and previous frame
 // Exposure algorithm from [https://github.com/TheRealMJP/BakingLab] [MIT]
-void ps_lod(v2f input, out float c : SV_Target0, out float p : SV_Target1)
+p2mrt ps_lod(v2f input)
 {
-    float3 col = tex2Dlod(s_source, float4(input.uv, 0.0, 0.0)).rgb;
-    c = rcp(dot(col, rcp(3.0)) + 0.0001);
-    c = log2(c);
-    p = tex2D(s_cframe, input.uv).x; // Output the c_Frame we got from last frame
+	p2mrt o;
+    float4 col = tex2D(s_color, input.uv);
+    o.cframe = dot(col, rcp(3.0)) + 1e-4;
+    o.cframe = log2(-o.cframe);
+    o.pframe = tex2D(s_cframe, input.uv).x; // Output the c_Frame we got from last frame
+    return o;
 }
 
 /*
@@ -80,9 +99,9 @@ float4 calcweights(float s)
 }
 
 // NOTE: This is a grey cubic filter. Cubic.fx is the RGB version of this ;)
-void ps_cubic(v2f input, out float c : SV_Target0)
+float4 ps_cframe(v2f input) : SV_Target0
 {
-    const float2 texsize = ldexp(size, -lod);
+    const float2 texsize = tex2Dsize(s_lod, 6.0);
     const float2 pt = 1.0 / texsize;
     float2 fcoord = frac(input.uv * texsize + 0.5);
     float4 parmx = calcweights(fcoord.x);
@@ -92,16 +111,16 @@ void ps_cubic(v2f input, out float c : SV_Target0)
     cdelta.yw = parmy.rg * float2(-pt.y, pt.y);
     // first y-interpolation
     float3 a;
-    a.r = tex2Dlod(s_lod, float4(input.uv + cdelta.xy, 0.0, lod)).x;
-    a.g = tex2Dlod(s_lod, float4(input.uv + cdelta.xw, 0.0, lod)).x;
+    a.r = tex2Dlod(s_lod, float4(input.uv + cdelta.xy, 0.0, 6.0)).x;
+    a.g = tex2Dlod(s_lod, float4(input.uv + cdelta.xw, 0.0, 6.0)).x;
     a.b = lerp(a.g, a.r, parmy.b);
     // second y-interpolation
     float3 b;
-    b.r = tex2Dlod(s_lod, float4(input.uv + cdelta.zy, 0.0, lod)).x;
-    b.g = tex2Dlod(s_lod, float4(input.uv + cdelta.zw, 0.0, lod)).x;
+    b.r = tex2Dlod(s_lod, float4(input.uv + cdelta.zy, 0.0, 6.0)).x;
+    b.g = tex2Dlod(s_lod, float4(input.uv + cdelta.zw, 0.0, 6.0)).x;
     b.b = lerp(b.g, b.r, parmy.b);
     // x-interpolation
-    c = lerp(b.b, a.b, parmx.b).x;
+    return lerp(b.b, a.b, parmx.b);
 }
 
 /*
@@ -115,16 +134,29 @@ void ps_cubic(v2f input, out float c : SV_Target0)
 
 float2 mFlow(float curr, float prev)
 {
-    float dt = distance(curr, prev); // distance between current and previous frame
+    float dt = length(curr - prev); // distance between current and previous frame
     float4 d; // Edge detection
     d.x = ddx(curr + prev);
     d.y = ddy(curr + prev);
     d.z = kLambda;
     d.w = length(d.xyz); // magnitude :: length() uses 1 dp3add instead of mul + mad
-    return dt * (d.xy / d.w);
+	return dt * (d.xy / d.w);
 }
 
-void ps_flow(v2f input, out float3 c : SV_Target0)
+float2 calcFlow(float2 uv, float2 vpos, float2 flow, float i)
+{
+    // Interleaved Gradient Noise by Jorge Jimenez to smoothen blur samples
+    // [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
+    const float3 m = float3(52.9829189, 0.06711056, 0.00583715);
+    float ign = frac(m.x * frac(dot(vpos.xy, m.yz)));
+
+    // From [http://john-chapman-graphics.blogspot.com/2013/01/per-object-motion-blur.html]
+    const float kSamples = 1.0 / (16.0 - 1.0);
+    float2 kCalc = (ign * 2.0 + i) * kSamples - 0.5;
+	return flow * kCalc + uv;
+}
+
+float4 ps_flowblur(v2f input) : SV_Target0
 {
     // Calculate optical flow and blur direction
     // BSD did this in another pass, but this should be cheaper
@@ -133,43 +165,40 @@ void ps_flow(v2f input, out float3 c : SV_Target0)
     float prev = tex2D(s_pframe, input.uv).x; // cubic from last frame
     float2 oFlow = mFlow(curr, prev);
 
-    // Interleaved Gradient Noise by Jorge Jimenez to smoothen blur samples
-    // [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
-    const float3 m = float3(52.9829189, 0.06711056, 0.00583715);
-    float ign = frac(m.x * frac(dot(input.vpos.xy, m.yz)));
-
-    // From [http://john-chapman-graphics.blogspot.com/2013/01/per-object-motion-blur.html]
-    c  = tex2D(s_source, input.uv + oFlow * (ign + 1)).rgb * 0.125;
-    c += tex2D(s_source, input.uv + oFlow * (ign + 2)).rgb * 0.125;
-    c += tex2D(s_source, input.uv + oFlow * (ign + 3)).rgb * 0.125;
-    c += tex2D(s_source, input.uv + oFlow * (ign + 4)).rgb * 0.125;
-    c += tex2D(s_source, input.uv + oFlow * (ign + 5)).rgb * 0.125;
-    c += tex2D(s_source, input.uv + oFlow * (ign + 6)).rgb * 0.125;
-    c += tex2D(s_source, input.uv + oFlow * (ign + 7)).rgb * 0.125;
-    c += tex2D(s_source, input.uv + oFlow * (ign + 8)).rgb * 0.125;
+	const float kWeights = 1.0 / 8.0;
+	float4 color = 0.0;
+    color  = tex2D(s_color, calcFlow(input.uv, input.vpos.xy, oFlow, 2.0)) * kWeights;
+    color += tex2D(s_color, calcFlow(input.uv, input.vpos.xy, oFlow, 4.0)) * kWeights;
+    color += tex2D(s_color, calcFlow(input.uv, input.vpos.xy, oFlow, 6.0)) * kWeights;
+    color += tex2D(s_color, calcFlow(input.uv, input.vpos.xy, oFlow, 8.0)) * kWeights;
+    color += tex2D(s_color, calcFlow(input.uv, input.vpos.xy, oFlow, 10.0)) * kWeights;
+    color += tex2D(s_color, calcFlow(input.uv, input.vpos.xy, oFlow, 12.0)) * kWeights;
+    color += tex2D(s_color, calcFlow(input.uv, input.vpos.xy, oFlow, 14.0)) * kWeights;
+    color += tex2D(s_color, calcFlow(input.uv, input.vpos.xy, oFlow, 16.0)) * kWeights;
+    return color;
 }
 
 technique cMotionBlur < ui_tooltip = "Color-Based Motion Blur"; >
 {
-    pass LOD
+    pass
     {
-        VertexShader = PostProcessVS;
+        VertexShader = vs_basic;
         PixelShader = ps_lod;
         RenderTarget0 = r_lod;
         RenderTarget1 = r_pframe; // Store previous frame's cubic for mFlow()
     }
 
-    pass CubicFrame
+    pass
     {
-        VertexShader = PostProcessVS;
-        PixelShader = ps_cubic;
+        VertexShader = vs_basic;
+        PixelShader = ps_cframe;
         RenderTarget0 = r_cframe;
     }
 
-    pass FlowBlur
+    pass
     {
-        VertexShader = PostProcessVS;
-        PixelShader = ps_flow;
+        VertexShader = vs_basic;
+        PixelShader = ps_flowblur;
         #if BUFFER_COLOR_BIT_DEPTH != 10
             SRGBWriteEnable = true;
         #endif
