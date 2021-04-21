@@ -56,6 +56,7 @@ v2f vs_basic(const uint id : SV_VertexID)
 
 /*
     Algorithm from [https://github.com/mattatz/unity-optical-flow] [MIT]
+    Threshold from [https://github.com/diwi/PixelFlow] [MIT]
     Optimization from [https://www.shadertoy.com/view/3l2Gz1] [CC BY-NC-SA 3.0]
     ISSUE: mFlow combines the optical flow result of the current AND previous frame.
 */
@@ -81,22 +82,26 @@ float ps_copy(v2f input) : SV_Target
     return tex2D(s_lod, input.uv).r;
 }
 
-float2 ps_flow(v2f input) : SV_Target
+float4 ps_flow(v2f input) : SV_Target
 {
     float curr = tex2D(s_cframe, input.uv).r;
     float prev = tex2D(s_pframe, input.uv).r;
 
     // distance between current and previous frame
     float dt = distance(curr, prev);
-    curr = smoothstep(prev, curr, dt);
+    curr = smoothstep(prev, curr, abs(dt));
 
     // Edge detection
     float4 d;
     d.x = ddx(curr);
     d.y = ddy(curr);
-    d.z = kLambda;
-    d.w = length(d.xyz);
-    return dt * (d.xy / d.w);
+    d.z = rsqrt(dot(d.xy, d.xy) + 1.0);
+    float2 kCalc = dt * (d.xy * d.zz);
+
+    float kOld = sqrt(dot(kCalc.xy, kCalc.xy) + 1e-4);
+    float kNew = max(kOld - kLambda, 0.0);
+    kCalc *= kNew / kOld;
+    return kCalc.rgrg;
 }
 
 float pnoise(float2 pos)
