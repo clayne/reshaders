@@ -1,6 +1,6 @@
-/* Medium Preset SMAA for ReShade 4.0+ */
+/* "Lightweight" SMAA for ReShade 4.0+ */
 
-#include "cSMAA.fxh"
+#include "SMAA.fxh"
 
 // Textures and Samplers
 
@@ -35,30 +35,30 @@ sampler2D searchSampler { Texture = searchTex; MipFilter = Point; MinFilter = Po
 
 struct v2f_1
 {
-	float4 vpos   : SV_Position;
-	float2 uv0    : TEXCOORD0;
-	float4 uv1[3] : TEXCOORD1;
+    float4 vpos   : SV_Position;
+    float2 uv0    : TEXCOORD0;
+    float4 uv1[3] : TEXCOORD1;
 };
 
 v2f_1 SMAAEdgeDetectionWrapVS(in uint id : SV_VertexID)
 {
-	v2f_1 o;
+    v2f_1 o;
 
     float2 coord;
     coord.x = (id == 2) ? 2.0 : 0.0;
     coord.y = (id == 1) ? 2.0 : 0.0;
     o.vpos = float4(coord.xy * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 
-	o.uv0 = coord;
-	o.uv1[0] = mad(SMAA_RT_METRICS.xyxy, float4(-1.0, 0.0, 0.0, -1.0), coord.xyxy);
+    o.uv0 = coord;
+    o.uv1[0] = mad(SMAA_RT_METRICS.xyxy, float4(-1.0, 0.0, 0.0, -1.0), coord.xyxy);
     o.uv1[1] = mad(SMAA_RT_METRICS.xyxy, float4( 1.0, 0.0, 0.0,  1.0), coord.xyxy);
     o.uv1[2] = mad(SMAA_RT_METRICS.xyxy, float4(-2.0, 0.0, 0.0, -2.0), coord.xyxy);
-	return o;
+    return o;
 }
 
 float2 SMAAEdgeDetectionWrapPS(v2f_1 input) : SV_Target
 {
-	// Calculate the threshold:
+    // Calculate the threshold:
     float2 threshold = float2(SMAA_THRESHOLD, SMAA_THRESHOLD);
 
     // Calculate color deltas:
@@ -123,20 +123,20 @@ float2 SMAAEdgeDetectionWrapPS(v2f_1 input) : SV_Target
 
 struct v2f_2
 {
-	float4 vpos   : SV_Position;
-	float4 uv0    : TEXCOORD0;
-	float4 uv1[3] : TEXCOORD1;
+    float4 vpos   : SV_Position;
+    float4 uv0    : TEXCOORD0;
+    float4 uv1[3] : TEXCOORD1;
 };
 
 v2f_2 SMAABlendingWeightCalculationWrapVS(in uint id : SV_VertexID)
 {
-	v2f_2 o;
+    v2f_2 o;
     float2 coord;
     coord.x = (id == 2) ? 2.0 : 0.0;
     coord.y = (id == 1) ? 2.0 : 0.0;
     o.vpos = float4(coord.xy * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 
-	o.uv0.xy = coord;
+    o.uv0.xy = coord;
     o.uv0.zw = o.uv0.xy * SMAA_RT_METRICS.zw;
 
     // We will use these offsets for the searches later on (see @PSEUDO_GATHER4):
@@ -147,12 +147,12 @@ v2f_2 SMAABlendingWeightCalculationWrapVS(in uint id : SV_VertexID)
     o.uv1[2] = mad(SMAA_RT_METRICS.xxyy,
                     float2(-2.0, 2.0).xyxy * float(SMAA_MAX_SEARCH_STEPS),
                     float4(o.uv1[0].xz, o.uv1[1].yw));
-	return o;
+    return o;
 }
 
 float4 SMAABlendingWeightCalculationWrapPS(v2f_2 input) : SV_Target
 {
-	float4 weights = float4(0.0, 0.0, 0.0, 0.0);
+    float4 weights = float4(0.0, 0.0, 0.0, 0.0);
     float2 e = tex2D(edgesSampler, input.uv0.xy).rg;
 
     [branch]
@@ -243,27 +243,27 @@ float4 SMAABlendingWeightCalculationWrapPS(v2f_2 input) : SV_Target
 
 struct v2f_3
 {
-	float4 vpos : SV_Position;
-	float2 uv0  : TEXCOORD0;
-	float4 uv1  : TEXCOORD1;
+    float4 vpos : SV_Position;
+    float2 uv0  : TEXCOORD0;
+    float4 uv1  : TEXCOORD1;
 };
 
 v2f_3 SMAANeighborhoodBlendingWrapVS(in uint id : SV_VertexID)
 {
-	v2f_3 o;
+    v2f_3 o;
     float2 coord;
     coord.x = (id == 2) ? 2.0 : 0.0;
     coord.y = (id == 1) ? 2.0 : 0.0;
     o.vpos = float4(coord.xy * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 
-	o.uv0 = coord;
-	o.uv1 = mad(SMAA_RT_METRICS.xyxy, float4( 1.0, 0.0, 0.0,  1.0), coord.xyxy);
-	return o;
+    o.uv0 = coord;
+    o.uv1 = mad(SMAA_RT_METRICS.xyxy, float4( 1.0, 0.0, 0.0,  1.0), coord.xyxy);
+    return o;
 }
 
-float3 SMAANeighborhoodBlendingWrapPS(v2f_3 input) : SV_Target
+float4 SMAANeighborhoodBlendingWrapPS(v2f_3 input) : SV_Target
 {
-	// Fetch the blending weights for current pixel:
+    // Fetch the blending weights for current pixel:
     float4 a;
     a.x = tex2D(blendSampler, input.uv1.xy).a; // Right
     a.y = tex2D(blendSampler, input.uv1.zw).g; // Top
@@ -273,8 +273,7 @@ float3 SMAANeighborhoodBlendingWrapPS(v2f_3 input) : SV_Target
 
     [branch]
     if (dot(a, float4(1.0, 1.0, 1.0, 1.0)) < 1e-5) {
-        float4 color = tex2Dlod(colorLinearSampler, input.uv0.xyxy);
-        return color;
+        return tex2Dlod(colorLinearSampler, input.uv0.xyxy);
     } else {
         bool h = max(a.x, a.z) > max(a.y, a.w); // max(horizontal) > max(vertical)
 
@@ -306,34 +305,34 @@ float3 SMAANeighborhoodBlendingWrapPS(v2f_3 input) : SV_Target
 
 technique SMAA
 {
-	pass EdgeDetectionPass
-	{
-		VertexShader = SMAAEdgeDetectionWrapVS;
-		PixelShader = SMAAEdgeDetectionWrapPS;
-		RenderTarget = edgesTex;
-		ClearRenderTargets = TRUE;
-		StencilEnable = TRUE;
-		StencilPass = REPLACE;
-		StencilRef = 1;
-	}
+    pass EdgeDetectionPass
+    {
+        VertexShader = SMAAEdgeDetectionWrapVS;
+        PixelShader = SMAAEdgeDetectionWrapPS;
+        RenderTarget = edgesTex;
+        ClearRenderTargets = TRUE;
+        StencilEnable = TRUE;
+        StencilPass = REPLACE;
+        StencilRef = 1;
+    }
 
-	pass BlendWeightCalculationPass
-	{
-		VertexShader = SMAABlendingWeightCalculationWrapVS;
-		PixelShader = SMAABlendingWeightCalculationWrapPS;
-		RenderTarget = blendTex;
-		ClearRenderTargets = TRUE;
-		StencilEnable = TRUE;
-		StencilPass = KEEP;
-		StencilFunc = EQUAL;
-		StencilRef = 1;
-	}
+    pass BlendWeightCalculationPass
+    {
+        VertexShader = SMAABlendingWeightCalculationWrapVS;
+        PixelShader = SMAABlendingWeightCalculationWrapPS;
+        RenderTarget = blendTex;
+        ClearRenderTargets = TRUE;
+        StencilEnable = TRUE;
+        StencilPass = KEEP;
+        StencilFunc = EQUAL;
+        StencilRef = 1;
+    }
 
-	pass NeighborhoodBlendingPass
-	{
-		VertexShader = SMAANeighborhoodBlendingWrapVS;
-		PixelShader = SMAANeighborhoodBlendingWrapPS;
-		StencilEnable = FALSE;
-		SRGBWriteEnable = TRUE;
-	}
+    pass NeighborhoodBlendingPass
+    {
+        VertexShader = SMAANeighborhoodBlendingWrapVS;
+        PixelShader = SMAANeighborhoodBlendingWrapPS;
+        StencilEnable = FALSE;
+        SRGBWriteEnable = TRUE;
+    }
 }

@@ -75,9 +75,9 @@ p2mrt ps_lod(v2f input)
     return o;
 }
 
-float ps_copy(v2f input) : SV_Target
+float4 ps_copy(v2f input) : SV_Target
 {
-    return tex2D(s_lod, input.uv).r;
+    return tex2D(s_lod, input.uv).rrrr;
 }
 
 float4 ps_flow(v2f input) : SV_Target
@@ -129,10 +129,10 @@ float4 p_noiseblur(sampler2D src, float2 uv, float2 pos, float2 delta)
     return kColor / kTotal;
 }
 
-float2 ps_blur(v2f input) : SV_Target
+float4 ps_blur(v2f input) : SV_Target
 {
     float2 sc; sincos(radians(0.0), sc[0], sc[1]);
-    return p_noiseblur(s_blurh, input.uv, input.vpos.xy, sc.yx * kRadius).rg;
+    return p_noiseblur(s_blurh, input.uv, input.vpos.xy, sc.yx * kRadius).rgrg;
 }
 
 float2 calcFlow(float2 uv, float2 vpos, float2 flow, float i)
