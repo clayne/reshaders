@@ -162,7 +162,7 @@ float4 ps_output(v2f input) : SV_Target
     return color;
 }
 
-technique cMotionBlur < ui_tooltip = "Color-Based Motion Blur"; >
+technique cMotionBlur
 {
     pass
     {
