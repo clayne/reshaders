@@ -23,8 +23,8 @@ texture2D r_source : COLOR;
 texture2D r_lod    { Width = BUFFER_WIDTH / 2.0; Height = BUFFER_HEIGHT / 2.0; Format = RGB10A2; MipLevels = 3; };
 texture2D r_pframe { Width = BUFFER_WIDTH / 2.0; Height = BUFFER_HEIGHT / 2.0; Format = RGB10A2; };
 texture2D r_cframe { Width = BUFFER_WIDTH / 2.0; Height = BUFFER_HEIGHT / 2.0; Format = RGB10A2; };
-texture2D r_blurh  { Width = BUFFER_WIDTH / 2.0; Height = BUFFER_HEIGHT / 2.0; Format = RG16F; MipLevels = 3; };
-texture2D r_blurv  { Width = BUFFER_WIDTH / 2.0; Height = BUFFER_HEIGHT / 2.0; Format = RG16F; MipLevels = 3; };
+texture2D r_flow   { Width = BUFFER_WIDTH / 2.0; Height = BUFFER_HEIGHT / 2.0; Format = RG16F; MipLevels = 3; };
+texture2D r_blur   { Width = BUFFER_WIDTH / 2.0; Height = BUFFER_HEIGHT / 2.0; Format = RG16F; MipLevels = 3; };
 
 sampler2D s_source
 {
@@ -34,11 +34,11 @@ sampler2D s_source
     #endif
 };
 
-sampler2D s_lod    { Texture = r_lod; MipLODBias = 2.0; };
+sampler2D s_lod    { Texture = r_lod;  MipLODBias = 2.0; };
 sampler2D s_pframe { Texture = r_pframe; };
 sampler2D s_cframe { Texture = r_cframe; };
-sampler2D s_blurh  { Texture = r_blurh; MipLODBias = 2.0; };
-sampler2D s_blurv  { Texture = r_blurv; MipLODBias = 2.0; };
+sampler2D s_flow   { Texture = r_flow; MipLODBias = 2.0; };
+sampler2D s_blur   { Texture = r_blur; MipLODBias = 2.0; };
 
 struct v2f
 {
@@ -127,7 +127,7 @@ float4 p_noiseblur(sampler2D src, v2f input, float2 delta)
 float4 ps_blur(v2f input) : SV_Target
 {
     float2 sc; sincos(radians(0.0), sc[0], sc[1]);
-    return p_noiseblur(s_blurh, input, sc.yx * kRadius).rgrg;
+    return p_noiseblur(s_flow, input, sc.yx * kRadius).rgrg;
 }
 
 float2 calcFlow(v2f input, float2 flow, float i)
@@ -141,7 +141,7 @@ float2 calcFlow(v2f input, float2 flow, float i)
 float4 ps_output(v2f input) : SV_Target
 {
     float2 sc; sincos(radians(90.0), sc[0], sc[1]);
-    float2 oFlow = p_noiseblur(s_blurv, input, sc.yx * kRadius).rg;
+    float2 oFlow = p_noiseblur(s_blur, input, sc.yx * kRadius).rg;
 
     const float kWeights = 1.0 / 8.0;
     float4 color = 0.0;
@@ -177,14 +177,14 @@ technique cMotionBlur
     {
         VertexShader = vs_basic;
         PixelShader = ps_flow;
-        RenderTarget = r_blurh;
+        RenderTarget = r_flow;
     }
 
     pass
     {
         VertexShader = vs_basic;
         PixelShader = ps_blur;
-        RenderTarget = r_blurv;
+        RenderTarget = r_blur;
     }
 
     pass
