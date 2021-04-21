@@ -9,15 +9,15 @@ uniform float kRadius <
     ui_type = "slider";
 > = 0.16;
 
-uniform float kLambda <
-    ui_label = "Lambda";
+uniform float kThreshold <
+    ui_label = "Threshold";
     ui_type = "drag";
-> = 0.64;
+> = 0.16;
 
 uniform float kScale <
     ui_label = "Scale";
     ui_type = "drag";
-> = 1.28;
+> = 1.60;
 
 texture2D r_source : COLOR;
 texture2D r_lod    { Width = BUFFER_WIDTH / 2.0; Height = BUFFER_HEIGHT / 2.0; Format = RGB10A2; MipLevels = 3; };
@@ -78,26 +78,29 @@ float4 ps_copy(v2f input) : SV_Target
 
 float4 ps_flow(v2f input) : SV_Target
 {
+    // Distance between current and previous frame
     float4 curr = tex2D(s_cframe, input.uv);
     float4 prev = tex2D(s_pframe, input.uv);
-
-    // Distance between current and previous frame
     float dt = distance(curr, prev);
-    curr = smoothstep(prev, curr, dt);
 
     // Partial derivatives port of
-    // [https://github.com/mattatz/unity-optical-flow] [MIT]
+    // [https://github.com/diwi/PixelFlow] [MIT]
     float3 d;
-    d.x = dot(ddx(curr), 1.0);
-    d.y = dot(ddy(curr), 1.0);
-    d.z = rsqrt(dot(d.xy, d.xy) + kLambda);
-    return kScale * dt * (d.xyxy * d.zzzz);
+    d.x = dot(ddx(curr.rgb), 1.0);
+    d.y = dot(ddy(curr.rgb), 1.0);
+    d.z = rsqrt(dot(d.xy, d.xy) + 1.0);
+    float2 kCalc = -kScale * dt * (d.xy * d.zz);
+
+    float kOld = sqrt(dot(kCalc.xy, kCalc.xy) + 1e-5);
+    float kNew = max(kOld - kThreshold, 0.0);
+    kCalc *= kNew / kOld;
+    return kCalc.xyxy;
 }
 
 float pnoise(float2 pos)
 {
     // Interleaved Gradient Noise from
-    // http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare
+    // [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
     const float3 kValue = float3(52.9829189, 0.06711056, 0.00583715);
     return frac(kValue.x * frac(dot(pos, kValue.yz)));
 }
