@@ -8,13 +8,12 @@
 uniform float kRadius <
     ui_label = "Radius";
     ui_type = "slider";
-    ui_step = 0.01;
 > = 0.16;
 
 uniform float kLambda <
-    ui_type = "drag";
     ui_label = "Lambda";
-> = 1.6;
+    ui_type = "drag";
+> = 0.64;
 
 texture2D r_source : COLOR;
 texture2D r_lod    { Width = BUFFER_WIDTH / 2.0; Height = BUFFER_HEIGHT / 2.0; Format = R16F; MipLevels = 3; };
@@ -56,7 +55,6 @@ v2f vs_basic(const uint id : SV_VertexID)
 
 /*
     Algorithm from [https://github.com/mattatz/unity-optical-flow] [MIT]
-    Threshold from [https://github.com/diwi/PixelFlow] [MIT]
     Optimization from [https://www.shadertoy.com/view/3l2Gz1] [CC BY-NC-SA 3.0]
     ISSUE: mFlow combines the optical flow result of the current AND previous frame.
 */
@@ -93,15 +91,15 @@ float4 ps_flow(v2f input) : SV_Target
 
     // Edge detection
     float4 d;
-    d.x = ddx(curr);
+    d.x = ddx(curr) ;
     d.y = ddy(curr);
     d.z = rsqrt(dot(d.xy, d.xy) + 1.0);
     float2 kCalc = dt * (d.xy * d.zz);
 
-    float kOld = sqrt(dot(kCalc.xy, kCalc.xy) + 1e-4);
-    float kNew = max(kOld - kLambda, 0.0);
-    kCalc *= kNew / kOld;
-    return kCalc.rgrg;
+	float kOld = sqrt(dot(kCalc.xy, kCalc.xy) + 1e-5);
+	float kNew = max(kOld - kLambda, 0.0);
+	kCalc *= kNew / kOld;
+	return kCalc.rgrg;
 }
 
 float pnoise(float2 pos)
