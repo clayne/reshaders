@@ -91,15 +91,15 @@ float4 ps_flow(v2f input) : SV_Target
 
     // Edge detection
     float4 d;
-    d.x = ddx(curr) ;
+    d.x = ddx(curr);
     d.y = ddy(curr);
     d.z = rsqrt(dot(d.xy, d.xy) + 1.0);
     float2 kCalc = dt * (d.xy * d.zz);
 
-	float kOld = sqrt(dot(kCalc.xy, kCalc.xy) + 1e-5);
-	float kNew = max(kOld - kLambda, 0.0);
-	kCalc *= kNew / kOld;
-	return kCalc.rgrg;
+    float kOld = sqrt(dot(kCalc.xy, kCalc.xy) + 1e-5);
+    float kNew = max(kOld - kLambda, 0.0);
+    kCalc *= kNew / kOld;
+    return kCalc.rgrg;
 }
 
 float pnoise(float2 pos)
