@@ -2,7 +2,6 @@
 /*
     This work is licensed under a Creative Commons Attribution 3.0 Unported License.
     https://creativecommons.org/licenses/by/3.0/us/
-    pFlowBlur() from Jose Negrete AKA BlueSkyDefender [https://github.com/BlueSkyDefender/AstrayFX]
 */
 
 uniform float kRadius <
@@ -15,10 +14,15 @@ uniform float kLambda <
     ui_type = "drag";
 > = 0.64;
 
+uniform float kScale <
+    ui_label = "Scale";
+    ui_type = "drag";
+> = 1.28;
+
 texture2D r_source : COLOR;
-texture2D r_lod    { Width = BUFFER_WIDTH / 2.0; Height = BUFFER_HEIGHT / 2.0; Format = R16F; MipLevels = 3; };
-texture2D r_pframe { Width = BUFFER_WIDTH / 2.0; Height = BUFFER_HEIGHT / 2.0; Format = R16F; };
-texture2D r_cframe { Width = BUFFER_WIDTH / 2.0; Height = BUFFER_HEIGHT / 2.0; Format = R16F; };
+texture2D r_lod    { Width = BUFFER_WIDTH / 2.0; Height = BUFFER_HEIGHT / 2.0; Format = RGB10A2; MipLevels = 3; };
+texture2D r_pframe { Width = BUFFER_WIDTH / 2.0; Height = BUFFER_HEIGHT / 2.0; Format = RGB10A2; };
+texture2D r_cframe { Width = BUFFER_WIDTH / 2.0; Height = BUFFER_HEIGHT / 2.0; Format = RGB10A2; };
 texture2D r_blurh  { Width = BUFFER_WIDTH / 2.0; Height = BUFFER_HEIGHT / 2.0; Format = RG16F; MipLevels = 3; };
 texture2D r_blurv  { Width = BUFFER_WIDTH / 2.0; Height = BUFFER_HEIGHT / 2.0; Format = RG16F; MipLevels = 3; };
 
@@ -53,12 +57,6 @@ v2f vs_basic(const uint id : SV_VertexID)
 
 /* [ Pixel Shaders ] */
 
-/*
-    Algorithm from [https://github.com/mattatz/unity-optical-flow] [MIT]
-    Optimization from [https://www.shadertoy.com/view/3l2Gz1] [CC BY-NC-SA 3.0]
-    ISSUE: mFlow combines the optical flow result of the current AND previous frame.
-*/
-
 struct p2mrt
 {
     float4 cframe : SV_TARGET0;
@@ -68,38 +66,32 @@ struct p2mrt
 p2mrt ps_lod(v2f input)
 {
     p2mrt o;
-    float4 color = tex2D(s_source, input.uv);
-    o.cframe = rcp(dot(color, 1.0) + 1e-5);
-    o.cframe = log2(o.cframe);
-    o.pframe = tex2D(s_cframe, input.uv); // Output the c_Frame we got from last frame
+    o.cframe = tex2D(s_source, input.uv);
+    o.pframe = tex2D(s_cframe, input.uv); // Output the cframe we got from last frame
     return o;
 }
 
 float4 ps_copy(v2f input) : SV_Target
 {
-    return tex2D(s_lod, input.uv).rrrr;
+    return tex2D(s_lod, input.uv);
 }
 
 float4 ps_flow(v2f input) : SV_Target
 {
-    float curr = tex2D(s_cframe, input.uv).r;
-    float prev = tex2D(s_pframe, input.uv).r;
+    float4 curr = tex2D(s_cframe, input.uv);
+    float4 prev = tex2D(s_pframe, input.uv);
 
-    // distance between current and previous frame
+    // Distance between current and previous frame
     float dt = distance(curr, prev);
-    curr = smoothstep(prev, curr, abs(dt));
+    curr = smoothstep(prev, curr, dt);
 
-    // Edge detection
-    float4 d;
-    d.x = ddx(curr);
-    d.y = ddy(curr);
-    d.z = rsqrt(dot(d.xy, d.xy) + 1.0);
-    float2 kCalc = dt * (d.xy * d.zz);
-
-    float kOld = sqrt(dot(kCalc.xy, kCalc.xy) + 1e-5);
-    float kNew = max(kOld - kLambda, 0.0);
-    kCalc *= kNew / kOld;
-    return kCalc.rgrg;
+    // Partial derivatives port of
+    // [https://github.com/mattatz/unity-optical-flow] [MIT]
+    float3 d;
+    d.x = dot(ddx(curr), 1.0);
+    d.y = dot(ddy(curr), 1.0);
+    d.z = rsqrt(dot(d.xy, d.xy) + kLambda);
+    return kScale * dt * (d.xyxy * d.zzzz);
 }
 
 float pnoise(float2 pos)
@@ -110,7 +102,7 @@ float pnoise(float2 pos)
     return frac(kValue.x * frac(dot(pos, kValue.yz)));
 }
 
-float4 p_noiseblur(sampler2D src, float2 uv, float2 pos, float2 delta)
+float4 p_noiseblur(sampler2D src, v2f input, float2 delta)
 {
     float4 kColor;
     float kTotal;
@@ -118,10 +110,10 @@ float4 p_noiseblur(sampler2D src, float2 uv, float2 pos, float2 delta)
 
     for(float t= -kSampleCount; t <= kSampleCount; t++)
     {
-        float kPercent = (t + pnoise(pos) - 0.5) / (kSampleCount * 2.0);
+        float kPercent = (t + pnoise(input.vpos.xy) - 0.5) / (kSampleCount * 2.0);
         float kWeight = 1.0 - abs(kPercent);
 
-        float4 kSample = tex2D(src, uv + delta * kPercent);
+        float4 kSample = tex2D(src, input.uv + delta * kPercent);
         kColor += kSample * kWeight;
         kTotal += kWeight;
     }
@@ -132,33 +124,32 @@ float4 p_noiseblur(sampler2D src, float2 uv, float2 pos, float2 delta)
 float4 ps_blur(v2f input) : SV_Target
 {
     float2 sc; sincos(radians(0.0), sc[0], sc[1]);
-    return p_noiseblur(s_blurh, input.uv, input.vpos.xy, sc.yx * kRadius).rgrg;
+    return p_noiseblur(s_blurh, input, sc.yx * kRadius).rgrg;
 }
 
-float2 calcFlow(float2 uv, float2 vpos, float2 flow, float i)
+float2 calcFlow(v2f input, float2 flow, float i)
 {
     // From [http://john-chapman-graphics.blogspot.com/2013/01/per-object-motion-blur.html]
     const float kSamples = 1.0 / (16.0 - 1.0);
-    float2 kCalc = (pnoise(vpos) * 2.0 + i) * kSamples - 0.5;
-    return flow * kCalc + uv;
+    float2 kCalc = (pnoise(input.vpos.xy) * 2.0 + i) * kSamples - 0.5;
+    return flow * kCalc + input.uv;
 }
 
 float4 ps_output(v2f input) : SV_Target
 {
     float2 sc; sincos(radians(90.0), sc[0], sc[1]);
-    float2 oFlow = p_noiseblur(s_blurv, input.uv, input.vpos.xy, sc.yx * kRadius).rg;
+    float2 oFlow = p_noiseblur(s_blurv, input, sc.yx * kRadius).rg;
 
-    // From [http://john-chapman-graphics.blogspot.com/2013/01/per-object-motion-blur.html]
     const float kWeights = 1.0 / 8.0;
     float4 color = 0.0;
-    color += tex2D(s_source, calcFlow(input.uv, input.vpos.xy, oFlow, 2.0)) * kWeights;
-    color += tex2D(s_source, calcFlow(input.uv, input.vpos.xy, oFlow, 4.0)) * kWeights;
-    color += tex2D(s_source, calcFlow(input.uv, input.vpos.xy, oFlow, 6.0)) * kWeights;
-    color += tex2D(s_source, calcFlow(input.uv, input.vpos.xy, oFlow, 8.0)) * kWeights;
-    color += tex2D(s_source, calcFlow(input.uv, input.vpos.xy, oFlow, 10.0)) * kWeights;
-    color += tex2D(s_source, calcFlow(input.uv, input.vpos.xy, oFlow, 12.0)) * kWeights;
-    color += tex2D(s_source, calcFlow(input.uv, input.vpos.xy, oFlow, 14.0)) * kWeights;
-    color += tex2D(s_source, calcFlow(input.uv, input.vpos.xy, oFlow, 16.0)) * kWeights;
+    color += tex2D(s_source, calcFlow(input, oFlow, 2.0)) * kWeights;
+    color += tex2D(s_source, calcFlow(input, oFlow, 4.0)) * kWeights;
+    color += tex2D(s_source, calcFlow(input, oFlow, 6.0)) * kWeights;
+    color += tex2D(s_source, calcFlow(input, oFlow, 8.0)) * kWeights;
+    color += tex2D(s_source, calcFlow(input, oFlow, 10.0)) * kWeights;
+    color += tex2D(s_source, calcFlow(input, oFlow, 12.0)) * kWeights;
+    color += tex2D(s_source, calcFlow(input, oFlow, 14.0)) * kWeights;
+    color += tex2D(s_source, calcFlow(input, oFlow, 16.0)) * kWeights;
     return color;
 }
 
