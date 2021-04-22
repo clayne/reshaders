@@ -23,8 +23,8 @@ texture2D r_source : COLOR;
 texture2D r_lod    { Width = BUFFER_WIDTH / 2.0; Height = BUFFER_HEIGHT / 2.0; Format = RGB10A2; MipLevels = 3; };
 texture2D r_pframe { Width = BUFFER_WIDTH / 2.0; Height = BUFFER_HEIGHT / 2.0; Format = RGB10A2; };
 texture2D r_cframe { Width = BUFFER_WIDTH / 2.0; Height = BUFFER_HEIGHT / 2.0; Format = RGB10A2; };
-texture2D r_flow   { Width = BUFFER_WIDTH / 2.0; Height = BUFFER_HEIGHT / 2.0; Format = RG16F; MipLevels = 3; };
-texture2D r_blur   { Width = BUFFER_WIDTH / 2.0; Height = BUFFER_HEIGHT / 2.0; Format = RG16F; MipLevels = 3; };
+texture2D r_flow { Width = BUFFER_WIDTH / 2.0; Height = BUFFER_HEIGHT / 2.0; Format = RG16F; MipLevels = 3; };
+texture2D r_blur { Width = BUFFER_WIDTH / 2.0; Height = BUFFER_HEIGHT / 2.0; Format = RG16F; MipLevels = 3; };
 
 sampler2D s_source
 {
@@ -81,13 +81,13 @@ float4 ps_flow(v2f input) : SV_Target
     // Distance between current and previous frame
     float4 curr = tex2D(s_cframe, input.uv);
     float4 prev = tex2D(s_pframe, input.uv);
-    float dt = distance(curr, prev);
+    float dt = dot(curr.rgb - prev.rgb, 1.0);
 
     // Partial derivatives port of
     // [https://github.com/diwi/PixelFlow] [MIT]
     float3 d;
-    d.x = dot(ddx(curr.rgb), 1.0);
-    d.y = dot(ddy(curr.rgb), 1.0);
+    d.x = dot(ddx(curr.rgb + prev.rgb), 1.0);
+    d.y = dot(ddy(curr.rgb + prev.rgb), 1.0);
     d.z = rsqrt(dot(d.xy, d.xy) + 1.0);
     float2 kCalc = -kScale * dt * (d.xy * d.zz);
 
