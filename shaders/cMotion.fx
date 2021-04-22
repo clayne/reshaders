@@ -82,13 +82,13 @@ float4 ps_flow(v2f input) : SV_Target
     float4 kCurr = tex2D(s_cframe, input.uv);
     float4 kPrev = tex2D(s_pframe, input.uv);
     float3 kBoth = kCurr.rgb + kPrev.rgb;
-    float kDist = dot(kCurr.rgb - kPrev.rgb, 1.0 / 3.0);
+    float kDist = dot(kCurr.rgb - kPrev.rgb, 1.0);
 
     // Partial derivatives port of
     // [https://github.com/diwi/PixelFlow] [MIT]
     float3 kCalc;
-    kCalc.x = dot(ddx(kBoth), 1.0 / 3.0);
-    kCalc.y = dot(ddy(kBoth), 1.0 / 3.0);
+    kCalc.x = dot(ddx(kBoth), 1.0);
+    kCalc.y = dot(ddy(kBoth), 1.0);
     kCalc.z = rsqrt(dot(kCalc.xy, kCalc.xy) + 1.0);
     float2 kFlow = -kScale * kDist * (kCalc.xy * kCalc.zz);
 
