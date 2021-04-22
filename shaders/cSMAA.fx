@@ -1,6 +1,6 @@
 /* "Lightweight" SMAA for ReShade 4.0+ */
 
-#include "SMAA.fxh"
+#include "cSMAA.fxh"
 
 // Textures and Samplers
 
