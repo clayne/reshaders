@@ -79,22 +79,23 @@ float4 ps_copy(v2f input) : SV_Target
 float4 ps_flow(v2f input) : SV_Target
 {
     // Distance between current and previous frame
-    float4 curr = tex2D(s_cframe, input.uv);
-    float4 prev = tex2D(s_pframe, input.uv);
-    float dt = dot(curr.rgb - prev.rgb, 1.0);
+    float4 kCurr = tex2D(s_cframe, input.uv);
+    float4 kPrev = tex2D(s_pframe, input.uv);
+    float3 kBoth = kCurr.rgb + kPrev.rgb;
+    float kDist = dot(kCurr.rgb - kPrev.rgb, 1.0);
 
     // Partial derivatives port of
     // [https://github.com/diwi/PixelFlow] [MIT]
-    float3 d;
-    d.x = dot(ddx(curr.rgb + prev.rgb), 1.0);
-    d.y = dot(ddy(curr.rgb + prev.rgb), 1.0);
-    d.z = rsqrt(dot(d.xy, d.xy) + 1.0);
-    float2 kCalc = -kScale * dt * (d.xy * d.zz);
+    float3 kCalc;
+    kCalc.x = dot(ddx(kBoth), 1.0);
+    kCalc.y = dot(ddy(kBoth), 1.0);
+    kCalc.z = rsqrt(dot(kCalc.xy, kCalc.xy) + 1.0);
+    float2 kFlow = -kScale * kDist * (kCalc.xy * kCalc.zz);
 
-    float kOld = sqrt(dot(kCalc.xy, kCalc.xy) + 1e-5);
+    float kOld = sqrt(dot(kFlow.xy, kFlow.xy) + 1e-5);
     float kNew = max(kOld - kThreshold, 0.0);
-    kCalc *= kNew / kOld;
-    return kCalc.xyxy;
+    kFlow *= kNew / kOld;
+    return kFlow.xyxy;
 }
 
 float pnoise(float2 pos)
