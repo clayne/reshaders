@@ -109,17 +109,41 @@ float2 calcFlow(v2f input, float2 flow, float i)
     return flow * kCalc + input.uv;
 }
 
+/*
+    Better texture fltering from Inigo
+    [https://www.iquilezles.org/www/articles/texture/texture.htm]
+*/
+
+float4 calcuv(float2 uv, float lod)
+{
+
+    float2 kResolution = tex2Dsize(s_flow, lod);
+    float2 kP = uv * kResolution + 0.5;
+    float2 kI = floor(kP);
+    float2 kF = kP - kI;
+    kF = kF * kF * kF * (kF * (kF * 6.0 - 15.0) + 10.0);
+    kP = kI + kF;
+    kP = (kP - 0.5) / kResolution;
+    return float4(kP, 0.0, lod);
+}
+
 float4 ps_output(v2f input) : SV_Target
 {
+    /*
+        Build optical flow pyramid
+        Lowest mip has highest precision, lowest contribution
+        Highest mip has lowest spread, highest contribution
+    */
+
     float2 oFlow = 0.0;
-    oFlow += tex2Dlod(s_flow, float4(input.uv, 0.0, 1.0)).rg * ldexp(1.0, -7.0);
-    oFlow += tex2Dlod(s_flow, float4(input.uv, 0.0, 2.0)).rg * ldexp(1.0, -6.0);
-    oFlow += tex2Dlod(s_flow, float4(input.uv, 0.0, 3.0)).rg * ldexp(1.0, -5.0);
-    oFlow += tex2Dlod(s_flow, float4(input.uv, 0.0, 4.0)).rg * ldexp(1.0, -4.0);
-    oFlow += tex2Dlod(s_flow, float4(input.uv, 0.0, 5.0)).rg * ldexp(1.0, -3.0);
-    oFlow += tex2Dlod(s_flow, float4(input.uv, 0.0, 6.0)).rg * ldexp(1.0, -2.0);
-    oFlow += tex2Dlod(s_flow, float4(input.uv, 0.0, 7.0)).rg * ldexp(1.0, -1.0);
-    oFlow += tex2Dlod(s_flow, float4(input.uv, 0.0, 8.0)).rg * ldexp(1.0,  0.0);
+    oFlow += tex2Dlod(s_flow, calcuv(input.uv, 1.0)).rg * ldexp(1.0, -7.0);
+    oFlow += tex2Dlod(s_flow, calcuv(input.uv, 2.0)).rg * ldexp(1.0, -6.0);
+    oFlow += tex2Dlod(s_flow, calcuv(input.uv, 3.0)).rg * ldexp(1.0, -5.0);
+    oFlow += tex2Dlod(s_flow, calcuv(input.uv, 4.0)).rg * ldexp(1.0, -4.0);
+    oFlow += tex2Dlod(s_flow, calcuv(input.uv, 5.0)).rg * ldexp(1.0, -3.0);
+    oFlow += tex2Dlod(s_flow, calcuv(input.uv, 6.0)).rg * ldexp(1.0, -2.0);
+    oFlow += tex2Dlod(s_flow, calcuv(input.uv, 7.0)).rg * ldexp(1.0, -1.0);
+    oFlow += tex2Dlod(s_flow, calcuv(input.uv, 8.0)).rg * ldexp(1.0,  0.0);
 
     const float kWeights = 1.0 / 8.0;
     float4 color = 0.0;
