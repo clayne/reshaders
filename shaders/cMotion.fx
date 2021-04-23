@@ -65,7 +65,6 @@ p2mrt ps_lod(v2f input)
 }
 
 // Prefilter frame via mipmaps and copy it
-
 float4 ps_filter(v2f input) : SV_Target
 {
     return tex2D(s_filter, input.uv);
@@ -73,14 +72,16 @@ float4 ps_filter(v2f input) : SV_Target
 
 float4 ps_flow(v2f input) : SV_Target
 {
-    // Distance between current and previous frame
-    float4 kCurr = tex2D(s_cframe, input.uv);
-    float4 kPrev = tex2D(s_pframe, input.uv);
-    float3 kBoth = kCurr.rgb + kPrev.rgb;
-    float kDist = dot(kCurr.rgb - kPrev.rgb, 1.0);
-
     // Partial derivatives port of
     // [https://github.com/diwi/PixelFlow] [MIT]
+
+    // Calculate frame distance
+    float4 kCurr = tex2D(s_cframe, input.uv);
+    float4 kPrev = tex2D(s_pframe, input.uv);
+    float kDist = dot(kCurr.rgb - kPrev.rgb, 1.0);
+
+    // Calculate gradients and optical flow
+    float3 kBoth = kCurr.rgb + kPrev.rgb;
     float3 kCalc;
     kCalc.x = dot(ddx(kBoth), 1.0);
     kCalc.y = dot(ddy(kBoth), 1.0);
@@ -109,14 +110,10 @@ float2 calcFlow(v2f input, float2 flow, float i)
     return flow * kCalc + input.uv;
 }
 
-/*
-    Better texture fltering from Inigo
-    [https://www.iquilezles.org/www/articles/texture/texture.htm]
-*/
-
 float4 calcuv(float2 uv, float lod)
 {
-
+    // Better texture fltering from Inigo:
+    // [https://www.iquilezles.org/www/articles/texture/texture.htm]
     float2 kResolution = tex2Dsize(s_flow, lod);
     float2 kP = uv * kResolution + 0.5;
     float2 kI = floor(kP);
@@ -136,14 +133,14 @@ float4 ps_output(v2f input) : SV_Target
     */
 
     float2 oFlow = 0.0;
-    oFlow += tex2Dlod(s_flow, calcuv(input.uv, 1.0)).rg * ldexp(1.0, -7.0);
-    oFlow += tex2Dlod(s_flow, calcuv(input.uv, 2.0)).rg * ldexp(1.0, -6.0);
-    oFlow += tex2Dlod(s_flow, calcuv(input.uv, 3.0)).rg * ldexp(1.0, -5.0);
-    oFlow += tex2Dlod(s_flow, calcuv(input.uv, 4.0)).rg * ldexp(1.0, -4.0);
-    oFlow += tex2Dlod(s_flow, calcuv(input.uv, 5.0)).rg * ldexp(1.0, -3.0);
-    oFlow += tex2Dlod(s_flow, calcuv(input.uv, 6.0)).rg * ldexp(1.0, -2.0);
-    oFlow += tex2Dlod(s_flow, calcuv(input.uv, 7.0)).rg * ldexp(1.0, -1.0);
-    oFlow += tex2Dlod(s_flow, calcuv(input.uv, 8.0)).rg * ldexp(1.0,  0.0);
+    oFlow += tex2Dlod(s_flow, calcuv(input.uv, 1.0)).xy * ldexp(1.0, -7.0);
+    oFlow += tex2Dlod(s_flow, calcuv(input.uv, 2.0)).xy * ldexp(1.0, -6.0);
+    oFlow += tex2Dlod(s_flow, calcuv(input.uv, 3.0)).xy * ldexp(1.0, -5.0);
+    oFlow += tex2Dlod(s_flow, calcuv(input.uv, 4.0)).xy * ldexp(1.0, -4.0);
+    oFlow += tex2Dlod(s_flow, calcuv(input.uv, 5.0)).xy * ldexp(1.0, -3.0);
+    oFlow += tex2Dlod(s_flow, calcuv(input.uv, 6.0)).xy * ldexp(1.0, -2.0);
+    oFlow += tex2Dlod(s_flow, calcuv(input.uv, 7.0)).xy * ldexp(1.0, -1.0);
+    oFlow += tex2Dlod(s_flow, calcuv(input.uv, 8.0)).xy * ldexp(1.0,  0.0);
 
     const float kWeights = 1.0 / 8.0;
     float4 color = 0.0;
