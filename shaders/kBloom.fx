@@ -80,7 +80,7 @@ v2fd v_dsamp(const uint id, sampler2D src)
     o.vpos = float4(coord.xy * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 
     // Kawase dual-filter downsampling kernel from streamFX
-    // https://github.com/CeeJayDK/SweetFX/blob/master/Shaders/LumaSharpen.fx
+    // https://github.com/Xaymar/obs-StreamFX
     const float2 ts = 2.0 / tex2Dsize(src, 0.0);
     o.uv0       = coord.xy;
     o.uv1[0].xy = coord.xy - ts;
