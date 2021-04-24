@@ -60,8 +60,9 @@ sampler2D s_bloom8 { Texture = r_bloom8; };
 
 struct v2fd
 {
-    float4 vpos  : SV_Position;
-    float4 uv[3] : TEXCOORD0;
+    float4 vpos   : SV_Position;
+    float2 uv0    : TEXCOORD0;
+    float4 uv1[2] : TEXCOORD1;
 };
 
 struct v2fu
@@ -73,21 +74,19 @@ struct v2fu
 v2fd v_dsamp(const uint id, sampler2D src)
 {
     v2fd o;
-    float4 coord;
+    float2 coord;
     coord.x = (id == 2) ? 2.0 : 0.0;
     coord.y = (id == 1) ? 2.0 : 0.0;
-    coord.zw = float2(4.0, 1.0 / 8.0);
     o.vpos = float4(coord.xy * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 
     // Kawase dual-filter downsampling kernel from streamFX
     // https://github.com/CeeJayDK/SweetFX/blob/master/Shaders/LumaSharpen.fx
     const float2 ts = 2.0 / tex2Dsize(src, 0.0);
-    o.uv[0].xy = coord.xy;
-    o.uv[0].zw = coord.zw;
-    o.uv[1].xy = coord.xy - ts;
-    o.uv[1].zw = coord.xy + ts;
-    o.uv[2].xy = coord.xy + float2(ts.x, -ts.y);
-    o.uv[2].zw = coord.xy - float2(ts.x, -ts.y);
+    o.uv0       = coord.xy;
+    o.uv1[0].xy = coord.xy - ts;
+    o.uv1[0].zw = coord.xy + ts;
+    o.uv1[1].xy = coord.xy + float2(ts.x, -ts.y);
+    o.uv1[1].zw = coord.xy - float2(ts.x, -ts.y);
     return o;
 }
 
@@ -131,12 +130,12 @@ v2fu vs_usamp1(uint id : SV_VertexID) { return v_usamp(id, s_bloom1); }
 
 float4 p_dsamp(sampler2D src, v2fd input)
 {
-    float4 s  = tex2D(src, input.uv[0].xy) * input.uv[0].z;
-           s += tex2D(src, input.uv[1].xy);
-           s += tex2D(src, input.uv[1].zw);
-           s += tex2D(src, input.uv[2].xy);
-           s += tex2D(src, input.uv[2].zw);
-    return s * input.uv[0].w;
+    float4 s  = tex2D(src, input.uv0) * 4.0;
+           s += tex2D(src, input.uv1[0].xy);
+           s += tex2D(src, input.uv1[0].zw);
+           s += tex2D(src, input.uv1[1].xy);
+           s += tex2D(src, input.uv1[1].zw);
+    return s * 0.125;
 }
 
 float4 p_usamp(sampler2D src, v2fu input)
