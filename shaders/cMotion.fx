@@ -94,22 +94,6 @@ float4 ps_flow(v2f input) : SV_Target
     return kFlow.xyxy;
 }
 
-float noise(float2 pos)
-{
-    // Interleaved Gradient Noise from
-    // [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
-    const float3 kValue = float3(52.9829189, 0.06711056, 0.00583715);
-    return frac(kValue.x * frac(dot(pos, kValue.yz)));
-}
-
-float2 calcFlow(v2f input, float2 flow, float i)
-{
-    // From [http://john-chapman-graphics.blogspot.com/2013/01/per-object-motion-blur.html]
-    const float kSamples = 1.0 / (16.0 - 1.0);
-    float2 kCalc = (noise(input.vpos.xy) * 2.0 + i) * kSamples - 0.5;
-    return flow * kCalc + input.uv;
-}
-
 float4 filter(float2 uv, float lod)
 {
     // Better texture fltering from Inigo:
@@ -122,6 +106,20 @@ float4 filter(float2 uv, float lod)
     kP = kI + kF;
     kP = (kP - 0.5) / kResolution;
     return float4(kP, 0.0, lod);
+}
+
+float2 calcFlow(v2f input, float2 flow, float i)
+{
+    // Interleaved Gradient Noise from
+    // [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
+    const float3 kValue = float3(52.9829189, 0.06711056, 0.00583715);
+    float noise = frac(kValue.x * frac(dot(input.vpos.xy, kValue.yz)));
+
+    // Center blur from
+    // [http://john-chapman-graphics.blogspot.com/2013/01/per-object-motion-blur.html]
+    const float kSamples = 1.0 / (16.0 - 1.0);
+    float2 kCalc = (noise * 2.0 + i) * kSamples - 0.5;
+    return flow * kCalc + input.uv;
 }
 
 float4 ps_output(v2f input) : SV_Target
