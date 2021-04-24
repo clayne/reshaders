@@ -113,12 +113,12 @@ float2 calcFlow(v2f input, float2 flow, float i)
     // Interleaved Gradient Noise from
     // [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
     const float3 kValue = float3(52.9829189, 0.06711056, 0.00583715);
-    float noise = frac(kValue.x * frac(dot(input.vpos.xy, kValue.yz)));
+    float kNoise = frac(kValue.x * frac(dot(input.vpos.xy, kValue.yz)));
 
     // Center blur from
     // [http://john-chapman-graphics.blogspot.com/2013/01/per-object-motion-blur.html]
     const float kSamples = 1.0 / (16.0 - 1.0);
-    float2 kCalc = (noise * 2.0 + i) * kSamples - 0.5;
+    float2 kCalc = (kNoise * 2.0 + i) * kSamples - 0.5;
     return flow * kCalc + input.uv;
 }
 
