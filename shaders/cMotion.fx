@@ -110,7 +110,7 @@ float2 calcFlow(v2f input, float2 flow, float i)
     return flow * kCalc + input.uv;
 }
 
-float4 calcuv(float2 uv, float lod)
+float4 calcCoords(float2 uv, float lod)
 {
     // Better texture fltering from Inigo:
     // [https://www.iquilezles.org/www/articles/texture/texture.htm]
@@ -133,14 +133,14 @@ float4 ps_output(v2f input) : SV_Target
     */
 
     float2 oFlow = 0.0;
-    oFlow += tex2Dlod(s_flow, calcuv(input.uv, 1.0)).xy * ldexp(1.0, -7.0);
-    oFlow += tex2Dlod(s_flow, calcuv(input.uv, 2.0)).xy * ldexp(1.0, -6.0);
-    oFlow += tex2Dlod(s_flow, calcuv(input.uv, 3.0)).xy * ldexp(1.0, -5.0);
-    oFlow += tex2Dlod(s_flow, calcuv(input.uv, 4.0)).xy * ldexp(1.0, -4.0);
-    oFlow += tex2Dlod(s_flow, calcuv(input.uv, 5.0)).xy * ldexp(1.0, -3.0);
-    oFlow += tex2Dlod(s_flow, calcuv(input.uv, 6.0)).xy * ldexp(1.0, -2.0);
-    oFlow += tex2Dlod(s_flow, calcuv(input.uv, 7.0)).xy * ldexp(1.0, -1.0);
-    oFlow += tex2Dlod(s_flow, calcuv(input.uv, 8.0)).xy * ldexp(1.0,  0.0);
+    oFlow += tex2Dlod(s_flow, calcCoords(input.uv, 1.0)).xy * ldexp(1.0, -7.0);
+    oFlow += tex2Dlod(s_flow, calcCoords(input.uv, 2.0)).xy * ldexp(1.0, -6.0);
+    oFlow += tex2Dlod(s_flow, calcCoords(input.uv, 3.0)).xy * ldexp(1.0, -5.0);
+    oFlow += tex2Dlod(s_flow, calcCoords(input.uv, 4.0)).xy * ldexp(1.0, -4.0);
+    oFlow += tex2Dlod(s_flow, calcCoords(input.uv, 5.0)).xy * ldexp(1.0, -3.0);
+    oFlow += tex2Dlod(s_flow, calcCoords(input.uv, 6.0)).xy * ldexp(1.0, -2.0);
+    oFlow += tex2Dlod(s_flow, calcCoords(input.uv, 7.0)).xy * ldexp(1.0, -1.0);
+    oFlow += tex2Dlod(s_flow, calcCoords(input.uv, 8.0)).xy * ldexp(1.0,  0.0);
 
     const float kWeights = 1.0 / 8.0;
     float4 color = 0.0;
