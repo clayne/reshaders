@@ -51,11 +51,11 @@ uniform float4 kBackColor <
     ui_min = 0.0; ui_max = 1.0;
 > = float4(0.0, 0.0, 0.0, 0.0);
 
-texture2D r_source : COLOR;
+texture2D r_color : COLOR;
 
-sampler2D s_source
+sampler2D s_color
 {
-    Texture = r_source;
+    Texture = r_color;
     #if BUFFER_COLOR_BIT_DEPTH != 10
         SRGBTexture = true;
     #endif
@@ -71,7 +71,7 @@ v2f vs_contour(in uint id : SV_VertexID)
     texcoord.y = (id == 1) ? 2.0 : 0.0;
     o.vpos = float4(texcoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 
-    float2 ts = rcp(tex2Dsize(s_source, 0.0));
+    float2 ts = 1.0 / float2(BUFFER_WIDTH, BUFFER_HEIGHT);
     o.uv[0].xy = texcoord.xy;
     o.uv[0].zw = texcoord.xy + ts.xy;
     o.uv[1].xy = texcoord.xy + float2(ts.x, 0.0);
@@ -82,10 +82,10 @@ v2f vs_contour(in uint id : SV_VertexID)
 void ps_contour(v2f input, out float3 c : SV_Target0)
 {
     // Color samples
-    float4x3 co = float4x3(tex2D(s_source, input.uv[0].xy).rgb,
-                           tex2D(s_source, input.uv[0].zw).rgb,
-                           tex2D(s_source, input.uv[1].xy).rgb,
-                           tex2D(s_source, input.uv[1].zw).rgb);
+    float4x3 co = float4x3(tex2D(s_color, input.uv[0].xy).rgb,
+                           tex2D(s_color, input.uv[0].zw).rgb,
+                           tex2D(s_color, input.uv[1].xy).rgb,
+                           tex2D(s_color, input.uv[1].zw).rgb);
 
     // Roberts cross operator
     float cg1  = dot(co[1] - co[0], co[1] - co[0]);

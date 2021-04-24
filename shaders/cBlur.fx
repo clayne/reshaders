@@ -11,7 +11,7 @@ uniform float kRadius <
     ui_step = 0.01;
 > = 0.1;
 
-texture2D r_source : COLOR;
+texture2D r_color : COLOR;
 
 texture2D r_mip
 {
@@ -29,9 +29,9 @@ texture2D r_blur
     Format = RGB10A2;
 };
 
-sampler2D s_source
+sampler2D s_color
 {
-    Texture = r_source;
+    Texture = r_color;
     AddressU = MIRROR;
     AddressV = MIRROR;
     SRGBTexture = true;
@@ -68,7 +68,7 @@ v2f vs_basic(const uint id : SV_VertexID)
 
 float4 ps_mip(v2f input) : SV_TARGET
 {
-    return tex2D(s_source, input.uv);
+    return tex2D(s_color, input.uv);
 }
 
 float4 p_noiseblur(sampler2D src, float2 uv, float2 pos, float2 delta)

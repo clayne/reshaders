@@ -4,11 +4,11 @@
     Change: use gamma conversion before and after processing
 */
 
-texture2D r_source : COLOR;
+texture2D r_color : COLOR;
 
-sampler s_source
+sampler s_color
 {
-    Texture = r_source;
+    Texture = r_color;
     #if BUFFER_COLOR_BIT_DEPTH != 10
         SRGBTexture = true;
     #endif
@@ -42,7 +42,7 @@ float3 p_tone(float3 n)
 
 float3 ps_tonemap(v2f input) : SV_Target
 {
-    float3 kLinear = tex2D(s_source, input.uv).rgb;
+    float3 kLinear = tex2D(s_color, input.uv).rgb;
     const float3 kWhitePoint = 1.0 / p_tone(float3(2.80f, 2.90f, 3.10f));
     kLinear = p_tone(kLinear) * 1.25 * kWhitePoint;
     return pow(abs(kLinear), 1.25);

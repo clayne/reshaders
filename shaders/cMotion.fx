@@ -14,15 +14,15 @@ uniform float kScale <
     ui_type = "drag";
 > = 0.320;
 
-texture2D r_source : COLOR;
+texture2D r_color  : COLOR;
 texture2D r_filter { Width = BUFFER_WIDTH / 2.0; Height = BUFFER_HEIGHT / 2.0; Format = RGB10A2; MipLevels = 3; };
 texture2D r_pframe { Width = BUFFER_WIDTH / 2.0; Height = BUFFER_HEIGHT / 2.0; Format = RGB10A2; };
 texture2D r_cframe { Width = BUFFER_WIDTH / 2.0; Height = BUFFER_HEIGHT / 2.0; Format = RGB10A2; };
 texture2D r_flow   { Width = BUFFER_WIDTH / 2.0; Height = BUFFER_HEIGHT / 2.0; Format = RG16F;   MipLevels = 9; };
 
-sampler2D s_source
+sampler2D s_color
 {
-    Texture = r_source;
+    Texture = r_color;
     #if BUFFER_COLOR_BIT_DEPTH != 10
         SRGBTexture = true;
     #endif
@@ -59,7 +59,7 @@ struct p2mrt
 p2mrt ps_lod(v2f input)
 {
     p2mrt o;
-    o.cframe = tex2D(s_source, input.uv);
+    o.cframe = tex2D(s_color, input.uv);
     o.pframe = tex2D(s_cframe, input.uv); // Output the cframe we got from last frame
     return o;
 }
@@ -94,7 +94,7 @@ float4 ps_flow(v2f input) : SV_Target
     return kFlow.xyxy;
 }
 
-float pnoise(float2 pos)
+float noise(float2 pos)
 {
     // Interleaved Gradient Noise from
     // [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
@@ -106,11 +106,11 @@ float2 calcFlow(v2f input, float2 flow, float i)
 {
     // From [http://john-chapman-graphics.blogspot.com/2013/01/per-object-motion-blur.html]
     const float kSamples = 1.0 / (16.0 - 1.0);
-    float2 kCalc = (pnoise(input.vpos.xy) * 2.0 + i) * kSamples - 0.5;
+    float2 kCalc = (noise(input.vpos.xy) * 2.0 + i) * kSamples - 0.5;
     return flow * kCalc + input.uv;
 }
 
-float4 calcCoords(float2 uv, float lod)
+float4 filter(float2 uv, float lod)
 {
     // Better texture fltering from Inigo:
     // [https://www.iquilezles.org/www/articles/texture/texture.htm]
@@ -127,31 +127,31 @@ float4 calcCoords(float2 uv, float lod)
 float4 ps_output(v2f input) : SV_Target
 {
     /*
-        Build optical flow pyramid
+        Build optical flow pyramid (oFlow)
         Lowest mip has highest precision, lowest contribution
         Highest mip has lowest spread, highest contribution
     */
 
     float2 oFlow = 0.0;
-    oFlow += tex2Dlod(s_flow, calcCoords(input.uv, 1.0)).xy * ldexp(1.0, -7.0);
-    oFlow += tex2Dlod(s_flow, calcCoords(input.uv, 2.0)).xy * ldexp(1.0, -6.0);
-    oFlow += tex2Dlod(s_flow, calcCoords(input.uv, 3.0)).xy * ldexp(1.0, -5.0);
-    oFlow += tex2Dlod(s_flow, calcCoords(input.uv, 4.0)).xy * ldexp(1.0, -4.0);
-    oFlow += tex2Dlod(s_flow, calcCoords(input.uv, 5.0)).xy * ldexp(1.0, -3.0);
-    oFlow += tex2Dlod(s_flow, calcCoords(input.uv, 6.0)).xy * ldexp(1.0, -2.0);
-    oFlow += tex2Dlod(s_flow, calcCoords(input.uv, 7.0)).xy * ldexp(1.0, -1.0);
-    oFlow += tex2Dlod(s_flow, calcCoords(input.uv, 8.0)).xy * ldexp(1.0,  0.0);
+    oFlow += tex2Dlod(s_flow, filter(input.uv, 1.0)).xy * ldexp(1.0, -7.0);
+    oFlow += tex2Dlod(s_flow, filter(input.uv, 2.0)).xy * ldexp(1.0, -6.0);
+    oFlow += tex2Dlod(s_flow, filter(input.uv, 3.0)).xy * ldexp(1.0, -5.0);
+    oFlow += tex2Dlod(s_flow, filter(input.uv, 4.0)).xy * ldexp(1.0, -4.0);
+    oFlow += tex2Dlod(s_flow, filter(input.uv, 5.0)).xy * ldexp(1.0, -3.0);
+    oFlow += tex2Dlod(s_flow, filter(input.uv, 6.0)).xy * ldexp(1.0, -2.0);
+    oFlow += tex2Dlod(s_flow, filter(input.uv, 7.0)).xy * ldexp(1.0, -1.0);
+    oFlow += tex2Dlod(s_flow, filter(input.uv, 8.0)).xy * ldexp(1.0,  0.0);
 
     const float kWeights = 1.0 / 8.0;
     float4 color = 0.0;
-    color += tex2D(s_source, calcFlow(input, oFlow, 2.0)) * kWeights;
-    color += tex2D(s_source, calcFlow(input, oFlow, 4.0)) * kWeights;
-    color += tex2D(s_source, calcFlow(input, oFlow, 6.0)) * kWeights;
-    color += tex2D(s_source, calcFlow(input, oFlow, 8.0)) * kWeights;
-    color += tex2D(s_source, calcFlow(input, oFlow, 10.0)) * kWeights;
-    color += tex2D(s_source, calcFlow(input, oFlow, 12.0)) * kWeights;
-    color += tex2D(s_source, calcFlow(input, oFlow, 14.0)) * kWeights;
-    color += tex2D(s_source, calcFlow(input, oFlow, 16.0)) * kWeights;
+    color += tex2D(s_color, calcFlow(input, oFlow, 2.0)) * kWeights;
+    color += tex2D(s_color, calcFlow(input, oFlow, 4.0)) * kWeights;
+    color += tex2D(s_color, calcFlow(input, oFlow, 6.0)) * kWeights;
+    color += tex2D(s_color, calcFlow(input, oFlow, 8.0)) * kWeights;
+    color += tex2D(s_color, calcFlow(input, oFlow, 10.0)) * kWeights;
+    color += tex2D(s_color, calcFlow(input, oFlow, 12.0)) * kWeights;
+    color += tex2D(s_color, calcFlow(input, oFlow, 14.0)) * kWeights;
+    color += tex2D(s_color, calcFlow(input, oFlow, 16.0)) * kWeights;
     return color;
 }
 

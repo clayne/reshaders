@@ -35,10 +35,10 @@ uniform float intensity <
     ui_tooltip = "Increase to sharpen details within the image.";
 > = 0.05;
 
-texture2D r_source : COLOR;
-sampler2D s_source
+texture2D r_color : COLOR;
+sampler2D s_color
 {
-    Texture = r_source;
+    Texture = r_color;
     #if BUFFER_COLOR_BIT_DEPTH != 10
         SRGBTexture = true;
     #endif
@@ -74,17 +74,17 @@ v2f vs_sharpen(in uint id : SV_VertexID)
 
 void ps_sharpen(v2f input, out float4 c : SV_Target)
 {
-    float4 c0 = tex2D(s_source, input.uv[0].xy);
-    float4 c1 = tex2D(s_source, input.uv[0].zw);
-    float4 c2 = tex2D(s_source, input.uv[1].xy);
+    float4 c0 = tex2D(s_color, input.uv[0].xy);
+    float4 c1 = tex2D(s_color, input.uv[0].zw);
+    float4 c2 = tex2D(s_color, input.uv[1].xy);
 
-    float4 c3 = tex2D(s_source, input.uv[1].zw);
-    float4 c4 = tex2D(s_source, input.uv[2].xy);
-    float4 c5 = tex2D(s_source, input.uv[2].zw);
+    float4 c3 = tex2D(s_color, input.uv[1].zw);
+    float4 c4 = tex2D(s_color, input.uv[2].xy);
+    float4 c5 = tex2D(s_color, input.uv[2].zw);
 
-    float4 c6 = tex2D(s_source, input.uv[3].xy);
-    float4 c7 = tex2D(s_source, input.uv[3].zw);
-    float4 c8 = tex2D(s_source, input.uv[4].xy);
+    float4 c6 = tex2D(s_color, input.uv[3].xy);
+    float4 c7 = tex2D(s_color, input.uv[3].zw);
+    float4 c8 = tex2D(s_color, input.uv[4].xy);
 
     c = c4 - (c0 + c1 + c2 + c3 - 8 * c4 + c5 + c6 + c7 + c8) * intensity;
 }

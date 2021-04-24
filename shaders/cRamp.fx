@@ -31,7 +31,7 @@ uniform float2 kMulBias <
     ui_label = "MulBias";
 > = float2(0.5, 0.5);
 
-sampler2D s_source
+sampler2D s_color
 {
     Texture = ReShade::BackBufferTex;
     #if BUFFER_COLOR_BIT_DEPTH != 10
@@ -43,7 +43,7 @@ struct v2f { float4 vpos : SV_POSITION; float2 uv : TEXCOORD0; };
 
 void p_ramp(v2f input, out float4 c : SV_Target0)
 {
-    c = tex2D(s_source, input.uv);
+    c = tex2D(s_color, input.uv);
     c = saturate(mad(c, kMulBias.x, kMulBias.y));
     c = lerp(kColor1, kColor2, c);
 }

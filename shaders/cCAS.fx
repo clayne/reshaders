@@ -60,11 +60,11 @@ uniform float kSharpening <
     ui_min = 0.0; ui_max = 1.0;
 > = 1.0;
 
-texture2D r_source : COLOR;
+texture2D r_color : COLOR;
 
-sampler s_source
+sampler s_color
 {
-    Texture = r_source;
+    Texture = r_color;
     #if BUFFER_COLOR_BIT_DEPTH != 10
         SRGBTexture = true;
     #endif
@@ -80,7 +80,7 @@ v2f vs_cas(in uint id : SV_VertexID)
     coord.y = (id == 1) ? 2.0 : 0.0;
     o.vpos = float4(coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 
-    const float2 ts = 1.0 / tex2Dsize(s_source, 0.0);
+    const float2 ts = 1.0 / tex2Dsize(s_color, 0.0);
     o.uv[0].xy = mad(ts, float2(-1.0,-1.0), coord);
     o.uv[0].zw = mad(ts, float2( 0.0,-1.0), coord);
     o.uv[1].xy = mad(ts, float2( 1.0,-1.0), coord);
@@ -101,17 +101,17 @@ float3 ps_cas(v2f input) : SV_Target
     //  d(e)f
     //  g h i
 
-    float3 a = tex2D(s_source, input.uv[0].xy).rgb;
-    float3 b = tex2D(s_source, input.uv[0].zw).rgb;
-    float3 c = tex2D(s_source, input.uv[1].xy).rgb;
-    float3 d = tex2D(s_source, input.uv[1].zw).rgb;
+    float3 a = tex2D(s_color, input.uv[0].xy).rgb;
+    float3 b = tex2D(s_color, input.uv[0].zw).rgb;
+    float3 c = tex2D(s_color, input.uv[1].xy).rgb;
+    float3 d = tex2D(s_color, input.uv[1].zw).rgb;
 
-    float3 g = tex2D(s_source, input.uv[2].xy).rgb;
-    float3 e = tex2D(s_source, input.uv[2].zw).rgb;
-    float3 f = tex2D(s_source, input.uv[3].xy).rgb;
+    float3 g = tex2D(s_color, input.uv[2].xy).rgb;
+    float3 e = tex2D(s_color, input.uv[2].zw).rgb;
+    float3 f = tex2D(s_color, input.uv[3].xy).rgb;
 
-    float3 h = tex2D(s_source, input.uv[3].zw).rgb;
-    float3 i = tex2D(s_source, input.uv[4].xy).rgb;
+    float3 h = tex2D(s_color, input.uv[3].zw).rgb;
+    float3 i = tex2D(s_color, input.uv[4].xy).rgb;
 
     // Soft min and max.
     //  a b c             b

@@ -43,7 +43,7 @@ uniform bool kSymmetry <
     ui_label = "Symmetry?";
 > = true;
 
-sampler2D s_source
+sampler2D s_color
 {
     Texture = ReShade::BackBufferTex;
     #if BUFFER_COLOR_BIT_DEPTH != 10
@@ -72,7 +72,7 @@ void ps_mirror(in float4 vpos : SV_Position, in float2 uv : TEXCOORD, out float4
     // Reflection at the border of the screen.
     uv = max(min(uv, 2.0 - uv), -uv);
 
-    c = tex2D(s_source, uv);
+    c = tex2D(s_color, uv);
 }
 
 technique KinoMirror

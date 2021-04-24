@@ -29,7 +29,7 @@ uniform float kSaturation <
     ui_label = "Saturation";
 > = 2.0;
 
-texture2D r_source : COLOR;
+texture2D r_color : COLOR;
 texture2D r_bloom1 { Width = BUFFER_WIDTH / 2;   Height = BUFFER_HEIGHT / 2;   Format = RGBA16F; };
 texture2D r_bloom2 { Width = BUFFER_WIDTH / 4;   Height = BUFFER_HEIGHT / 4;   Format = RGBA16F; };
 texture2D r_bloom3 { Width = BUFFER_WIDTH / 8;   Height = BUFFER_HEIGHT / 8;   Format = RGBA16F; };
@@ -39,9 +39,9 @@ texture2D r_bloom6 { Width = BUFFER_WIDTH / 64;  Height = BUFFER_HEIGHT / 64;  F
 texture2D r_bloom7 { Width = BUFFER_WIDTH / 128; Height = BUFFER_HEIGHT / 128; Format = RGBA16F; };
 texture2D r_bloom8 { Width = BUFFER_WIDTH / 256; Height = BUFFER_HEIGHT / 256; Format = RGBA16F; };
 
-sampler2D s_source
+sampler2D s_color
 {
-    Texture = r_source;
+    Texture = r_color;
     #if BUFFER_COLOR_BIT_DEPTH != 10
         SRGBTexture = true;
     #endif
@@ -108,7 +108,7 @@ v2fu v_usamp(const uint id, sampler2D src)
     return o;
 }
 
-v2fd vs_dsamp0(uint id : SV_VertexID) { return v_dsamp(id, s_source); }
+v2fd vs_dsamp0(uint id : SV_VertexID) { return v_dsamp(id, s_color);  }
 v2fd vs_dsamp1(uint id : SV_VertexID) { return v_dsamp(id, s_bloom1); }
 v2fd vs_dsamp2(uint id : SV_VertexID) { return v_dsamp(id, s_bloom2); }
 v2fd vs_dsamp3(uint id : SV_VertexID) { return v_dsamp(id, s_bloom3); }
@@ -152,7 +152,7 @@ float4 ps_dsamp0(v2fd input): SV_TARGET
 {
     const float  knee = mad(kThreshold, kSmooth, 1e-5f);
     const float3 curve = float3(kThreshold - knee, knee * 2.0, 0.25 / knee);
-    float4 s = p_dsamp(s_source, input);
+    float4 s = p_dsamp(s_color, input);
 
     // Pixel brightness
     s.a = max(s.r, max(s.g, s.b));
