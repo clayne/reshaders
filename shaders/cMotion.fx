@@ -50,31 +50,33 @@ v2f vs_basic(const uint id : SV_VertexID)
 
 /* [ Pixel Shaders ] */
 
+// Output the cframe we got from last frame
+
 struct p2mrt
 {
     float4 cframe : SV_TARGET0;
     float4 pframe : SV_TARGET1;
 };
 
-p2mrt ps_lod(v2f input)
+p2mrt ps_copy(v2f input)
 {
     p2mrt o;
     o.cframe = tex2D(s_color, input.uv);
-    o.pframe = tex2D(s_cframe, input.uv); // Output the cframe we got from last frame
+    o.pframe = tex2D(s_cframe, input.uv); // Store previous cframe
     return o;
 }
 
-// Prefilter frame via mipmaps and copy it
+// Prefilter and copy frame
+
 float4 ps_filter(v2f input) : SV_Target
 {
     return tex2D(s_filter, input.uv);
 }
 
+// Partial derivatives port of [https://github.com/diwi/PixelFlow] [MIT]
+
 float4 ps_flow(v2f input) : SV_Target
 {
-    // Partial derivatives port of
-    // [https://github.com/diwi/PixelFlow] [MIT]
-
     // Calculate frame distance
     float4 kCurr = tex2D(s_cframe, input.uv);
     float4 kPrev = tex2D(s_pframe, input.uv);
@@ -94,10 +96,11 @@ float4 ps_flow(v2f input) : SV_Target
     return kFlow.xyxy;
 }
 
+// Better texture fltering from Inigo:
+// [https://www.iquilezles.org/www/articles/texture/texture.htm]
+
 float4 filter(float2 uv, float lod)
 {
-    // Better texture fltering from Inigo:
-    // [https://www.iquilezles.org/www/articles/texture/texture.htm]
     float2 kResolution = tex2Dsize(s_flow, lod);
     float2 kP = uv * kResolution + 0.5;
     float2 kI = floor(kP);
@@ -115,7 +118,6 @@ float2 calcFlow(v2f input, float2 flow, float i)
     const float3 kValue = float3(52.9829189, 0.06711056, 0.00583715);
     float kNoise = frac(kValue.x * frac(dot(input.vpos.xy, kValue.yz)));
 
-    // Center blur from
     // [http://john-chapman-graphics.blogspot.com/2013/01/per-object-motion-blur.html]
     const float kSamples = 1.0 / (16.0 - 1.0);
     float2 kCalc = (kNoise * 2.0 + i) * kSamples - 0.5;
@@ -158,9 +160,9 @@ technique cMotionBlur
     pass
     {
         VertexShader = vs_basic;
-        PixelShader = ps_lod;
+        PixelShader = ps_copy;
         RenderTarget0 = r_filter;
-        RenderTarget1 = r_pframe; // Store previous frame
+        RenderTarget1 = r_pframe;
     }
 
     pass
