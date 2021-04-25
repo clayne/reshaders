@@ -4,15 +4,15 @@
     https://creativecommons.org/licenses/by/3.0/us/
 */
 
-uniform float kThreshold <
-    ui_label = "Threshold";
+uniform float kLambda <
+    ui_label = "Lambda";
     ui_type = "drag";
-> = 0.016;
+> = 0.001;
 
 uniform float kScale <
     ui_label = "Scale";
     ui_type = "drag";
-> = 0.320;
+> = 0.064;
 
 texture2D r_color  : COLOR;
 texture2D r_filter { Width = BUFFER_WIDTH / 2.0; Height = BUFFER_HEIGHT / 2.0; Format = RGB10A2; MipLevels = 3; };
@@ -31,7 +31,7 @@ sampler2D s_color
 sampler2D s_filter { Texture = r_filter; MipLODBias = 2.0; };
 sampler2D s_pframe { Texture = r_pframe; };
 sampler2D s_cframe { Texture = r_cframe; };
-sampler2D s_flow   { Texture = r_flow; };
+sampler2D s_flow   { Texture = r_flow;   };
 
 struct v2f
 {
@@ -87,12 +87,8 @@ float4 ps_flow(v2f input) : SV_Target
     float3 kCalc;
     kCalc.x = dot(ddx(kBoth), 1.0);
     kCalc.y = dot(ddy(kBoth), 1.0);
-    kCalc.z = rsqrt(dot(kCalc.xy, kCalc.xy) + 1.0);
+    kCalc.z = rsqrt(dot(kCalc.xy, kCalc.xy) + kLambda);
     float2 kFlow = -kScale * kDist * (kCalc.xy * kCalc.zz);
-
-    float kOld = sqrt(dot(kFlow.xy, kFlow.xy) + 1e-5);
-    float kNew = max(kOld - kThreshold, 0.0);
-    kFlow *= kNew / kOld;
     return kFlow.xyxy;
 }
 
@@ -113,8 +109,8 @@ float4 filter(float2 uv, float lod)
 
 float2 calcFlow(v2f input, float2 flow, float i)
 {
-	// Interleaved Gradient Noise from
-	// [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
+    // Interleaved Gradient Noise from
+    // [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
     const float3 kValue = float3(52.9829189, 0.06711056, 0.00583715);
     float kNoise = frac(kValue.x * frac(dot(input.vpos.xy, kValue.yz)));
 

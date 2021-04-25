@@ -15,7 +15,7 @@ uniform float kScale <
 > = 0.320;
 
 texture2D r_color  : COLOR;
-texture2D r_filter { Width = BUFFER_WIDTH / 2.0; Height = BUFFER_HEIGHT / 2.0; Format = RGB10A2; };
+texture2D r_filter { Width = BUFFER_WIDTH / 2.0; Height = BUFFER_HEIGHT / 2.0; Format = RGB10A2; MipLevels = 3; };
 texture2D r_pframe { Width = BUFFER_WIDTH / 2.0; Height = BUFFER_HEIGHT / 2.0; Format = RGB10A2; };
 texture2D r_cframe { Width = BUFFER_WIDTH / 2.0; Height = BUFFER_HEIGHT / 2.0; Format = RGB10A2; };
 
@@ -27,7 +27,7 @@ sampler2D s_color
     #endif
 };
 
-sampler2D s_filter { Texture = r_filter; };
+sampler2D s_filter { Texture = r_filter; MipLODBias = 2.0; };
 sampler2D s_pframe { Texture = r_pframe; };
 sampler2D s_cframe { Texture = r_cframe; };
 
