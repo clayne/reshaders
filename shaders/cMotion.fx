@@ -39,7 +39,7 @@ struct v2f
     float2 uv : TEXCOORD0;
 };
 
-v2f vs_basic(const uint id : SV_VertexID)
+v2f vs_common(const uint id : SV_VertexID)
 {
     v2f output;
     output.uv.x = (id == 2) ? 2.0 : 0.0;
@@ -50,7 +50,7 @@ v2f vs_basic(const uint id : SV_VertexID)
 
 /* [ Pixel Shaders ] */
 
-// Output the cframe we got from last frame
+ // Output the cframe we got from last frame
 
 struct p2mrt
 {
@@ -62,7 +62,7 @@ p2mrt ps_copy(v2f input)
 {
     p2mrt o;
     o.cframe = tex2D(s_color, input.uv);
-    o.pframe = tex2D(s_cframe, input.uv); // Store previous cframe
+    o.pframe = tex2D(s_cframe, input.uv);
     return o;
 }
 
@@ -113,8 +113,8 @@ float4 filter(float2 uv, float lod)
 
 float2 calcFlow(v2f input, float2 flow, float i)
 {
-    // Interleaved Gradient Noise from
-    // [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
+	// Interleaved Gradient Noise from
+	// [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
     const float3 kValue = float3(52.9829189, 0.06711056, 0.00583715);
     float kNoise = frac(kValue.x * frac(dot(input.vpos.xy, kValue.yz)));
 
@@ -159,29 +159,29 @@ technique cMotionBlur
 {
     pass
     {
-        VertexShader = vs_basic;
+        VertexShader = vs_common;
         PixelShader = ps_copy;
         RenderTarget0 = r_filter;
-        RenderTarget1 = r_pframe;
+        RenderTarget1 = r_pframe; // Store previous frame
     }
 
     pass
     {
-        VertexShader = vs_basic;
+        VertexShader = vs_common;
         PixelShader = ps_filter;
         RenderTarget0 = r_cframe;
     }
 
     pass
     {
-        VertexShader = vs_basic;
+        VertexShader = vs_common;
         PixelShader = ps_flow;
         RenderTarget = r_flow;
     }
 
     pass
     {
-        VertexShader = vs_basic;
+        VertexShader = vs_common;
         PixelShader = ps_output;
         SRGBWriteEnable = true;
     }

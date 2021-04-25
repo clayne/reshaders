@@ -57,7 +57,7 @@ struct v2f
     float2 uv : TEXCOORD0;
 };
 
-v2f vs_basic(const uint id : SV_VertexID)
+v2f vs_common(const uint id : SV_VertexID)
 {
     v2f output;
     output.uv.x = (id == 2) ? 2.0 : 0.0;
@@ -111,21 +111,21 @@ technique cBlur
 {
     pass
     {
-        VertexShader = vs_basic;
+        VertexShader = vs_common;
         PixelShader = ps_mip;
         RenderTarget = r_mip;
     }
 
     pass
     {
-        VertexShader = vs_basic;
+        VertexShader = vs_common;
         PixelShader = ps_blurh;
         RenderTarget = r_blur;
     }
 
     pass
     {
-        VertexShader = vs_basic;
+        VertexShader = vs_common;
         PixelShader = ps_blurv;
         SRGBWriteEnable = true;
     }

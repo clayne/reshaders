@@ -27,7 +27,7 @@ struct v2f
     float2 uv : TEXCOORD0;
 };
 
-v2f vs_basic(const uint id : SV_VertexID)
+v2f vs_common(const uint id : SV_VertexID)
 {
     v2f output;
     output.uv.x = (id == 2) ? 2.0 : 0.0;
@@ -58,14 +58,14 @@ technique Filtering
 {
     pass
     {
-        VertexShader = vs_basic;
+        VertexShader = vs_common;
         PixelShader = ps_image;
         RenderTarget = r_image;
     }
 
     pass
     {
-        VertexShader = vs_basic;
+        VertexShader = vs_common;
         PixelShader = ps_output;
         #if BUFFER_COLOR_BIT_DEPTH != 10
             SRGBWriteEnable = true;

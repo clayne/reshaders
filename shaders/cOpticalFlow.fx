@@ -37,7 +37,7 @@ struct v2f
     float2 uv : TEXCOORD0;
 };
 
-v2f vs_basic(const uint id : SV_VertexID)
+v2f vs_common(const uint id : SV_VertexID)
 {
     v2f output;
     output.uv.x = (id == 2) ? 2.0 : 0.0;
@@ -96,7 +96,7 @@ technique cMotionBlur
 {
     pass
     {
-        VertexShader = vs_basic;
+        VertexShader = vs_common;
         PixelShader = ps_lod;
         RenderTarget0 = r_filter0;
         RenderTarget1 = r_pframe0; // Store previous frame
@@ -104,14 +104,14 @@ technique cMotionBlur
 
     pass
     {
-        VertexShader = vs_basic;
+        VertexShader = vs_common;
         PixelShader = ps_filter;
         RenderTarget0 = r_cframe0;
     }
 
     pass
     {
-        VertexShader = vs_basic;
+        VertexShader = vs_common;
         PixelShader = ps_flow;
     }
 }
