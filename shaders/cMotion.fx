@@ -63,16 +63,16 @@ p2mrt ps_copy(v2f input)
     return o;
 }
 
-// Better texture fltering from Inigo:
+// Quintic curve texture fltering from Inigo:
 // [https://www.iquilezles.org/www/articles/texture/texture.htm]
 
 float4 filter2D(sampler2D src, float2 uv, float lod)
 {
-    float2 size = tex2Dsize(src, lod);
+    const float2 size = tex2Dsize(src, lod);
     float2 p = uv * size + 0.5;
     float2 i = floor(p);
     float2 f = frac(p);
-    p = i + f * f * (3.0 - 2.0 * f);
+    p = i + f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
     p = (p - 0.5) / size;
     return tex2Dlod(src, float4(p, 0.0, lod));
 }
@@ -161,9 +161,9 @@ technique cMotionBlur
     {
         VertexShader = vs_common;
         PixelShader = ps_filter;
-        RenderTarget0 = r_cframe;
+        // RenderTarget0 = r_cframe;
     }
-
+/*
     pass
     {
         VertexShader = vs_common;
@@ -177,4 +177,5 @@ technique cMotionBlur
         PixelShader = ps_output;
         SRGBWriteEnable = TRUE;
     }
+    */
 }
