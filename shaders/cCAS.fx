@@ -91,7 +91,7 @@ v2f vs_cas(in uint id : SV_VertexID)
     output.uv1[1].xy = float2( 1.0, 1.0) * ts + coord;
 
     output.uv1[1].zw = float2(-1.0, 0.0) * ts + coord;
-    output.uv0 = float2( 0.0, 0.0) * ts + coord;
+    output.uv0       = float2( 0.0, 0.0) * ts + coord;
     output.uv1[2].xy = float2( 1.0, 0.0) * ts + coord;
 
     output.uv1[2].zw = float2(-1.0,-1.0) * ts + coord;
