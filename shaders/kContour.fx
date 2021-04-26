@@ -65,18 +65,18 @@ struct v2f { float4 vpos : SV_Position; float4 uv[2] : TEXCOORD0; };
 
 v2f vs_contour(in uint id : SV_VertexID)
 {
-    v2f o;
+    v2f output;
     float2 texcoord;
     texcoord.x = (id == 2) ? 2.0 : 0.0;
     texcoord.y = (id == 1) ? 2.0 : 0.0;
-    o.vpos = float4(texcoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    output.vpos = float4(texcoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 
     float2 ts = 1.0 / float2(BUFFER_WIDTH, BUFFER_HEIGHT);
-    o.uv[0].xy = texcoord.xy;
-    o.uv[0].zw = texcoord.xy + ts.xy;
-    o.uv[1].xy = texcoord.xy + float2(ts.x, 0.0);
-    o.uv[1].zw = texcoord.xy + float2(0.0, ts.y);
-    return o;
+    output.uv[0].xy = texcoord.xy;
+    output.uv[0].zw = texcoord.xy + ts.xy;
+    output.uv[1].xy = texcoord.xy + float2(ts.x, 0.0);
+    output.uv[1].zw = texcoord.xy + float2(0.0, ts.y);
+    return output;
 }
 
 void ps_contour(v2f input, out float3 c : SV_Target0)

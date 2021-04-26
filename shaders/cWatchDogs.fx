@@ -22,11 +22,11 @@ struct v2f
 
 v2f vs_tonemap(const uint id : SV_VERTEXID)
 {
-    v2f o;
-    o.uv.x = (id == 2) ? 2.0 : 0.0;
-    o.uv.y = (id == 1) ? 2.0 : 0.0;
-    o.vpos = float4(o.uv * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
-    return o;
+    v2f output;
+    output.uv.x = (id == 2) ? 2.0 : 0.0;
+    output.uv.y = (id == 1) ? 2.0 : 0.0;
+    output.vpos = float4(output.uv * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    return output;
 }
 
 float3 p_tone(float3 n)

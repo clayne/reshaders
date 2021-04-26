@@ -29,18 +29,18 @@ v2f vs_tile(in uint id : SV_VertexID)
 {
     const float2 size = float2(BUFFER_WIDTH, BUFFER_HEIGHT);
 
-    v2f o;
-    float2 texcoord;
-    texcoord.x = (id == 2) ? 2.0 : 0.0;
-    texcoord.y = (id == 1) ? 2.0 : 0.0;
-    o.vpos = float4(texcoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    v2f output;
+    float2 coord;
+    coord.x = (id == 2) ? 2.0 : 0.0;
+    coord.y = (id == 1) ? 2.0 : 0.0;
+    output.vpos = float4(coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 
-    o.uv -= 0.5;
-    o.uv += texcoord + float2(kCenter.x, -kCenter.y);
-    float2 s = o.uv * size * (kScale * 0.01);
-    o.uv = floor(s) / size;
-    o.uv += 0.5;
-    return o;
+    output.uv -= 0.5;
+    output.uv += coord + float2(kCenter.x, -kCenter.y);
+    float2 s = output.uv * size * (kScale * 0.01);
+    output.uv = floor(s) / size;
+    output.uv += 0.5;
+    return output;
 }
 
 void ps_tile(v2f input, out float3 c : SV_Target0)

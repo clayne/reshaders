@@ -92,20 +92,20 @@ v2fd v_dsamp(const uint id, sampler2D src)
 
 v2fu v_usamp(const uint id, sampler2D src)
 {
-    v2fu o;
+    v2fu output;
     float2 coord;
     coord.x = (id == 2) ? 2.0 : 0.0;
     coord.y = (id == 1) ? 2.0 : 0.0;
-    o.vpos = float4(coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    output.vpos = float4(coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 
     // 9-tap pyramid filter using 4 texture fetches by CeeJayDK
     // https://github.com/CeeJayDK/SweetFX/blob/master/Shaders/LumaSharpen.fx
     const float2 ts = 1.0 / tex2Dsize(src, 0.0);
-    o.uv[0].xy = coord + float2( ts.x * 0.5, -ts.y); // ( 1, -2)
-    o.uv[0].zw = coord + float2(-ts.x, -ts.y * 0.5); // (-2, -1)
-    o.uv[1].xy = coord + float2( ts.x,  ts.y * 0.5); // ( 2,  1)
-    o.uv[1].zw = coord + float2(-ts.x * 0.5,  ts.y); // (-1,  2)
-    return o;
+    output.uv[0].xy = coord + float2( ts.x * 0.5, -ts.y); // ( 1, -2)
+    output.uv[0].zw = coord + float2(-ts.x, -ts.y * 0.5); // (-2, -1)
+    output.uv[1].xy = coord + float2( ts.x,  ts.y * 0.5); // ( 2,  1)
+    output.uv[1].zw = coord + float2(-ts.x * 0.5,  ts.y); // (-1,  2)
+    return output;
 }
 
 v2fd vs_dsamp0(uint id : SV_VertexID) { return v_dsamp(id, s_color);  }

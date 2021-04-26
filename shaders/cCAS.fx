@@ -74,24 +74,24 @@ struct v2f { float4 vpos  : SV_Position; float4 uv[5] : TEXCOORD0; };
 
 v2f vs_cas(in uint id : SV_VertexID)
 {
-    v2f o;
+    v2f output;
     float2 coord;
     coord.x = (id == 2) ? 2.0 : 0.0;
     coord.y = (id == 1) ? 2.0 : 0.0;
-    o.vpos = float4(coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    output.vpos = float4(coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 
     const float2 ts = 1.0 / tex2Dsize(s_color, 0.0);
-    o.uv[0].xy = mad(ts, float2(-1.0,-1.0), coord);
-    o.uv[0].zw = mad(ts, float2( 0.0,-1.0), coord);
-    o.uv[1].xy = mad(ts, float2( 1.0,-1.0), coord);
-    o.uv[1].zw = mad(ts, float2(-1.0, 0.0), coord);
-    o.uv[2].xy = mad(ts, float2(-1.0, 1.0), coord);
-    o.uv[2].zw = coord;
-    o.uv[3].xy = mad(ts, float2( 1.0, 0.0), coord);
-    o.uv[3].zw = mad(ts, float2( 0.0, 1.0), coord);
-    o.uv[4].xy = mad(ts, float2( 1.0, 1.0), coord);
-    o.uv[4].zw = 0.0;
-    return o;
+    output.uv[0].xy = mad(ts, float2(-1.0,-1.0), coord);
+    output.uv[0].zw = mad(ts, float2( 0.0,-1.0), coord);
+    output.uv[1].xy = mad(ts, float2( 1.0,-1.0), coord);
+    output.uv[1].zw = mad(ts, float2(-1.0, 0.0), coord);
+    output.uv[2].xy = mad(ts, float2(-1.0, 1.0), coord);
+    output.uv[2].zw = coord;
+    output.uv[3].xy = mad(ts, float2( 1.0, 0.0), coord);
+    output.uv[3].zw = mad(ts, float2( 0.0, 1.0), coord);
+    output.uv[4].xy = mad(ts, float2( 1.0, 1.0), coord);
+    output.uv[4].zw = 0.0;
+    return output;
 }
 
 float3 ps_cas(v2f input) : SV_Target
