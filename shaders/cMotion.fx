@@ -24,18 +24,11 @@ texture2D r_pframe { Width = BUFFER_WIDTH / 2.0; Height = BUFFER_HEIGHT / 2.0; F
 texture2D r_cframe { Width = BUFFER_WIDTH / 2.0; Height = BUFFER_HEIGHT / 2.0; Format = RGB10A2; };
 texture2D r_flow   { Width = BUFFER_WIDTH / 2.0; Height = BUFFER_HEIGHT / 2.0; Format = RG16F; MipLevels = 9; };
 
-sampler2D s_color
-{
-    Texture = r_color;
-    #if BUFFER_COLOR_BIT_DEPTH != 10
-        SRGBTexture = true;
-    #endif
-};
-
+sampler2D s_color  { Texture = r_color; SRGBTexture = TRUE; };
 sampler2D s_filter { Texture = r_filter; };
 sampler2D s_pframe { Texture = r_pframe; };
 sampler2D s_cframe { Texture = r_cframe; };
-sampler2D s_flow   { Texture = r_flow;   };
+sampler2D s_flow   { Texture = r_flow; };
 
 struct v2f
 {
@@ -183,6 +176,6 @@ technique cMotionBlur
     {
         VertexShader = vs_common;
         PixelShader = ps_output;
-        SRGBWriteEnable = true;
+        SRGBWriteEnable = TRUE;
     }
 }
