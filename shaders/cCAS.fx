@@ -41,9 +41,6 @@
 
     Modified by CeeJay.dk:
         Included a label and tooltip description. I followed AMDs official naming guidelines for FidelityFX.
-
-    Modified by Brimson:
-        Calculate offsets in the Vertex Shader. Should yield a ~10-20% performance increase as we're on D3D9
 */
 
 uniform float kContrast <
@@ -85,7 +82,7 @@ v2f vs_cas(in uint id : SV_VertexID)
     coord.y = (id == 1) ? 2.0 : 0.0;
     output.vpos = float4(coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 
-    const float2 ts = 1.0 / tex2Dsize(s_color, 0.0);
+    const float2 ts = 1.0 / float2(BUFFER_WIDTH, BUFFER_HEIGHT);
     output.uv1[0].xy = float2(-1.0, 1.0) * ts + coord;
     output.uv1[0].zw = float2( 0.0, 1.0) * ts + coord;
     output.uv1[1].xy = float2( 1.0, 1.0) * ts + coord;
@@ -144,9 +141,9 @@ float3 ps_cas(v2f input) : SV_Target
 
     float3 rcpWeightRGB = rcp(mad(4.0, wRGB, 1.0));
 
-    //                          0 w 0
-    //  Filter shape:           w 1 w
-    //                          0 w 0
+    //                0 w 0
+    //  Filter shape: w 1 w
+    //                0 w 0
     float3 window = b + d + f + h;
     float3 o = mad(window, wRGB, e) * rcpWeightRGB;
     return saturate(lerp(e, o, kSharpening));
