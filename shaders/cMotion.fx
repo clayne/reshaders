@@ -71,9 +71,8 @@ float4 filter2D(sampler2D src, float2 uv, float lod)
     float2 size = tex2Dsize(src, lod);
     float2 p = uv * size + 0.5;
     float2 i = floor(p);
-    float2 f = p - i;
-    f = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
-    p = i + f;
+    float2 f = frac(p);
+    p = i + f * f * (3.0 - 2.0 * f);
     p = (p - 0.5) / size;
     return tex2Dlod(src, float4(p, 0.0, lod));
 }
