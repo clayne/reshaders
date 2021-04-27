@@ -103,17 +103,17 @@ float4 ps_flow(v2f input) : SV_Target
     return flow.xyxy;
 }
 
-float2 calcFlow(v2f input, float2 flow, float i)
+float4 flow2D(v2f input, float2 flow, float i)
 {
     // Interleaved Gradient Noise from
     // [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
-    const float3 kValue = float3(52.9829189, 0.06711056, 0.00583715);
-    float kNoise = frac(kValue.x * frac(dot(input.vpos.xy, kValue.yz)));
+    const float3 values = float3(52.9829189, 0.06711056, 0.00583715);
+    float noise = frac(values.x * frac(dot(input.vpos.xy, values.yz)));
 
     // [http://john-chapman-graphics.blogspot.com/2013/01/per-object-motion-blur.html]
-    const float kSamples = 1.0 / (16.0 - 1.0);
-    float2 kCalc = (kNoise * 2.0 + i) * kSamples - 0.5;
-    return flow * kCalc + input.uv;
+    const float samples = 1.0 / (16.0 - 1.0);
+    float2 calc = (noise * 2.0 + i) * samples - 0.5;
+    return tex2D(s_color, flow * calc + input.uv);
 }
 
 float4 ps_output(v2f input) : SV_Target
@@ -136,14 +136,14 @@ float4 ps_output(v2f input) : SV_Target
 
     const float kWeights = 1.0 / 8.0;
     float4 color = 0.0;
-    color += tex2D(s_color, calcFlow(input, oFlow, 2.0)) * kWeights;
-    color += tex2D(s_color, calcFlow(input, oFlow, 4.0)) * kWeights;
-    color += tex2D(s_color, calcFlow(input, oFlow, 6.0)) * kWeights;
-    color += tex2D(s_color, calcFlow(input, oFlow, 8.0)) * kWeights;
-    color += tex2D(s_color, calcFlow(input, oFlow, 10.0)) * kWeights;
-    color += tex2D(s_color, calcFlow(input, oFlow, 12.0)) * kWeights;
-    color += tex2D(s_color, calcFlow(input, oFlow, 14.0)) * kWeights;
-    color += tex2D(s_color, calcFlow(input, oFlow, 16.0)) * kWeights;
+    color += flow2D(input, oFlow, 2.0) * kWeights;
+    color += flow2D(input, oFlow, 4.0) * kWeights;
+    color += flow2D(input, oFlow, 6.0) * kWeights;
+    color += flow2D(input, oFlow, 8.0) * kWeights;
+    color += flow2D(input, oFlow, 10.0) * kWeights;
+    color += flow2D(input, oFlow, 12.0) * kWeights;
+    color += flow2D(input, oFlow, 14.0) * kWeights;
+    color += flow2D(input, oFlow, 16.0) * kWeights;
     return color;
 }
 
@@ -161,9 +161,9 @@ technique cMotionBlur
     {
         VertexShader = vs_common;
         PixelShader = ps_filter;
-        // RenderTarget0 = r_cframe;
+        RenderTarget0 = r_cframe;
     }
-/*
+
     pass
     {
         VertexShader = vs_common;
@@ -177,5 +177,4 @@ technique cMotionBlur
         PixelShader = ps_output;
         SRGBWriteEnable = TRUE;
     }
-    */
 }
