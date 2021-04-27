@@ -42,6 +42,7 @@ sampler2D s_mip
     Texture = r_mip;
     AddressU = MIRROR;
     AddressV = MIRROR;
+    MaxLOD = 3.0f;
 };
 
 sampler2D s_blur
@@ -49,6 +50,7 @@ sampler2D s_blur
     Texture = r_blur;
     AddressU = MIRROR;
     AddressV = MIRROR;
+    MaxLOD = 3.0f;
 };
 
 struct v2f
