@@ -63,7 +63,7 @@ p2mrt ps_copy(v2f input)
     return o;
 }
 
-// Quintic curve texture fltering from Inigo:
+// Quintic curve texture filtering from Inigo:
 // [https://www.iquilezles.org/www/articles/texture/texture.htm]
 
 float4 filter2D(sampler2D src, float2 uv, float lod)
