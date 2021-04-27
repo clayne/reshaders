@@ -17,7 +17,6 @@ texture2D r_mip
 {
     Width = BUFFER_WIDTH / 2.0;
     Height = BUFFER_HEIGHT / 2.0;
-    MipLevels = 3;
     Format = RGB10A2;
 };
 
@@ -25,7 +24,6 @@ texture2D r_blur
 {
     Width = BUFFER_WIDTH / 2.0;
     Height = BUFFER_HEIGHT / 2.0;
-    MipLevels = 3;
     Format = RGB10A2;
 };
 
@@ -42,7 +40,6 @@ sampler2D s_mip
     Texture = r_mip;
     AddressU = MIRROR;
     AddressV = MIRROR;
-    MaxLOD = 3.0f;
 };
 
 sampler2D s_blur
@@ -50,7 +47,6 @@ sampler2D s_blur
     Texture = r_blur;
     AddressU = MIRROR;
     AddressV = MIRROR;
-    MaxLOD = 3.0f;
 };
 
 struct v2f

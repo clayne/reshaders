@@ -1,18 +1,19 @@
 
 /*
-    This work is licensed under a Creative Commons Attribution 3.0 Unported License.
-    https://creativecommons.org/licenses/by/3.0/us/
+    Because of the use of VVVV effect code,
+    This work is licensed under (CC BY-NC-SA 3.0)
+    https://creativecommons.org/licenses/by-nc-sa/3.0/
 */
 
 uniform float kLambda <
     ui_label = "Lambda";
     ui_type = "drag";
-> = 0.001;
+> = 0.016;
 
 uniform float kScale <
     ui_label = "Scale";
     ui_type = "drag";
-> = 0.032;
+> = 0.640;
 
 #ifndef MIP_PREFILTER
     #define MIP_PREFILTER 2.0
@@ -22,7 +23,7 @@ texture2D r_color  : COLOR;
 texture2D r_filter { Width = BUFFER_WIDTH / 2.0; Height = BUFFER_HEIGHT / 2.0; Format = RGB10A2; MipLevels = MIP_PREFILTER + 1.0; };
 texture2D r_pframe { Width = BUFFER_WIDTH / 2.0; Height = BUFFER_HEIGHT / 2.0; Format = RGB10A2; };
 texture2D r_cframe { Width = BUFFER_WIDTH / 2.0; Height = BUFFER_HEIGHT / 2.0; Format = RGB10A2; };
-texture2D r_flow   { Width = BUFFER_WIDTH / 4.0; Height = BUFFER_HEIGHT / 4.0; Format = RG16F; MipLevels = 8; };
+texture2D r_flow   { Width = BUFFER_WIDTH / 2.0; Height = BUFFER_HEIGHT / 2.0; Format = RG16F; MipLevels = 9; };
 
 sampler2D s_color  { Texture = r_color; SRGBTexture = TRUE; };
 sampler2D s_filter { Texture = r_filter; };
@@ -85,10 +86,11 @@ float4 ps_filter(v2f input) : SV_Target
 }
 
 // Partial derivatives port of [https://github.com/diwi/PixelFlow] [MIT]
+// Horn and Schunck method from [https://vvvv.org/contribution/opticalflow-dx11-for-real]
 
 float4 ps_flow(v2f input) : SV_Target
 {
-    // Calculate frame distance
+
     float4 curr = tex2D(s_cframe, input.uv);
     float4 prev = tex2D(s_pframe, input.uv);
     float dist = dot(curr.rgb - prev.rgb, 1.0);
@@ -99,7 +101,17 @@ float4 ps_flow(v2f input) : SV_Target
     d.x = dot(ddx(both), 1.0);
     d.y = dot(ddy(both), 1.0);
     float dt = rsqrt(dot(d, d) + kLambda);
-    float2 flow = -kScale * dist * (d.xy * dt);
+    float2 flow = -kScale * dist * (d * dt);
+
+    float2 dc;
+    dc.x = dot(ddx(flow.xy), 1.0);
+    dc.y = dot(ddy(flow.xy), 1.0);
+
+    float2 pflow = tex2D(s_flow, input.uv).xy;
+    float pp = dot(pflow.xy, dc.xy) + kLambda;
+    float dp = dot(pflow.xy, pflow.xy) + kLambda;
+
+    flow.xy = dc - pflow * (pp / dp);
     return flow.xyxy;
 }
 
@@ -125,14 +137,14 @@ float4 ps_output(v2f input) : SV_Target
     */
 
     float2 oFlow = 0.0;
-    oFlow += filter2D(s_flow, input.uv, 0.0).xy * ldexp(1.0, -7.0);
-    oFlow += filter2D(s_flow, input.uv, 1.0).xy * ldexp(1.0, -6.0);
-    oFlow += filter2D(s_flow, input.uv, 2.0).xy * ldexp(1.0, -5.0);
-    oFlow += filter2D(s_flow, input.uv, 3.0).xy * ldexp(1.0, -4.0);
-    oFlow += filter2D(s_flow, input.uv, 4.0).xy * ldexp(1.0, -3.0);
-    oFlow += filter2D(s_flow, input.uv, 5.0).xy * ldexp(1.0, -2.0);
-    oFlow += filter2D(s_flow, input.uv, 6.0).xy * ldexp(1.0, -1.0);
-    oFlow += filter2D(s_flow, input.uv, 7.0).xy * ldexp(1.0,  0.0);
+    oFlow += filter2D(s_flow, input.uv, 1.0).xy * ldexp(1.0, -7.0);
+    oFlow += filter2D(s_flow, input.uv, 2.0).xy * ldexp(1.0, -6.0);
+    oFlow += filter2D(s_flow, input.uv, 3.0).xy * ldexp(1.0, -5.0);
+    oFlow += filter2D(s_flow, input.uv, 4.0).xy * ldexp(1.0, -4.0);
+    oFlow += filter2D(s_flow, input.uv, 5.0).xy * ldexp(1.0, -3.0);
+    oFlow += filter2D(s_flow, input.uv, 6.0).xy * ldexp(1.0, -2.0);
+    oFlow += filter2D(s_flow, input.uv, 7.0).xy * ldexp(1.0, -1.0);
+    oFlow += filter2D(s_flow, input.uv, 8.0).xy * ldexp(1.0,  0.0);
 
     const float kWeights = 1.0 / 8.0;
     float4 oBlur = 0.0;
