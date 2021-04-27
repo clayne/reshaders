@@ -1,19 +1,19 @@
 
 /*
     Because of the use of VVVV effect code,
-    This work is licensed under (CC BY-NC-SA 3.0)
-    https://creativecommons.org/licenses/by-nc-sa/3.0/
+	This work is licensed under (CC BY-NC-SA 3.0)
+	https://creativecommons.org/licenses/by-nc-sa/3.0/
 */
 
 uniform float kLambda <
     ui_label = "Lambda";
     ui_type = "drag";
-> = 0.016;
+> = 0.002;
 
 uniform float kScale <
     ui_label = "Scale";
     ui_type = "drag";
-> = 0.640;
+> = 0.320;
 
 #ifndef MIP_PREFILTER
     #define MIP_PREFILTER 2.0
@@ -86,7 +86,7 @@ float4 ps_filter(v2f input) : SV_Target
 }
 
 // Partial derivatives port of [https://github.com/diwi/PixelFlow] [MIT]
-// Horn and Schunck method from [https://vvvv.org/contribution/opticalflow-dx11-for-real]
+// Horn & Schunck method from [https://vvvv.org/contribution/opticalflow-dx11-for-real]
 
 float4 ps_flow(v2f input) : SV_Target
 {
@@ -103,16 +103,16 @@ float4 ps_flow(v2f input) : SV_Target
     float dt = rsqrt(dot(d, d) + kLambda);
     float2 flow = -kScale * dist * (d * dt);
 
-    float2 dc;
-    dc.x = dot(ddx(flow.xy), 1.0);
-    dc.y = dot(ddy(flow.xy), 1.0);
+	float2 dc;
+	dc.x = dot(ddx(flow.xy), 1.0);
+	dc.y = dot(ddy(flow.xy), 1.0);
 
-    float2 pflow = tex2D(s_flow, input.uv).xy;
-    float pp = dot(pflow.xy, dc.xy) + kLambda;
-    float dp = dot(pflow.xy, pflow.xy) + kLambda;
+	float2 pflow = tex2D(s_flow, input.uv).xy;
+	float pp = dot(pflow.xy, dc.xy) + kLambda;
+	float dp = dot(pflow.xy, pflow.xy) + kLambda;
 
-    flow.xy = dc - pflow * (pp / dp);
-    return flow.xyxy;
+	flow.xy = dc - pflow * (pp / dp);
+	return flow.xyxy;
 }
 
 float4 flow2D(v2f input, float2 flow, float i)
