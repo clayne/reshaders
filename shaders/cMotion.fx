@@ -13,10 +13,10 @@ uniform float kLambda <
 uniform float kScale <
     ui_label = "Scale";
     ui_type = "drag";
-> = 0.320;
+> = 1.280;
 
 #ifndef MIP_PREFILTER
-    #define MIP_PREFILTER 2.0
+    #define MIP_PREFILTER 3.0
 #endif
 
 texture2D r_color  : COLOR;
@@ -104,8 +104,8 @@ float4 ps_flow(v2f input) : SV_Target
     float2 flow = -kScale * dist * (d * dt);
 
     float2 dc;
-    dc.x = ddx(flow).x;
-    dc.y = ddy(flow).y;
+    dc.x = dot(ddx(flow), 1.0);
+    dc.y = dot(ddy(flow), 1.0);
 
     float2 pflow = tex2D(s_flow, input.uv).xy;
     float pp = dot(pflow, dc) + kLambda;
@@ -119,13 +119,13 @@ float4 flow2D(v2f input, float2 flow, float i)
 {
     // Interleaved Gradient Noise from
     // [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
-    const float3 kValue = float3(52.9829189, 0.06711056, 0.00583715);
-    float kNoise = frac(kValue.x * frac(dot(input.vpos.xy, kValue.yz)));
+    const float3 value = float3(52.9829189, 0.06711056, 0.00583715);
+    float noise = frac(value.x * frac(dot(input.vpos.xy, value.yz)));
 
     // [http://john-chapman-graphics.blogspot.com/2013/01/per-object-motion-blur.html]
-    const float kSamples = 1.0 / (16.0 - 1.0);
-    float2 kCalc = (kNoise * 2.0 + i) * kSamples - 0.5;
-    return tex2D(s_color, flow * kCalc + input.uv);
+    const float samples = 1.0 / (16.0 - 1.0);
+    float2 calc = (noise * 2.0 + i) * samples - 0.5;
+    return tex2D(s_color, flow * calc + input.uv);
 }
 
 float4 ps_output(v2f input) : SV_Target
@@ -137,14 +137,14 @@ float4 ps_output(v2f input) : SV_Target
     */
 
     float2 oFlow = 0.0;
-    oFlow += filter2D(s_flow, input.uv, 1.0).xy * ldexp(1.0, -7.0);
-    oFlow += filter2D(s_flow, input.uv, 2.0).xy * ldexp(1.0, -6.0);
-    oFlow += filter2D(s_flow, input.uv, 3.0).xy * ldexp(1.0, -5.0);
-    oFlow += filter2D(s_flow, input.uv, 4.0).xy * ldexp(1.0, -4.0);
-    oFlow += filter2D(s_flow, input.uv, 5.0).xy * ldexp(1.0, -3.0);
-    oFlow += filter2D(s_flow, input.uv, 6.0).xy * ldexp(1.0, -2.0);
-    oFlow += filter2D(s_flow, input.uv, 7.0).xy * ldexp(1.0, -1.0);
-    oFlow += filter2D(s_flow, input.uv, 8.0).xy * ldexp(1.0,  0.0);
+    oFlow += filter2D(s_flow, input.uv, 1.0).xy * ldexp(1.0, -8.0);
+    oFlow += filter2D(s_flow, input.uv, 2.0).xy * ldexp(1.0, -7.0);
+    oFlow += filter2D(s_flow, input.uv, 3.0).xy * ldexp(1.0, -6.0);
+    oFlow += filter2D(s_flow, input.uv, 4.0).xy * ldexp(1.0, -5.0);
+    oFlow += filter2D(s_flow, input.uv, 5.0).xy * ldexp(1.0, -4.0);
+    oFlow += filter2D(s_flow, input.uv, 6.0).xy * ldexp(1.0, -3.0);
+    oFlow += filter2D(s_flow, input.uv, 7.0).xy * ldexp(1.0, -2.0);
+    oFlow += filter2D(s_flow, input.uv, 8.0).xy * ldexp(1.0, -1.0);
 
     const float kWeights = 1.0 / 8.0;
     float4 oBlur = 0.0;
