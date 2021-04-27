@@ -44,14 +44,13 @@ float4 ps_image(v2f input) : SV_Target0
 
 float4 ps_output(v2f input): SV_Target0
 {
-    float2 kResolution = tex2Dsize(s_image, kLod);
-    float2 kP = input.uv * kResolution + 0.5;
-    float2 kI = floor(kP);
-    float2 kF = kP - kI;
-    kF = kF * kF * kF * (kF * (kF * 6.0 - 15.0) + 10.0);
-    kP = kI + kF;
-    kP = (kP - 0.5) / kResolution;
-    return tex2Dlod(s_image, float4(kP, 0.0, kLod));
+    const float2 size = tex2Dsize(s_image, kLod);
+    float2 p = input.uv * size + 0.5;
+    float2 i = floor(p);
+    float2 f = frac(p);
+    p = i + f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
+    p = (p - 0.5) / size;
+    return tex2Dlod(s_image, float4(p, 0.0, kLod));
 }
 
 technique Filtering
