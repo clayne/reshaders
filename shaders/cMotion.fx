@@ -12,7 +12,7 @@ uniform float kLambda <
 uniform float kScale <
     ui_label = "Scale";
     ui_type = "drag";
-> = 0.064;
+> = 0.032;
 
 #ifndef MIP_PREFILTER
     #define MIP_PREFILTER 2.0
@@ -22,7 +22,7 @@ texture2D r_color  : COLOR;
 texture2D r_filter { Width = BUFFER_WIDTH / 2.0; Height = BUFFER_HEIGHT / 2.0; Format = RGB10A2; MipLevels = MIP_PREFILTER + 1.0; };
 texture2D r_pframe { Width = BUFFER_WIDTH / 2.0; Height = BUFFER_HEIGHT / 2.0; Format = RGB10A2; };
 texture2D r_cframe { Width = BUFFER_WIDTH / 2.0; Height = BUFFER_HEIGHT / 2.0; Format = RGB10A2; };
-texture2D r_flow   { Width = BUFFER_WIDTH / 2.0; Height = BUFFER_HEIGHT / 2.0; Format = RG16F; MipLevels = 9; };
+texture2D r_flow   { Width = BUFFER_WIDTH / 4.0; Height = BUFFER_HEIGHT / 4.0; Format = RG16F; MipLevels = 8; };
 
 sampler2D s_color  { Texture = r_color; SRGBTexture = TRUE; };
 sampler2D s_filter { Texture = r_filter; };
@@ -81,7 +81,7 @@ float4 filter2D(sampler2D src, float2 uv, float lod)
 
 float4 ps_filter(v2f input) : SV_Target
 {
-    return filter2D(s_filter, input.uv, MIP_PREFILTER);
+   return filter2D(s_filter, input.uv, MIP_PREFILTER);
 }
 
 // Partial derivatives port of [https://github.com/diwi/PixelFlow] [MIT]
@@ -107,13 +107,13 @@ float4 flow2D(v2f input, float2 flow, float i)
 {
     // Interleaved Gradient Noise from
     // [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
-    const float3 values = float3(52.9829189, 0.06711056, 0.00583715);
-    float noise = frac(values.x * frac(dot(input.vpos.xy, values.yz)));
+    const float3 kValue = float3(52.9829189, 0.06711056, 0.00583715);
+    float kNoise = frac(kValue.x * frac(dot(input.vpos.xy, kValue.yz)));
 
     // [http://john-chapman-graphics.blogspot.com/2013/01/per-object-motion-blur.html]
-    const float samples = 1.0 / (16.0 - 1.0);
-    float2 calc = (noise * 2.0 + i) * samples - 0.5;
-    return tex2D(s_color, flow * calc + input.uv);
+    const float kSamples = 1.0 / (16.0 - 1.0);
+    float2 kCalc = (kNoise * 2.0 + i) * kSamples - 0.5;
+    return tex2D(s_color, flow * kCalc + input.uv);
 }
 
 float4 ps_output(v2f input) : SV_Target
@@ -125,26 +125,26 @@ float4 ps_output(v2f input) : SV_Target
     */
 
     float2 oFlow = 0.0;
-    oFlow += filter2D(s_flow, input.uv, 1.0).xy * ldexp(1.0, -7.0);
-    oFlow += filter2D(s_flow, input.uv, 2.0).xy * ldexp(1.0, -6.0);
-    oFlow += filter2D(s_flow, input.uv, 3.0).xy * ldexp(1.0, -5.0);
-    oFlow += filter2D(s_flow, input.uv, 4.0).xy * ldexp(1.0, -4.0);
-    oFlow += filter2D(s_flow, input.uv, 5.0).xy * ldexp(1.0, -3.0);
-    oFlow += filter2D(s_flow, input.uv, 6.0).xy * ldexp(1.0, -2.0);
-    oFlow += filter2D(s_flow, input.uv, 7.0).xy * ldexp(1.0, -1.0);
-    oFlow += filter2D(s_flow, input.uv, 8.0).xy * ldexp(1.0,  0.0);
+    oFlow += filter2D(s_flow, input.uv, 0.0).xy * ldexp(1.0, -7.0);
+    oFlow += filter2D(s_flow, input.uv, 1.0).xy * ldexp(1.0, -6.0);
+    oFlow += filter2D(s_flow, input.uv, 2.0).xy * ldexp(1.0, -5.0);
+    oFlow += filter2D(s_flow, input.uv, 3.0).xy * ldexp(1.0, -4.0);
+    oFlow += filter2D(s_flow, input.uv, 4.0).xy * ldexp(1.0, -3.0);
+    oFlow += filter2D(s_flow, input.uv, 5.0).xy * ldexp(1.0, -2.0);
+    oFlow += filter2D(s_flow, input.uv, 6.0).xy * ldexp(1.0, -1.0);
+    oFlow += filter2D(s_flow, input.uv, 7.0).xy * ldexp(1.0,  0.0);
 
     const float kWeights = 1.0 / 8.0;
-    float4 color = 0.0;
-    color += flow2D(input, oFlow, 2.0) * kWeights;
-    color += flow2D(input, oFlow, 4.0) * kWeights;
-    color += flow2D(input, oFlow, 6.0) * kWeights;
-    color += flow2D(input, oFlow, 8.0) * kWeights;
-    color += flow2D(input, oFlow, 10.0) * kWeights;
-    color += flow2D(input, oFlow, 12.0) * kWeights;
-    color += flow2D(input, oFlow, 14.0) * kWeights;
-    color += flow2D(input, oFlow, 16.0) * kWeights;
-    return color;
+    float4 oBlur = 0.0;
+    oBlur += flow2D(input, oFlow, 2.0) * kWeights;
+    oBlur += flow2D(input, oFlow, 4.0) * kWeights;
+    oBlur += flow2D(input, oFlow, 6.0) * kWeights;
+    oBlur += flow2D(input, oFlow, 8.0) * kWeights;
+    oBlur += flow2D(input, oFlow, 10.0) * kWeights;
+    oBlur += flow2D(input, oFlow, 12.0) * kWeights;
+    oBlur += flow2D(input, oFlow, 14.0) * kWeights;
+    oBlur += flow2D(input, oFlow, 16.0) * kWeights;
+    return oBlur;
 }
 
 technique cMotionBlur
