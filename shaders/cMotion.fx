@@ -119,8 +119,8 @@ float4 ps_output(v2f input) : SV_Target
 {
     /*
         Build optical flow pyramid (oFlow)
-        Fine mip has lowest contribution
-        Coarse mip has highest contribution
+        Fine mip = lowest contribution
+        Coarse mip = highest contribution
     */
 
     float2 oFlow = 0.0;
