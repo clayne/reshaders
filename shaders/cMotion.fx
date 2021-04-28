@@ -99,7 +99,7 @@ float4 ps_flow(v2f input) : SV_Target
     d.y = ddy(curr) + ddx(prev);
     d.z = rsqrt(dot(d.xy, d.xy) + kLambda);
     float2 flow = kScale * dt * (d.xy * d.zz);
-    return flow.rgrg;
+    return flow.xyxy;
 }
 
 float4 flow2D(v2f input, float2 flow, float i)
