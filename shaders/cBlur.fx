@@ -18,6 +18,7 @@ texture2D r_mip
     Width = BUFFER_WIDTH / 2.0;
     Height = BUFFER_HEIGHT / 2.0;
     Format = RGB10A2;
+    MipLevels = 2;
 };
 
 texture2D r_blur
@@ -25,6 +26,7 @@ texture2D r_blur
     Width = BUFFER_WIDTH / 2.0;
     Height = BUFFER_HEIGHT / 2.0;
     Format = RGB10A2;
+    MipLevels = 2;
 };
 
 sampler2D s_color
@@ -85,7 +87,7 @@ float4 p_noiseblur(sampler2D src, float2 uv, float2 pos, float2 delta)
         float kPercent = (t + kOffset - 0.5) / (kSampleCount * 2.0);
         float kWeight = 1.0 - abs(kPercent);
 
-        float4 kSample = tex2D(src, uv + delta * kPercent);
+        float4 kSample = tex2Dlod(src, float4(uv + delta * kPercent, 0.0, 2.0));
         kColor += kSample * kWeight;
         kTotal += kWeight;
     }

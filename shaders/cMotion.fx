@@ -1,6 +1,5 @@
 
 /*
-    Because of the use of VVVV effect code...
     This work is licensed under (CC BY-NC-SA 3.0)
     https://creativecommons.org/licenses/by-nc-sa/3.0/
 */
@@ -20,9 +19,9 @@ uniform float kScale <
 #endif
 
 texture2D r_color  : COLOR;
-texture2D r_filter { Width = BUFFER_WIDTH / 2.0; Height = BUFFER_HEIGHT / 2.0; Format = RGB10A2; MipLevels = MIP_PREFILTER + 1.0; };
-texture2D r_pframe { Width = BUFFER_WIDTH / 2.0; Height = BUFFER_HEIGHT / 2.0; Format = RGB10A2; };
-texture2D r_cframe { Width = BUFFER_WIDTH / 2.0; Height = BUFFER_HEIGHT / 2.0; Format = RGB10A2; };
+texture2D r_filter { Width = BUFFER_WIDTH / 2.0; Height = BUFFER_HEIGHT / 2.0; Format = R8; MipLevels = MIP_PREFILTER + 1.0; };
+texture2D r_pframe { Width = BUFFER_WIDTH / 2.0; Height = BUFFER_HEIGHT / 2.0; Format = R8; };
+texture2D r_cframe { Width = BUFFER_WIDTH / 2.0; Height = BUFFER_HEIGHT / 2.0; Format = R8; };
 texture2D r_flow   { Width = BUFFER_WIDTH / 4.0; Height = BUFFER_HEIGHT / 4.0; Format = RG16F; MipLevels = 8; };
 
 sampler2D s_color  { Texture = r_color; SRGBTexture = TRUE; };
@@ -59,7 +58,7 @@ struct p2mrt
 p2mrt ps_copy(v2f input)
 {
     p2mrt o;
-    o.cframe = tex2D(s_color, input.uv);
+    o.cframe = dot(tex2D(s_color, input.uv), 1.0 / 3.0);
     o.pframe = tex2D(s_cframe, input.uv);
     return o;
 }
@@ -86,21 +85,21 @@ float4 ps_filter(v2f input) : SV_Target
 }
 
 // Partial derivatives port of [https://github.com/diwi/PixelFlow] [MIT]
-// Horn & Schunck method from [https://vvvv.org/contribution/opticalflow-dx11-for-real]
 
 float4 ps_flow(v2f input) : SV_Target
 {
-    float4 curr = tex2D(s_cframe, input.uv);
-    float4 prev = tex2D(s_pframe, input.uv);
-    float dist = dot(curr.rgb - prev.rgb, 1.0);
+    // Calculate distance
+    float curr = tex2D(s_cframe, input.uv).r * 3.0;
+    float prev = tex2D(s_pframe, input.uv).r * 3.0;
+    float dist = curr - prev;
 
     // Calculate gradients and optical flow
-    float3 both = curr.rgb + prev.rgb;
+    float both = curr.r + prev.r;
     float2 d;
-    d.x = dot(ddx(both), 1.0);
-    d.y = dot(ddy(both), 1.0);
+    d.x = ddx(both);
+    d.y = ddy(both);
     float dt = rsqrt(dot(d, d) + kLambda);
-    float2 flow = -kScale * dist * (d * dt);
+    float2 flow = kScale * dist * (d * dt);
     return flow.xyxy;
 }
 
