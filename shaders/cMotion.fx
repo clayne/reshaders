@@ -91,15 +91,15 @@ float4 ps_flow(v2f input) : SV_Target
     // Calculate distance
     float curr = tex2D(s_cframe, input.uv).r * 3.0;
     float prev = tex2D(s_pframe, input.uv).r * 3.0;
-    float dist = curr - prev;
+    float dt = curr - prev;
 
     // Calculate gradients and optical flow
-    float2 d;
+    float3 d;
     d.x = ddx(curr) + ddx(prev);
-    d.y = ddy(curr) + ddy(prev);
-    float dt = rsqrt(dot(d, d) + kLambda);
-    float2 flow = kScale * dist * (d * dt);
-    return flow.xyxy;
+    d.y = ddy(curr) + ddx(prev);
+    d.z = rsqrt(dot(d.xy, d.xy) + kLambda);
+    float2 flow = kScale * dt * (d.xy * d.zz);
+    return flow.rgrg;
 }
 
 float4 flow2D(v2f input, float2 flow, float i)
