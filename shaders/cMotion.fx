@@ -7,7 +7,7 @@
 uniform float kLambda <
     ui_label = "Lambda";
     ui_type = "drag";
-> = 0.002;
+> = 0.016;
 
 uniform float kScale <
     ui_label = "Scale";
@@ -94,10 +94,10 @@ float4 ps_flow(v2f input) : SV_Target
     float dist = curr - prev;
 
     // Calculate gradients and optical flow
-    float both = curr.r + prev.r;
     float2 d;
-    d.x = ddx(both);
-    d.y = ddy(both);
+    d.x = ddx(curr) + ddx(prev);
+    d.y = ddy(curr) + ddy(prev);
+    d.xy *= 0.5;
     float dt = rsqrt(dot(d, d) + kLambda);
     float2 flow = kScale * dist * (d * dt);
     return flow.xyxy;
@@ -125,14 +125,14 @@ float4 ps_output(v2f input) : SV_Target
     */
 
     float2 oFlow = 0.0;
-    oFlow += filter2D(s_flow, input.uv, 0.0).xy * ldexp(1.0, -7.0);
-    oFlow += filter2D(s_flow, input.uv, 1.0).xy * ldexp(1.0, -6.0);
-    oFlow += filter2D(s_flow, input.uv, 2.0).xy * ldexp(1.0, -5.0);
-    oFlow += filter2D(s_flow, input.uv, 3.0).xy * ldexp(1.0, -4.0);
-    oFlow += filter2D(s_flow, input.uv, 4.0).xy * ldexp(1.0, -3.0);
-    oFlow += filter2D(s_flow, input.uv, 5.0).xy * ldexp(1.0, -2.0);
-    oFlow += filter2D(s_flow, input.uv, 6.0).xy * ldexp(1.0, -1.0);
-    oFlow += filter2D(s_flow, input.uv, 7.0).xy * ldexp(1.0, -0.0);
+    oFlow += filter2D(s_flow, input.uv, 0.0).xy * ldexp(1.0, -8.0);
+    oFlow += filter2D(s_flow, input.uv, 1.0).xy * ldexp(1.0, -7.0);
+    oFlow += filter2D(s_flow, input.uv, 2.0).xy * ldexp(1.0, -6.0);
+    oFlow += filter2D(s_flow, input.uv, 3.0).xy * ldexp(1.0, -5.0);
+    oFlow += filter2D(s_flow, input.uv, 4.0).xy * ldexp(1.0, -4.0);
+    oFlow += filter2D(s_flow, input.uv, 5.0).xy * ldexp(1.0, -3.0);
+    oFlow += filter2D(s_flow, input.uv, 6.0).xy * ldexp(1.0, -2.0);
+    oFlow += filter2D(s_flow, input.uv, 7.0).xy * ldexp(1.0, -1.0);
 
     const float kWeights = 1.0 / 8.0;
     float4 oBlur = 0.0;
