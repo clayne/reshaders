@@ -60,9 +60,7 @@ ps2mrt ps_copy(v2f input)
 {
     ps2mrt o;
     float4 c = tex2D(s_color, input.uv);
-    float luma = max(c.r, max(c.g, c.b));
-	float exposure = 0.148 / luma;
-	o.cframe = saturate(log2(exposure));
+    o.cframe = dot(c.rgb, 1.0 / 3.0);
     o.pframe = tex2D(s_cframe, input.uv);
     return o;
 }
@@ -93,8 +91,8 @@ float4 ps_filter(v2f input) : SV_Target
 float4 ps_flow(v2f input) : SV_Target
 {
     // Calculate distance
-    float curr = tex2D(s_cframe, input.uv).r;
-    float prev = tex2D(s_pframe, input.uv).r;
+    float curr = tex2D(s_cframe, input.uv).r * 3.0;
+    float prev = tex2D(s_pframe, input.uv).r * 3.0;
     float dt = curr - prev;
 
     // Calculate gradients and optical flow
