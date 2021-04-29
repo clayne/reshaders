@@ -60,7 +60,7 @@ ps2mrt ps_copy(v2f input)
 {
     ps2mrt o;
     float4 c = tex2D(s_color, input.uv);
-    o.cframe = dot(c.rgb, 1.0 / 3.0);
+	o.cframe = max(c.r, max(c.g, c.b));
     o.pframe = tex2D(s_cframe, input.uv);
     return o;
 }
@@ -169,7 +169,7 @@ technique cMotionBlur
     {
         VertexShader = vs_common;
         PixelShader = ps_flow;
-        RenderTarget = r_flow;
+        RenderTarget0 = r_flow;
     }
 
     pass
