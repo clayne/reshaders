@@ -7,12 +7,12 @@
 uniform float kLambda <
     ui_label = "Lambda";
     ui_type = "drag";
-> = 0.001;
+> = 0.064;
 
 uniform float kScale <
     ui_label = "Scale";
     ui_type = "drag";
-> = 0.064;
+> = 0.128;
 
 #ifndef MIP_PREFILTER
     #define MIP_PREFILTER 4.0
