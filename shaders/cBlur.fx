@@ -18,7 +18,7 @@ texture2D r_mip
     Width = BUFFER_WIDTH / 2.0;
     Height = BUFFER_HEIGHT / 2.0;
     Format = RGB10A2;
-    MipLevels = 2;
+    MipLevels = 3;
 };
 
 texture2D r_blur
@@ -26,7 +26,7 @@ texture2D r_blur
     Width = BUFFER_WIDTH / 2.0;
     Height = BUFFER_HEIGHT / 2.0;
     Format = RGB10A2;
-    MipLevels = 2;
+    MipLevels = 3;
 };
 
 sampler2D s_color

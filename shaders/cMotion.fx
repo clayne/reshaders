@@ -60,7 +60,7 @@ ps2mrt ps_copy(v2f input)
 {
     ps2mrt o;
     float4 c = tex2D(s_color, input.uv);
-    o.cframe = max(c.r, max(c.g, c.b));
+    o.cframe = max(max(c.r, c.g), c.b);
     o.pframe = tex2D(s_cframe, input.uv);
     return o;
 }
