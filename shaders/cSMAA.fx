@@ -1,4 +1,9 @@
-/* "Lightweight" SMAA for ReShade 4.0+ */
+/*
+    Lite SMAA port for ReShade 4.0+
+    - Color and medium setting exclusive
+    - Depth rendertarget yoinked
+    - Stripped so I can learn about AA better
+*/
 
 #include "cSMAA.fxh"
 
