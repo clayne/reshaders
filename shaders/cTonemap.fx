@@ -48,7 +48,7 @@ float3 ps_tonemap(v2f input) : SV_Target
     return pow(abs(kLinear), 1.25);
 }
 
-technique WatchDogsTonemap
+technique cTonemap
 {
     pass
     {
