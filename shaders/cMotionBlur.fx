@@ -18,11 +18,19 @@ uniform float kScale <
     #define MIP_PREFILTER 4.0
 #endif
 
+// Round to nearest power of 2 from Luluco
+// [https://github.com/luluco250/FXShaders] [MIT]
+
+#define d_npot(x) ((((x - 1) >> 1) | ((x - 1) >> 2) | \
+			        ((x - 1) >> 4) | ((x - 1) >> 8) | ((x - 1) >> 16)) + 1)
+
+#define d_size d_npot(BUFFER_WIDTH) / 2.0
+
 texture2D r_color  : COLOR;
-texture2D r_filter { Width = BUFFER_WIDTH / 2.0; Height = BUFFER_HEIGHT / 2.0; Format = R8; MipLevels = MIP_PREFILTER + 1.0; };
-texture2D r_pframe { Width = BUFFER_WIDTH / 2.0; Height = BUFFER_HEIGHT / 2.0; Format = R8; };
-texture2D r_cframe { Width = BUFFER_WIDTH / 2.0; Height = BUFFER_HEIGHT / 2.0; Format = R8; };
-texture2D r_flow   { Width = BUFFER_WIDTH / 4.0; Height = BUFFER_HEIGHT / 4.0; Format = RG16F; MipLevels = 8; };
+texture2D r_filter { Width = d_size; Height = d_size; Format = R8; MipLevels = MIP_PREFILTER + 1.0; };
+texture2D r_pframe { Width = d_size; Height = d_size; Format = R8; };
+texture2D r_cframe { Width = d_size; Height = d_size; Format = R8; };
+texture2D r_flow   { Width = d_size / 2.0; Height = d_size / 2.0; Format = RG16F; MipLevels = 8; };
 
 sampler2D s_color  { Texture = r_color; SRGBTexture = TRUE; };
 sampler2D s_filter { Texture = r_filter; };
@@ -81,9 +89,12 @@ float4 filter2D(sampler2D src, float2 uv, float lod)
 
 // Prefilter and copy frame
 
-float4 ps_filter(v2f input) : SV_Target
+ps2mrt ps_filter(v2f input) : SV_Target
 {
-   return filter2D(s_filter, input.uv, MIP_PREFILTER);
+	ps2mrt o;
+	o.cframe = filter2D(s_filter, input.uv, MIP_PREFILTER);
+	o.pframe = tex2D(s_cframe, input.uv);
+	return o;
 }
 
 // Partial derivatives port of [https://github.com/diwi/PixelFlow] [MIT]
