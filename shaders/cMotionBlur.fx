@@ -22,7 +22,7 @@ uniform float kScale <
 // [https://github.com/luluco250/FXShaders] [MIT]
 
 #define d_npot(x) ((((x - 1) >> 1) | ((x - 1) >> 2) | \
-			        ((x - 1) >> 4) | ((x - 1) >> 8) | ((x - 1) >> 16)) + 1)
+                    ((x - 1) >> 4) | ((x - 1) >> 8) | ((x - 1) >> 16)) + 1)
 
 #define d_size d_npot(BUFFER_WIDTH) / 2.0
 
@@ -89,12 +89,9 @@ float4 filter2D(sampler2D src, float2 uv, float lod)
 
 // Prefilter and copy frame
 
-ps2mrt ps_filter(v2f input) : SV_Target
+float4 ps_filter(v2f input) : SV_Target
 {
-	ps2mrt o;
-	o.cframe = filter2D(s_filter, input.uv, MIP_PREFILTER);
-	o.pframe = tex2D(s_cframe, input.uv);
-	return o;
+    return filter2D(s_filter, input.uv, MIP_PREFILTER);
 }
 
 // Partial derivatives port of [https://github.com/diwi/PixelFlow] [MIT]
