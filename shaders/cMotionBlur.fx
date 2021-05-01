@@ -22,7 +22,7 @@ texture2D r_color  : COLOR;
 texture2D r_filter { Width = BUFFER_WIDTH / 2.0; Height = BUFFER_HEIGHT / 2.0; Format = R8; MipLevels = MIP_PREFILTER + 1.0; };
 texture2D r_pframe { Width = BUFFER_WIDTH / 2.0; Height = BUFFER_HEIGHT / 2.0; Format = R8; };
 texture2D r_cframe { Width = BUFFER_WIDTH / 2.0; Height = BUFFER_HEIGHT / 2.0; Format = R8; };
-texture2D r_flow   { Width = BUFFER_WIDTH / 4.0; Height = BUFFER_HEIGHT / 4.0; Format = RG16F; MipLevels = 8; };
+texture2D r_flow   { Width = BUFFER_WIDTH / 4.0; Height = BUFFER_HEIGHT / 4.0; Format = RG8; MipLevels = 8; };
 
 sampler2D s_color  { Texture = r_color; SRGBTexture = TRUE; };
 sampler2D s_filter { Texture = r_filter; };
@@ -101,7 +101,7 @@ float4 ps_flow(v2f input) : SV_Target
     d.y = ddy(curr) + ddx(prev);
     d.z = rsqrt(dot(d.xy, d.xy) + kLambda);
     float2 flow = kScale * dt * (d.xy * d.zz);
-    return flow.xyxy;
+    return saturate(flow.xyxy * 0.5 + 0.5); // map to [0, 1]
 }
 
 float4 flow2D(v2f input, float2 flow, float i)
@@ -114,6 +114,7 @@ float4 flow2D(v2f input, float2 flow, float i)
     // [http://john-chapman-graphics.blogspot.com/2013/01/per-object-motion-blur.html]
     const float samples = 1.0 / (16.0 - 1.0);
     float2 calc = (noise * 2.0 + i) * samples - 0.5;
+    flow = flow * 2.0 - 1.0; // map back to [-1, 1]
     return tex2D(s_color, flow * calc + input.uv);
 }
 
