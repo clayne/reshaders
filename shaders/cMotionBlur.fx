@@ -12,25 +12,32 @@ uniform float kLambda <
 uniform float kScale <
     ui_label = "Scale";
     ui_type = "drag";
-> = 0.128;
+> = 0.256;
 
 #ifndef MIP_PREFILTER
-    #define MIP_PREFILTER 4.0
+    #define MIP_PREFILTER 3.0
 #endif
 
-// Round to nearest power of 2 from Luluco
-// [https://github.com/luluco250/FXShaders] [MIT]
+// Round to nearest power of 2 from Lord of Lunacy, KingEric1992, and Marty McFlow
 
-#define d_npot(x) ((((x - 1) >> 1) | ((x - 1) >> 2) | \
-                    ((x - 1) >> 4) | ((x - 1) >> 8) | ((x - 1) >> 16)) + 1)
+#define CONST_LOG2(x) (\
+    (uint((x) & 0xAAAAAAAA) != 0) | \
+    (uint(((x) & 0xFFFF0000) != 0) << 4) | \
+    (uint(((x) & 0xFF00FF00) != 0) << 3) | \
+    (uint(((x) & 0xF0F0F0F0) != 0) << 2) | \
+    (uint(((x) & 0xCCCCCCCC) != 0) << 1))
 
-#define d_size d_npot(BUFFER_WIDTH) / 2.0
+#define BIT2_LOG2(x)  ((x) | (x) >> 1)
+#define BIT4_LOG2(x)  (BIT2_LOG2(x) | BIT2_LOG2(x) >> 2)
+#define BIT8_LOG2(x)  (BIT4_LOG2(x) | BIT4_LOG2(x) >> 4)
+#define BIT16_LOG2(x) (BIT8_LOG2(x) | BIT8_LOG2(x) >> 8)
+#define LOG2(x)       1 << (CONST_LOG2((BIT16_LOG2(x) >> 1) + 1))
 
 texture2D r_color  : COLOR;
-texture2D r_filter { Width = d_size; Height = d_size; Format = R8; MipLevels = MIP_PREFILTER + 1.0; };
-texture2D r_pframe { Width = d_size; Height = d_size; Format = R8; };
-texture2D r_cframe { Width = d_size; Height = d_size; Format = R8; };
-texture2D r_flow   { Width = d_size / 2.0; Height = d_size / 2.0; Format = RG16F; MipLevels = 8; };
+texture2D r_filter { Width = LOG2(BUFFER_HEIGHT / 1); Height = LOG2(BUFFER_HEIGHT / 2); Format = R8; MipLevels =  MIP_PREFILTER + 1.0; };
+texture2D r_pframe { Width = LOG2(BUFFER_HEIGHT / 1); Height = LOG2(BUFFER_HEIGHT / 2); Format = R8; };
+texture2D r_cframe { Width = LOG2(BUFFER_HEIGHT / 1); Height = LOG2(BUFFER_HEIGHT / 2); Format = R8; };
+texture2D r_flow   { Width = LOG2(BUFFER_HEIGHT / 2); Height = LOG2(BUFFER_HEIGHT / 4); Format = RG16F; MipLevels = 8; };
 
 sampler2D s_color  { Texture = r_color; SRGBTexture = TRUE; };
 sampler2D s_filter { Texture = r_filter; };
@@ -61,7 +68,7 @@ struct ps2mrt
     float4 pframe : SV_TARGET1;
 };
 
-// Pack current frame to luma and output cframe from last frame.  Exposure from:
+// Contrast adaption from AMD's CAS sharpen
 // [https://github.com/TheRealMJP/BakingLab/blob/master/BakingLab/Exposure.hlsl]
 
 ps2mrt ps_copy(v2f input)
