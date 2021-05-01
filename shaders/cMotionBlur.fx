@@ -32,12 +32,13 @@ uniform float kScale <
 #define BIT8_LOG2(x)  (BIT4_LOG2(x) | BIT4_LOG2(x) >> 4)
 #define BIT16_LOG2(x) (BIT8_LOG2(x) | BIT8_LOG2(x) >> 8)
 #define LOG2(x)       1 << (CONST_LOG2((BIT16_LOG2(x) >> 1) + 1))
+#define HSIZE(x, y)   LOG2(x / y)
 
 texture2D r_color  : COLOR;
-texture2D r_filter { Width = LOG2(BUFFER_HEIGHT / 1); Height = LOG2(BUFFER_HEIGHT / 2); Format = R8; MipLevels =  MIP_PREFILTER + 1.0; };
-texture2D r_pframe { Width = LOG2(BUFFER_HEIGHT / 1); Height = LOG2(BUFFER_HEIGHT / 2); Format = R8; };
-texture2D r_cframe { Width = LOG2(BUFFER_HEIGHT / 1); Height = LOG2(BUFFER_HEIGHT / 2); Format = R8; };
-texture2D r_flow   { Width = LOG2(BUFFER_HEIGHT / 2); Height = LOG2(BUFFER_HEIGHT / 4); Format = RG16F; MipLevels = 8; };
+texture2D r_filter { Width = HSIZE(BUFFER_WIDTH, 1); Height = HSIZE(BUFFER_HEIGHT, 2); Format = R8; MipLevels = MIP_PREFILTER + 1.0; };
+texture2D r_pframe { Width = HSIZE(BUFFER_WIDTH, 1); Height = HSIZE(BUFFER_HEIGHT, 2); Format = R8; };
+texture2D r_cframe { Width = HSIZE(BUFFER_WIDTH, 1); Height = HSIZE(BUFFER_HEIGHT, 2); Format = R8; };
+texture2D r_flow   { Width = HSIZE(BUFFER_WIDTH, 2); Height = HSIZE(BUFFER_HEIGHT, 4); Format = RG16F; MipLevels = 8; };
 
 sampler2D s_color  { Texture = r_color; SRGBTexture = TRUE; };
 sampler2D s_filter { Texture = r_filter; };
@@ -67,9 +68,6 @@ struct ps2mrt
     float4 cframe : SV_TARGET0;
     float4 pframe : SV_TARGET1;
 };
-
-// Contrast adaption from AMD's CAS sharpen
-// [https://github.com/TheRealMJP/BakingLab/blob/master/BakingLab/Exposure.hlsl]
 
 ps2mrt ps_copy(v2f input)
 {
