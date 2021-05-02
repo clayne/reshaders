@@ -33,12 +33,12 @@ uniform float kScale <
 #define BIT16_LOG2(x) (BIT8_LOG2(x) | BIT8_LOG2(x) >> 8)
 #define LOG2(x)       (CONST_LOG2((BIT16_LOG2(x) >> 1) + 1))
 
-#define RMAX(x, y)    x ^ ((x ^ y) & -(x < y)) // min(x, y)
-#define DSIZE(x)      RMAX(BUFFER_WIDTH / x, BUFFER_HEIGHT/ x)
+#define RMAX(x, y) x ^ ((x ^ y) & -(x < y)) // max(x, y)
+#define DSIZE(x)   RMAX(BUFFER_WIDTH / x, BUFFER_HEIGHT/ x)
 
-#define RPOW2(x)      Width = 1 << LOG2(DSIZE(x)); Height = 1 << LOG2(DSIZE(x))
-#define RSIZE(x)      Width = BUFFER_WIDTH / x; Height = BUFFER_HEIGHT / x
-#define RFILT(x)      MinFilter = x; MagFilter = x; MipFilter = x
+#define RPOW2(x) Width = 1 << LOG2(DSIZE(x)); Height = 1 << LOG2(DSIZE(x))
+#define RSIZE(x) Width = BUFFER_WIDTH / x; Height = BUFFER_HEIGHT / x
+#define RFILT(x) MinFilter = x; MagFilter = x; MipFilter = x
 
 texture2D r_color  : COLOR;
 texture2D r_source { RSIZE(2); RFILT(LINEAR); Format = R8; MipLevels = LOG2(DSIZE(2)); };
@@ -117,16 +117,16 @@ float4 ps_filter(v2f input) : SV_Target
 float4 ps_flow(v2f input) : SV_Target
 {
     // Calculate distance
-    float curr = tex2D(s_cframe, input.uv).r * 3.0;
-    float prev = tex2D(s_pframe, input.uv).r * 3.0;
+    float curr = tex2D(s_cframe, input.uv).r;
+    float prev = tex2D(s_pframe, input.uv).r;
     float dt = curr - prev;
 
     // Calculate gradients and optical flow
     float3 d;
     d.x = ddx(curr) + ddx(prev);
-    d.y = ddy(curr) + ddx(prev);
+    d.y = ddy(curr) + ddy(prev);
     d.z = rsqrt(dot(d.xy, d.xy) + kLambda);
-    return kScale * dt * (d.xyxy * d.zzzz);
+    return (kScale * dt) * (d.xyxy * d.zzzz);
 }
 
 float4 flow2D(v2f input, float2 flow, float i)
