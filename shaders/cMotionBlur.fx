@@ -18,10 +18,10 @@ uniform float kScale <
     #define MIP_PREFILTER 3.0
 #endif
 
-// Round to nearest power of 2 from Lord of Lunacy, KingEric1992, and Marty McFlow
+// Round to nearest power of 2 from Lord of Lunacy, KingEric1992, and Marty McFly
 
 #define CONST_LOG2(x) (\
-    (uint((x) & 0xAAAAAAAA) != 0) | \
+    (uint((x)  & 0xAAAAAAAA) != 0) | \
     (uint(((x) & 0xFFFF0000) != 0) << 4) | \
     (uint(((x) & 0xFF00FF00) != 0) << 3) | \
     (uint(((x) & 0xF0F0F0F0) != 0) << 2) | \
@@ -31,16 +31,24 @@ uniform float kScale <
 #define BIT4_LOG2(x)  (BIT2_LOG2(x) | BIT2_LOG2(x) >> 2)
 #define BIT8_LOG2(x)  (BIT4_LOG2(x) | BIT4_LOG2(x) >> 4)
 #define BIT16_LOG2(x) (BIT8_LOG2(x) | BIT8_LOG2(x) >> 8)
-#define LOG2(x)       1 << (CONST_LOG2((BIT16_LOG2(x) >> 1) + 1))
-#define HSIZE(x, y)   LOG2(x / y)
+#define LOG2(x)       (CONST_LOG2((BIT16_LOG2(x) >> 1) + 1))
+
+#define RMAX(x, y)    x ^ ((x ^ y) & -(x < y)) // min(x, y)
+#define DSIZE(x)      RMAX(BUFFER_WIDTH / x, BUFFER_HEIGHT/ x)
+
+#define RPOW2(x)      Width = 1 << LOG2(DSIZE(x)); Height = 1 << LOG2(DSIZE(x))
+#define RSIZE(x)      Width = BUFFER_WIDTH / x; Height = BUFFER_HEIGHT / x
+#define RFILT(x)      MinFilter = x; MagFilter = x; MipFilter = x
 
 texture2D r_color  : COLOR;
-texture2D r_filter { Width = HSIZE(BUFFER_WIDTH, 1); Height = HSIZE(BUFFER_HEIGHT, 2); Format = R8; MipLevels = MIP_PREFILTER + 1.0; };
-texture2D r_pframe { Width = HSIZE(BUFFER_WIDTH, 1); Height = HSIZE(BUFFER_HEIGHT, 2); Format = R8; };
-texture2D r_cframe { Width = HSIZE(BUFFER_WIDTH, 1); Height = HSIZE(BUFFER_HEIGHT, 2); Format = R8; };
-texture2D r_flow   { Width = HSIZE(BUFFER_WIDTH, 2); Height = HSIZE(BUFFER_HEIGHT, 4); Format = RG16F; MipLevels = 8; };
+texture2D r_source { RSIZE(2); RFILT(LINEAR); Format = R8; MipLevels = LOG2(DSIZE(2)); };
+texture2D r_filter { RPOW2(2); RFILT(LINEAR); Format = R8; MipLevels = MIP_PREFILTER + 1.0; };
+texture2D r_pframe { RPOW2(2); RFILT(LINEAR); Format = R8; };
+texture2D r_cframe { RPOW2(2); RFILT(LINEAR); Format = R8; };
+texture2D r_flow   { RPOW2(4); RFILT(LINEAR); Format = RG16F; MipLevels = 8; };
 
 sampler2D s_color  { Texture = r_color; SRGBTexture = TRUE; };
+sampler2D s_source { Texture = r_source; };
 sampler2D s_filter { Texture = r_filter; };
 sampler2D s_pframe { Texture = r_pframe; };
 sampler2D s_cframe { Texture = r_cframe; };
@@ -65,17 +73,22 @@ v2f vs_common(const uint id : SV_VertexID)
 
 struct ps2mrt
 {
-    float4 cframe : SV_TARGET0;
-    float4 pframe : SV_TARGET1;
+    float4 target0 : SV_TARGET0;
+    float4 target1 : SV_TARGET1;
 };
+
+float4 ps_source(v2f input) : SV_Target
+{
+    float4 c = tex2D(s_color, input.uv);
+    return max(max(c.r, c.g), c.b).rrrr;
+}
 
 ps2mrt ps_copy(v2f input)
 {
-    ps2mrt o;
-    float4 c = tex2D(s_color, input.uv);
-    o.cframe = max(max(c.r, c.g), c.b);
-    o.pframe = tex2D(s_cframe, input.uv);
-    return o;
+    ps2mrt output;
+    output.target0 = tex2D(s_source, input.uv);
+    output.target1 = tex2D(s_cframe, input.uv);
+    return output;
 }
 
 // Quintic curve texture filtering from Inigo:
@@ -162,6 +175,13 @@ float4 ps_output(v2f input) : SV_Target
 
 technique cMotionBlur
 {
+    pass
+    {
+        VertexShader = vs_common;
+        PixelShader = ps_source;
+        RenderTarget0 = r_source;
+    }
+
     pass
     {
         VertexShader = vs_common;
