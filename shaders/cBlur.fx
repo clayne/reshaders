@@ -1,7 +1,7 @@
 
 /*
     Unlimited 11-Tap blur using mipmaps
-    Based on https://github.com/spite/Wagner/blob/master/fragment-shaders/box-blur-fs.glsl
+    Based on https://github.com/spite/Wagner/blob/master/fragment-shaders/box-blur-fs.glsl [MIT]
     Special Thanks to BlueSkyDefender for help and patience
 */
 

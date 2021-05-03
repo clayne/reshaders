@@ -1,18 +1,44 @@
 
 /*
-    This work is licensed under (CC BY-NC-SA 3.0)
-    https://creativecommons.org/licenses/by-nc-sa/3.0/
+    Shader process
+
+	[1] ps_source
+	- Calculate brightness using max3()
+	- Generate series of mipmaps to 1x1
+	- Output to r_buffer with miplevels
+
+	[2] ps_convert
+	- RenderTarget0: Calculate average exposure
+	- RenderTarget1: Copy boxed frame from previous ps_filter()
+	- Render both to powers of 2 resolution to smooth miplevels
+
+	[3] ps_filter
+	- Turn average-exposured current frame into soft boxes
+	- Copy current frame for ps_covert() in next frame
+
+	[4] ps_flow
+	- Calculate optical flow
+    - Output 8-level mip pyramid
+
+	[5] ps_output
+    - Input and weigh 8-level optical flow pyramid
+	- Blur
 */
 
-uniform float kLambda <
-    ui_label = "Lambda";
+uniform float kExposure <
+    ui_label = "Auto-Exposure Bias";
     ui_type = "drag";
-> = 0.064;
+> = 2.048;
+
+uniform float kLambda <
+    ui_label = "Threshold";
+    ui_type = "drag";
+> = 0.016;
 
 uniform float kScale <
     ui_label = "Scale";
     ui_type = "drag";
-> = 0.256;
+> = 0.512;
 
 #ifndef MIP_PREFILTER
     #define MIP_PREFILTER 3.0
@@ -41,14 +67,14 @@ uniform float kScale <
 #define RFILT(x) MinFilter = x; MagFilter = x; MipFilter = x
 
 texture2D r_color  : COLOR;
-texture2D r_source { RSIZE(2); RFILT(LINEAR); Format = R8; MipLevels = LOG2(DSIZE(2)) + 1; };
-texture2D r_filter { RPOW2(2); RFILT(LINEAR); Format = R8; MipLevels = LOG2(DSIZE(2)) + 1; };
+texture2D r_buffer { RSIZE(2); RFILT(LINEAR); Format = R8; MipLevels = LOG2(DSIZE(2)) + 1; };
+texture2D r_filter { RPOW2(2); RFILT(LINEAR); Format = R8; MipLevels = MIP_PREFILTER  + 1; };
 texture2D r_pframe { RPOW2(2); RFILT(LINEAR); Format = R8; };
 texture2D r_cframe { RPOW2(2); RFILT(LINEAR); Format = R8; };
 texture2D r_flow   { RPOW2(4); RFILT(LINEAR); Format = RG16F; MipLevels = 8; };
 
 sampler2D s_color  { Texture = r_color; SRGBTexture = TRUE; };
-sampler2D s_source { Texture = r_source; };
+sampler2D s_buffer { Texture = r_buffer; };
 sampler2D s_filter { Texture = r_filter; };
 sampler2D s_pframe { Texture = r_pframe; };
 sampler2D s_cframe { Texture = r_cframe; };
@@ -80,13 +106,21 @@ struct ps2mrt
 float4 ps_source(v2f input) : SV_Target
 {
     float4 c = tex2D(s_color, input.uv);
-    return max(max(c.r, c.g), c.b).rrrr;
+    return max(max(c.r, c.g), c.b);
 }
 
-ps2mrt ps_copy(v2f input)
+// Logrithmatic exposure from MJP's TheBakingLab
+// https://github.com/TheRealMJP/BakingLab [MIT]
+
+ps2mrt ps_convert(v2f input)
 {
-    ps2mrt output;
-    output.target0 = tex2D(s_source, input.uv);
+    float aLuma = tex2Dlod(s_buffer, float4(input.uv, 0.0, LOG2(DSIZE(2)) + 1)).r;
+    aLuma = max(aLuma, 1e-5);
+    float aExposure = max(log2(0.148f / aLuma), 1e-5);
+    float c = tex2D(s_buffer, input.uv).r;
+
+	ps2mrt output;
+    output.target0 = c * exp2(aExposure + kExposure);
     output.target1 = tex2D(s_cframe, input.uv);
     return output;
 }
@@ -136,6 +170,7 @@ float4 flow2D(v2f input, float2 flow, float i)
     const float3 value = float3(52.9829189, 0.06711056, 0.00583715);
     float noise = frac(value.x * frac(dot(input.vpos.xy, value.yz)));
 
+    // Blur centering from John Chapman
     // [http://john-chapman-graphics.blogspot.com/2013/01/per-object-motion-blur.html]
     const float samples = 1.0 / (16.0 - 1.0);
     float2 calc = (noise * 2.0 + i) * samples - 0.5;
@@ -179,13 +214,13 @@ technique cMotionBlur
     {
         VertexShader = vs_common;
         PixelShader = ps_source;
-        RenderTarget0 = r_source;
+        RenderTarget0 = r_buffer;
     }
 
     pass
     {
         VertexShader = vs_common;
-        PixelShader = ps_copy;
+        PixelShader = ps_convert;
         RenderTarget0 = r_filter;
         RenderTarget1 = r_pframe; // Store previous frame
     }
