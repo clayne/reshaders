@@ -71,7 +71,7 @@ struct v2fu
     float4 uv[2] : TEXCOORD0;
 };
 
-v2fd v_dsamp(const uint id, sampler2D src)
+v2fd v_dsamp(const uint id, float uFact)
 {
     v2fd o;
     float2 coord;
@@ -81,7 +81,7 @@ v2fd v_dsamp(const uint id, sampler2D src)
 
     // Kawase dual-filter downsampling kernel from streamFX
     // https://github.com/Xaymar/obs-StreamFX
-    const float2 ts = 2.0 / tex2Dsize(src, 0.0);
+    const float2 ts = ldexp(float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT), uFact);
     o.uv0       = coord.xy;
     o.uv1[0].xy = coord.xy - ts;
     o.uv1[0].zw = coord.xy + ts;
@@ -90,7 +90,7 @@ v2fd v_dsamp(const uint id, sampler2D src)
     return o;
 }
 
-v2fu v_usamp(const uint id, sampler2D src)
+v2fu v_usamp(const uint id, float uFact)
 {
     v2fu output;
     float2 coord;
@@ -100,7 +100,7 @@ v2fu v_usamp(const uint id, sampler2D src)
 
     // 9-tap pyramid filter using 4 texture fetches by CeeJayDK
     // https://github.com/CeeJayDK/SweetFX/blob/master/Shaders/LumaSharpen.fx
-    const float2 ts = 1.0 / tex2Dsize(src, 0.0);
+    const float2 ts = ldexp(float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT), uFact);
     output.uv[0].xy = coord + float2( ts.x * 0.5, -ts.y); // ( 1, -2)
     output.uv[0].zw = coord + float2(-ts.x, -ts.y * 0.5); // (-2, -1)
     output.uv[1].xy = coord + float2( ts.x,  ts.y * 0.5); // ( 2,  1)
@@ -108,23 +108,23 @@ v2fu v_usamp(const uint id, sampler2D src)
     return output;
 }
 
-v2fd vs_dsamp0(uint id : SV_VertexID) { return v_dsamp(id, s_color);  }
-v2fd vs_dsamp1(uint id : SV_VertexID) { return v_dsamp(id, s_bloom1); }
-v2fd vs_dsamp2(uint id : SV_VertexID) { return v_dsamp(id, s_bloom2); }
-v2fd vs_dsamp3(uint id : SV_VertexID) { return v_dsamp(id, s_bloom3); }
-v2fd vs_dsamp4(uint id : SV_VertexID) { return v_dsamp(id, s_bloom4); }
-v2fd vs_dsamp5(uint id : SV_VertexID) { return v_dsamp(id, s_bloom5); }
-v2fd vs_dsamp6(uint id : SV_VertexID) { return v_dsamp(id, s_bloom6); }
-v2fd vs_dsamp7(uint id : SV_VertexID) { return v_dsamp(id, s_bloom7); }
+v2fd vs_dsamp0(uint id : SV_VertexID) { return v_dsamp(id, 1.0); }
+v2fd vs_dsamp1(uint id : SV_VertexID) { return v_dsamp(id, 2.0); }
+v2fd vs_dsamp2(uint id : SV_VertexID) { return v_dsamp(id, 3.0); }
+v2fd vs_dsamp3(uint id : SV_VertexID) { return v_dsamp(id, 4.0); }
+v2fd vs_dsamp4(uint id : SV_VertexID) { return v_dsamp(id, 5.0); }
+v2fd vs_dsamp5(uint id : SV_VertexID) { return v_dsamp(id, 6.0); }
+v2fd vs_dsamp6(uint id : SV_VertexID) { return v_dsamp(id, 7.0); }
+v2fd vs_dsamp7(uint id : SV_VertexID) { return v_dsamp(id, 8.0); }
 
-v2fu vs_usamp8(uint id : SV_VertexID) { return v_usamp(id, s_bloom8); }
-v2fu vs_usamp7(uint id : SV_VertexID) { return v_usamp(id, s_bloom7); }
-v2fu vs_usamp6(uint id : SV_VertexID) { return v_usamp(id, s_bloom6); }
-v2fu vs_usamp5(uint id : SV_VertexID) { return v_usamp(id, s_bloom5); }
-v2fu vs_usamp4(uint id : SV_VertexID) { return v_usamp(id, s_bloom4); }
-v2fu vs_usamp3(uint id : SV_VertexID) { return v_usamp(id, s_bloom3); }
-v2fu vs_usamp2(uint id : SV_VertexID) { return v_usamp(id, s_bloom2); }
-v2fu vs_usamp1(uint id : SV_VertexID) { return v_usamp(id, s_bloom1); }
+v2fu vs_usamp8(uint id : SV_VertexID) { return v_usamp(id, 7.0); }
+v2fu vs_usamp7(uint id : SV_VertexID) { return v_usamp(id, 6.0); }
+v2fu vs_usamp6(uint id : SV_VertexID) { return v_usamp(id, 5.0); }
+v2fu vs_usamp5(uint id : SV_VertexID) { return v_usamp(id, 4.0); }
+v2fu vs_usamp4(uint id : SV_VertexID) { return v_usamp(id, 3.0); }
+v2fu vs_usamp3(uint id : SV_VertexID) { return v_usamp(id, 2.0); }
+v2fu vs_usamp2(uint id : SV_VertexID) { return v_usamp(id, 1.0); }
+v2fu vs_usamp1(uint id : SV_VertexID) { return v_usamp(id, 0.0); }
 
 /* - PIXEL SHADERS - */
 
@@ -200,7 +200,7 @@ float4 ps_usamp1(v2fu input) : SV_Target
 
 /* - TECHNIQUE - */
 
-technique kBloom
+technique cBloom
 {
     #define vsd(i) VertexShader = vs_dsamp##i
     #define vsu(i) VertexShader = vs_usamp##i

@@ -34,15 +34,15 @@ uniform float kScale <
 #define LOG2(x)       (CONST_LOG2((BIT16_LOG2(x) >> 1) + 1))
 
 #define RMAX(x, y) x ^ ((x ^ y) & -(x < y)) // max(x, y)
-#define DSIZE(x)   RMAX(BUFFER_WIDTH / x, BUFFER_HEIGHT/ x)
+#define DSIZE(x)   1 << LOG2(RMAX(BUFFER_WIDTH / x, BUFFER_HEIGHT / x))
 
-#define RPOW2(x) Width = 1 << LOG2(DSIZE(x)); Height = 1 << LOG2(DSIZE(x))
+#define RPOW2(x) Width = DSIZE(x); Height = DSIZE(x)
 #define RSIZE(x) Width = BUFFER_WIDTH / x; Height = BUFFER_HEIGHT / x
 #define RFILT(x) MinFilter = x; MagFilter = x; MipFilter = x
 
 texture2D r_color  : COLOR;
-texture2D r_source { RSIZE(2); RFILT(LINEAR); Format = R8; MipLevels = LOG2(DSIZE(2)); };
-texture2D r_filter { RPOW2(2); RFILT(LINEAR); Format = R8; MipLevels = MIP_PREFILTER + 1.0; };
+texture2D r_source { RSIZE(2); RFILT(LINEAR); Format = R8; MipLevels = LOG2(DSIZE(2)) + 1; };
+texture2D r_filter { RPOW2(2); RFILT(LINEAR); Format = R8; MipLevels = LOG2(DSIZE(2)) + 1; };
 texture2D r_pframe { RPOW2(2); RFILT(LINEAR); Format = R8; };
 texture2D r_cframe { RPOW2(2); RFILT(LINEAR); Format = R8; };
 texture2D r_flow   { RPOW2(4); RFILT(LINEAR); Format = RG16F; MipLevels = 8; };
