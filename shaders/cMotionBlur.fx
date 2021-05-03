@@ -28,16 +28,19 @@
 uniform float kExposure <
     ui_label = "Auto-Exposure Bias";
     ui_type = "drag";
+    ui_min = 0.0;
 > = 2.048;
 
 uniform float kLambda <
     ui_label = "Threshold";
     ui_type = "drag";
+    ui_min = 0.0;
 > = 0.016;
 
 uniform float kScale <
     ui_label = "Scale";
     ui_type = "drag";
+    ui_min = 0.0;
 > = 0.512;
 
 #ifndef MIP_PREFILTER
