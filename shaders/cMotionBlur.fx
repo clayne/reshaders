@@ -2,27 +2,27 @@
 /*
     Shader process
 
-	[1] ps_source
-	- Calculate brightness using max3()
-	- Generate series of mipmaps to 1x1
-	- Output to r_buffer with miplevels
+    [1] ps_source
+    - Calculate brightness using max3()
+    - Generate series of mipmaps to 1x1
+    - Output to r_buffer with miplevels
 
-	[2] ps_convert
-	- RenderTarget0: Calculate average exposure
-	- RenderTarget1: Copy boxed frame from previous ps_filter()
-	- Render both to powers of 2 resolution to smooth miplevels
+    [2] ps_convert
+    - RenderTarget0: Calculate average exposure
+    - RenderTarget1: Copy boxed frame from previous ps_filter()
+    - Render both to powers of 2 resolution to smooth miplevels
 
-	[3] ps_filter
-	- Turn average-exposured current frame into soft boxes
-	- Copy current frame for ps_covert() in next frame
+    [3] ps_filter
+    - Turn average-exposured current frame into soft boxes
+    - Copy current frame for ps_covert() in next frame
 
-	[4] ps_flow
-	- Calculate optical flow
+    [4] ps_flow
+    - Calculate optical flow
     - Output 8-level mip pyramid
 
-	[5] ps_output
+    [5] ps_output
     - Input and weigh 8-level optical flow pyramid
-	- Blur
+    - Blur
 */
 
 uniform float kExposure <
@@ -116,10 +116,10 @@ ps2mrt ps_convert(v2f input)
 {
     float aLuma = tex2Dlod(s_buffer, float4(input.uv, 0.0, LOG2(DSIZE(2)) + 1)).r;
     aLuma = max(aLuma, 1e-5);
-    float aExposure = max(log2(0.148f / aLuma), 1e-5);
+    float aExposure = max(log2(0.18 / aLuma), 1e-5);
     float c = tex2D(s_buffer, input.uv).r;
 
-	ps2mrt output;
+    ps2mrt output;
     output.target0 = c * exp2(aExposure + kExposure);
     output.target1 = tex2D(s_cframe, input.uv);
     return output;
