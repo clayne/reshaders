@@ -119,7 +119,7 @@ ps2mrt ps_convert(v2f input)
 {
     float aLuma = tex2Dlod(s_buffer, float4(input.uv, 0.0, LOG2(DSIZE(2)) + 1)).r;
     aLuma = max(aLuma, 1e-5);
-    float aExposure = max(log2(0.18 / aLuma), 1e-5);
+    float aExposure = log2(max(0.18 / aLuma, 1e-5));
     float c = tex2D(s_buffer, input.uv).r;
 
     ps2mrt output;
