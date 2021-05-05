@@ -1,6 +1,6 @@
 
 /*
-    Shader process
+    Motion sickness for and by the mentally sick
 
     [1] ps_source
     - Calculate brightness using max3()
@@ -25,25 +25,31 @@
     - Blur
 */
 
-uniform float kExposure <
-    ui_label = "Auto-Exposure Bias";
+uniform float uExposure <
+    ui_category = "Auto Exposure";
+    ui_label = "Exposure Bias";
     ui_type = "drag";
     ui_min = 0.0;
 > = 2.048;
 
-uniform float kLambda <
-    ui_label = "Threshold";
+uniform float uThreshold <
+    ui_category = "Optical Flow";
+    ui_label = "Flow Threshold";
     ui_type = "drag";
     ui_min = 0.0;
-> = 0.016;
+> = 0.064;
 
-uniform float kScale <
-    ui_label = "Scale";
+uniform float uScale <
+    ui_category = "Optical Flow";
+    ui_label = "Flow Scale";
     ui_type = "drag";
     ui_min = 0.0;
 > = 0.512;
 
-// Round to nearest power of 2 from Lord of Lunacy, KingEric1992, and Marty McFly
+uniform float uFrameTime < source = "frametime"; >;
+
+// Round to nearest power of 2
+// Help from Lord of Lunacy, KingEric1992, and Marty McFly
 
 #define CONST_LOG2(x) (\
     (uint((x)  & 0xAAAAAAAA) != 0) | \
@@ -61,9 +67,13 @@ uniform float kScale <
 #define RMAX(x, y) x ^ ((x ^ y) & -(x < y)) // max(x, y)
 #define DSIZE(x)   1 << LOG2(RMAX(BUFFER_WIDTH / x, BUFFER_HEIGHT / x))
 
-#define RPOW2(x) Width = DSIZE(x); Height = DSIZE(x)
+#define RPOW2(x) Width = DSIZE(x); Height = DSIZE(x) // get nearest power of 2 size
 #define RSIZE(x) Width = BUFFER_WIDTH / x; Height = BUFFER_HEIGHT / x
 #define RFILT(x) MinFilter = x; MagFilter = x; MipFilter = x
+
+#ifndef MIP_PREFILTER
+    #define MIP_PREFILTER 1.0
+#endif
 
 texture2D r_color  : COLOR;
 texture2D r_buffer { RSIZE(2); RFILT(LINEAR); Format = R8; MipLevels = LOG2(DSIZE(2)) + 1; };
@@ -108,9 +118,6 @@ float4 ps_source(v2f input) : SV_Target
     return max(max(c.r, c.g), c.b);
 }
 
-// Logrithmatic exposure from MJP's TheBakingLab
-// https://github.com/TheRealMJP/BakingLab [MIT]
-
 ps2mrt ps_convert(v2f input)
 {
     ps2mrt output;
@@ -119,8 +126,10 @@ ps2mrt ps_convert(v2f input)
     return output;
 }
 
-// Quintic curve texture filtering from Inigo:
-// [https://www.iquilezles.org/www/articles/texture/texture.htm]
+/*
+    Quintic curve texture filtering from Inigo:
+    [https://www.iquilezles.org/www/articles/texture/texture.htm]
+*/
 
 float4 filter2D(sampler2D src, float2 uv, float lod)
 {
@@ -129,7 +138,7 @@ float4 filter2D(sampler2D src, float2 uv, float lod)
     float2 i = floor(p);
     float2 f = frac(p);
     p = i + f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
-    p = (p - 0.5) / size;
+    p = (p - 0.5) / max(size, 1e-5);
     return tex2Dlod(src, float4(p, 0.0, lod));
 }
 
@@ -137,49 +146,63 @@ float4 filter2D(sampler2D src, float2 uv, float lod)
 
 float4 ps_filter(v2f input) : SV_Target
 {
-    return filter2D(s_filter, input.uv, 0.0);
+    return filter2D(s_filter, input.uv, MIP_PREFILTER);
 }
 
-// Partial derivatives port of [https://github.com/diwi/PixelFlow] [MIT]
+/*
+    logExposure2D() from MJP's TheBakingLab
+    https://github.com/TheRealMJP/BakingLab [MIT]
+
+    ps_flow()'s ddx/ddy port of optical flow from PixelFlow
+    [https://github.com/diwi/PixelFlow] [MIT]
+*/
 
 float logExposure2D(sampler src, float2 uv, float lod)
 {
     float aLuma = tex2Dlod(src, float4(uv, 0.0, lod)).r;
     aLuma = max(aLuma, 1e-5);
     float aExposure = log2(max(0.18 / aLuma, 1e-5));
-    return exp2(aExposure + kExposure);
+
+    float c = tex2D(src, uv).r;
+    return saturate(c * exp2(aExposure + uExposure));
 }
 
 float4 ps_flow(v2f input) : SV_Target
 {
+    // Calculate distance
     float cLuma = logExposure2D(s_cframe, input.uv, LOG2(DSIZE(4)));
     float pLuma = logExposure2D(s_pframe, input.uv, LOG2(DSIZE(4)));
-    float curr = tex2D(s_cframe, input.uv).r * cLuma;
-    float prev = tex2D(s_pframe, input.uv).r * pLuma;
+    float dt = cLuma - pLuma;
 
-    // Calculate distance
-    curr = saturate(curr * rcp(curr + 1.0));
-    prev = saturate(prev * rcp(prev + 1.0));
-    float dt = curr - prev;
-
+    // cFrameTime = calculate 1.0 / fps (shudder speed) multiplied by 2
     // Calculate gradients and optical flow
+    float cFrameTime = rcp(1e+3 / uFrameTime) * 2.0;
     float3 d;
-    d.x = ddx(curr) + ddx(prev);
-    d.y = ddy(curr) + ddy(prev);
-    d.z = rsqrt(dot(d.xy, d.xy) + kLambda);
-    return (kScale * dt) * (d.xyxy * d.zzzz);
+    d.x = ddx(cLuma) + ddx(pLuma);
+    d.y = ddy(cLuma) + ddy(pLuma);
+    d.z = rsqrt(dot(d.xy, d.xy) + cFrameTime);
+    float2 cFlow = (uScale * dt) * (d.xy * d.zz);
+
+    float cOld = sqrt(dot(cFlow.xy, cFlow.xy) + 1e-5);
+    float cNew = max(cOld - uThreshold, 0.0);
+    cFlow *= cNew / cOld;
+    return cFlow.xyxy;
 }
+
+/*
+    flow2D()'s Interleaved Gradient Noise from the following presentation
+    [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
+
+    flow2D()'s blur centering from John Chapman
+    [http://john-chapman-graphics.blogspot.com/2013/01/per-object-motion-blur.html]
+*/
 
 float4 flow2D(v2f input, float2 flow, float i)
 {
-    // Interleaved Gradient Noise from
-    // [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
     const float3 value = float3(52.9829189, 0.06711056, 0.00583715);
-    float noise = frac(value.x * frac(dot(input.vpos.xy, value.yz)));
-
-    // Blur centering from John Chapman
-    // [http://john-chapman-graphics.blogspot.com/2013/01/per-object-motion-blur.html]
     const float samples = 1.0 / (16.0 - 1.0);
+
+    float noise = frac(value.x * frac(dot(input.vpos.xy, value.yz)));
     float2 calc = (noise * 2.0 + i) * samples - 0.5;
     return tex2D(s_color, flow * calc + input.uv);
 }
@@ -193,14 +216,11 @@ float4 ps_output(v2f input) : SV_Target
     */
 
     float2 oFlow = 0.0;
-    oFlow += filter2D(s_flow, input.uv, 0.0).xy * ldexp(1.0, -8.0);
-    oFlow += filter2D(s_flow, input.uv, 1.0).xy * ldexp(1.0, -7.0);
-    oFlow += filter2D(s_flow, input.uv, 2.0).xy * ldexp(1.0, -6.0);
-    oFlow += filter2D(s_flow, input.uv, 3.0).xy * ldexp(1.0, -5.0);
-    oFlow += filter2D(s_flow, input.uv, 4.0).xy * ldexp(1.0, -4.0);
-    oFlow += filter2D(s_flow, input.uv, 5.0).xy * ldexp(1.0, -3.0);
-    oFlow += filter2D(s_flow, input.uv, 6.0).xy * ldexp(1.0, -2.0);
-    oFlow += filter2D(s_flow, input.uv, 7.0).xy * ldexp(1.0, -1.0);
+    for(int i = 0; i <= LOG2(DSIZE(4)); i++)
+    {
+        float oWeight = ldexp(1.0, -LOG2(DSIZE(4)) + i);
+        oFlow += filter2D(s_flow, input.uv, i).xy * oWeight;
+    }
 
     const float kWeights = 1.0 / 8.0;
     float4 oBlur = 0.0;
