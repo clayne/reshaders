@@ -29,23 +29,19 @@ uniform float kExposure <
     ui_label = "Auto-Exposure Bias";
     ui_type = "drag";
     ui_min = 0.0;
-> = 2.048;
+> = 4.096;
 
 uniform float kLambda <
     ui_label = "Threshold";
     ui_type = "drag";
     ui_min = 0.0;
-> = 0.016;
+> = 0.024;
 
 uniform float kScale <
     ui_label = "Scale";
     ui_type = "drag";
     ui_min = 0.0;
-> = 0.512;
-
-#ifndef MIP_PREFILTER
-    #define MIP_PREFILTER 3.0
-#endif
+> = 0.768;
 
 // Round to nearest power of 2 from Lord of Lunacy, KingEric1992, and Marty McFly
 
@@ -71,10 +67,10 @@ uniform float kScale <
 
 texture2D r_color  : COLOR;
 texture2D r_buffer { RSIZE(2); RFILT(LINEAR); Format = R8; MipLevels = LOG2(DSIZE(2)) + 1; };
-texture2D r_filter { RPOW2(2); RFILT(LINEAR); Format = R8; MipLevels = MIP_PREFILTER  + 1; };
-texture2D r_pframe { RPOW2(2); RFILT(LINEAR); Format = R8; };
-texture2D r_cframe { RPOW2(2); RFILT(LINEAR); Format = R8; };
-texture2D r_flow   { RPOW2(4); RFILT(LINEAR); Format = RG16F; MipLevels = 8; };
+texture2D r_filter { RPOW2(4); RFILT(LINEAR); Format = R8; MipLevels = LOG2(DSIZE(4)) + 1; };
+texture2D r_pframe { RPOW2(4); RFILT(LINEAR); Format = R8; MipLevels = LOG2(DSIZE(4)) + 1; };
+texture2D r_cframe { RPOW2(4); RFILT(LINEAR); Format = R8; MipLevels = LOG2(DSIZE(4)) + 1; };
+texture2D r_flow   { RPOW2(8); RFILT(LINEAR); Format = RG16F; MipLevels = 8; };
 
 sampler2D s_color  { Texture = r_color; SRGBTexture = TRUE; };
 sampler2D s_buffer { Texture = r_buffer; };
@@ -117,13 +113,8 @@ float4 ps_source(v2f input) : SV_Target
 
 ps2mrt ps_convert(v2f input)
 {
-    float aLuma = tex2Dlod(s_buffer, float4(input.uv, 0.0, LOG2(DSIZE(2)) + 1)).r;
-    aLuma = max(aLuma, 1e-5);
-    float aExposure = log2(max(0.18 / aLuma, 1e-5));
-    float c = tex2D(s_buffer, input.uv).r;
-
     ps2mrt output;
-    output.target0 = c * exp2(aExposure + kExposure);
+    output.target0 = tex2D(s_buffer, input.uv);
     output.target1 = tex2D(s_cframe, input.uv);
     return output;
 }
@@ -146,16 +137,29 @@ float4 filter2D(sampler2D src, float2 uv, float lod)
 
 float4 ps_filter(v2f input) : SV_Target
 {
-    return filter2D(s_filter, input.uv, MIP_PREFILTER);
+    return filter2D(s_filter, input.uv, 0.0);
 }
 
 // Partial derivatives port of [https://github.com/diwi/PixelFlow] [MIT]
 
+float logExposure2D(sampler src, float2 uv, float lod)
+{
+    float aLuma = tex2Dlod(src, float4(uv, 0.0, lod)).r;
+    aLuma = max(aLuma, 1e-5);
+    float aExposure = log2(max(0.18 / aLuma, 1e-5));
+    return exp2(aExposure + kExposure);
+}
+
 float4 ps_flow(v2f input) : SV_Target
 {
+    float cLuma = logExposure2D(s_cframe, input.uv, LOG2(DSIZE(4)));
+    float pLuma = logExposure2D(s_pframe, input.uv, LOG2(DSIZE(4)));
+    float curr = tex2D(s_cframe, input.uv).r * cLuma;
+    float prev = tex2D(s_pframe, input.uv).r * pLuma;
+    
     // Calculate distance
-    float curr = tex2D(s_cframe, input.uv).r;
-    float prev = tex2D(s_pframe, input.uv).r;
+    curr = saturate(curr * rcp(curr + 1.0));
+    prev = saturate(prev * rcp(prev + 1.0));
     float dt = curr - prev;
 
     // Calculate gradients and optical flow
