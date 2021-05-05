@@ -29,19 +29,19 @@ uniform float kExposure <
     ui_label = "Auto-Exposure Bias";
     ui_type = "drag";
     ui_min = 0.0;
-> = 4.096;
+> = 2.048;
 
 uniform float kLambda <
     ui_label = "Threshold";
     ui_type = "drag";
     ui_min = 0.0;
-> = 0.024;
+> = 0.016;
 
 uniform float kScale <
     ui_label = "Scale";
     ui_type = "drag";
     ui_min = 0.0;
-> = 0.768;
+> = 0.512;
 
 // Round to nearest power of 2 from Lord of Lunacy, KingEric1992, and Marty McFly
 
@@ -156,7 +156,7 @@ float4 ps_flow(v2f input) : SV_Target
     float pLuma = logExposure2D(s_pframe, input.uv, LOG2(DSIZE(4)));
     float curr = tex2D(s_cframe, input.uv).r * cLuma;
     float prev = tex2D(s_pframe, input.uv).r * pLuma;
-    
+
     // Calculate distance
     curr = saturate(curr * rcp(curr + 1.0));
     prev = saturate(prev * rcp(prev + 1.0));
