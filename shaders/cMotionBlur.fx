@@ -36,14 +36,14 @@ uniform float uThreshold <
     ui_label = "Flow Threshold";
     ui_type = "drag";
     ui_min = 0.0;
-> = 0.064;
+> = 0.032;
 
 uniform float uScale <
     ui_category = "Optical Flow";
     ui_label = "Flow Scale";
     ui_type = "drag";
     ui_min = 0.0;
-> = 0.512;
+> = 0.256;
 
 uniform float uFrameTime < source = "frametime"; >;
 
