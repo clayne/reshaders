@@ -76,11 +76,11 @@ uniform float uFrameTime < source = "frametime"; >;
 #endif
 
 texture2D r_color  : COLOR;
-texture2D r_buffer { RSIZE(2); RFILT(LINEAR); Format = R8; MipLevels = LOG2(DSIZE(2)) + 1; };
-texture2D r_filter { RPOW2(4); RFILT(LINEAR); Format = R8; MipLevels = LOG2(DSIZE(4)) + 1; };
-texture2D r_pframe { RPOW2(4); RFILT(LINEAR); Format = R8; MipLevels = LOG2(DSIZE(4)) + 1; };
-texture2D r_cframe { RPOW2(4); RFILT(LINEAR); Format = R8; MipLevels = LOG2(DSIZE(4)) + 1; };
-texture2D r_flow   { RPOW2(8); RFILT(LINEAR); Format = RG16F; MipLevels = 8; };
+texture2D r_buffer { RSIZE(2); RFILT(LINEAR); Format = R8;    MipLevels = LOG2(DSIZE(2)) + 1; };
+texture2D r_filter { RPOW2(4); RFILT(LINEAR); Format = R8;    MipLevels = LOG2(DSIZE(4)) + 1; };
+texture2D r_pframe { RPOW2(4); RFILT(LINEAR); Format = R8;    MipLevels = LOG2(DSIZE(4)) + 1; };
+texture2D r_cframe { RPOW2(4); RFILT(LINEAR); Format = R8;    MipLevels = LOG2(DSIZE(4)) + 1; };
+texture2D r_flow   { RPOW2(8); RFILT(LINEAR); Format = RG16F; MipLevels = LOG2(DSIZE(8)) + 1; };
 
 sampler2D s_color  { Texture = r_color; SRGBTexture = TRUE; };
 sampler2D s_buffer { Texture = r_buffer; };
