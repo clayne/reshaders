@@ -174,8 +174,8 @@ float4 ps_flow(v2f input) : SV_Target
     float pLuma = logExposure2D(s_pframe, input.uv, LOG2(DSIZE(4)));
     float dt = cLuma - pLuma;
 
-    // cFrameTime = calculate 1.0 / fps (shutter speed) multiplied by 2
     // Calculate gradients and optical flow
+    // cFrameTime: 1.0 / fps (shutter speed) * 2.0
     float cFrameTime = rcp(1e+3 / uFrameTime) * 2.0;
     float3 d;
     d.x = ddx(cLuma) + ddx(pLuma);
