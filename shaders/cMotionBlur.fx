@@ -1,14 +1,13 @@
 
 /*
-    Motion sickness for and by the mentally sick
+    Optical flow motion blur using color by Brimson
 
     [1] ps_source
     - Calculate brightness using max3()
-    - Generate series of mipmaps to 1x1
-    - Output to r_buffer with miplevels
+    - Output to r_buffer with miplevels to 1x1
 
     [2] ps_convert
-    - RenderTarget0: Calculate average exposure
+    - RenderTarget0: Input downsampled frame + mips to scale
     - RenderTarget1: Copy boxed frame from previous ps_filter()
     - Render both to powers of 2 resolution to smooth miplevels
 
@@ -18,10 +17,10 @@
 
     [4] ps_flow
     - Calculate optical flow
-    - Output 8-level mip pyramid
+    - Output optical flow pyramid
 
     [5] ps_output
-    - Input and weigh 8-level optical flow pyramid
+    - Input and weigh optical flow pyramid
     - Blur
 */
 
