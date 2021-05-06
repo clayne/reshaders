@@ -48,8 +48,10 @@ uniform float uScale <
 
 uniform float uFrameTime < source = "frametime"; >;
 
-// Round to nearest power of 2
-// Help from Lord of Lunacy, KingEric1992, and Marty McFly
+/*
+    Round to nearest power of 2
+    Help from Lord of Lunacy, KingEric1992, and Marty McFly
+*/
 
 #define CONST_LOG2(x) (\
     (uint((x)  & 0xAAAAAAAA) != 0) | \
@@ -141,8 +143,6 @@ float4 filter2D(sampler2D src, float2 uv, float lod)
     p = (p - 0.5) / max(size, 1e-5);
     return tex2Dlod(src, float4(p, 0.0, lod));
 }
-
-// Prefilter and copy frame
 
 float4 ps_filter(v2f input) : SV_Target
 {
