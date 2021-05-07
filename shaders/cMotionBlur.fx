@@ -36,14 +36,14 @@ uniform float uThreshold <
     ui_label = "Flow Threshold";
     ui_type = "drag";
     ui_min = 0.0;
-> = 0.128;
+> = 0.016;
 
 uniform float uScale <
     ui_category = "Optical Flow";
     ui_label = "Flow Scale";
     ui_type = "drag";
     ui_min = 0.0;
-> = 0.512;
+> = 1.024;
 
 uniform float uFrameTime < source = "frametime"; >;
 
@@ -79,18 +79,18 @@ uniform float uFrameTime < source = "frametime"; >;
 texture2D r_color  : COLOR;
 texture2D r_buffer { RSIZE(2); Format = R8;    MipLevels = LOG2(DSIZE(2)) + 1; };
 texture2D r_filter { RPOW2(4); Format = R8;    MipLevels = LOG2(DSIZE(4)) + 1; };
-texture2D r_pframe { RPOW2(4); Format = R8;    MipLevels = LOG2(DSIZE(4)) + 1; };
-texture2D r_pflow  { RPOW2(4); Format = RG16F; };
 texture2D r_cframe { RPOW2(4); Format = R8;    MipLevels = LOG2(DSIZE(4)) + 1; };
 texture2D r_cflow  { RPOW2(4); Format = RG16F; MipLevels = LOG2(DSIZE(4)) + 1; };
+texture2D r_pframe { RPOW2(4); Format = R8;    MipLevels = LOG2(DSIZE(4)) + 1; };
+texture2D r_pflow  { RPOW2(4); Format = RG16F; };
 
 sampler2D s_color  { Texture = r_color;  RFILT(LINEAR); SRGBTexture = TRUE; };
 sampler2D s_buffer { Texture = r_buffer; RFILT(LINEAR); };
 sampler2D s_filter { Texture = r_filter; RFILT(LINEAR); };
-sampler2D s_pframe { Texture = r_pframe; RFILT(LINEAR); };
-sampler2D s_pflow  { Texture = r_pflow;  RFILT(LINEAR); };
 sampler2D s_cframe { Texture = r_cframe; RFILT(LINEAR); };
+sampler2D s_pframe { Texture = r_pframe; RFILT(LINEAR); };
 sampler2D s_cflow  { Texture = r_cflow;  RFILT(LINEAR); };
+sampler2D s_pflow  { Texture = r_pflow;  RFILT(LINEAR); };
 
 struct v2f
 {
@@ -162,13 +162,13 @@ float4 ps_filter(v2f input) : SV_Target
 
 float logExposure2D(sampler src, float2 uv, float lod)
 {
-	float aLuma = tex2Dlod(src, float4(uv, 0.0, lod)).r;
-	aLuma = max(aLuma, 1e-5);
-	float aExposure = log2(max(0.148 / aLuma, 1e-5));
+    float aLuma = tex2Dlod(src, float4(uv, 0.0, lod)).r;
+    aLuma = max(aLuma, 1e-5);
+    float aExposure = log2(max(0.148 / aLuma, 1e-5));
 
-	float c = tex2D(src, uv).r;
-	c = c * exp2(aExposure + uExposure);
-	return saturate(c);
+    float c = tex2D(src, uv).r;
+    c = c * exp2(aExposure + uExposure);
+    return saturate(c);
 }
 
 float4 ps_flow(v2f input) : SV_Target
