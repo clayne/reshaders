@@ -36,14 +36,14 @@ uniform float uThreshold <
     ui_label = "Flow Threshold";
     ui_type = "drag";
     ui_min = 0.0;
-> = 0.032;
+> = 0.128;
 
 uniform float uScale <
     ui_category = "Optical Flow";
     ui_label = "Flow Scale";
     ui_type = "drag";
     ui_min = 0.0;
-> = 0.256;
+> = 0.512;
 
 uniform float uFrameTime < source = "frametime"; >;
 
@@ -77,18 +77,20 @@ uniform float uFrameTime < source = "frametime"; >;
 #endif
 
 texture2D r_color  : COLOR;
-texture2D r_buffer { RSIZE(2); RFILT(LINEAR); Format = R8;    MipLevels = LOG2(DSIZE(2)) + 1; };
-texture2D r_filter { RPOW2(4); RFILT(LINEAR); Format = R8;    MipLevels = LOG2(DSIZE(4)) + 1; };
-texture2D r_pframe { RPOW2(4); RFILT(LINEAR); Format = R8;    MipLevels = LOG2(DSIZE(4)) + 1; };
-texture2D r_cframe { RPOW2(4); RFILT(LINEAR); Format = R8;    MipLevels = LOG2(DSIZE(4)) + 1; };
-texture2D r_flow   { RPOW2(8); RFILT(LINEAR); Format = RG16F; MipLevels = LOG2(DSIZE(8)) + 1; };
+texture2D r_buffer { RSIZE(2); Format = R8;    MipLevels = LOG2(DSIZE(2)) + 1; };
+texture2D r_filter { RPOW2(4); Format = R8;    MipLevels = LOG2(DSIZE(4)) + 1; };
+texture2D r_pframe { RPOW2(4); Format = R8;    MipLevels = LOG2(DSIZE(4)) + 1; };
+texture2D r_pflow  { RPOW2(4); Format = RG16F; };
+texture2D r_cframe { RPOW2(4); Format = R8;    MipLevels = LOG2(DSIZE(4)) + 1; };
+texture2D r_cflow  { RPOW2(4); Format = RG16F; MipLevels = LOG2(DSIZE(4)) + 1; };
 
-sampler2D s_color  { Texture = r_color; SRGBTexture = TRUE; };
-sampler2D s_buffer { Texture = r_buffer; };
-sampler2D s_filter { Texture = r_filter; };
-sampler2D s_pframe { Texture = r_pframe; };
-sampler2D s_cframe { Texture = r_cframe; };
-sampler2D s_flow   { Texture = r_flow; };
+sampler2D s_color  { Texture = r_color;  RFILT(LINEAR); SRGBTexture = TRUE; };
+sampler2D s_buffer { Texture = r_buffer; RFILT(LINEAR); };
+sampler2D s_filter { Texture = r_filter; RFILT(LINEAR); };
+sampler2D s_pframe { Texture = r_pframe; RFILT(LINEAR); };
+sampler2D s_pflow  { Texture = r_pflow;  RFILT(LINEAR); };
+sampler2D s_cframe { Texture = r_cframe; RFILT(LINEAR); };
+sampler2D s_cflow  { Texture = r_cflow;  RFILT(LINEAR); };
 
 struct v2f
 {
@@ -111,6 +113,7 @@ struct ps2mrt
 {
     float4 target0 : SV_TARGET0;
     float4 target1 : SV_TARGET1;
+    float4 target2 : SV_TARGET2;
 };
 
 float4 ps_source(v2f input) : SV_Target
@@ -124,6 +127,7 @@ ps2mrt ps_convert(v2f input)
     ps2mrt output;
     output.target0 = tex2D(s_buffer, input.uv);
     output.target1 = tex2D(s_cframe, input.uv);
+    output.target2 = tex2D(s_cflow,  input.uv);
     return output;
 }
 
@@ -158,34 +162,36 @@ float4 ps_filter(v2f input) : SV_Target
 
 float logExposure2D(sampler src, float2 uv, float lod)
 {
-    float aLuma = tex2Dlod(src, float4(uv, 0.0, lod)).r;
-    aLuma = max(aLuma, 1e-5);
-    float aExposure = log2(max(0.18 / aLuma, 1e-5));
+	float aLuma = tex2Dlod(src, float4(uv, 0.0, lod)).r;
+	aLuma = max(aLuma, 1e-5);
+	float aExposure = log2(max(0.148 / aLuma, 1e-5));
 
-    float c = tex2D(src, uv).r;
-    return saturate(c * exp2(aExposure + uExposure));
+	float c = tex2D(src, uv).r;
+	c = c * exp2(aExposure + uExposure);
+	return saturate(c);
 }
 
 float4 ps_flow(v2f input) : SV_Target
 {
-    // Calculate distance
+    // Calculate distance (dt) and temporal derivative (df)
     float cLuma = logExposure2D(s_cframe, input.uv, LOG2(DSIZE(4)));
     float pLuma = logExposure2D(s_pframe, input.uv, LOG2(DSIZE(4)));
+    float cFrameTime = rcp(1e+3 / uFrameTime);
     float dt = cLuma - pLuma;
 
     // Calculate gradients and optical flow
-    // cFrameTime: 1.0 / fps (shutter speed) * 2.0
-    float cFrameTime = rcp(1e+3 / uFrameTime) * 2.0;
     float3 d;
     d.x = ddx(cLuma) + ddx(pLuma);
     d.y = ddy(cLuma) + ddy(pLuma);
     d.z = rsqrt(dot(d.xy, d.xy) + cFrameTime);
     float2 cFlow = (uScale * dt) * (d.xy * d.zz);
 
-    float cOld = sqrt(dot(cFlow.xy, cFlow.xy) + 1e-5);
+    float cOld = length(cFlow);
     float cNew = max(cOld - uThreshold, 0.0);
     cFlow *= cNew / cOld;
-    return cFlow.xyxy;
+
+    float2 pFlow = tex2D(s_pflow, input.uv).rg;
+    return lerp(pFlow, cFlow, 0.5).xyxy;
 }
 
 /*
@@ -217,8 +223,8 @@ float4 ps_output(v2f input) : SV_Target
     float2 oFlow = 0.0;
     for(int i = 0; i <= LOG2(DSIZE(4)); i++)
     {
-        float oWeight = ldexp(1.0, -LOG2(DSIZE(4)) + i);
-        oFlow += filter2D(s_flow, input.uv, i).xy * oWeight;
+        float oWeight = ldexp(1.0, (-LOG2(DSIZE(4)) - 1) + i);
+        oFlow += filter2D(s_cflow, input.uv, i).xy * oWeight;
     }
 
     const float kWeights = 1.0 / 8.0;
@@ -249,6 +255,7 @@ technique cMotionBlur
         PixelShader = ps_convert;
         RenderTarget0 = r_filter;
         RenderTarget1 = r_pframe; // Store previous frame
+        RenderTarget2 = r_pflow;  // Store previous flow
     }
 
     pass
@@ -262,7 +269,7 @@ technique cMotionBlur
     {
         VertexShader = vs_common;
         PixelShader = ps_flow;
-        RenderTarget0 = r_flow;
+        RenderTarget0 = r_cflow;
     }
 
     pass
