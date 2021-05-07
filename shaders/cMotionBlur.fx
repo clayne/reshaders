@@ -9,6 +9,7 @@
     [2] ps_convert
     - RenderTarget0: Input downsampled frame + mips to scale
     - RenderTarget1: Copy boxed frame from previous ps_filter()
+    - RenderTarget2: Copy optical flow from previous ps_flow()
     - Render both to powers of 2 resolution to smooth miplevels
 
     [3] ps_filter
@@ -33,19 +34,24 @@ uniform float uExposure <
 
 uniform float uThreshold <
     ui_category = "Optical Flow";
-    ui_label = "Flow Threshold";
+    ui_label = "Threshold";
     ui_type = "drag";
     ui_min = 0.0;
-> = 0.016;
+> = 0.128;
 
 uniform float uScale <
     ui_category = "Optical Flow";
-    ui_label = "Flow Scale";
+    ui_label = "Scale";
     ui_type = "drag";
     ui_min = 0.0;
 > = 1.024;
 
-uniform float uFrameTime < source = "frametime"; >;
+uniform float uIntensity <
+    ui_category = "Optical Flow";
+    ui_label = "Sharpness";
+    ui_type = "drag";
+    ui_min = 0.0;
+> = 0.750;
 
 /*
     Round to nearest power of 2
@@ -167,8 +173,7 @@ float logExposure2D(sampler src, float2 uv, float lod)
     float aExposure = log2(max(0.148 / aLuma, 1e-5));
 
     float c = tex2D(src, uv).r;
-    c = c * exp2(aExposure + uExposure);
-    return saturate(c);
+    return saturate(c * exp2(aExposure + uExposure));
 }
 
 float4 ps_flow(v2f input) : SV_Target
@@ -176,22 +181,21 @@ float4 ps_flow(v2f input) : SV_Target
     // Calculate distance (dt) and temporal derivative (df)
     float cLuma = logExposure2D(s_cframe, input.uv, LOG2(DSIZE(4)));
     float pLuma = logExposure2D(s_pframe, input.uv, LOG2(DSIZE(4)));
-    float cFrameTime = rcp(1e+3 / uFrameTime);
     float dt = cLuma - pLuma;
 
     // Calculate gradients and optical flow
     float3 d;
     d.x = ddx(cLuma) + ddx(pLuma);
     d.y = ddy(cLuma) + ddy(pLuma);
-    d.z = rsqrt(dot(d.xy, d.xy) + cFrameTime);
+    d.z = rsqrt(dot(d.xy, d.xy) + 1e-5);
     float2 cFlow = (uScale * dt) * (d.xy * d.zz);
 
-    float cOld = length(cFlow);
+    float cOld = sqrt(dot(cFlow, cFlow) + 1e-5);
     float cNew = max(cOld - uThreshold, 0.0);
     cFlow *= cNew / cOld;
 
     float2 pFlow = tex2D(s_pflow, input.uv).rg;
-    return lerp(pFlow, cFlow, 0.5).xyxy;
+    return lerp(pFlow, cFlow, uIntensity).xyxy;
 }
 
 /*
