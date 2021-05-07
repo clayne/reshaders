@@ -13,8 +13,9 @@
     - Render both to powers of 2 resolution to smooth miplevels
 
     [3] ps_filter
-    - Turn average-exposured current frame into soft boxes
-    - Copy current frame for ps_covert() in next frame
+    - RenderTarget0: Turn average-exposured current frame into soft boxes
+    - RenderTarget0: Copy current frame for ps_covert() in next frame
+    - RenderTarget1: Output luma frame  for ps_covert() in next frame
 
     [4] ps_flow
     - Calculate optical flow
@@ -84,11 +85,12 @@ uniform float uIntensity <
 
 texture2D r_color  : COLOR;
 texture2D r_buffer { RSIZE(2); Format = R8;    MipLevels = LOG2(DSIZE(2)) + 1; };
-texture2D r_filter { RPOW2(4); Format = R8;    MipLevels = LOG2(DSIZE(4)) + 1; };
+texture2D r_filter { RPOW2(4); Format = RG8;   MipLevels = LOG2(DSIZE(4)) + 1; };
 texture2D r_cframe { RPOW2(4); Format = R8;    MipLevels = LOG2(DSIZE(4)) + 1; };
-texture2D r_cflow  { RPOW2(4); Format = RG16F; MipLevels = LOG2(DSIZE(4)) + 1; };
 texture2D r_pframe { RPOW2(4); Format = R8;    MipLevels = LOG2(DSIZE(4)) + 1; };
+texture2D r_cflow  { RPOW2(4); Format = RG16F; MipLevels = LOG2(DSIZE(4)) + 1; };
 texture2D r_pflow  { RPOW2(4); Format = RG16F; };
+texture2D r_pluma  { RPOW2(4); Format = R8;    };
 
 sampler2D s_color  { Texture = r_color;  RFILT(LINEAR); SRGBTexture = TRUE; };
 sampler2D s_buffer { Texture = r_buffer; RFILT(LINEAR); };
@@ -97,6 +99,7 @@ sampler2D s_cframe { Texture = r_cframe; RFILT(LINEAR); };
 sampler2D s_pframe { Texture = r_pframe; RFILT(LINEAR); };
 sampler2D s_cflow  { Texture = r_cflow;  RFILT(LINEAR); };
 sampler2D s_pflow  { Texture = r_pflow;  RFILT(LINEAR); };
+sampler2D s_pluma  { Texture = r_pluma;  RFILT(LINEAR); };
 
 struct v2f
 {
@@ -115,25 +118,45 @@ v2f vs_common(const uint id : SV_VertexID)
 
 /* [ Pixel Shaders ] */
 
-struct ps2mrt
-{
-    float4 target0 : SV_TARGET0;
-    float4 target1 : SV_TARGET1;
-    float4 target2 : SV_TARGET2;
-};
-
 float4 ps_source(v2f input) : SV_Target
 {
     float4 c = tex2D(s_color, input.uv);
     return max(max(c.r, c.g), c.b);
 }
 
-ps2mrt ps_convert(v2f input)
+struct ps2mrt0
 {
-    ps2mrt output;
-    output.target0 = tex2D(s_buffer, input.uv);
-    output.target1 = tex2D(s_cframe, input.uv);
-    output.target2 = tex2D(s_cflow,  input.uv);
+    float4 target0 : SV_TARGET0;
+    float4 target1 : SV_TARGET1;
+    float4 target2 : SV_TARGET2;
+};
+
+/*
+    logExposure2D() from MJP's TheBakingLab
+    https://github.com/TheRealMJP/BakingLab [MIT]
+*/
+
+float logExposure2D(float aLuma)
+{
+    aLuma = max(aLuma, 1e-2);
+    float aExposure = log2(max(0.148 / aLuma, 1e-2));
+    return exp2(aExposure + uExposure);
+}
+
+ps2mrt0 ps_convert(v2f input)
+{
+    float cLuma = tex2Dlod(s_buffer, float4(input.uv, 0.0, LOG2(DSIZE(2)))).r;
+    float pLuma = tex2D(s_pluma, input.uv).r;
+    cLuma = logExposure2D(cLuma);
+    pLuma = logExposure2D(pLuma);
+    float aLuma = lerp(cLuma, pLuma, 0.5);
+    float c = tex2D(s_buffer, input.uv).r;
+
+    ps2mrt0 output;
+    output.target0.r = saturate(c * aLuma);
+    output.target0.g = tex2D(s_buffer, input.uv).r; // Store unfiltered frame
+    output.target1 = tex2D(s_cframe, input.uv); // Store previous frame
+    output.target2 = tex2D(s_cflow,  input.uv); // Store previous flow
     return output;
 }
 
@@ -153,34 +176,30 @@ float4 filter2D(sampler2D src, float2 uv, float lod)
     return tex2Dlod(src, float4(p, 0.0, lod));
 }
 
-float4 ps_filter(v2f input) : SV_Target
+struct ps2mrt1
 {
-    return filter2D(s_filter, input.uv, MIP_PREFILTER);
+    float4 target0 : SV_TARGET0;
+    float4 target1 : SV_TARGET1;
+};
+
+ps2mrt1 ps_filter(v2f input)
+{
+    ps2mrt1 output;
+    output.target0 = filter2D(s_filter, input.uv, MIP_PREFILTER).r;
+    output.target1 = tex2Dlod(s_filter, float4(input.uv, 0.0, LOG2(DSIZE(2)))).g;
+    return output;
 }
 
 /*
-    logExposure2D() from MJP's TheBakingLab
-    https://github.com/TheRealMJP/BakingLab [MIT]
-
     ps_flow()'s ddx/ddy port of optical flow from PixelFlow
     [https://github.com/diwi/PixelFlow] [MIT]
 */
 
-float logExposure2D(sampler src, float2 uv, float lod)
-{
-    float aLuma = tex2Dlod(src, float4(uv, 0.0, lod)).r;
-    aLuma = max(aLuma, 1e-5);
-    float aExposure = log2(max(0.148 / aLuma, 1e-5));
-
-    float c = tex2D(src, uv).r;
-    return saturate(c * exp2(aExposure + uExposure));
-}
-
 float4 ps_flow(v2f input) : SV_Target
 {
     // Calculate distance (dt) and temporal derivative (df)
-    float cLuma = logExposure2D(s_cframe, input.uv, LOG2(DSIZE(4)));
-    float pLuma = logExposure2D(s_pframe, input.uv, LOG2(DSIZE(4)));
+    float cLuma = tex2D(s_cframe, input.uv).r;
+    float pLuma = tex2D(s_pframe, input.uv).r;
     float dt = cLuma - pLuma;
 
     // Calculate gradients and optical flow
@@ -258,8 +277,8 @@ technique cMotionBlur
         VertexShader = vs_common;
         PixelShader = ps_convert;
         RenderTarget0 = r_filter;
-        RenderTarget1 = r_pframe; // Store previous frame
-        RenderTarget2 = r_pflow;  // Store previous flow
+        RenderTarget1 = r_pframe;
+        RenderTarget2 = r_pflow;
     }
 
     pass
@@ -267,6 +286,7 @@ technique cMotionBlur
         VertexShader = vs_common;
         PixelShader = ps_filter;
         RenderTarget0 = r_cframe;
+        RenderTarget1 = r_pluma;
     }
 
     pass
