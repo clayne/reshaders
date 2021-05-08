@@ -150,8 +150,8 @@ struct ps2mrt0
 
 float logExposure2D(float aLuma)
 {
-    aLuma = max(aLuma, 1e-3);
-    float aExposure = log2(max(0.18 / aLuma, 1e-3));
+    aLuma = max(aLuma, 1e-2);
+    float aExposure = log2(max(0.18 / aLuma, 1e-2));
     return exp2(aExposure + uExposure);
 }
 
@@ -159,10 +159,10 @@ ps2mrt0 ps_convert(v2f input)
 {
     float cLuma = tex2Dlod(s_buffer, float4(input.uv, 0.0, LOG2(DSIZE(2)))).r;
     float pLuma = tex2D(s_pluma, input.uv).r;
-    cLuma = logExposure2D(cLuma);
-    pLuma = logExposure2D(pLuma);
-    float aLuma = lerp(cLuma, pLuma, 0.5);
+    float aLuma = lerp(pLuma, cLuma, 0.5);
+
     float c = tex2D(s_buffer, input.uv).r;
+    aLuma = logExposure2D(aLuma);
 
     ps2mrt0 output;
     output.target0.r = saturate(c * aLuma);
@@ -224,7 +224,7 @@ float4 ps_flow(v2f input) : SV_Target
     d.y = ddy(cLuma) + ddy(pLuma);
     d.z = rsqrt(dot(d.xy, d.xy) + uLambda);
     float2 cFlow = dt * (d.xy * d.zz);
-    cFlow *= cScale;
+    cFlow *= uForce;
 
     float cMag = sqrt(dot(cFlow, cFlow) + 1e-3);
     cMag = max(cMag, uThreshold);
