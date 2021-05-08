@@ -42,7 +42,7 @@ uniform float uThreshold <
 uniform float uForce <
     uInit("Optical Flow Basic", "Force");
     uType("drag");
-> = 2.000;
+> = 2.500;
 
 uniform float uInterpolation <
     uInit("Optical Flow Advanced", "Temporal Sharpness");
