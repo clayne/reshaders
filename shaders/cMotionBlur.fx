@@ -37,7 +37,7 @@ uniform float uTargetFPS <
 uniform float uThreshold <
     uInit("Optical Flow Basic", "Threshold");
     uType("drag");
-> = 0.040;
+> = 0.050;
 
 uniform float uForce <
     uInit("Optical Flow Basic", "Force");
@@ -45,7 +45,7 @@ uniform float uForce <
 > = 2.000;
 
 uniform float uInterpolation <
-    uInit("Optical Flow Basic", "Sharpness");
+    uInit("Optical Flow Advanced", "Temporal Sharpness");
     uType("drag");
 > = 0.750;
 
@@ -55,7 +55,7 @@ uniform float uExposure <
 > = 2.000;
 
 uniform float uPower <
-    uInit("Optical Flow Advanced", "Flow Power");
+    uInit("Optical Flow Advanced", "Flow Sharpness");
     uType("drag");
 > = 1.000;
 
