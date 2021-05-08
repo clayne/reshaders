@@ -40,6 +40,13 @@ uniform float uThreshold <
     ui_min = 0.0;
 > = 0.128;
 
+uniform float uTargetFPS <
+    ui_category = "Optical Flow";
+    ui_label = "Target FPS";
+    ui_type = "drag";
+    ui_min = 0.0;
+> = 60.00;
+
 uniform float uScale <
     ui_category = "Optical Flow";
     ui_label = "Scale";
@@ -47,12 +54,14 @@ uniform float uScale <
     ui_min = 0.0;
 > = 1.024;
 
-uniform float uIntensity <
+uniform float uInterpolation <
     ui_category = "Optical Flow";
     ui_label = "Sharpness";
     ui_type = "drag";
     ui_min = 0.0;
 > = 0.750;
+
+uniform float uFrameTime < source = "frametime"; >;
 
 /*
     Round to nearest power of 2
@@ -138,8 +147,8 @@ struct ps2mrt0
 
 float logExposure2D(float aLuma)
 {
-    aLuma = max(aLuma, 1e-2);
-    float aExposure = log2(max(0.148 / aLuma, 1e-2));
+    aLuma = max(aLuma, 1e-3);
+    float aExposure = log2(max(0.18 / aLuma, 1e-3));
     return exp2(aExposure + uExposure);
 }
 
@@ -201,20 +210,21 @@ float4 ps_flow(v2f input) : SV_Target
     float cLuma = tex2D(s_cframe, input.uv).r;
     float pLuma = tex2D(s_pframe, input.uv).r;
     float dt = cLuma - pLuma;
+    float cScale = ((1e+3 / uFrameTime) / uTargetFPS) * uScale;
 
     // Calculate gradients and optical flow
     float3 d;
     d.x = ddx(cLuma) + ddx(pLuma);
     d.y = ddy(cLuma) + ddy(pLuma);
-    d.z = rsqrt(dot(d.xy, d.xy) + 1e-5);
-    float2 cFlow = (uScale * dt) * (d.xy * d.zz);
+    d.z = rsqrt(dot(d.xy, d.xy) + 1e-3);
+    float2 cFlow = (cScale * dt) * (d.xy * d.zz);
 
-    float cOld = sqrt(dot(cFlow, cFlow) + 1e-5);
+    float cOld = sqrt(dot(cFlow, cFlow) + 1e-3);
     float cNew = max(cOld - uThreshold, 0.0);
     cFlow *= cNew / cOld;
 
-    float2 pFlow = tex2D(s_pflow, input.uv).rg;
-    return lerp(pFlow, cFlow, uIntensity).xyxy;
+    float2 pFlow = tex2D(s_pflow, input.uv + cFlow).rg;
+    return lerp(pFlow, cFlow, uInterpolation).xyxy;
 }
 
 /*
