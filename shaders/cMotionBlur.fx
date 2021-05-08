@@ -26,40 +26,43 @@
     - Blur
 */
 
-uniform float uExposure <
-    ui_category = "Auto Exposure";
-    ui_label = "Exposure Bias";
-    ui_type = "drag";
-    ui_min = 0.0;
-> = 2.048;
-
-uniform float uThreshold <
-    ui_category = "Optical Flow";
-    ui_label = "Threshold";
-    ui_type = "drag";
-    ui_min = 0.0;
-> = 0.128;
+#define uInit(x, y) ui_category = x; ui_label = y
+#define uType(x) ui_type = x; ui_min = 0.0
 
 uniform float uTargetFPS <
-    ui_category = "Optical Flow";
-    ui_label = "Target FPS";
-    ui_type = "drag";
-    ui_min = 0.0;
-> = 60.00;
+    uInit("Specific", "Target FPS");
+    uType("drag");
+> = 30.00;
 
-uniform float uScale <
-    ui_category = "Optical Flow";
-    ui_label = "Scale";
-    ui_type = "drag";
-    ui_min = 0.0;
-> = 1.024;
+uniform float uThreshold <
+    uInit("Optical Flow Basic", "Threshold");
+    uType("drag");
+> = 0.040;
+
+uniform float uForce <
+    uInit("Optical Flow Basic", "Force");
+    uType("drag");
+> = 1.000;
 
 uniform float uInterpolation <
-    ui_category = "Optical Flow";
-    ui_label = "Sharpness";
-    ui_type = "drag";
-    ui_min = 0.0;
+    uInit("Optical Flow Basic", "Sharpness");
+    uType("drag");
 > = 0.750;
+
+uniform float uExposure <
+    uInit("Optical Flow Advanced", "Exposure Intensity");
+    uType("drag");
+> = 2.000;
+
+uniform float uPower <
+    uInit("Optical Flow Advanced", "Flow Power");
+    uType("drag");
+> = 1.000;
+
+uniform float uLambda <
+    uInit("Optical Flow Advanced", "Flow Time Factor");
+    uType("drag");
+> = 1.000;
 
 uniform float uFrameTime < source = "frametime"; >;
 
@@ -202,6 +205,9 @@ ps2mrt1 ps_filter(v2f input)
 /*
     ps_flow()'s ddx/ddy port of optical flow from PixelFlow
     [https://github.com/diwi/PixelFlow] [MIT]
+
+    Threshold extension from ofxFlowTools
+    [https://github.com/moostrik/ofxFlowTools] [MIT]
 */
 
 float4 ps_flow(v2f input) : SV_Target
@@ -210,20 +216,23 @@ float4 ps_flow(v2f input) : SV_Target
     float cLuma = tex2D(s_cframe, input.uv).r;
     float pLuma = tex2D(s_pframe, input.uv).r;
     float dt = cLuma - pLuma;
-    float cScale = ((1e+3 / uFrameTime) / uTargetFPS) * uScale;
+    float cScale = ((1e+3 / uFrameTime) / uTargetFPS) * uForce;
 
     // Calculate gradients and optical flow
     float3 d;
     d.x = ddx(cLuma) + ddx(pLuma);
     d.y = ddy(cLuma) + ddy(pLuma);
-    d.z = rsqrt(dot(d.xy, d.xy) + 1e-3);
-    float2 cFlow = (cScale * dt) * (d.xy * d.zz);
+    d.z = rsqrt(dot(d.xy, d.xy) + uLambda);
+    float2 cFlow = dt * (d.xy * d.zz);
+    cFlow *= cScale;
 
-    float cOld = sqrt(dot(cFlow, cFlow) + 1e-3);
-    float cNew = max(cOld - uThreshold, 0.0);
-    cFlow *= cNew / cOld;
+    float cMag = sqrt(dot(cFlow, cFlow) + 1e-3);
+    cMag = max(cMag, uThreshold);
+    cMag = (cMag - uThreshold) / (1.0 - uThreshold);
+    cMag = pow(cMag, uPower);
+    cFlow = normalize(cFlow) * min(max(cMag, 0.0), 1.0);
 
-    float2 pFlow = tex2D(s_pflow, input.uv + cFlow).rg;
+    float2 pFlow = tex2D(s_pflow, input.uv).rg;
     return lerp(pFlow, cFlow, uInterpolation).xyxy;
 }
 
@@ -256,7 +265,7 @@ float4 ps_output(v2f input) : SV_Target
     float2 oFlow = 0.0;
     for(int i = 0; i <= LOG2(DSIZE(4)); i++)
     {
-        float oWeight = ldexp(1.0, (-LOG2(DSIZE(4)) - 1) + i);
+        float oWeight = ldexp(1.0, -(LOG2(DSIZE(4)) - 1) + i);
         oFlow += filter2D(s_cflow, input.uv, i).xy * oWeight;
     }
 
