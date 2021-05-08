@@ -139,8 +139,6 @@ struct ps2mrt1
 
 float4 ps_flow(v2f input) : SV_Target
 {
-    ps2mrt1 output;
-
     // Calculate distance (dt) and temporal derivative (df)
     float cLuma = tex2D(s_cframe, input.uv).r;
     float pLuma = tex2D(s_pframe, input.uv).r;
