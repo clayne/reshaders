@@ -224,7 +224,7 @@ float4 ps_flow(v2f input) : SV_Target
     d.y = ddy(cLuma) + ddy(pLuma);
     d.z = rsqrt(dot(d.xy, d.xy) + uLambda);
     float2 cFlow = dt * (d.xy * d.zz);
-    cFlow *= uForce;
+    cFlow *= cScale;
 
     float cMag = sqrt(dot(cFlow, cFlow) + 1e-3);
     cMag = max(cMag, uThreshold);
