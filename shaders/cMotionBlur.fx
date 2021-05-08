@@ -30,11 +30,6 @@
 #define uInit(x, y) ui_category = x; ui_label = y
 #define uType(x) ui_type = x; ui_min = 0.0
 
-uniform float uTargetFPS <
-    uInit("Specific", "Target FPS");
-    uType("drag");
-> = 30.00;
-
 uniform float uThreshold <
     uInit("Optical Flow Basic", "Threshold");
     uType("drag");
@@ -212,7 +207,6 @@ ps2mrt1 ps_flow(v2f input)
     float cLuma = filter2D(s_cframe, input.uv, MIP_PREFILTER).r;
     float pLuma = filter2D(s_pframe, input.uv, MIP_PREFILTER).r;
     float dt = cLuma - pLuma;
-    float cScale = ((1e+3 / uFrameTime) / uTargetFPS) * uForce;
 
     // Calculate gradients and optical flow
     float3 d;
@@ -220,13 +214,13 @@ ps2mrt1 ps_flow(v2f input)
     d.y = ddy(cLuma) + ddy(pLuma);
     d.z = rsqrt(dot(d.xy, d.xy) + uLambda);
     float2 cFlow = dt * (d.xy * d.zz);
-    cFlow *= cScale;
+    cFlow *= uForce;
 
-    float cMag = sqrt(dot(cFlow, cFlow) + 1e-3);
+    float cMag = length(cFlow);
     cMag = max(cMag, uThreshold);
     cMag = (cMag - uThreshold) / (1.0 - uThreshold);
-    cMag = pow(abs(cMag), uPower);
-    cFlow = normalize(cFlow) * min(max(cMag, 0.0), 1.0);
+    cMag = saturate(pow(abs(cMag), uPower) + 1e-5);
+    cFlow = normalize(cFlow) * cMag;
 
     float2 pFlow = tex2D(s_pflow, input.uv).rg;
     output.target0 = lerp(pFlow, cFlow, uInterpolation).xyxy;
