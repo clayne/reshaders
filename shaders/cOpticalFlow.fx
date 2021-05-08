@@ -126,7 +126,6 @@ float4 ps_filter(v2f input) : SV_Target
 
     float c = tex2D(s_filter, input.uv).r;
     aLuma = logExposure2D(aLuma);
-
     return saturate(c * aLuma);
 }
 
@@ -186,7 +185,6 @@ technique cOpticalFlow
         VertexShader = vs_common;
         PixelShader = ps_filter;
         RenderTarget0 = r_cframe0;
-
     }
 
     pass
