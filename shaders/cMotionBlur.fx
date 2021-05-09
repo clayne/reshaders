@@ -56,7 +56,7 @@ uOption(uPy8, float, "Optical Flow Pyramid", "Level 8 Weight", 0.256);
 
 uOption(uIntensity, float, "Automatic Exposure", "Intensity", 2.000);
 uOption(uKeyValue,  float, "Automatic Exposure", "Key Value", 0.180);
-uOption(uLowClamp,  float, "Automatic Exposure", "Low Clamp", 0.001);
+uOption(uLowClamp,  float, "Automatic Exposure", "Low Clamp", 0.005);
 
 /*
     Round to nearest power of 2
