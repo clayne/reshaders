@@ -27,39 +27,33 @@
     - Blur
 */
 
-#define ui_init(x, y) ui_category = x; ui_label = y
+#define uOption(option, type, category, label, value) \
+        uniform type option <                         \
+        ui_category = category; ui_label = label;     \
+        ui_type = "drag"; ui_min = 0.0; 			  \
+        > = value
 
 uniform float uFrameTime < source = "frametime"; >;
 
-uniform float uTargetFPS <
-    ui_init("Specific", "Target FPS");
-    ui_type = "drag"; ui_min = 0.0;
-> = 60.00;
+uOption(uTargetFPS, float, "Specific", "Target FPS", 60.00);
 
-uniform float uThreshold <
-    ui_init("Optical Flow Basic", "Threshold");
-    ui_type = "drag"; ui_min = 0.0;
-> = 0.040;
+uOption(uThreshold, float, "Optical Flow Basic", "Threshold", 0.040);
+uOption(uForce,     float, "Optical Flow Basic", "Force",     8.000);
 
-uniform float uForce <
-    ui_init("Optical Flow Basic", "Force");
-    ui_type = "drag"; ui_min = 0.0;
-> = 2.000;
+uOption(uPrefilter,     int,   "Optical Flow Advanced", "Prefilter LOD Bias", 1);
+uOption(uInterpolation, float, "Optical Flow Advanced", "Temporal Sharpness", 0.750);
+uOption(uExposure,      float, "Optical Flow Advanced", "Exposure Intensity", 2.000);
+uOption(uPower,         float, "Optical Flow Advanced", "Flow Power",         1.000);
 
-uniform float uInterpolation <
-    ui_init("Optical Flow Advanced", "Temporal Sharpness");
-    ui_type = "slider"; ui_min = 0.0; ui_max = 1.0;
-> = 0.750;
-
-uniform float uExposure <
-    ui_init("Optical Flow Advanced", "Exposure Intensity");
-    ui_type = "drag"; ui_min = 0.0;
-> = 2.000;
-
-uniform float uPower <
-    ui_init("Optical Flow Advanced", "Flow Power");
-    ui_type = "drag"; ui_min = 0.0;
-> = 1.000;
+uOption(uPy0, float, "Optical Flow Pyramid", "Level 0 Weight", 0.001);
+uOption(uPy1, float, "Optical Flow Pyramid", "Level 1 Weight", 0.002);
+uOption(uPy2, float, "Optical Flow Pyramid", "Level 2 Weight", 0.004);
+uOption(uPy3, float, "Optical Flow Pyramid", "Level 3 Weight", 0.008);
+uOption(uPy4, float, "Optical Flow Pyramid", "Level 4 Weight", 0.016);
+uOption(uPy5, float, "Optical Flow Pyramid", "Level 5 Weight", 0.032);
+uOption(uPy6, float, "Optical Flow Pyramid", "Level 6 Weight", 0.064);
+uOption(uPy7, float, "Optical Flow Pyramid", "Level 7 Weight", 0.128);
+uOption(uPy8, float, "Optical Flow Pyramid", "Level 8 Weight", 0.256);
 
 /*
     Round to nearest power of 2
@@ -80,33 +74,30 @@ uniform float uPower <
 #define LOG2(x)       (CONST_LOG2((BIT16_LOG2(x) >> 1) + 1))
 
 #define RMAX(x, y) x ^ ((x ^ y) & -(x < y)) // max(x, y)
-#define DSIZE(x)   1 << LOG2(RMAX(BUFFER_WIDTH / x, BUFFER_HEIGHT / x))
-
-#define RPOW2(x) Width = DSIZE(x); Height = DSIZE(x) // get nearest power of 2 size
-#define RSIZE(x) Width = BUFFER_WIDTH / x; Height = BUFFER_HEIGHT / x
-#define RFILT(x) MinFilter = x; MagFilter = x; MipFilter = x
-
-#ifndef MIP_PREFILTER
-    #define MIP_PREFILTER 1.0
-#endif
+#define DSIZE(x)   1 << LOG2(RMAX(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2))
+#define RSIZE      Width = BUFFER_WIDTH / 2; Height = BUFFER_HEIGHT / 2
+#define RINIT      Width = 256; Height = 256; MipLevels = 9 // get nearest power of 2 size
 
 texture2D r_color  : COLOR;
-texture2D r_buffer { RSIZE(2); Format = R8;    MipLevels = LOG2(DSIZE(2)) + 1; };
-texture2D r_filter { RPOW2(4); Format = R8;    MipLevels = LOG2(DSIZE(4)) + 1; };
-texture2D r_cframe { RPOW2(4); Format = R8;    MipLevels = LOG2(DSIZE(4)) + 1; };
-texture2D r_pframe { RPOW2(4); Format = R8;    MipLevels = LOG2(DSIZE(4)) + 1; };
-texture2D r_cflow  { RPOW2(4); Format = RG16F; MipLevels = LOG2(DSIZE(4)) + 1; };
-texture2D r_pflow  { RPOW2(4); Format = RG16F; };
-texture2D r_pluma  { RPOW2(4); Format = R8;    };
+texture2D r_buffer { RSIZE; Format = R8; MipLevels = LOG2(DSIZE(2)) + 1; };
+texture2D r_filter { RINIT; Format = R8; };
+texture2D r_cframe { RINIT; Format = R8; };
+texture2D r_pframe { RINIT; Format = R8; };
+texture2D r_cflow  { RINIT; Format = RG16F; };
+texture2D r_pflow  { RINIT; Format = RG16F; };
+texture2D r_pluma  { RINIT; Format = R8; };
 
-sampler2D s_color  { Texture = r_color;  RFILT(LINEAR); SRGBTexture = TRUE; };
-sampler2D s_buffer { Texture = r_buffer; RFILT(LINEAR); };
-sampler2D s_filter { Texture = r_filter; RFILT(LINEAR); };
-sampler2D s_cframe { Texture = r_cframe; RFILT(LINEAR); };
-sampler2D s_pframe { Texture = r_pframe; RFILT(LINEAR); };
-sampler2D s_cflow  { Texture = r_cflow;  RFILT(LINEAR); };
-sampler2D s_pflow  { Texture = r_pflow;  RFILT(LINEAR); };
-sampler2D s_pluma  { Texture = r_pluma;  RFILT(LINEAR); };
+#define SFILT(x) MinFilter = x; MagFilter = x; MipFilter = x
+sampler2D s_color  { Texture = r_color;  SFILT(LINEAR); SRGBTexture = TRUE; };
+sampler2D s_buffer { Texture = r_buffer; SFILT(LINEAR); };
+sampler2D s_filter { Texture = r_filter; SFILT(LINEAR); };
+sampler2D s_cframe { Texture = r_cframe; SFILT(LINEAR); };
+sampler2D s_pframe { Texture = r_pframe; SFILT(LINEAR); };
+sampler2D s_cflow  { Texture = r_cflow;  SFILT(LINEAR); };
+sampler2D s_pflow  { Texture = r_pflow;  SFILT(LINEAR); };
+sampler2D s_pluma  { Texture = r_pluma;  SFILT(LINEAR); };
+
+/* [ Vertex Shaders ] */
 
 struct v2f
 {
@@ -154,8 +145,8 @@ ps2mrt0 ps_convert(v2f input)
 
 float logExposure2D(float aLuma)
 {
-    aLuma = max(aLuma, 1e-2);
-    float aExposure = log2(max(0.18 / aLuma, 1e-2));
+    aLuma = max(aLuma, 1e-5);
+    float aExposure = log2(max(0.18 / aLuma, 1e-5));
     return exp2(aExposure + uExposure);
 }
 
@@ -166,8 +157,7 @@ float4 ps_filter(v2f input) : SV_Target
     float aLuma = lerp(pLuma, cLuma, 0.5);
 
     float c = tex2D(s_buffer, input.uv).r;
-    aLuma = logExposure2D(aLuma);
-    return saturate(c * aLuma);
+    return saturate(c * logExposure2D(aLuma));
 }
 
 /*
@@ -181,7 +171,7 @@ float4 ps_filter(v2f input) : SV_Target
     [https://github.com/moostrik/ofxFlowTools] [MIT]
 */
 
-float4 filter2D(sampler2D src, float2 uv, float lod)
+float4 filter2D(sampler2D src, float2 uv, int lod)
 {
     const float2 size = tex2Dsize(src, lod);
     float2 p = uv * size + 0.5;
@@ -203,8 +193,8 @@ ps2mrt1 ps_flow(v2f input)
     ps2mrt1 output;
 
     // Calculate distance (dt) and temporal derivative (df)
-    float cLuma = filter2D(s_cframe, input.uv, MIP_PREFILTER).r;
-    float pLuma = filter2D(s_pframe, input.uv, MIP_PREFILTER).r;
+    float cLuma = filter2D(s_cframe, input.uv, uPrefilter).r;
+    float pLuma = filter2D(s_pframe, input.uv, uPrefilter).r;
     float cFrameTime = uTargetFPS / (1e+3 / uFrameTime);
     float dt = cLuma - pLuma;
 
@@ -212,7 +202,7 @@ ps2mrt1 ps_flow(v2f input)
     float3 d;
     d.x = ddx(cLuma) + ddx(pLuma);
     d.y = ddy(cLuma) + ddy(pLuma);
-    d.z = rsqrt(dot(d.xy, d.xy) + cFrameTime);
+    d.z = rsqrt(dot(d.xy, d.xy) + 1.0);
     float2 cFlow = dt * (d.xy * d.zz);
     cFlow *= uForce;
 
@@ -255,11 +245,15 @@ float4 ps_output(v2f input) : SV_Target
     */
 
     float2 oFlow = 0.0;
-    for(int i = 0; i <= LOG2(DSIZE(4)); i++)
-    {
-        float oWeight = ldexp(1.0, -(LOG2(DSIZE(4)) - 1) + i);
-        oFlow += filter2D(s_cflow, input.uv, i).xy * oWeight;
-    }
+    oFlow += filter2D(s_cflow, input.uv, 0).xy * uPy0;
+    oFlow += filter2D(s_cflow, input.uv, 1).xy * uPy1;
+    oFlow += filter2D(s_cflow, input.uv, 2).xy * uPy2;
+    oFlow += filter2D(s_cflow, input.uv, 3).xy * uPy3;
+    oFlow += filter2D(s_cflow, input.uv, 4).xy * uPy4;
+    oFlow += filter2D(s_cflow, input.uv, 5).xy * uPy5;
+    oFlow += filter2D(s_cflow, input.uv, 6).xy * uPy6;
+    oFlow += filter2D(s_cflow, input.uv, 7).xy * uPy7;
+    oFlow += filter2D(s_cflow, input.uv, 8).xy * uPy8;
 
     const float kWeights = 1.0 / 8.0;
     float4 oBlur = 0.0;
