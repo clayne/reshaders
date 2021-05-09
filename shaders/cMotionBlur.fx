@@ -37,26 +37,26 @@ uniform float uFrameTime < source = "frametime"; >;
 
 uOption(uTargetFPS, float, "Specific", "Target FPS", 60.00);
 
-uOption(uThreshold, float, "Optical Flow Basic", "Threshold", 0.040);
-uOption(uForce,     float, "Optical Flow Basic", "Force",     8.000);
+uOption(uThreshold, float, "Flow Basic", "Threshold", 0.040);
+uOption(uForce,     float, "Flow Basic", "Force",     8.000);
 
-uOption(uPrefilter,     int,   "Optical Flow Advanced", "Prefilter LOD Bias", 1);
-uOption(uInterpolation, float, "Optical Flow Advanced", "Temporal Sharpness", 0.750);
-uOption(uPower,         float, "Optical Flow Advanced", "Flow Power",         1.000);
+uOption(uPrefilter,     int,   "Flow Advanced", "Prefilter LOD Bias", 1);
+uOption(uInterpolation, float, "Flow Advanced", "Temporal Sharpness", 0.750);
+uOption(uPower,         float, "Flow Advanced", "Flow Power",         1.000);
 
-uOption(uPy0, float, "Optical Flow Pyramid", "Level 0 Weight", 0.001);
-uOption(uPy1, float, "Optical Flow Pyramid", "Level 1 Weight", 0.002);
-uOption(uPy2, float, "Optical Flow Pyramid", "Level 2 Weight", 0.004);
-uOption(uPy3, float, "Optical Flow Pyramid", "Level 3 Weight", 0.008);
-uOption(uPy4, float, "Optical Flow Pyramid", "Level 4 Weight", 0.016);
-uOption(uPy5, float, "Optical Flow Pyramid", "Level 5 Weight", 0.032);
-uOption(uPy6, float, "Optical Flow Pyramid", "Level 6 Weight", 0.064);
-uOption(uPy7, float, "Optical Flow Pyramid", "Level 7 Weight", 0.128);
-uOption(uPy8, float, "Optical Flow Pyramid", "Level 8 Weight", 0.256);
+uOption(uPy0, float, "Flow Pyramid Weights", "Fine",    0.001);
+uOption(uPy1, float, "Flow Pyramid Weights", "Level 2", 0.002);
+uOption(uPy2, float, "Flow Pyramid Weights", "Level 3", 0.004);
+uOption(uPy3, float, "Flow Pyramid Weights", "Level 4", 0.008);
+uOption(uPy4, float, "Flow Pyramid Weights", "Level 5", 0.016);
+uOption(uPy5, float, "Flow Pyramid Weights", "Level 6", 0.032);
+uOption(uPy6, float, "Flow Pyramid Weights", "Level 7", 0.064);
+uOption(uPy7, float, "Flow Pyramid Weights", "Level 8", 0.128);
+uOption(uPy8, float, "Flow Pyramid Weights", "Coarse",  0.256);
 
 uOption(uIntensity, float, "Automatic Exposure", "Intensity", 2.000);
 uOption(uKeyValue,  float, "Automatic Exposure", "Key Value", 0.180);
-uOption(uLowClamp,  float, "Automatic Exposure", "Low Clamp", 0.005);
+uOption(uLowClamp,  float, "Automatic Exposure", "Low Clamp", 0.001);
 
 /*
     Round to nearest power of 2
