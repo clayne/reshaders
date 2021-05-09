@@ -42,7 +42,6 @@ uOption(uForce,     float, "Optical Flow Basic", "Force",     8.000);
 
 uOption(uPrefilter,     int,   "Optical Flow Advanced", "Prefilter LOD Bias", 1);
 uOption(uInterpolation, float, "Optical Flow Advanced", "Temporal Sharpness", 0.750);
-uOption(uExposure,      float, "Optical Flow Advanced", "Exposure Intensity", 2.000);
 uOption(uPower,         float, "Optical Flow Advanced", "Flow Power",         1.000);
 
 uOption(uPy0, float, "Optical Flow Pyramid", "Level 0 Weight", 0.001);
@@ -54,6 +53,10 @@ uOption(uPy5, float, "Optical Flow Pyramid", "Level 5 Weight", 0.032);
 uOption(uPy6, float, "Optical Flow Pyramid", "Level 6 Weight", 0.064);
 uOption(uPy7, float, "Optical Flow Pyramid", "Level 7 Weight", 0.128);
 uOption(uPy8, float, "Optical Flow Pyramid", "Level 8 Weight", 0.256);
+
+uOption(uIntensity, float, "Automatic Exposure", "Intensity", 2.000);
+uOption(uKeyValue,  float, "Automatic Exposure", "Key Value", 0.180);
+uOption(uLowClamp,  float, "Automatic Exposure", "Low Clamp", 0.001);
 
 /*
     Round to nearest power of 2
@@ -145,9 +148,9 @@ ps2mrt0 ps_convert(v2f input)
 
 float logExposure2D(float aLuma)
 {
-    aLuma = max(aLuma, 1e-5);
-    float aExposure = log2(max(0.18 / aLuma, 1e-5));
-    return exp2(aExposure + uExposure);
+    aLuma = max(aLuma, uLowClamp);
+    float aExposure = log2(max(uKeyValue / aLuma, uLowClamp));
+    return exp2(aExposure + uIntensity);
 }
 
 float4 ps_filter(v2f input) : SV_Target
