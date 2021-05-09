@@ -27,40 +27,39 @@
     - Blur
 */
 
-#define uInit(x, y) ui_category = x; ui_label = y
-#define uType(x) ui_type = x; ui_min = 0.0
+#define ui_init(x, y) ui_category = x; ui_label = y
+
+uniform float uFrameTime < source = "frametime"; >;
+
+uniform float uTargetFPS <
+    ui_init("Specific", "Target FPS");
+    ui_type = "drag"; ui_min = 0.0;
+> = 60.00;
 
 uniform float uThreshold <
-    uInit("Optical Flow Basic", "Threshold");
-    uType("drag");
-> = 0.050;
+    ui_init("Optical Flow Basic", "Threshold");
+    ui_type = "drag"; ui_min = 0.0;
+> = 0.040;
 
 uniform float uForce <
-    uInit("Optical Flow Basic", "Force");
-    uType("drag");
-> = 2.500;
+    ui_init("Optical Flow Basic", "Force");
+    ui_type = "drag"; ui_min = 0.0;
+> = 2.000;
 
 uniform float uInterpolation <
-    uInit("Optical Flow Advanced", "Temporal Sharpness");
-    uType("drag");
+    ui_init("Optical Flow Advanced", "Temporal Sharpness");
+    ui_type = "slider"; ui_min = 0.0; ui_max = 1.0;
 > = 0.750;
 
 uniform float uExposure <
-    uInit("Optical Flow Advanced", "Exposure Intensity");
-    uType("drag");
+    ui_init("Optical Flow Advanced", "Exposure Intensity");
+    ui_type = "drag"; ui_min = 0.0;
 > = 2.000;
 
 uniform float uPower <
-    uInit("Optical Flow Advanced", "Flow Sharpness");
-    uType("drag");
+    ui_init("Optical Flow Advanced", "Flow Power");
+    ui_type = "drag"; ui_min = 0.0;
 > = 1.000;
-
-uniform float uLambda <
-    uInit("Optical Flow Advanced", "Flow Time Factor");
-    uType("drag");
-> = 1.000;
-
-uniform float uFrameTime < source = "frametime"; >;
 
 /*
     Round to nearest power of 2
@@ -206,13 +205,14 @@ ps2mrt1 ps_flow(v2f input)
     // Calculate distance (dt) and temporal derivative (df)
     float cLuma = filter2D(s_cframe, input.uv, MIP_PREFILTER).r;
     float pLuma = filter2D(s_pframe, input.uv, MIP_PREFILTER).r;
+    float cFrameTime = uTargetFPS / (1e+3 / uFrameTime);
     float dt = cLuma - pLuma;
 
     // Calculate gradients and optical flow
     float3 d;
     d.x = ddx(cLuma) + ddx(pLuma);
     d.y = ddy(cLuma) + ddy(pLuma);
-    d.z = rsqrt(dot(d.xy, d.xy) + uLambda);
+    d.z = rsqrt(dot(d.xy, d.xy) + cFrameTime);
     float2 cFlow = dt * (d.xy * d.zz);
     cFlow *= uForce;
 
