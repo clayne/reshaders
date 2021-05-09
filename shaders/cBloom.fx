@@ -1,9 +1,10 @@
 /*
-    Custom version of Unity's bloom. Should be lighter than qUINT_Bloom :^)
+    Custom version of Unity's bloom. From Unity Graphics
+    [https://github.com/Unity-Technologies/Graphics]
 
     Copyright © 2020 Unity Technologies ApS
 
-    Licensed under the Unity Companion License for Unity-dependent projects
+    Licensed under the Unity Companion License for Unity-dependent projecpsize
     -- see https://unity3d.com/legal/licenses/Unity_Companion_License
 
     Unless expressly provided otherwise, the Software under this license
@@ -56,41 +57,50 @@ sampler2D s_bloom6 { Texture = r_bloom6; };
 sampler2D s_bloom7 { Texture = r_bloom7; };
 sampler2D s_bloom8 { Texture = r_bloom8; };
 
-/* - VERTEX SHADERS - */
+/* [ Vertex Shaders ] */
 
 struct v2fd
 {
     float4 vpos   : SV_Position;
     float2 uv0    : TEXCOORD0;
-    float4 uv1[2] : TEXCOORD1;
+    float4 uv1[6] : TEXCOORD1;
 };
 
 struct v2fu
 {
-    float4 vpos  : SV_Position;
-    float4 uv[2] : TEXCOORD0;
+    float4 vpos   : SV_Position;
+    float2 uv0    : TEXCOORD0;
+    float4 uv1[4] : TEXCOORD1;
 };
 
-v2fd v_dsamp(const uint id, float uFact)
+static const float2 uSize = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
+
+v2fd downsample2Dvs(const uint id, float uFact)
 {
-    v2fd o;
+    v2fd output;
     float2 coord;
     coord.x = (id == 2) ? 2.0 : 0.0;
     coord.y = (id == 1) ? 2.0 : 0.0;
-    o.vpos = float4(coord.xy * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    output.vpos = float4(coord.xy * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 
-    // Kawase dual-filter downsampling kernel from streamFX
-    // https://github.com/Xaymar/obs-StreamFX
-    const float2 ts = ldexp(float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT), uFact);
-    o.uv0       = coord.xy;
-    o.uv1[0].xy = coord.xy - ts;
-    o.uv1[0].zw = coord.xy + ts;
-    o.uv1[1].xy = coord.xy + float2(ts.x, -ts.y);
-    o.uv1[1].zw = coord.xy - float2(ts.x, -ts.y);
-    return o;
+    const float2 psize = ldexp(uSize, uFact);
+    output.uv1[0].xy = coord + psize * float2(-2.0, -2.0);
+    output.uv1[0].zw = coord + psize * float2( 0.0, -2.0);
+    output.uv1[1].xy = coord + psize * float2( 2.0, -2.0);
+    output.uv1[1].zw = coord + psize * float2(-1.0, -1.0);
+    output.uv1[2].xy = coord + psize * float2( 1.0, -1.0);
+    output.uv1[2].zw = coord + psize * float2(-2.0,  0.0);
+    output.uv0 = coord;
+    output.uv1[3].xy = coord + psize * float2( 2.0,  0.0);
+    output.uv1[3].zw = coord + psize * float2(-1.0,  1.0);
+    output.uv1[4].xy = coord + psize * float2( 1.0,  1.0);
+    output.uv1[4].zw = coord + psize * float2(-2.0,  2.0);
+    output.uv1[5].xy = coord + psize * float2( 0.0,  2.0);
+    output.uv1[5].zw = coord + psize * float2( 2.0,  2.0);
+    return output;
 }
 
-v2fu v_usamp(const uint id, float uFact)
+v2fu upsample2Dvs(const uint id, float uFact)
 {
     v2fu output;
     float2 coord;
@@ -98,61 +108,86 @@ v2fu v_usamp(const uint id, float uFact)
     coord.y = (id == 1) ? 2.0 : 0.0;
     output.vpos = float4(coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 
-    // 9-tap pyramid filter using 4 texture fetches by CeeJayDK
-    // https://github.com/CeeJayDK/SweetFX/blob/master/Shaders/LumaSharpen.fx
-    const float2 ts = ldexp(float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT), uFact);
-    output.uv[0].xy = coord + float2( ts.x * 0.5, -ts.y); // ( 1, -2)
-    output.uv[0].zw = coord + float2(-ts.x, -ts.y * 0.5); // (-2, -1)
-    output.uv[1].xy = coord + float2( ts.x,  ts.y * 0.5); // ( 2,  1)
-    output.uv[1].zw = coord + float2(-ts.x * 0.5,  ts.y); // (-1,  2)
+    const float2 psize = ldexp(uSize, uFact);
+    output.uv1[0].xy = coord + psize * float2(-1.0, -1.0);
+    output.uv1[0].zw = coord + psize * float2( 0.0, -1.0);
+    output.uv1[1].xy = coord + psize * float2( 1.0, -1.0);
+    output.uv1[1].zw = coord + psize * float2(-1.0,  0.0);
+    output.uv0 = coord;
+    output.uv1[2].xy = coord + psize * float2( 1.0,  0.0);
+    output.uv1[2].zw = coord + psize * float2(-1.0,  1.0);
+    output.uv1[3].xy = coord + psize * float2( 0.0,  1.0);
+    output.uv1[3].zw = coord + psize * float2( 1.0,  1.0);
     return output;
 }
 
-v2fd vs_dsamp0(uint id : SV_VertexID) { return v_dsamp(id, 1.0); }
-v2fd vs_dsamp1(uint id : SV_VertexID) { return v_dsamp(id, 2.0); }
-v2fd vs_dsamp2(uint id : SV_VertexID) { return v_dsamp(id, 3.0); }
-v2fd vs_dsamp3(uint id : SV_VertexID) { return v_dsamp(id, 4.0); }
-v2fd vs_dsamp4(uint id : SV_VertexID) { return v_dsamp(id, 5.0); }
-v2fd vs_dsamp5(uint id : SV_VertexID) { return v_dsamp(id, 6.0); }
-v2fd vs_dsamp6(uint id : SV_VertexID) { return v_dsamp(id, 7.0); }
-v2fd vs_dsamp7(uint id : SV_VertexID) { return v_dsamp(id, 8.0); }
+v2fd vs_downsample0(uint id : SV_VertexID) { return downsample2Dvs(id, 1.0); }
+v2fd vs_downsample1(uint id : SV_VertexID) { return downsample2Dvs(id, 2.0); }
+v2fd vs_downsample2(uint id : SV_VertexID) { return downsample2Dvs(id, 3.0); }
+v2fd vs_downsample3(uint id : SV_VertexID) { return downsample2Dvs(id, 4.0); }
+v2fd vs_downsample4(uint id : SV_VertexID) { return downsample2Dvs(id, 5.0); }
+v2fd vs_downsample5(uint id : SV_VertexID) { return downsample2Dvs(id, 6.0); }
+v2fd vs_downsample6(uint id : SV_VertexID) { return downsample2Dvs(id, 7.0); }
+v2fd vs_downsample7(uint id : SV_VertexID) { return downsample2Dvs(id, 8.0); }
 
-v2fu vs_usamp8(uint id : SV_VertexID) { return v_usamp(id, 7.0); }
-v2fu vs_usamp7(uint id : SV_VertexID) { return v_usamp(id, 6.0); }
-v2fu vs_usamp6(uint id : SV_VertexID) { return v_usamp(id, 5.0); }
-v2fu vs_usamp5(uint id : SV_VertexID) { return v_usamp(id, 4.0); }
-v2fu vs_usamp4(uint id : SV_VertexID) { return v_usamp(id, 3.0); }
-v2fu vs_usamp3(uint id : SV_VertexID) { return v_usamp(id, 2.0); }
-v2fu vs_usamp2(uint id : SV_VertexID) { return v_usamp(id, 1.0); }
-v2fu vs_usamp1(uint id : SV_VertexID) { return v_usamp(id, 0.0); }
+v2fu vs_upsample8(uint id : SV_VertexID) { return upsample2Dvs(id, 7.0); }
+v2fu vs_upsample7(uint id : SV_VertexID) { return upsample2Dvs(id, 6.0); }
+v2fu vs_upsample6(uint id : SV_VertexID) { return upsample2Dvs(id, 5.0); }
+v2fu vs_upsample5(uint id : SV_VertexID) { return upsample2Dvs(id, 4.0); }
+v2fu vs_upsample4(uint id : SV_VertexID) { return upsample2Dvs(id, 3.0); }
+v2fu vs_upsample3(uint id : SV_VertexID) { return upsample2Dvs(id, 2.0); }
+v2fu vs_upsample2(uint id : SV_VertexID) { return upsample2Dvs(id, 1.0); }
+v2fu vs_upsample1(uint id : SV_VertexID) { return upsample2Dvs(id, 0.0); }
 
-/* - PIXEL SHADERS - */
+/* [ Pixel Shaders ] */
 
-float4 p_dsamp(sampler2D src, v2fd input)
+float4 downsample2Dps(sampler2D src, v2fd input)
 {
-    float4 s  = tex2D(src, input.uv0) * 4.0;
-           s += tex2D(src, input.uv1[0].xy);
-           s += tex2D(src, input.uv1[0].zw);
-           s += tex2D(src, input.uv1[1].xy);
-           s += tex2D(src, input.uv1[1].zw);
-    return s * 0.125;
+    float4 a = tex2D(src, input.uv1[0].xy);
+    float4 b = tex2D(src, input.uv1[0].zw);
+    float4 c = tex2D(src, input.uv1[1].xy);
+    float4 d = tex2D(src, input.uv1[1].zw);
+    float4 e = tex2D(src, input.uv1[2].xy);
+    float4 f = tex2D(src, input.uv1[2].zw);
+    float4 g = tex2D(src, input.uv0);
+    float4 h = tex2D(src, input.uv1[3].xy);
+    float4 i = tex2D(src, input.uv1[3].zw);
+    float4 j = tex2D(src, input.uv1[4].xy);
+    float4 k = tex2D(src, input.uv1[4].zw);
+    float4 l = tex2D(src, input.uv1[5].xy);
+    float4 m = tex2D(src, input.uv1[5].zw);
+
+    const float2 odiv = (1.0 / 4.0) * float2(0.5, 0.125);
+    float4 output = (d + e + i + j) * odiv.x;
+    output += (a + b + g + f) * odiv.y;
+    output += (b + c + h + g) * odiv.y;
+    output += (f + g + l + k) * odiv.y;
+    output += (g + h + m + l) * odiv.y;
+    return output;
 }
 
-float4 p_usamp(sampler2D src, v2fu input)
+float4 upsample2Dps(sampler2D src, v2fu input)
 {
-    float4 s  = tex2D(src, input.uv[0].xy) * 0.25;
-           s += tex2D(src, input.uv[0].zw) * 0.25;
-           s += tex2D(src, input.uv[1].xy) * 0.25;
-    return s += tex2D(src, input.uv[1].zw) * 0.25;
+    float4 s;
+    s += tex2D(src, input.uv1[0].xy);
+    s += tex2D(src, input.uv1[0].zw) * 2.0;
+    s += tex2D(src, input.uv1[1].xy);
+    s += tex2D(src, input.uv1[1].zw) * 2.0;
+    s += tex2D(src, input.uv0) * 4.0;
+    s += tex2D(src, input.uv1[2].xy) * 2.0;
+    s += tex2D(src, input.uv1[2].zw);
+    s += tex2D(src, input.uv1[3].xy) * 2.0;
+    s += tex2D(src, input.uv1[3].zw);
+    return s * (1.0 / 16.0);
 }
 
 // Quadratic color thresholding
 
-float4 ps_dsamp0(v2fd input): SV_TARGET
+float4 ps_downsample0(v2fd input): SV_TARGET
 {
     const float  knee = mad(kThreshold, kSmooth, 1e-5f);
     const float3 curve = float3(kThreshold - knee, knee * 2.0, 0.25 / knee);
-    float4 s = p_dsamp(s_color, input);
+    float4 s = downsample2Dps(s_color, input);
 
     // Pixel brightness
     s.a = max(s.r, max(s.g, s.b));
@@ -169,22 +204,22 @@ float4 ps_dsamp0(v2fd input): SV_TARGET
     return s;
 }
 
-float4 ps_dsamp1(v2fd input) : SV_Target { return p_dsamp(s_bloom1, input); }
-float4 ps_dsamp2(v2fd input) : SV_Target { return p_dsamp(s_bloom2, input); }
-float4 ps_dsamp3(v2fd input) : SV_Target { return p_dsamp(s_bloom3, input); }
-float4 ps_dsamp4(v2fd input) : SV_Target { return p_dsamp(s_bloom4, input); }
-float4 ps_dsamp5(v2fd input) : SV_Target { return p_dsamp(s_bloom5, input); }
-float4 ps_dsamp6(v2fd input) : SV_Target { return p_dsamp(s_bloom6, input); }
-float4 ps_dsamp7(v2fd input) : SV_Target { return p_dsamp(s_bloom7, input); }
+float4 ps_downsample1(v2fd input) : SV_Target { return downsample2Dps(s_bloom1, input); }
+float4 ps_downsample2(v2fd input) : SV_Target { return downsample2Dps(s_bloom2, input); }
+float4 ps_downsample3(v2fd input) : SV_Target { return downsample2Dps(s_bloom3, input); }
+float4 ps_downsample4(v2fd input) : SV_Target { return downsample2Dps(s_bloom4, input); }
+float4 ps_downsample5(v2fd input) : SV_Target { return downsample2Dps(s_bloom5, input); }
+float4 ps_downsample6(v2fd input) : SV_Target { return downsample2Dps(s_bloom6, input); }
+float4 ps_downsample7(v2fd input) : SV_Target { return downsample2Dps(s_bloom7, input); }
 
-float4 ps_usamp8(v2fu input) : SV_Target { return p_usamp(s_bloom8, input); }
-float4 ps_usamp7(v2fu input) : SV_Target { return p_usamp(s_bloom7, input); }
-float4 ps_usamp6(v2fu input) : SV_Target { return p_usamp(s_bloom6, input); }
-float4 ps_usamp5(v2fu input) : SV_Target { return p_usamp(s_bloom5, input); }
-float4 ps_usamp4(v2fu input) : SV_Target { return p_usamp(s_bloom4, input); }
-float4 ps_usamp3(v2fu input) : SV_Target { return p_usamp(s_bloom3, input); }
-float4 ps_usamp2(v2fu input) : SV_Target { return p_usamp(s_bloom2, input); }
-float4 ps_usamp1(v2fu input) : SV_Target
+float4 ps_upsample8(v2fu input) : SV_Target { return upsample2Dps(s_bloom8, input); }
+float4 ps_upsample7(v2fu input) : SV_Target { return upsample2Dps(s_bloom7, input); }
+float4 ps_upsample6(v2fu input) : SV_Target { return upsample2Dps(s_bloom6, input); }
+float4 ps_upsample5(v2fu input) : SV_Target { return upsample2Dps(s_bloom5, input); }
+float4 ps_upsample4(v2fu input) : SV_Target { return upsample2Dps(s_bloom4, input); }
+float4 ps_upsample3(v2fu input) : SV_Target { return upsample2Dps(s_bloom3, input); }
+float4 ps_upsample2(v2fu input) : SV_Target { return upsample2Dps(s_bloom2, input); }
+float4 ps_upsample1(v2fu input) : SV_Target
 {
     // Interleaved Gradient Noise from
     // http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare
@@ -193,7 +228,7 @@ float4 ps_usamp1(v2fu input) : SV_Target
 
     // ACES Filmic Tone Mapping Curve from
     // https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/
-    float4 o = p_usamp(s_bloom1, input);
+    float4 o = upsample2Dps(s_bloom1, input);
     o = saturate(o * mad(2.51, o, 0.03) / mad(o, mad(2.43, o, 0.59), 0.14));
     return o + f;
 }
@@ -202,12 +237,12 @@ float4 ps_usamp1(v2fu input) : SV_Target
 
 technique cBloom
 {
-    #define vsd(i) VertexShader = vs_dsamp##i
-    #define vsu(i) VertexShader = vs_usamp##i
-    #define psd(i) PixelShader  = ps_dsamp##i
-    #define psu(i) PixelShader  = ps_usamp##i
+    #define vsd(i) VertexShader = vs_downsample##i
+    #define vsu(i) VertexShader = vs_upsample##i
+    #define psd(i) PixelShader  = ps_downsample##i
+    #define psu(i) PixelShader  = ps_upsample##i
     #define rt(i)  RenderTarget = r_bloom##i
-    #define blend(i) BlendEnable = true; DestBlend = ##i
+    #define blend(i) BlendEnable = TRUE; DestBlend = ##i
 
     pass { vsd(0); psd(0); rt(1); }
     pass { vsd(1); psd(1); rt(2); }

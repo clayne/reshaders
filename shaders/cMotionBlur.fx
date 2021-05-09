@@ -44,15 +44,15 @@ uOption(uPrefilter,     int,   "Flow Advanced", "Prefilter LOD Bias", 1);
 uOption(uInterpolation, float, "Flow Advanced", "Temporal Sharpness", 0.750);
 uOption(uPower,         float, "Flow Advanced", "Flow Power",         1.000);
 
-uOption(uPy0, float, "Flow Pyramid Weights", "Fine",    0.001);
-uOption(uPy1, float, "Flow Pyramid Weights", "Level 2", 0.002);
-uOption(uPy2, float, "Flow Pyramid Weights", "Level 3", 0.004);
-uOption(uPy3, float, "Flow Pyramid Weights", "Level 4", 0.008);
-uOption(uPy4, float, "Flow Pyramid Weights", "Level 5", 0.016);
-uOption(uPy5, float, "Flow Pyramid Weights", "Level 6", 0.032);
-uOption(uPy6, float, "Flow Pyramid Weights", "Level 7", 0.064);
-uOption(uPy7, float, "Flow Pyramid Weights", "Level 8", 0.128);
-uOption(uPy8, float, "Flow Pyramid Weights", "Coarse",  0.256);
+uOption(uPy0, float, "Flow Pyramid Weights", "Fine",    1.000);
+uOption(uPy1, float, "Flow Pyramid Weights", "Level 2", 1.000);
+uOption(uPy2, float, "Flow Pyramid Weights", "Level 3", 1.000);
+uOption(uPy3, float, "Flow Pyramid Weights", "Level 4", 1.000);
+uOption(uPy4, float, "Flow Pyramid Weights", "Level 5", 1.000);
+uOption(uPy5, float, "Flow Pyramid Weights", "Level 6", 1.000);
+uOption(uPy6, float, "Flow Pyramid Weights", "Level 7", 1.000);
+uOption(uPy7, float, "Flow Pyramid Weights", "Level 8", 1.000);
+uOption(uPy8, float, "Flow Pyramid Weights", "Coarse",  1.000);
 
 uOption(uIntensity, float, "Automatic Exposure", "Intensity", 2.000);
 uOption(uKeyValue,  float, "Automatic Exposure", "Key Value", 0.180);
