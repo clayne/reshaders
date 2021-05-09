@@ -248,15 +248,15 @@ float4 ps_output(v2f input) : SV_Target
     */
 
     float2 oFlow = 0.0;
-    oFlow += filter2D(s_cflow, input.uv, 0).xy * uPy0;
-    oFlow += filter2D(s_cflow, input.uv, 1).xy * uPy1;
-    oFlow += filter2D(s_cflow, input.uv, 2).xy * uPy2;
-    oFlow += filter2D(s_cflow, input.uv, 3).xy * uPy3;
-    oFlow += filter2D(s_cflow, input.uv, 4).xy * uPy4;
-    oFlow += filter2D(s_cflow, input.uv, 5).xy * uPy5;
-    oFlow += filter2D(s_cflow, input.uv, 6).xy * uPy6;
-    oFlow += filter2D(s_cflow, input.uv, 7).xy * uPy7;
-    oFlow += filter2D(s_cflow, input.uv, 8).xy * uPy8;
+    oFlow += filter2D(s_cflow, input.uv, 0).xy * ldexp(uPy0, -8.0);
+    oFlow += filter2D(s_cflow, input.uv, 1).xy * ldexp(uPy1, -7.0);
+    oFlow += filter2D(s_cflow, input.uv, 2).xy * ldexp(uPy2, -6.0);
+    oFlow += filter2D(s_cflow, input.uv, 3).xy * ldexp(uPy3, -5.0);
+    oFlow += filter2D(s_cflow, input.uv, 4).xy * ldexp(uPy4, -4.0);
+    oFlow += filter2D(s_cflow, input.uv, 5).xy * ldexp(uPy5, -3.0);
+    oFlow += filter2D(s_cflow, input.uv, 6).xy * ldexp(uPy6, -2.0);
+    oFlow += filter2D(s_cflow, input.uv, 7).xy * ldexp(uPy7, -1.0);
+    oFlow += filter2D(s_cflow, input.uv, 8).xy * ldexp(uPy8, -0.0);
 
     const float kWeights = 1.0 / 8.0;
     float4 oBlur = 0.0;
