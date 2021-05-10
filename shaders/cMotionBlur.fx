@@ -208,7 +208,7 @@ ps2mrt1 ps_flow(v2f input)
     float oFlow = sqrt(dot(cFlow, cFlow) + 1e-5);
     float nFlow = max(oFlow - uThreshold, 0.0);
     cFlow *= nFlow / oFlow;
-    cFlow = lerp(pFlow, cFlow, 0.5);
+    cFlow = lerp(pFlow, cFlow, uInterpolation);
 
     output.render0 = cFlow.xyxy;
     output.render1 = tex2Dlod(s_filter, float4(input.uv, 0.0, LOG2(DSIZE(2))));
