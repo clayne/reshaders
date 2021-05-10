@@ -1,6 +1,8 @@
 
 /*
     Optical flow motion blur using color by Brimson
+    Special Thanks to MartinBFFan and Pao for pointing out DX11 issue
+    And BSD for bug propaganda and helping to solve my issue
 
     [1] ps_source
     - Calculate brightness using max3()
@@ -42,7 +44,6 @@ uOption(uForce,     float, "Flow Basic", "Force",     8.000);
 
 uOption(uPrefilter,     int,   "Flow Advanced", "Prefilter LOD Bias", 1);
 uOption(uInterpolation, float, "Flow Advanced", "Temporal Sharpness", 0.750);
-uOption(uPower,         float, "Flow Advanced", "Flow Power",         1.000);
 
 uOption(uPy0, float, "Flow Pyramid Weights", "Fine",    1.000);
 uOption(uPy1, float, "Flow Pyramid Weights", "Level 2", 1.000);
@@ -79,27 +80,24 @@ uOption(uLowClamp,  float, "Automatic Exposure", "Low Clamp", 0.001);
 #define RMAX(x, y) x ^ ((x ^ y) & -(x < y)) // max(x, y)
 #define DSIZE(x)   1 << LOG2(RMAX(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2))
 #define RSIZE      Width = BUFFER_WIDTH / 2; Height = BUFFER_HEIGHT / 2
-#define RINIT      Width = 256; Height = 256; MipLevels = 9 // get nearest power of 2 size
 
 texture2D r_color  : COLOR;
-texture2D r_buffer { RSIZE; Format = R8; MipLevels = LOG2(DSIZE(2)) + 1; };
-texture2D r_filter { RINIT; Format = R8; };
-texture2D r_cframe { RINIT; Format = R8; };
-texture2D r_pframe { RINIT; Format = R8; };
-texture2D r_cflow  { RINIT; Format = RG16F; };
-texture2D r_pflow  { RINIT; Format = RG16F; };
-texture2D r_pluma  { RINIT; Format = R8; };
+texture2D r_buffer { RSIZE; MipLevels = LOG2(DSIZE(2)) + 1; Format = R8; };
+texture2D r_filter { Width = 256; Height = 256; MipLevels = 9; Format = R8; };
+texture2D r_pframe { Width = 256; Height = 256; MipLevels = 9; Format = R8; };
+texture2D r_cframe { Width = 256; Height = 256; MipLevels = 9; Format = R8; };
+texture2D r_cflow  { Width = 256; Height = 256; MipLevels = 9; Format = RG16F; };
+texture2D r_pflow  { Width = 256; Height = 256; MipLevels = 9; Format = RG16F; };
+texture2D r_pluma  { Width = 256; Height = 256; MipLevels = 9; Format = R8; };
 
-#define SFILT(x) MinFilter = x; MagFilter = x; MipFilter = x
-sampler2D s_color  { Texture = r_color;  SFILT(LINEAR); SRGBTexture = TRUE; };
-sampler2D s_buffer { Texture = r_buffer; SFILT(LINEAR); };
-sampler2D s_filter { Texture = r_filter; SFILT(LINEAR); };
-sampler2D s_cframe { Texture = r_cframe; SFILT(LINEAR); };
-sampler2D s_pframe { Texture = r_pframe; SFILT(LINEAR); };
-sampler2D s_cflow  { Texture = r_cflow;  SFILT(LINEAR); };
-sampler2D s_pflow  { Texture = r_pflow;  SFILT(LINEAR); };
-sampler2D s_pluma  { Texture = r_pluma;  SFILT(LINEAR); };
-
+sampler2D s_color  { Texture = r_color; SRGBTexture = TRUE; };
+sampler2D s_buffer { Texture = r_buffer; };
+sampler2D s_filter { Texture = r_filter; };
+sampler2D s_pframe { Texture = r_pframe; };
+sampler2D s_cframe { Texture = r_cframe; };
+sampler2D s_cflow  { Texture = r_cflow; };
+sampler2D s_pflow  { Texture = r_pflow; };
+sampler2D s_pluma  { Texture = r_pluma; };
 /* [ Vertex Shaders ] */
 
 struct v2f
@@ -127,17 +125,17 @@ float4 ps_source(v2f input) : SV_Target
 
 struct ps2mrt0
 {
-    float4 target0 : SV_TARGET0;
-    float4 target1 : SV_TARGET1;
-    float4 target2 : SV_TARGET2;
+    float4 render0 : SV_TARGET0;
+    float4 render1 : SV_TARGET1;
+    float4 render2 : SV_TARGET2;
 };
 
 ps2mrt0 ps_convert(v2f input)
 {
     ps2mrt0 output;
-    output.target0 = tex2D(s_buffer, input.uv); // Store unfiltered frame
-    output.target1 = tex2D(s_cframe, input.uv); // Store previous frame
-    output.target2 = tex2D(s_cflow,  input.uv); // Store previous flow
+    output.render0 = tex2D(s_buffer, input.uv);
+    output.render1 = tex2D(s_cframe, input.uv);
+    output.render2 = tex2D(s_cflow,  input.uv);
     return output;
 }
 
@@ -169,9 +167,6 @@ float4 ps_filter(v2f input) : SV_Target
 
     ps_flow()'s ddx/ddy port of optical flow from PixelFlow
     [https://github.com/diwi/PixelFlow] [MIT]
-
-    Threshold extension from ofxFlowTools
-    [https://github.com/moostrik/ofxFlowTools] [MIT]
 */
 
 float4 filter2D(sampler2D src, float2 uv, int lod)
@@ -181,21 +176,21 @@ float4 filter2D(sampler2D src, float2 uv, int lod)
     float2 i = floor(p);
     float2 f = frac(p);
     p = i + f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
-    p = (p - 0.5) / max(size, 1e-5);
+    p = (p - 0.5) / size;
     return tex2Dlod(src, float4(p, 0.0, lod));
 }
 
 struct ps2mrt1
 {
-    float4 target0 : SV_TARGET0;
-    float4 target1 : SV_TARGET1;
+    float4 render0 : SV_TARGET0;
+    float4 render1 : SV_TARGET1;
 };
 
 ps2mrt1 ps_flow(v2f input)
 {
     ps2mrt1 output;
 
-    // Calculate distance (dt) and temporal derivative (df)
+    // Calculate distance
     float cLuma = filter2D(s_cframe, input.uv, uPrefilter).r;
     float pLuma = filter2D(s_pframe, input.uv, uPrefilter).r;
     float cFrameTime = uTargetFPS / (1e+3 / uFrameTime);
@@ -205,19 +200,18 @@ ps2mrt1 ps_flow(v2f input)
     float3 d;
     d.x = ddx(cLuma) + ddx(pLuma);
     d.y = ddy(cLuma) + ddy(pLuma);
-    d.z = rsqrt(dot(d.xy, d.xy) + 1.0);
-    float2 cFlow = dt * (d.xy * d.zz);
-    cFlow *= uForce;
+    d.z = rsqrt(dot(d.xy, d.xy) + cFrameTime);
+    float2 cFlow = uForce * dt * (d.xy * d.zz);
 
-    float cMag = length(cFlow);
-    cMag = max(cMag, uThreshold);
-    cMag = (cMag - uThreshold) / (1.0 - uThreshold);
-    cMag = saturate(pow(abs(cMag), uPower) + 1e-5);
-    cFlow = normalize(cFlow) * cMag;
+    // Threshold
+    float pFlow = tex2D(s_pflow, input.uv).r;
+    float oFlow = sqrt(dot(cFlow, cFlow) + 1e-5);
+    float nFlow = max(oFlow - uThreshold, 0.0);
+    cFlow *= nFlow / oFlow;
+    cFlow = lerp(pFlow, cFlow, 0.5);
 
-    float2 pFlow = tex2D(s_pflow, input.uv).rg;
-    output.target0 = lerp(pFlow, cFlow, uInterpolation).xyxy;
-    output.target1 = tex2Dlod(s_filter, float4(input.uv, 0.0, LOG2(DSIZE(2)))).r;
+    output.render0 = cFlow.xyxy;
+    output.render1 = tex2Dlod(s_filter, float4(input.uv, 0.0, LOG2(DSIZE(2))));
     return output;
 }
 
@@ -232,9 +226,9 @@ ps2mrt1 ps_flow(v2f input)
 float4 flow2D(v2f input, float2 flow, float i)
 {
     const float3 value = float3(52.9829189, 0.06711056, 0.00583715);
-    const float samples = 1.0 / (16.0 - 1.0);
-
     float noise = frac(value.x * frac(dot(input.vpos.xy, value.yz)));
+
+    const float samples = 1.0 / (16.0 - 1.0);
     float2 calc = (noise * 2.0 + i) * samples - 0.5;
     return tex2D(s_color, flow * calc + input.uv);
 }
@@ -248,15 +242,15 @@ float4 ps_output(v2f input) : SV_Target
     */
 
     float2 oFlow = 0.0;
-    oFlow += filter2D(s_cflow, input.uv, 0).xy * ldexp(uPy0, -8.0);
-    oFlow += filter2D(s_cflow, input.uv, 1).xy * ldexp(uPy1, -7.0);
-    oFlow += filter2D(s_cflow, input.uv, 2).xy * ldexp(uPy2, -6.0);
-    oFlow += filter2D(s_cflow, input.uv, 3).xy * ldexp(uPy3, -5.0);
-    oFlow += filter2D(s_cflow, input.uv, 4).xy * ldexp(uPy4, -4.0);
-    oFlow += filter2D(s_cflow, input.uv, 5).xy * ldexp(uPy5, -3.0);
-    oFlow += filter2D(s_cflow, input.uv, 6).xy * ldexp(uPy6, -2.0);
-    oFlow += filter2D(s_cflow, input.uv, 7).xy * ldexp(uPy7, -1.0);
-    oFlow += filter2D(s_cflow, input.uv, 8).xy * ldexp(uPy8, -0.0);
+    oFlow += filter2D(s_cflow, input.uv, 0.0).xy * ldexp(uPy0, -8.0);
+    oFlow += filter2D(s_cflow, input.uv, 1.0).xy * ldexp(uPy1, -7.0);
+    oFlow += filter2D(s_cflow, input.uv, 2.0).xy * ldexp(uPy2, -6.0);
+    oFlow += filter2D(s_cflow, input.uv, 3.0).xy * ldexp(uPy3, -5.0);
+    oFlow += filter2D(s_cflow, input.uv, 4.0).xy * ldexp(uPy4, -4.0);
+    oFlow += filter2D(s_cflow, input.uv, 5.0).xy * ldexp(uPy5, -3.0);
+    oFlow += filter2D(s_cflow, input.uv, 6.0).xy * ldexp(uPy6, -2.0);
+    oFlow += filter2D(s_cflow, input.uv, 7.0).xy * ldexp(uPy7, -1.0);
+    oFlow += filter2D(s_cflow, input.uv, 8.0).xy * ldexp(uPy8, -1.0);
 
     const float kWeights = 1.0 / 8.0;
     float4 oBlur = 0.0;

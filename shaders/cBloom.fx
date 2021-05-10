@@ -204,22 +204,22 @@ float4 ps_downsample0(v2fd input): SV_TARGET
     return s;
 }
 
-float4 ps_downsample1(v2fd input) : SV_Target { return downsample2Dps(s_bloom1, input); }
-float4 ps_downsample2(v2fd input) : SV_Target { return downsample2Dps(s_bloom2, input); }
-float4 ps_downsample3(v2fd input) : SV_Target { return downsample2Dps(s_bloom3, input); }
-float4 ps_downsample4(v2fd input) : SV_Target { return downsample2Dps(s_bloom4, input); }
-float4 ps_downsample5(v2fd input) : SV_Target { return downsample2Dps(s_bloom5, input); }
-float4 ps_downsample6(v2fd input) : SV_Target { return downsample2Dps(s_bloom6, input); }
-float4 ps_downsample7(v2fd input) : SV_Target { return downsample2Dps(s_bloom7, input); }
+float4 ps_downsample1(v2fd input, uint id : SV_VertexID) : SV_Target { return downsample2Dps(s_bloom1, input); }
+float4 ps_downsample2(v2fd input, uint id : SV_VertexID) : SV_Target { return downsample2Dps(s_bloom2, input); }
+float4 ps_downsample3(v2fd input, uint id : SV_VertexID) : SV_Target { return downsample2Dps(s_bloom3, input); }
+float4 ps_downsample4(v2fd input, uint id : SV_VertexID) : SV_Target { return downsample2Dps(s_bloom4, input); }
+float4 ps_downsample5(v2fd input, uint id : SV_VertexID) : SV_Target { return downsample2Dps(s_bloom5, input); }
+float4 ps_downsample6(v2fd input, uint id : SV_VertexID) : SV_Target { return downsample2Dps(s_bloom6, input); }
+float4 ps_downsample7(v2fd input, uint id : SV_VertexID) : SV_Target { return downsample2Dps(s_bloom7, input); }
 
-float4 ps_upsample8(v2fu input) : SV_Target { return upsample2Dps(s_bloom8, input); }
-float4 ps_upsample7(v2fu input) : SV_Target { return upsample2Dps(s_bloom7, input); }
-float4 ps_upsample6(v2fu input) : SV_Target { return upsample2Dps(s_bloom6, input); }
-float4 ps_upsample5(v2fu input) : SV_Target { return upsample2Dps(s_bloom5, input); }
-float4 ps_upsample4(v2fu input) : SV_Target { return upsample2Dps(s_bloom4, input); }
-float4 ps_upsample3(v2fu input) : SV_Target { return upsample2Dps(s_bloom3, input); }
-float4 ps_upsample2(v2fu input) : SV_Target { return upsample2Dps(s_bloom2, input); }
-float4 ps_upsample1(v2fu input) : SV_Target
+float4 ps_upsample8(v2fu input, uint id : SV_VertexID) : SV_Target { return upsample2Dps(s_bloom8, input); }
+float4 ps_upsample7(v2fu input, uint id : SV_VertexID) : SV_Target { return upsample2Dps(s_bloom7, input); }
+float4 ps_upsample6(v2fu input, uint id : SV_VertexID) : SV_Target { return upsample2Dps(s_bloom6, input); }
+float4 ps_upsample5(v2fu input, uint id : SV_VertexID) : SV_Target { return upsample2Dps(s_bloom5, input); }
+float4 ps_upsample4(v2fu input, uint id : SV_VertexID) : SV_Target { return upsample2Dps(s_bloom4, input); }
+float4 ps_upsample3(v2fu input, uint id : SV_VertexID) : SV_Target { return upsample2Dps(s_bloom3, input); }
+float4 ps_upsample2(v2fu input, uint id : SV_VertexID) : SV_Target { return upsample2Dps(s_bloom2, input); }
+float4 ps_upsample1(v2fu input, uint id : SV_VertexID) : SV_Target
 {
     // Interleaved Gradient Noise from
     // http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare
