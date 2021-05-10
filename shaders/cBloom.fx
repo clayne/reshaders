@@ -28,7 +28,7 @@ uniform float kSaturation <
     ui_type = "drag";
     ui_min = 0.0;
     ui_label = "Saturation";
-> = 2.0;
+> = 1.5;
 
 texture2D r_color : COLOR;
 texture2D r_bloom1 { Width = BUFFER_WIDTH / 2;   Height = BUFFER_HEIGHT / 2;   Format = RGBA16F; };
@@ -189,37 +189,33 @@ float4 ps_downsample0(v2fd input): SV_TARGET
     const float3 curve = float3(kThreshold - knee, knee * 2.0, 0.25 / knee);
     float4 s = downsample2Dps(s_color, input);
 
-    // Pixel brightness
+    // Under-threshold
     s.a = max(s.r, max(s.g, s.b));
-
-    // Under-threshold part
     float rq = clamp(s.a - curve.x, 0.0, curve.y);
     rq = curve.z * rq * rq;
 
     // Combine and apply the brightness response curve
-    s.rgb *= max(rq, s.a - kThreshold) / max(s.a, 1e-4);
-    s.a = dot(s.rgb, rcp(3.0));
-    s.rgb = saturate(lerp(s.a, s.rgb, kSaturation)).rgb;
-    s.a = 1.0;
+	s *= max(rq, s.a - kThreshold) / max(s.a, 1e-4);
+	s = saturate(lerp(s.a, s, kSaturation));
     return s;
 }
 
-float4 ps_downsample1(v2fd input, uint id : SV_VertexID) : SV_Target { return downsample2Dps(s_bloom1, input); }
-float4 ps_downsample2(v2fd input, uint id : SV_VertexID) : SV_Target { return downsample2Dps(s_bloom2, input); }
-float4 ps_downsample3(v2fd input, uint id : SV_VertexID) : SV_Target { return downsample2Dps(s_bloom3, input); }
-float4 ps_downsample4(v2fd input, uint id : SV_VertexID) : SV_Target { return downsample2Dps(s_bloom4, input); }
-float4 ps_downsample5(v2fd input, uint id : SV_VertexID) : SV_Target { return downsample2Dps(s_bloom5, input); }
-float4 ps_downsample6(v2fd input, uint id : SV_VertexID) : SV_Target { return downsample2Dps(s_bloom6, input); }
-float4 ps_downsample7(v2fd input, uint id : SV_VertexID) : SV_Target { return downsample2Dps(s_bloom7, input); }
+float4 ps_downsample1(v2fd input) : SV_Target { return downsample2Dps(s_bloom1, input); }
+float4 ps_downsample2(v2fd input) : SV_Target { return downsample2Dps(s_bloom2, input); }
+float4 ps_downsample3(v2fd input) : SV_Target { return downsample2Dps(s_bloom3, input); }
+float4 ps_downsample4(v2fd input) : SV_Target { return downsample2Dps(s_bloom4, input); }
+float4 ps_downsample5(v2fd input) : SV_Target { return downsample2Dps(s_bloom5, input); }
+float4 ps_downsample6(v2fd input) : SV_Target { return downsample2Dps(s_bloom6, input); }
+float4 ps_downsample7(v2fd input) : SV_Target { return downsample2Dps(s_bloom7, input); }
 
-float4 ps_upsample8(v2fu input, uint id : SV_VertexID) : SV_Target { return upsample2Dps(s_bloom8, input); }
-float4 ps_upsample7(v2fu input, uint id : SV_VertexID) : SV_Target { return upsample2Dps(s_bloom7, input); }
-float4 ps_upsample6(v2fu input, uint id : SV_VertexID) : SV_Target { return upsample2Dps(s_bloom6, input); }
-float4 ps_upsample5(v2fu input, uint id : SV_VertexID) : SV_Target { return upsample2Dps(s_bloom5, input); }
-float4 ps_upsample4(v2fu input, uint id : SV_VertexID) : SV_Target { return upsample2Dps(s_bloom4, input); }
-float4 ps_upsample3(v2fu input, uint id : SV_VertexID) : SV_Target { return upsample2Dps(s_bloom3, input); }
-float4 ps_upsample2(v2fu input, uint id : SV_VertexID) : SV_Target { return upsample2Dps(s_bloom2, input); }
-float4 ps_upsample1(v2fu input, uint id : SV_VertexID) : SV_Target
+float4 ps_upsample8(v2fu input) : SV_Target { return upsample2Dps(s_bloom8, input); }
+float4 ps_upsample7(v2fu input) : SV_Target { return upsample2Dps(s_bloom7, input); }
+float4 ps_upsample6(v2fu input) : SV_Target { return upsample2Dps(s_bloom6, input); }
+float4 ps_upsample5(v2fu input) : SV_Target { return upsample2Dps(s_bloom5, input); }
+float4 ps_upsample4(v2fu input) : SV_Target { return upsample2Dps(s_bloom4, input); }
+float4 ps_upsample3(v2fu input) : SV_Target { return upsample2Dps(s_bloom3, input); }
+float4 ps_upsample2(v2fu input) : SV_Target { return upsample2Dps(s_bloom2, input); }
+float4 ps_upsample1(v2fu input) : SV_Target
 {
     // Interleaved Gradient Noise from
     // http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare
