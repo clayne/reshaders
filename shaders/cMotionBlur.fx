@@ -98,6 +98,7 @@ sampler2D s_cframe { Texture = r_cframe; };
 sampler2D s_cflow  { Texture = r_cflow; };
 sampler2D s_pflow  { Texture = r_pflow; };
 sampler2D s_pluma  { Texture = r_pluma; };
+
 /* [ Vertex Shaders ] */
 
 struct v2f
