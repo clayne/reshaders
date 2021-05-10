@@ -1,7 +1,7 @@
 
 /*
     Optical flow motion blur using color by Brimson
-    Special Thanks to MartinBFFan and Pao for pointing out DX11 issue
+    Special Thanks to MartinBFFan and Pao on Discord for reporting bugs
     And BSD for bug propaganda and helping to solve my issue
 
     [1] ps_source
