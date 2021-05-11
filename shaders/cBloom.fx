@@ -1,34 +1,39 @@
 /*
-    Custom version of Unity's bloom. From Unity Graphics
-    [https://github.com/Unity-Technologies/Graphics]
+	Sources
 
-    Copyright © 2020 Unity Technologies ApS
+	1st pass quadratic color thresholding
+	[https://github.com/keijiro/KinoBloom]
 
-    Licensed under the Unity Companion License for Unity-dependent projecpsize
-    -- see https://unity3d.com/legal/licenses/Unity_Companion_License
+    ACES Filmic Tone Mapping Curve
+    [https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/]
 
-    Unless expressly provided otherwise, the Software under this license
-    is made available strictly on an “AS IS” BASIS WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED.
-    Please review the license for details on these and other terms and conditions.
+    Interleaved Gradient Noise
+    [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
 */
 
-uniform float kThreshold <
+uniform float uThreshold <
     ui_type = "drag";
     ui_min = 0.0;
     ui_label = "Threshold";
 > = 0.8;
 
-uniform float kSmooth <
+uniform float uSmoothing <
     ui_type = "drag";
     ui_min = 0.0;
     ui_label = "Smoothing";
 > = 0.5;
 
-uniform float kSaturation <
+uniform float uSaturation <
     ui_type = "drag";
     ui_min = 0.0;
     ui_label = "Saturation";
 > = 1.5;
+
+uniform float uIntensity <
+    ui_type = "drag";
+    ui_min = 0.0;
+    ui_label = "Intensity";
+> = 1.0;
 
 texture2D r_color : COLOR;
 texture2D r_bloom1 { Width = BUFFER_WIDTH / 2;   Height = BUFFER_HEIGHT / 2;   Format = RGBA16F; };
@@ -63,14 +68,13 @@ struct v2fd
 {
     float4 vpos   : SV_Position;
     float2 uv0    : TEXCOORD0;
-    float4 uv1[6] : TEXCOORD1;
+    float4 uv1[2] : TEXCOORD1;
 };
 
 struct v2fu
 {
     float4 vpos   : SV_Position;
-    float2 uv0    : TEXCOORD0;
-    float4 uv1[4] : TEXCOORD1;
+    float4 uv0[4] : TEXCOORD0;
 };
 
 static const float2 uSize = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
@@ -83,20 +87,16 @@ v2fd downsample2Dvs(const uint id, float uFact)
     coord.y = (id == 1) ? 2.0 : 0.0;
     output.vpos = float4(coord.xy * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 
-    const float2 psize = ldexp(uSize, uFact);
-    output.uv1[0].xy = coord + psize * float2(-2.0, -2.0);
-    output.uv1[0].zw = coord + psize * float2( 0.0, -2.0);
-    output.uv1[1].xy = coord + psize * float2( 2.0, -2.0);
-    output.uv1[1].zw = coord + psize * float2(-1.0, -1.0);
-    output.uv1[2].xy = coord + psize * float2( 1.0, -1.0);
-    output.uv1[2].zw = coord + psize * float2(-2.0,  0.0);
+    const float2 psize = uSize * exp2(uFact);
+    const float2 hsize = psize / 2.0f;
+    const float2 offst = psize + hsize;
+    const float4 oset[2] = { float4(-offst.x, -offst.y,  offst.x, offst.y),
+							 float4( offst.x, -offst.y, -offst.x, offst.y) };
     output.uv0 = coord;
-    output.uv1[3].xy = coord + psize * float2( 2.0,  0.0);
-    output.uv1[3].zw = coord + psize * float2(-1.0,  1.0);
-    output.uv1[4].xy = coord + psize * float2( 1.0,  1.0);
-    output.uv1[4].zw = coord + psize * float2(-2.0,  2.0);
-    output.uv1[5].xy = coord + psize * float2( 0.0,  2.0);
-    output.uv1[5].zw = coord + psize * float2( 2.0,  2.0);
+    output.uv1[0].xy = coord + oset[0].xy;
+    output.uv1[0].zw = coord + oset[0].zw;
+    output.uv1[1].xy = coord + oset[1].xy;
+    output.uv1[1].zw = coord + oset[1].zw;
     return output;
 }
 
@@ -109,15 +109,20 @@ v2fu upsample2Dvs(const uint id, float uFact)
     output.vpos = float4(coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 
     const float2 psize = ldexp(uSize, uFact);
-    output.uv1[0].xy = coord + psize * float2(-1.0, -1.0);
-    output.uv1[0].zw = coord + psize * float2( 0.0, -1.0);
-    output.uv1[1].xy = coord + psize * float2( 1.0, -1.0);
-    output.uv1[1].zw = coord + psize * float2(-1.0,  0.0);
-    output.uv0 = coord;
-    output.uv1[2].xy = coord + psize * float2( 1.0,  0.0);
-    output.uv1[2].zw = coord + psize * float2(-1.0,  1.0);
-    output.uv1[3].xy = coord + psize * float2( 0.0,  1.0);
-    output.uv1[3].zw = coord + psize * float2( 1.0,  1.0);
+    const float2 hsize = psize / 2.0f;
+    const float2 offst = psize + hsize;
+    const float4 oset[4] = { float4(-offst.x * 2.0, 0.0, -offst.x,  offst.y),
+						     float4(0.0,  offst.y * 2.0,  offst.x,  offst.y),
+						     float4( offst.x * 2.0, 0.0,  offst.x, -offst.y),
+						     float4(0.0, -offst.y * 2.0, -offst.x, -offst.y) };
+    output.uv0[0].xy = coord + oset[0].xy;
+    output.uv0[0].zw = coord + oset[0].zw;
+    output.uv0[1].xy = coord + oset[1].xy;
+    output.uv0[1].zw = coord + oset[1].zw;
+    output.uv0[2].xy = coord + oset[2].xy;
+    output.uv0[2].zw = coord + oset[2].zw;
+    output.uv0[3].xy = coord + oset[3].xy;
+    output.uv0[3].zw = coord + oset[3].zw;
     return output;
 }
 
@@ -143,60 +148,43 @@ v2fu vs_upsample1(uint id : SV_VertexID) { return upsample2Dvs(id, 0.0); }
 
 float4 downsample2Dps(sampler2D src, v2fd input)
 {
-    float4 a = tex2D(src, input.uv1[0].xy);
-    float4 b = tex2D(src, input.uv1[0].zw);
-    float4 c = tex2D(src, input.uv1[1].xy);
-    float4 d = tex2D(src, input.uv1[1].zw);
-    float4 e = tex2D(src, input.uv1[2].xy);
-    float4 f = tex2D(src, input.uv1[2].zw);
-    float4 g = tex2D(src, input.uv0);
-    float4 h = tex2D(src, input.uv1[3].xy);
-    float4 i = tex2D(src, input.uv1[3].zw);
-    float4 j = tex2D(src, input.uv1[4].xy);
-    float4 k = tex2D(src, input.uv1[4].zw);
-    float4 l = tex2D(src, input.uv1[5].xy);
-    float4 m = tex2D(src, input.uv1[5].zw);
-
-    const float2 odiv = (1.0 / 4.0) * float2(0.5, 0.125);
-    float4 output = (d + e + i + j) * odiv.x;
-    output += (a + b + g + f) * odiv.y;
-    output += (b + c + h + g) * odiv.y;
-    output += (f + g + l + k) * odiv.y;
-    output += (g + h + m + l) * odiv.y;
-    return output;
+    float4 output;
+    output += tex2D(src, input.uv0) * 4.0;
+    output += tex2D(src, input.uv1[0].xy);
+    output += tex2D(src, input.uv1[0].zw);
+    output += tex2D(src, input.uv1[1].xy);
+    output += tex2D(src, input.uv1[1].zw);
+    return output * 0.125;
 }
 
 float4 upsample2Dps(sampler2D src, v2fu input)
 {
-    float4 s;
-    s += tex2D(src, input.uv1[0].xy);
-    s += tex2D(src, input.uv1[0].zw) * 2.0;
-    s += tex2D(src, input.uv1[1].xy);
-    s += tex2D(src, input.uv1[1].zw) * 2.0;
-    s += tex2D(src, input.uv0) * 4.0;
-    s += tex2D(src, input.uv1[2].xy) * 2.0;
-    s += tex2D(src, input.uv1[2].zw);
-    s += tex2D(src, input.uv1[3].xy) * 2.0;
-    s += tex2D(src, input.uv1[3].zw);
-    return s * (1.0 / 16.0);
+    float4 output;
+    output += tex2D(src, input.uv0[0].xy);
+    output += tex2D(src, input.uv0[0].zw) * 2.0;
+    output += tex2D(src, input.uv0[1].xy);
+    output += tex2D(src, input.uv0[1].zw) * 2.0;
+    output += tex2D(src, input.uv0[2].xy);
+    output += tex2D(src, input.uv0[2].zw) * 2.0;
+    output += tex2D(src, input.uv0[3].xy);
+    output += tex2D(src, input.uv0[3].zw) * 2.0;
+    return output * (1.0 / 12.0);
 }
-
-// Quadratic color thresholding
 
 float4 ps_downsample0(v2fd input): SV_TARGET
 {
-    const float  knee = mad(kThreshold, kSmooth, 1e-5f);
-    const float3 curve = float3(kThreshold - knee, knee * 2.0, 0.25 / knee);
+    const float  knee = mad(uThreshold, uSmoothing, 1e-5f);
+    const float3 curve = float3(uThreshold - knee, knee * 2.0, 0.25 / knee);
     float4 s = downsample2Dps(s_color, input);
 
     // Under-threshold
     s.a = max(s.r, max(s.g, s.b));
+	s = saturate(lerp(s.a, s, uSaturation));
     float rq = clamp(s.a - curve.x, 0.0, curve.y);
     rq = curve.z * rq * rq;
 
     // Combine and apply the brightness response curve
-	s *= max(rq, s.a - kThreshold) / max(s.a, 1e-4);
-	s = saturate(lerp(s.a, s, kSaturation));
+	s *= max(rq, s.a - uThreshold) / max(s.a, 1e-4);
     return s;
 }
 
@@ -217,14 +205,9 @@ float4 ps_upsample3(v2fu input) : SV_Target { return upsample2Dps(s_bloom3, inpu
 float4 ps_upsample2(v2fu input) : SV_Target { return upsample2Dps(s_bloom2, input); }
 float4 ps_upsample1(v2fu input) : SV_Target
 {
-    // Interleaved Gradient Noise from
-    // http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare
     const float4 n = float4(0.06711056, 0.00583715, 52.9829189, 0.5 / 255);
     float f = frac(n.z * frac(dot(input.vpos.xy, n.xy))) * n.w;
-
-    // ACES Filmic Tone Mapping Curve from
-    // https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/
-    float4 o = upsample2Dps(s_bloom1, input);
+    float4 o = upsample2Dps(s_bloom1, input) * uIntensity;
     o = saturate(o * mad(2.51, o, 0.03) / mad(o, mad(2.43, o, 0.59), 0.14));
     return o + f;
 }
