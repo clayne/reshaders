@@ -5,7 +5,7 @@ uniform float uThreshold <
     ui_label = "Threshold";
 > = 0.8;
 
-uniform float uSmoothing <
+uniform float uSmooth <
     ui_type = "drag";
     ui_min = 0.0;
     ui_label = "Smoothing";
@@ -55,6 +55,9 @@ sampler2D s_bloom8 { Texture = r_bloom8; };
 
     Dual Filtering Algorithm
     [https://github.com/powervr-graphics/Native_SDK] [MIT]
+
+    Gaussian upsample
+    [https://github.com/CeeJayDK/SweetFX] [MIT]
 */
 
 struct v2fd
@@ -67,7 +70,8 @@ struct v2fd
 struct v2fu
 {
     float4 vpos   : SV_Position;
-    float4 uv0[4] : TEXCOORD0;
+    float2 uv0    : TEXCOORD0;
+    float4 uv1[2] : TEXCOORD1;
 };
 
 static const float2 uSize = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
@@ -101,21 +105,16 @@ v2fu upsample2Dvs(const uint id, float uFact)
     coord.y = (id == 1) ? 2.0 : 0.0;
     output.vpos = float4(coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 
-    const float2 psize = ldexp(uSize, uFact);
+    const float2 psize = uSize * exp2(uFact);
     const float2 hsize = psize / 2.0f;
     const float2 offst = psize + hsize;
-    const float4 oset[4] = { float4(-offst.x * 2.0, 0.0, -offst.x,  offst.y),
-                             float4(0.0,  offst.y * 2.0,  offst.x,  offst.y),
-                             float4( offst.x * 2.0, 0.0,  offst.x, -offst.y),
-                             float4(0.0, -offst.y * 2.0, -offst.x, -offst.y) };
-    output.uv0[0].xy = coord + oset[0].xy;
-    output.uv0[0].zw = coord + oset[0].zw;
-    output.uv0[1].xy = coord + oset[1].xy;
-    output.uv0[1].zw = coord + oset[1].zw;
-    output.uv0[2].xy = coord + oset[2].xy;
-    output.uv0[2].zw = coord + oset[2].zw;
-    output.uv0[3].xy = coord + oset[3].xy;
-    output.uv0[3].zw = coord + oset[3].zw;
+    const float4 oset[2] = { float4(offst.x, -offst.y, -offst.x, -offst.y),
+                             float4(offst.x,  offst.y, -offst.x,  offst.y) };
+    output.uv0 = coord;
+    output.uv1[0].xy = coord + oset[0].xy;
+    output.uv1[0].zw = coord + oset[0].zw;
+    output.uv1[1].xy = coord + oset[1].xy;
+    output.uv1[1].zw = coord + oset[1].zw;
     return output;
 }
 
@@ -164,31 +163,28 @@ float4 downsample2Dps(sampler2D src, v2fd input)
 float4 upsample2Dps(sampler2D src, v2fu input)
 {
     float4 output;
-    output += tex2D(src, input.uv0[0].xy);
-    output += tex2D(src, input.uv0[0].zw) * 2.0;
-    output += tex2D(src, input.uv0[1].xy);
-    output += tex2D(src, input.uv0[1].zw) * 2.0;
-    output += tex2D(src, input.uv0[2].xy);
-    output += tex2D(src, input.uv0[2].zw) * 2.0;
-    output += tex2D(src, input.uv0[3].xy);
-    output += tex2D(src, input.uv0[3].zw) * 2.0;
-    return output * (1.0 / 12.0);
+    output += tex2D(src, input.uv0);
+    output += tex2D(src, input.uv1[0].xy);
+    output += tex2D(src, input.uv1[0].zw);
+    output += tex2D(src, input.uv1[1].xy);
+    output += tex2D(src, input.uv1[1].zw);
+    return output * (1.0 / 5.0);
 }
 
 float4 ps_downsample0(v2fd input): SV_TARGET
 {
-    const float  knee = mad(uThreshold, uSmoothing, 1e-5f);
+    const float  knee = mad(uThreshold, uSmooth, 1e-5f);
     const float3 curve = float3(uThreshold - knee, knee * 2.0, 0.25 / knee);
     float4 s = downsample2Dps(s_color, input);
 
     // Under-threshold
     s.a = max(s.r, max(s.g, s.b));
-    s = saturate(lerp(s.a, s, uSaturation));
     float rq = clamp(s.a - curve.x, 0.0, curve.y);
     rq = curve.z * rq * rq;
 
     // Combine and apply the brightness response curve
     s *= max(rq, s.a - uThreshold) / max(s.a, 1e-4);
+    s = saturate(lerp(s.a, s, uSaturation));
     return s;
 }
 
