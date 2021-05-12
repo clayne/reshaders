@@ -1,18 +1,3 @@
-/*
-	Sources
-
-    Dual Filtering Algorithm
-    [https://github.com/powervr-graphics/Native_SDK] [MIT]
-
-	1st pass quadratic color thresholding
-	[https://github.com/keijiro/KinoBloom] [MIT]
-
-    ACES Filmic Tone Mapping Curve
-    [https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/]
-
-    Interleaved Gradient Noise
-    [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
-*/
 
 uniform float uThreshold <
     ui_type = "drag";
@@ -65,7 +50,12 @@ sampler2D s_bloom6 { Texture = r_bloom6; };
 sampler2D s_bloom7 { Texture = r_bloom7; };
 sampler2D s_bloom8 { Texture = r_bloom8; };
 
-/* [ Vertex Shaders ] */
+/*
+    [ Vertex Shaders ]
+
+    Dual Filtering Algorithm
+    [https://github.com/powervr-graphics/Native_SDK] [MIT]
+*/
 
 struct v2fd
 {
@@ -94,7 +84,7 @@ v2fd downsample2Dvs(const uint id, float uFact)
     const float2 hsize = psize / 2.0f;
     const float2 offst = psize + hsize;
     const float4 oset[2] = { float4(-offst.x, -offst.y,  offst.x, offst.y),
-							 float4( offst.x, -offst.y, -offst.x, offst.y) };
+                             float4( offst.x, -offst.y, -offst.x, offst.y) };
     output.uv0 = coord;
     output.uv1[0].xy = coord + oset[0].xy;
     output.uv1[0].zw = coord + oset[0].zw;
@@ -115,9 +105,9 @@ v2fu upsample2Dvs(const uint id, float uFact)
     const float2 hsize = psize / 2.0f;
     const float2 offst = psize + hsize;
     const float4 oset[4] = { float4(-offst.x * 2.0, 0.0, -offst.x,  offst.y),
-						     float4(0.0,  offst.y * 2.0,  offst.x,  offst.y),
-						     float4( offst.x * 2.0, 0.0,  offst.x, -offst.y),
-						     float4(0.0, -offst.y * 2.0, -offst.x, -offst.y) };
+                             float4(0.0,  offst.y * 2.0,  offst.x,  offst.y),
+                             float4( offst.x * 2.0, 0.0,  offst.x, -offst.y),
+                             float4(0.0, -offst.y * 2.0, -offst.x, -offst.y) };
     output.uv0[0].xy = coord + oset[0].xy;
     output.uv0[0].zw = coord + oset[0].zw;
     output.uv0[1].xy = coord + oset[1].xy;
@@ -147,7 +137,18 @@ v2fu vs_upsample3(uint id : SV_VertexID) { return upsample2Dvs(id, 2.0); }
 v2fu vs_upsample2(uint id : SV_VertexID) { return upsample2Dvs(id, 1.0); }
 v2fu vs_upsample1(uint id : SV_VertexID) { return upsample2Dvs(id, 0.0); }
 
-/* [ Pixel Shaders ] */
+/*
+    [ Pixel Shaders ]
+
+    1st pass quadratic color thresholding
+    [https://github.com/keijiro/KinoBloom] [MIT]
+
+    ACES Filmic Tone Mapping Curve
+    [https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/]
+
+    Interleaved Gradient Noise
+    [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
+*/
 
 float4 downsample2Dps(sampler2D src, v2fd input)
 {
@@ -182,12 +183,12 @@ float4 ps_downsample0(v2fd input): SV_TARGET
 
     // Under-threshold
     s.a = max(s.r, max(s.g, s.b));
-	s = saturate(lerp(s.a, s, uSaturation));
+    s = saturate(lerp(s.a, s, uSaturation));
     float rq = clamp(s.a - curve.x, 0.0, curve.y);
     rq = curve.z * rq * rq;
 
     // Combine and apply the brightness response curve
-	s *= max(rq, s.a - uThreshold) / max(s.a, 1e-4);
+    s *= max(rq, s.a - uThreshold) / max(s.a, 1e-4);
     return s;
 }
 
