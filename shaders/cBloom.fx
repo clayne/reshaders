@@ -138,22 +138,22 @@ v2fu vs_upsample1(uint id : SV_VertexID) { return upsample2Dvs(id, 0.0); }
 float4 downsample2Dps(sampler2D src, v2fd input)
 {
     float4 output;
-    output += tex2D(src, input.uv0) * 4.0;
-    output += tex2D(src, input.uv1[0].xy);
-    output += tex2D(src, input.uv1[0].zw);
-    output += tex2D(src, input.uv1[1].xy);
-    output += tex2D(src, input.uv1[1].zw);
-    return output * (1.0 / 8.0);
+    output  = tex2D(src, input.uv0) * exp2(-1.0);
+    output += tex2D(src, input.uv1[0].xy) * exp2(-3.0);
+    output += tex2D(src, input.uv1[0].zw) * exp2(-3.0);
+    output += tex2D(src, input.uv1[1].xy) * exp2(-3.0);
+    output += tex2D(src, input.uv1[1].zw) * exp2(-3.0);
+    return output;
 }
 
 float4 upsample2Dps(sampler2D src, v2fu input)
 {
     float4 output;
-    output += tex2D(src, input.uv0[0].xy);
-    output += tex2D(src, input.uv0[0].zw);
-    output += tex2D(src, input.uv0[1].xy);
-    output += tex2D(src, input.uv0[1].zw);
-    return output * (1.0 / 4.0);
+    output  = tex2D(src, input.uv0[0].xy) * exp2(-2.0);
+    output += tex2D(src, input.uv0[0].zw) * exp2(-2.0);
+    output += tex2D(src, input.uv0[1].xy) * exp2(-2.0);
+    output += tex2D(src, input.uv0[1].zw) * exp2(-2.0);
+    return output;
 }
 
 float4 ps_downsample0(v2fd input): SV_TARGET
