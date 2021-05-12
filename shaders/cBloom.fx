@@ -1,8 +1,11 @@
 /*
 	Sources
 
+    Dual Filtering Algorithm
+    [https://github.com/powervr-graphics/Native_SDK] [MIT]
+
 	1st pass quadratic color thresholding
-	[https://github.com/keijiro/KinoBloom]
+	[https://github.com/keijiro/KinoBloom] [MIT]
 
     ACES Filmic Tone Mapping Curve
     [https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/]
@@ -212,7 +215,7 @@ float4 ps_upsample1(v2fu input) : SV_Target
     return o + f;
 }
 
-/* - TECHNIQUE - */
+/* [ TECHNIQUE ] */
 
 technique cBloom
 {

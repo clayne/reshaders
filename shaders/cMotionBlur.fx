@@ -40,7 +40,7 @@ uniform float uFrameTime < source = "frametime"; >;
 uOption(uTargetFPS, float, "Specific", "Target FPS", 60.00);
 
 uOption(uThreshold, float, "Flow Basic", "Threshold", 0.040);
-uOption(uForce,     float, "Flow Basic", "Force",     8.000);
+uOption(uForce,     float, "Flow Basic", "Force",     4.000);
 
 uOption(uPrefilter,     int,   "Flow Advanced", "Prefilter LOD Bias", 1);
 uOption(uInterpolation, float, "Flow Advanced", "Temporal Sharpness", 0.750);
@@ -241,7 +241,7 @@ float4 ps_output(v2f input) : SV_Target
         Coarse mip = highest contribution
     */
 
-    float2 oFlow = 0.0;
+    float2 oFlow;
     oFlow += filter2D(s_cflow, input.uv, 0.0).xy * ldexp(uPy0, -8.0);
     oFlow += filter2D(s_cflow, input.uv, 1.0).xy * ldexp(uPy1, -7.0);
     oFlow += filter2D(s_cflow, input.uv, 2.0).xy * ldexp(uPy2, -6.0);
@@ -250,7 +250,7 @@ float4 ps_output(v2f input) : SV_Target
     oFlow += filter2D(s_cflow, input.uv, 5.0).xy * ldexp(uPy5, -3.0);
     oFlow += filter2D(s_cflow, input.uv, 6.0).xy * ldexp(uPy6, -2.0);
     oFlow += filter2D(s_cflow, input.uv, 7.0).xy * ldexp(uPy7, -1.0);
-    oFlow += filter2D(s_cflow, input.uv, 8.0).xy * ldexp(uPy8, -1.0);
+    oFlow += filter2D(s_cflow, input.uv, 8.0).xy * ldexp(uPy8, -0.0);
 
     const float kWeights = 1.0 / 8.0;
     float4 oBlur = 0.0;
