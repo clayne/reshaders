@@ -253,7 +253,7 @@ float4 ps_output(v2f input) : SV_Target
     oFlow += filter2D(s_cflow, input.uv, 8.0).xy * ldexp(uPy8, -0.0);
 
     const float kWeights = 1.0 / 8.0;
-    float4 oBlur = 0.0;
+    float4 oBlur;
     oBlur += flow2D(input, oFlow, 2.0) * kWeights;
     oBlur += flow2D(input, oFlow, 4.0) * kWeights;
     oBlur += flow2D(input, oFlow, 6.0) * kWeights;
