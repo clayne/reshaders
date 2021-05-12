@@ -158,7 +158,7 @@ float4 downsample2Dps(sampler2D src, v2fd input)
     output += tex2D(src, input.uv1[0].zw);
     output += tex2D(src, input.uv1[1].xy);
     output += tex2D(src, input.uv1[1].zw);
-    return output * 0.125;
+    return output * (1.0 / 8.0);
 }
 
 float4 upsample2Dps(sampler2D src, v2fu input)
