@@ -79,12 +79,11 @@ void common2Dvs(in uint id, in float uFact,
 
     const float2 psize = ldexp(float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT), uFact);
     const float2 hoffset = psize + (psize / 2.0f);
-    float4 offset[2] = { float4(-hoffset.x, -hoffset.y,  hoffset.x, hoffset.y),
-                         float4( hoffset.x, -hoffset.y, -hoffset.x, hoffset.y) };
-    uv[0].xy = coord + offset[0].xy;
-    uv[0].zw = coord + offset[0].zw;
-    uv[1].xy = coord + offset[1].xy;
-    uv[1].zw = coord + offset[1].zw;
+    const float4 offset = float4(-hoffset.x, -hoffset.y,  hoffset.x, hoffset.y);
+    uv[0].xy = coord + offset.xy; // --
+    uv[0].zw = coord + offset.zw; // ++
+    uv[1].xy = coord + offset.xw; // -+
+    uv[1].zw = coord + offset.zy; // +-
 }
 
 v2fd downsample2Dvs(const uint id, float uFact)
