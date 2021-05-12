@@ -55,36 +55,24 @@ sampler2D s_bloom8 { Texture = r_bloom8; };
 
     Dual Filtering Algorithm
     [https://github.com/powervr-graphics/Native_SDK] [MIT]
-
-    Gaussian upsample
-    [https://github.com/CeeJayDK/SweetFX] [MIT]
 */
 
-struct v2fd
+struct v2f
 {
     float4 vpos   : SV_Position;
     float2 uv0    : TEXCOORD0;
     float4 uv1[2] : TEXCOORD1;
 };
 
-struct v2fu
+v2f sample2Dvs(const uint id, float uFact)
 {
-    float4 vpos   : SV_Position;
-    float2 uv0    : TEXCOORD0;
-    float4 uv1[2] : TEXCOORD1;
-};
-
-static const float2 uSize = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
-
-v2fd downsample2Dvs(const uint id, float uFact)
-{
-    v2fd output;
+    v2f output;
     float2 coord;
     coord.x = (id == 2) ? 2.0 : 0.0;
     coord.y = (id == 1) ? 2.0 : 0.0;
     output.vpos = float4(coord.xy * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 
-    const float2 psize = uSize * exp2(uFact);
+    const float2 psize = ldexp(float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT), uFact);
     const float2 hsize = psize / 2.0f;
     const float2 offst = psize + hsize;
     const float4 oset[2] = { float4(-offst.x, -offst.y,  offst.x, offst.y),
@@ -97,44 +85,23 @@ v2fd downsample2Dvs(const uint id, float uFact)
     return output;
 }
 
-v2fu upsample2Dvs(const uint id, float uFact)
-{
-    v2fu output;
-    float2 coord;
-    coord.x = (id == 2) ? 2.0 : 0.0;
-    coord.y = (id == 1) ? 2.0 : 0.0;
-    output.vpos = float4(coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+v2f vs_downsample0(uint id : SV_VertexID) { return sample2Dvs(id, 1.0); }
+v2f vs_downsample1(uint id : SV_VertexID) { return sample2Dvs(id, 2.0); }
+v2f vs_downsample2(uint id : SV_VertexID) { return sample2Dvs(id, 3.0); }
+v2f vs_downsample3(uint id : SV_VertexID) { return sample2Dvs(id, 4.0); }
+v2f vs_downsample4(uint id : SV_VertexID) { return sample2Dvs(id, 5.0); }
+v2f vs_downsample5(uint id : SV_VertexID) { return sample2Dvs(id, 6.0); }
+v2f vs_downsample6(uint id : SV_VertexID) { return sample2Dvs(id, 7.0); }
+v2f vs_downsample7(uint id : SV_VertexID) { return sample2Dvs(id, 8.0); }
 
-    const float2 psize = uSize * exp2(uFact);
-    const float2 hsize = psize / 2.0f;
-    const float2 offst = psize + hsize;
-    const float4 oset[2] = { float4(offst.x, -offst.y, -offst.x, -offst.y),
-                             float4(offst.x,  offst.y, -offst.x,  offst.y) };
-    output.uv0 = coord;
-    output.uv1[0].xy = coord + oset[0].xy;
-    output.uv1[0].zw = coord + oset[0].zw;
-    output.uv1[1].xy = coord + oset[1].xy;
-    output.uv1[1].zw = coord + oset[1].zw;
-    return output;
-}
-
-v2fd vs_downsample0(uint id : SV_VertexID) { return downsample2Dvs(id, 1.0); }
-v2fd vs_downsample1(uint id : SV_VertexID) { return downsample2Dvs(id, 2.0); }
-v2fd vs_downsample2(uint id : SV_VertexID) { return downsample2Dvs(id, 3.0); }
-v2fd vs_downsample3(uint id : SV_VertexID) { return downsample2Dvs(id, 4.0); }
-v2fd vs_downsample4(uint id : SV_VertexID) { return downsample2Dvs(id, 5.0); }
-v2fd vs_downsample5(uint id : SV_VertexID) { return downsample2Dvs(id, 6.0); }
-v2fd vs_downsample6(uint id : SV_VertexID) { return downsample2Dvs(id, 7.0); }
-v2fd vs_downsample7(uint id : SV_VertexID) { return downsample2Dvs(id, 8.0); }
-
-v2fu vs_upsample8(uint id : SV_VertexID) { return upsample2Dvs(id, 7.0); }
-v2fu vs_upsample7(uint id : SV_VertexID) { return upsample2Dvs(id, 6.0); }
-v2fu vs_upsample6(uint id : SV_VertexID) { return upsample2Dvs(id, 5.0); }
-v2fu vs_upsample5(uint id : SV_VertexID) { return upsample2Dvs(id, 4.0); }
-v2fu vs_upsample4(uint id : SV_VertexID) { return upsample2Dvs(id, 3.0); }
-v2fu vs_upsample3(uint id : SV_VertexID) { return upsample2Dvs(id, 2.0); }
-v2fu vs_upsample2(uint id : SV_VertexID) { return upsample2Dvs(id, 1.0); }
-v2fu vs_upsample1(uint id : SV_VertexID) { return upsample2Dvs(id, 0.0); }
+v2f vs_upsample8(uint id : SV_VertexID) { return sample2Dvs(id, 7.0); }
+v2f vs_upsample7(uint id : SV_VertexID) { return sample2Dvs(id, 6.0); }
+v2f vs_upsample6(uint id : SV_VertexID) { return sample2Dvs(id, 5.0); }
+v2f vs_upsample5(uint id : SV_VertexID) { return sample2Dvs(id, 4.0); }
+v2f vs_upsample4(uint id : SV_VertexID) { return sample2Dvs(id, 3.0); }
+v2f vs_upsample3(uint id : SV_VertexID) { return sample2Dvs(id, 2.0); }
+v2f vs_upsample2(uint id : SV_VertexID) { return sample2Dvs(id, 1.0); }
+v2f vs_upsample1(uint id : SV_VertexID) { return sample2Dvs(id, 0.0); }
 
 /*
     [ Pixel Shaders ]
@@ -149,33 +116,34 @@ v2fu vs_upsample1(uint id : SV_VertexID) { return upsample2Dvs(id, 0.0); }
     [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
 */
 
-float4 downsample2Dps(sampler2D src, v2fd input)
+float4 sample2Dps(sampler2D src, v2f input, bool downsample)
 {
     float4 output;
-    output += tex2D(src, input.uv0) * 4.0;
-    output += tex2D(src, input.uv1[0].xy);
-    output += tex2D(src, input.uv1[0].zw);
-    output += tex2D(src, input.uv1[1].xy);
-    output += tex2D(src, input.uv1[1].zw);
-    return output * (1.0 / 8.0);
+
+    if (downsample) {
+        output += tex2D(src, input.uv0) * 4.0;
+        output += tex2D(src, input.uv1[0].xy);
+        output += tex2D(src, input.uv1[0].zw);
+        output += tex2D(src, input.uv1[1].xy);
+        output += tex2D(src, input.uv1[1].zw);
+        output *= (1.0 / 8.0);
+    } else {
+        output += tex2D(src, input.uv0);
+        output += tex2D(src, input.uv1[0].xy);
+        output += tex2D(src, input.uv1[0].zw);
+        output += tex2D(src, input.uv1[1].xy);
+        output += tex2D(src, input.uv1[1].zw);
+        output *= (1.0 / 5.0);
+    }
+
+    return output;
 }
 
-float4 upsample2Dps(sampler2D src, v2fu input)
-{
-    float4 output;
-    output += tex2D(src, input.uv0);
-    output += tex2D(src, input.uv1[0].xy);
-    output += tex2D(src, input.uv1[0].zw);
-    output += tex2D(src, input.uv1[1].xy);
-    output += tex2D(src, input.uv1[1].zw);
-    return output * (1.0 / 5.0);
-}
-
-float4 ps_downsample0(v2fd input): SV_TARGET
+float4 ps_downsample0(v2f input): SV_TARGET
 {
     const float  knee = mad(uThreshold, uSmooth, 1e-5f);
     const float3 curve = float3(uThreshold - knee, knee * 2.0, 0.25 / knee);
-    float4 s = downsample2Dps(s_color, input);
+    float4 s = sample2Dps(s_color, input, true);
 
     // Under-threshold
     s.a = max(s.r, max(s.g, s.b));
@@ -188,31 +156,32 @@ float4 ps_downsample0(v2fd input): SV_TARGET
     return s;
 }
 
-float4 ps_downsample1(v2fd input) : SV_Target { return downsample2Dps(s_bloom1, input); }
-float4 ps_downsample2(v2fd input) : SV_Target { return downsample2Dps(s_bloom2, input); }
-float4 ps_downsample3(v2fd input) : SV_Target { return downsample2Dps(s_bloom3, input); }
-float4 ps_downsample4(v2fd input) : SV_Target { return downsample2Dps(s_bloom4, input); }
-float4 ps_downsample5(v2fd input) : SV_Target { return downsample2Dps(s_bloom5, input); }
-float4 ps_downsample6(v2fd input) : SV_Target { return downsample2Dps(s_bloom6, input); }
-float4 ps_downsample7(v2fd input) : SV_Target { return downsample2Dps(s_bloom7, input); }
+float4 ps_downsample1(v2f input) : SV_Target { return sample2Dps(s_bloom1, input, true); }
+float4 ps_downsample2(v2f input) : SV_Target { return sample2Dps(s_bloom2, input, true); }
+float4 ps_downsample3(v2f input) : SV_Target { return sample2Dps(s_bloom3, input, true); }
+float4 ps_downsample4(v2f input) : SV_Target { return sample2Dps(s_bloom4, input, true); }
+float4 ps_downsample5(v2f input) : SV_Target { return sample2Dps(s_bloom5, input, true); }
+float4 ps_downsample6(v2f input) : SV_Target { return sample2Dps(s_bloom6, input, true); }
+float4 ps_downsample7(v2f input) : SV_Target { return sample2Dps(s_bloom7, input, true); }
 
-float4 ps_upsample8(v2fu input) : SV_Target { return upsample2Dps(s_bloom8, input); }
-float4 ps_upsample7(v2fu input) : SV_Target { return upsample2Dps(s_bloom7, input); }
-float4 ps_upsample6(v2fu input) : SV_Target { return upsample2Dps(s_bloom6, input); }
-float4 ps_upsample5(v2fu input) : SV_Target { return upsample2Dps(s_bloom5, input); }
-float4 ps_upsample4(v2fu input) : SV_Target { return upsample2Dps(s_bloom4, input); }
-float4 ps_upsample3(v2fu input) : SV_Target { return upsample2Dps(s_bloom3, input); }
-float4 ps_upsample2(v2fu input) : SV_Target { return upsample2Dps(s_bloom2, input); }
-float4 ps_upsample1(v2fu input) : SV_Target
+float4 ps_upsample8(v2f input) : SV_Target { return sample2Dps(s_bloom8, input, false); }
+float4 ps_upsample7(v2f input) : SV_Target { return sample2Dps(s_bloom7, input, false); }
+float4 ps_upsample6(v2f input) : SV_Target { return sample2Dps(s_bloom6, input, false); }
+float4 ps_upsample5(v2f input) : SV_Target { return sample2Dps(s_bloom5, input, false); }
+float4 ps_upsample4(v2f input) : SV_Target { return sample2Dps(s_bloom4, input, false); }
+float4 ps_upsample3(v2f input) : SV_Target { return sample2Dps(s_bloom3, input, false); }
+float4 ps_upsample2(v2f input) : SV_Target { return sample2Dps(s_bloom2, input, false); }
+float4 ps_upsample1(v2f input) : SV_Target
 {
     const float4 n = float4(0.06711056, 0.00583715, 52.9829189, 0.5 / 255);
     float f = frac(n.z * frac(dot(input.vpos.xy, n.xy))) * n.w;
-    float4 o = upsample2Dps(s_bloom1, input) * uIntensity;
+
+    float4 o = sample2Dps(s_bloom1, input, false) * uIntensity;
     o = saturate(o * mad(2.51, o, 0.03) / mad(o, mad(2.43, o, 0.59), 0.14));
     return o + f;
 }
 
-/* [ TECHNIQUE ] */
+/* - TECHNIQUE - */
 
 technique cBloom
 {
