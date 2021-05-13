@@ -116,33 +116,23 @@ v2f vs_common(const uint id : SV_VertexID)
     return output;
 }
 
-/* [ Pixel Shaders ] */
-
-float4 ps_source(v2f input) : SV_Target
-{
-    float4 c = tex2D(s_color, input.uv);
-    return max(max(c.r, c.g), c.b);
-}
-
-struct ps2mrt0
-{
-    float4 render0 : SV_TARGET0;
-    float4 render1 : SV_TARGET1;
-    float4 render2 : SV_TARGET2;
-};
-
-ps2mrt0 ps_convert(v2f input)
-{
-    ps2mrt0 output;
-    output.render0 = tex2D(s_buffer, input.uv);
-    output.render1 = tex2D(s_cframe, input.uv);
-    output.render2 = tex2D(s_cflow,  input.uv);
-    return output;
-}
-
 /*
+    [ Pixel Shaders ]
+
     logExposure2D() from MJP's TheBakingLab
-    https://github.com/TheRealMJP/BakingLab [MIT]
+    [https://github.com/TheRealMJP/BakingLab] [MIT]
+
+    Quintic curve texture filtering from Inigo:
+    [https://www.iquilezles.org/www/articles/texture/texture.htm]
+
+    ps_flow()'s ddx/ddy port of optical flow from PixelFlow
+    [https://github.com/diwi/PixelFlow] [MIT]
+
+    flow2D()'s Interleaved Gradient Noise from the following presentation
+    [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
+
+    flow2D()'s blur centering from John Chapman
+    [http://john-chapman-graphics.blogspot.com/2013/01/per-object-motion-blur.html]
 */
 
 float logExposure2D(float aLuma)
@@ -151,24 +141,6 @@ float logExposure2D(float aLuma)
     float aExposure = log2(max(uKeyValue / aLuma, uLowClamp));
     return exp2(aExposure + uIntensity);
 }
-
-float4 ps_filter(v2f input) : SV_Target
-{
-    float cLuma = tex2Dlod(s_filter, float4(input.uv, 0.0, LOG2(DSIZE(2)))).r;
-    float pLuma = tex2D(s_pluma, input.uv).r;
-    float aLuma = lerp(pLuma, cLuma, 0.5);
-
-    float c = tex2D(s_buffer, input.uv).r;
-    return saturate(c * logExposure2D(aLuma));
-}
-
-/*
-    Quintic curve texture filtering from Inigo:
-    [https://www.iquilezles.org/www/articles/texture/texture.htm]
-
-    ps_flow()'s ddx/ddy port of optical flow from PixelFlow
-    [https://github.com/diwi/PixelFlow] [MIT]
-*/
 
 float4 filter2D(sampler2D src, float2 uv, int lod)
 {
@@ -181,11 +153,53 @@ float4 filter2D(sampler2D src, float2 uv, int lod)
     return tex2Dlod(src, float4(p, 0.0, lod));
 }
 
+float4 flow2D(v2f input, float2 flow, float i)
+{
+    const float3 value = float3(52.9829189, 0.06711056, 0.00583715);
+    float noise = frac(value.x * frac(dot(input.vpos.xy, value.yz)));
+
+    const float samples = 1.0 / (16.0 - 1.0);
+    float2 calc = (noise * 2.0 + i) * samples - 0.5;
+    return tex2D(s_color, flow * calc + input.uv);
+}
+
+struct ps2mrt0
+{
+    float4 render0 : SV_TARGET0;
+    float4 render1 : SV_TARGET1;
+    float4 render2 : SV_TARGET2;
+};
+
 struct ps2mrt1
 {
     float4 render0 : SV_TARGET0;
     float4 render1 : SV_TARGET1;
 };
+
+float4 ps_source(v2f input) : SV_Target
+{
+    float4 c = tex2D(s_color, input.uv);
+    return max(max(c.r, c.g), c.b);
+}
+
+ps2mrt0 ps_convert(v2f input)
+{
+    ps2mrt0 output;
+    output.render0 = tex2D(s_buffer, input.uv);
+    output.render1 = tex2D(s_cframe, input.uv);
+    output.render2 = tex2D(s_cflow,  input.uv);
+    return output;
+}
+
+float4 ps_filter(v2f input) : SV_Target
+{
+    float cLuma = tex2Dlod(s_filter, float4(input.uv, 0.0, LOG2(DSIZE(2)))).r;
+    float pLuma = tex2D(s_pluma, input.uv).r;
+    float aLuma = lerp(pLuma, cLuma, 0.5);
+
+    float c = tex2D(s_buffer, input.uv).r;
+    return saturate(c * logExposure2D(aLuma));
+}
 
 ps2mrt1 ps_flow(v2f input)
 {
@@ -213,24 +227,6 @@ ps2mrt1 ps_flow(v2f input)
     output.render0 = lerp(pFlow, cFlow, uInterpolation);
     output.render1 = tex2Dlod(s_filter, float4(input.uv, 0.0, LOG2(DSIZE(2))));
     return output;
-}
-
-/*
-    flow2D()'s Interleaved Gradient Noise from the following presentation
-    [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
-
-    flow2D()'s blur centering from John Chapman
-    [http://john-chapman-graphics.blogspot.com/2013/01/per-object-motion-blur.html]
-*/
-
-float4 flow2D(v2f input, float2 flow, float i)
-{
-    const float3 value = float3(52.9829189, 0.06711056, 0.00583715);
-    float noise = frac(value.x * frac(dot(input.vpos.xy, value.yz)));
-
-    const float samples = 1.0 / (16.0 - 1.0);
-    float2 calc = (noise * 2.0 + i) * samples - 0.5;
-    return tex2D(s_color, flow * calc + input.uv);
 }
 
 float4 ps_output(v2f input) : SV_Target

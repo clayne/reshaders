@@ -80,18 +80,6 @@
 
 /* Misc functions */
 
-/* Gathers current pixel, and the top-left neighbors. */
-
-float3 SMAAGatherNeighbours(
-    float2 texcoord, float4 offset[3],
-    sampler2D tex)
-{
-    float P = tex2D(tex, texcoord).r;
-    float Pleft = tex2D(tex, offset[0].xy).r;
-    float Ptop  = tex2D(tex, offset[0].zw).r;
-    return float3(P, Pleft, Ptop);
-}
-
 /* Conditional move: */
 
 void SMAAMovc(bool2 cond, inout float2 variable, float2 value)
