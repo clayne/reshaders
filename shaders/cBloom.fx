@@ -79,7 +79,7 @@ void common2Dvs(in uint id, in float uFact,
 
     const float2 psize = ldexp(float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT), uFact);
     const float2 hoffset = psize + (psize / 2.0f);
-    const float4 offset = float4(-hoffset.x, -hoffset.y,  hoffset.x, hoffset.y);
+    const float4 offset = float4(-hoffset.x, -hoffset.y, hoffset.x, hoffset.y);
     uv[0].xy = coord + offset.xy; // --
     uv[0].zw = coord + offset.zw; // ++
     uv[1].xy = coord + offset.xw; // -+

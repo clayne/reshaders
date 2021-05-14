@@ -219,7 +219,7 @@ ps2mrt1 ps_flow(v2f input)
     float2 cFlow = uForce * dt * (d.xy * d.zz);
 
     // Threshold
-    float pFlow = tex2D(s_pflow, input.uv).r;
+    float2 pFlow = tex2D(s_pflow, input.uv).xy;
     float oFlow = sqrt(dot(cFlow, cFlow) + 1e-5);
     float nFlow = max(oFlow - uThreshold, 0.0);
     cFlow *= nFlow / oFlow;
@@ -248,16 +248,15 @@ float4 ps_output(v2f input) : SV_Target
     oFlow += filter2D(s_cflow, input.uv, 7.0).xy * ldexp(uPy7, -1.0);
     oFlow += filter2D(s_cflow, input.uv, 8.0).xy * ldexp(uPy8, -0.0);
 
-    const float kWeights = 1.0 / 8.0;
     float4 oBlur;
-    oBlur += flow2D(input, oFlow, 2.0) * kWeights;
-    oBlur += flow2D(input, oFlow, 4.0) * kWeights;
-    oBlur += flow2D(input, oFlow, 6.0) * kWeights;
-    oBlur += flow2D(input, oFlow, 8.0) * kWeights;
-    oBlur += flow2D(input, oFlow, 10.0) * kWeights;
-    oBlur += flow2D(input, oFlow, 12.0) * kWeights;
-    oBlur += flow2D(input, oFlow, 14.0) * kWeights;
-    oBlur += flow2D(input, oFlow, 16.0) * kWeights;
+    oBlur += flow2D(input, oFlow, 2.0) * exp2(-3.0);
+    oBlur += flow2D(input, oFlow, 4.0) * exp2(-3.0);
+    oBlur += flow2D(input, oFlow, 6.0) * exp2(-3.0);
+    oBlur += flow2D(input, oFlow, 8.0) * exp2(-3.0);
+    oBlur += flow2D(input, oFlow, 10.0) * exp2(-3.0);
+    oBlur += flow2D(input, oFlow, 12.0) * exp2(-3.0);
+    oBlur += flow2D(input, oFlow, 14.0) * exp2(-3.0);
+    oBlur += flow2D(input, oFlow, 16.0) * exp2(-3.0);
     return oBlur;
 }
 
