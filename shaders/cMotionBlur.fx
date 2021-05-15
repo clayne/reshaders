@@ -37,14 +37,14 @@
 
 uniform float uFrameTime < source = "frametime"; >;
 
-uOption(uTargetFPS, float, "Specific", "Target FPS", 60.00);
-
-uOption(uThreshold, float, "Flow Basic", "Threshold", 0.000);
-uOption(uForce,     float, "Flow Basic", "Force",     16.00);
+uOption(uTargetFPS, float, "Flow Basic", "Target FPS", 60.00);
+uOption(uThreshold, float, "Flow Basic", "Threshold",  0.000);
+uOption(uForce,     float, "Flow Basic", "Force",      16.00);
 
 uOption(uPrefilter,     int,   "Flow Advanced", "Prefilter LODs",     4);
 uOption(uBlurRadius,    float, "Flow Advanced", "Prefilter Blur",     16.00);
 uOption(uInterpolation, float, "Flow Advanced", "Temporal Sharpness", 0.950);
+uOption(uFactor,        float, "Flow Advanced", "Difference Factor",  0.500);
 
 uOption(uPy0, float2, "Flow Pyramid Weights", "Fine",    float2(0.016, 5.000));
 uOption(uPy1, float2, "Flow Pyramid Weights", "Level 2", float2(0.032, 4.000));
@@ -56,6 +56,7 @@ uOption(uPy6, float2, "Flow Pyramid Weights", "Level 7", float2(0.064, 3.000));
 uOption(uPy7, float2, "Flow Pyramid Weights", "Level 8", float2(0.032, 4.000));
 uOption(uPy8, float2, "Flow Pyramid Weights", "Coarse",  float2(0.016, 5.000));
 
+uOption(uLumaBlend, float, "Automatic Exposure", "Blending",  0.500);
 uOption(uIntensity, float, "Automatic Exposure", "Intensity", 8.000);
 uOption(uKeyValue,  float, "Automatic Exposure", "Key Value", 0.180);
 uOption(uLowClamp,  float, "Automatic Exposure", "Low Clamp", 0.001);
@@ -211,7 +212,7 @@ float4 ps_filter(v2f input) : SV_Target
 {
     float cLuma = tex2Dlod(s_filter, float4(input.uv, 0.0, LOG2(DSIZE(2)))).r;
     float pLuma = tex2D(s_pluma, input.uv).r;
-    float aLuma = lerp(pLuma, cLuma, 0.5);
+    float aLuma = lerp(pLuma, cLuma, uLumaBlend);
 
     float c = tex2D(s_buffer, input.uv).r;
     c = c * logExposure2D(aLuma);
@@ -226,7 +227,7 @@ ps2mrt1 ps_flow(v2f input)
     float cLuma = tex2Dlod(s_cframe, float4(input.uv, 0.0, uPrefilter)).r;
     float pLuma = tex2Dlod(s_pframe, float4(input.uv, 0.0, uPrefilter)).r;
     float cFrameTime = uTargetFPS / (1e+3 / uFrameTime);
-    float dt = cLuma - pLuma;
+    float dt = lerp(pLuma, cLuma, uFactor);
 
     // Calculate gradients and optical flow
     float3 d;
