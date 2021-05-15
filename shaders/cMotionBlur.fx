@@ -227,7 +227,7 @@ ps2mrt1 ps_flow(v2f input)
     float cLuma = tex2Dlod(s_cframe, float4(input.uv, 0.0, uPrefilter)).r;
     float pLuma = tex2Dlod(s_pframe, float4(input.uv, 0.0, uPrefilter)).r;
     float cFrameTime = uTargetFPS / (1e+3 / uFrameTime);
-    float dt = lerp(pLuma, cLuma, uFactor);
+    float dt = (pLuma + cLuma) * uFactor;
 
     // Calculate gradients and optical flow
     float3 d;
