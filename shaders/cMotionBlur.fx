@@ -42,10 +42,9 @@ uOption(uTargetFPS, float, "Specific", "Target FPS", 60.00);
 uOption(uThreshold, float, "Flow Basic", "Threshold", 0.000);
 uOption(uForce,     float, "Flow Basic", "Force",     16.00);
 
-uOption(uPrefilter,     int,   "Flow Advanced", "Prefilter LOD Bias",   4);
-uOption(uBlurRadius,    float, "Flow Advanced", "Prefilter Blur Radii", 4.000);
-uOption(uBlurClamp,     float, "Flow Advanced", "Prefilter Blur Clamp", 4.000);
-uOption(uInterpolation, float, "Flow Advanced", "Temporal Sharpness",   0.950);
+uOption(uPrefilter,     int,   "Flow Advanced", "Prefilter LODs",     4);
+uOption(uBlurRadius,    float, "Flow Advanced", "Prefilter Blur",     16.00);
+uOption(uInterpolation, float, "Flow Advanced", "Temporal Sharpness", 0.950);
 
 uOption(uPy0, float2, "Flow Pyramid Weights", "Fine",    float2(0.016, 5.000));
 uOption(uPy1, float2, "Flow Pyramid Weights", "Level 2", float2(0.032, 4.000));
@@ -170,26 +169,26 @@ struct ps2mrt1
 float2 random2D(float3 p3)
 {
     const float3 random3 = float3(0.1031, 0.1030, 0.0973);
+    const float tau = 6.2831853071795864769252867665590;
     p3 = frac(p3 * random3);
     p3 += dot(p3, p3.yzx + 19.19);
-    return frac((p3.xx + p3.yz) * p3.zy);
+    return frac((p3.xx + p3.yz) * p3.zy) * float2(tau, 1.0);
 }
 
 float4 ps_source(v2f input) : SV_Target
 {
-    const float tau = 6.2831853071795864769252867665590;
+
     const float2 psize = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
+    const float2 rsize = uBlurRadius * psize;
     float4 c;
 
     for (int i = 0; i < 4; ++i)
     {
+        // Uniform sample the circle
         float2 r = random2D(float3(input.vpos.xy, i));
-        r.x *= tau;
-
-        // Box - Muller transform to get gaussian distributed sample points in the circle
         float2 sc; sincos(r.xx, sc.x, sc.y);
-        float2 cr = sc * sqrt(-uBlurClamp * log(r.y));
-        float4 color = tex2D(s_color, input.uv + cr * uBlurRadius * psize);
+        float2 cr = sc * sqrt(r.y);
+        float4 color = tex2D(s_color, cr * rsize + input.uv);
 
         // Average the samples as we get em
         // https://blog.demofox.org/2016/08/23/incremental-averaging/
