@@ -39,23 +39,25 @@ uniform float uFrameTime < source = "frametime"; >;
 
 uOption(uTargetFPS, float, "Specific", "Target FPS", 60.00);
 
-uOption(uThreshold, float, "Flow Basic", "Threshold", 0.040);
-uOption(uForce,     float, "Flow Basic", "Force",     4.000);
+uOption(uThreshold, float, "Flow Basic", "Threshold", 0.000);
+uOption(uForce,     float, "Flow Basic", "Force",     16.00);
 
-uOption(uPrefilter,     int,   "Flow Advanced", "Prefilter LOD Bias", 1);
-uOption(uInterpolation, float, "Flow Advanced", "Temporal Sharpness", 0.750);
+uOption(uPrefilter,     int,   "Flow Advanced", "Prefilter LOD Bias",   4);
+uOption(uBlurRadius,    float, "Flow Advanced", "Prefilter Blur Radii", 4.000);
+uOption(uBlurClamp,     float, "Flow Advanced", "Prefilter Blur Clamp", 4.000);
+uOption(uInterpolation, float, "Flow Advanced", "Temporal Sharpness",   0.950);
 
-uOption(uPy0, float, "Flow Pyramid Weights", "Fine",    1.000);
-uOption(uPy1, float, "Flow Pyramid Weights", "Level 2", 1.000);
-uOption(uPy2, float, "Flow Pyramid Weights", "Level 3", 1.000);
-uOption(uPy3, float, "Flow Pyramid Weights", "Level 4", 1.000);
-uOption(uPy4, float, "Flow Pyramid Weights", "Level 5", 1.000);
-uOption(uPy5, float, "Flow Pyramid Weights", "Level 6", 1.000);
-uOption(uPy6, float, "Flow Pyramid Weights", "Level 7", 1.000);
-uOption(uPy7, float, "Flow Pyramid Weights", "Level 8", 1.000);
-uOption(uPy8, float, "Flow Pyramid Weights", "Coarse",  1.000);
+uOption(uPy0, float2, "Flow Pyramid Weights", "Fine",    float2(0.016, 5.000));
+uOption(uPy1, float2, "Flow Pyramid Weights", "Level 2", float2(0.032, 4.000));
+uOption(uPy2, float2, "Flow Pyramid Weights", "Level 3", float2(0.064, 3.000));
+uOption(uPy3, float2, "Flow Pyramid Weights", "Level 4", float2(0.128, 2.000));
+uOption(uPy4, float2, "Flow Pyramid Weights", "Level 5", float2(0.256, 1.000));
+uOption(uPy5, float2, "Flow Pyramid Weights", "Level 6", float2(0.128, 2.000));
+uOption(uPy6, float2, "Flow Pyramid Weights", "Level 7", float2(0.064, 3.000));
+uOption(uPy7, float2, "Flow Pyramid Weights", "Level 8", float2(0.032, 4.000));
+uOption(uPy8, float2, "Flow Pyramid Weights", "Coarse",  float2(0.016, 5.000));
 
-uOption(uIntensity, float, "Automatic Exposure", "Intensity", 2.000);
+uOption(uIntensity, float, "Automatic Exposure", "Intensity", 8.000);
 uOption(uKeyValue,  float, "Automatic Exposure", "Key Value", 0.180);
 uOption(uLowClamp,  float, "Automatic Exposure", "Low Clamp", 0.001);
 
@@ -119,11 +121,11 @@ v2f vs_common(const uint id : SV_VertexID)
 /*
     [ Pixel Shaders ]
 
+    Pixel Blur from lygia
+    [https://github.com/patriciogonzalezvivo/lygia] [BSD-3]
+
     logExposure2D() from MJP's TheBakingLab
     [https://github.com/TheRealMJP/BakingLab] [MIT]
-
-    Quintic curve texture filtering from Inigo:
-    [https://www.iquilezles.org/www/articles/texture/texture.htm]
 
     ps_flow()'s ddx/ddy port of optical flow from PixelFlow
     [https://github.com/diwi/PixelFlow] [MIT]
@@ -139,18 +141,7 @@ float logExposure2D(float aLuma)
 {
     aLuma = max(aLuma, uLowClamp);
     float aExposure = log2(max(uKeyValue / aLuma, uLowClamp));
-    return exp2(aExposure + uIntensity);
-}
-
-float4 filter2D(sampler2D src, float2 uv, int lod)
-{
-    const float2 size = tex2Dsize(src, lod);
-    float2 p = uv * size + 0.5;
-    float2 i = floor(p);
-    float2 f = frac(p);
-    p = i + f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
-    p = (p - 0.5) / size;
-    return tex2Dlod(src, float4(p, 0.0, lod));
+    return exp2(aExposure);
 }
 
 float4 flow2D(v2f input, float2 flow, float i)
@@ -176,9 +167,35 @@ struct ps2mrt1
     float4 render1 : SV_TARGET1;
 };
 
+float2 random2D(float3 p3)
+{
+    const float3 random3 = float3(0.1031, 0.1030, 0.0973);
+    p3 = frac(p3 * random3);
+    p3 += dot(p3, p3.yzx + 19.19);
+    return frac((p3.xx + p3.yz) * p3.zy);
+}
+
 float4 ps_source(v2f input) : SV_Target
 {
-    float4 c = tex2D(s_color, input.uv);
+    const float tau = 6.2831853071795864769252867665590;
+    const float2 psize = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
+    float4 c;
+
+    for (int i = 0; i < 4; ++i)
+    {
+        float2 r = random2D(float3(input.vpos.xy, i));
+        r.x *= tau;
+
+        // Box - Muller transform to get gaussian distributed sample points in the circle
+        float2 sc; sincos(r.xx, sc.x, sc.y);
+        float2 cr = sc * sqrt(-uBlurClamp * log(r.y));
+        float4 color = tex2D(s_color, input.uv + cr * uBlurRadius * psize);
+
+        // Average the samples as we get em
+        // https://blog.demofox.org/2016/08/23/incremental-averaging/
+        c = lerp(c, color, rcp(i + 1));
+    }
+
     return max(max(c.r, c.g), c.b);
 }
 
@@ -198,7 +215,8 @@ float4 ps_filter(v2f input) : SV_Target
     float aLuma = lerp(pLuma, cLuma, 0.5);
 
     float c = tex2D(s_buffer, input.uv).r;
-    return saturate(c * logExposure2D(aLuma));
+    c = c * logExposure2D(aLuma);
+    return saturate(exp(-c * uIntensity));
 }
 
 ps2mrt1 ps_flow(v2f input)
@@ -206,8 +224,8 @@ ps2mrt1 ps_flow(v2f input)
     ps2mrt1 output;
 
     // Calculate distance
-    float cLuma = filter2D(s_cframe, input.uv, uPrefilter).r;
-    float pLuma = filter2D(s_pframe, input.uv, uPrefilter).r;
+    float cLuma = tex2Dlod(s_cframe, float4(input.uv, 0.0, uPrefilter)).r;
+    float pLuma = tex2Dlod(s_pframe, float4(input.uv, 0.0, uPrefilter)).r;
     float cFrameTime = uTargetFPS / (1e+3 / uFrameTime);
     float dt = cLuma - pLuma;
 
@@ -224,7 +242,7 @@ ps2mrt1 ps_flow(v2f input)
     float nFlow = max(oFlow - uThreshold, 0.0);
     cFlow *= nFlow / oFlow;
 
-    output.render0 = lerp(pFlow, cFlow, uInterpolation);
+    output.render0 = lerp(pFlow, cFlow, saturate(uInterpolation));
     output.render1 = tex2Dlod(s_filter, float4(input.uv, 0.0, LOG2(DSIZE(2))));
     return output;
 }
@@ -238,15 +256,15 @@ float4 ps_output(v2f input) : SV_Target
     */
 
     float2 oFlow;
-    oFlow += filter2D(s_cflow, input.uv, 0.0).xy * ldexp(uPy0, -8.0);
-    oFlow += filter2D(s_cflow, input.uv, 1.0).xy * ldexp(uPy1, -7.0);
-    oFlow += filter2D(s_cflow, input.uv, 2.0).xy * ldexp(uPy2, -6.0);
-    oFlow += filter2D(s_cflow, input.uv, 3.0).xy * ldexp(uPy3, -5.0);
-    oFlow += filter2D(s_cflow, input.uv, 4.0).xy * ldexp(uPy4, -4.0);
-    oFlow += filter2D(s_cflow, input.uv, 5.0).xy * ldexp(uPy5, -3.0);
-    oFlow += filter2D(s_cflow, input.uv, 6.0).xy * ldexp(uPy6, -2.0);
-    oFlow += filter2D(s_cflow, input.uv, 7.0).xy * ldexp(uPy7, -1.0);
-    oFlow += filter2D(s_cflow, input.uv, 8.0).xy * ldexp(uPy8, -0.0);
+    oFlow += tex2Dlod(s_cflow, float4(input.uv, 0.0, 0.0)).xy * ldexp(uPy0.x, -uPy0.y);
+    oFlow += tex2Dlod(s_cflow, float4(input.uv, 0.0, 1.0)).xy * ldexp(uPy1.x, -uPy1.y);
+    oFlow += tex2Dlod(s_cflow, float4(input.uv, 0.0, 2.0)).xy * ldexp(uPy2.x, -uPy2.y);
+    oFlow += tex2Dlod(s_cflow, float4(input.uv, 0.0, 3.0)).xy * ldexp(uPy3.x, -uPy3.y);
+    oFlow += tex2Dlod(s_cflow, float4(input.uv, 0.0, 4.0)).xy * ldexp(uPy4.x, -uPy4.y);
+    oFlow += tex2Dlod(s_cflow, float4(input.uv, 0.0, 5.0)).xy * ldexp(uPy5.x, -uPy5.y);
+    oFlow += tex2Dlod(s_cflow, float4(input.uv, 0.0, 6.0)).xy * ldexp(uPy6.x, -uPy6.y);
+    oFlow += tex2Dlod(s_cflow, float4(input.uv, 0.0, 7.0)).xy * ldexp(uPy7.x, -uPy7.y);
+    oFlow += tex2Dlod(s_cflow, float4(input.uv, 0.0, 8.0)).xy * ldexp(uPy8.x, -uPy8.y);
 
     float4 oBlur;
     oBlur += flow2D(input, oFlow, 2.0) * exp2(-3.0);
