@@ -212,7 +212,7 @@ float4 ps_filter(v2f input) : SV_Target
 {
     float cLuma = tex2Dlod(s_filter, float4(input.uv, 0.0, LOG2(DSIZE(2)))).r;
     float pLuma = tex2D(s_pluma, input.uv).r;
-    float aLuma = lerp(pLuma, cLuma, uLumaBlend);
+    float aLuma = lerp(0.0, pLuma - cLuma, uLumaBlend);
 
     float c = tex2D(s_buffer, input.uv).r;
     c = c * logExposure2D(aLuma);
