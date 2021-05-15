@@ -212,7 +212,7 @@ float4 ps_filter(v2f input) : SV_Target
 {
     float cLuma = tex2Dlod(s_filter, float4(input.uv, 0.0, LOG2(DSIZE(2)))).r;
     float pLuma = tex2D(s_pluma, input.uv).r;
-    float aLuma = lerp(0.0, pLuma - cLuma, uLumaBlend);
+    float aLuma = lerp(pLuma, cLuma, uLumaBlend);
 
     float c = tex2D(s_buffer, input.uv).r;
     c = c * logExposure2D(aLuma);
@@ -227,7 +227,7 @@ ps2mrt1 ps_flow(v2f input)
     float cLuma = tex2Dlod(s_cframe, float4(input.uv, 0.0, uPrefilter)).r;
     float pLuma = tex2Dlod(s_pframe, float4(input.uv, 0.0, uPrefilter)).r;
     float cFrameTime = uTargetFPS / (1e+3 / uFrameTime);
-    float dt = (pLuma + cLuma) * uFactor;
+    float dt = lerp(0.0, pLuma - cLuma, uFactor);
 
     // Calculate gradients and optical flow
     float3 d;
