@@ -35,11 +35,8 @@
         ui_type = "drag"; ui_min = 0.0; 			  \
         > = value
 
-uniform float uFrameTime < source = "frametime"; >;
-
-uOption(uTargetFPS, float, "Flow Basic", "Target FPS", 60.00);
-uOption(uThreshold, float, "Flow Basic", "Threshold",  0.000);
-uOption(uForce,     float, "Flow Basic", "Force",      16.00);
+uOption(uThreshold, float, "Flow Basic", "Threshold", 0.000);
+uOption(uScale,     float, "Flow Basic", "Scale",     16.00);
 
 uOption(uPrefilter,     int,   "Flow Advanced", "Prefilter LODs",     4);
 uOption(uBlurRadius,    float, "Flow Advanced", "Prefilter Blur",     16.00);
@@ -179,19 +176,20 @@ float4 ps_source(v2f input) : SV_Target
 
     const float2 psize = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
     const float2 rsize = uBlurRadius * psize;
+    const float  value[4] = { 0, 1, 2, 3 };
     float4 c;
 
     for (int i = 0; i < 4; ++i)
     {
         // Uniform sample the circle
-        float2 r = random2D(float3(input.vpos.xy, i));
+        float2 r = random2D(float3(input.vpos.xy, value[i]));
         float2 sc; sincos(r.xx, sc.x, sc.y);
         float2 cr = sc * sqrt(r.y);
         float4 color = tex2D(s_color, cr * rsize + input.uv);
 
         // Average the samples as we get em
         // https://blog.demofox.org/2016/08/23/incremental-averaging/
-        c = lerp(c, color, rcp(i + 1));
+        c = lerp(c, color, rcp(value[i] + 1));
     }
 
     return max(max(c.r, c.g), c.b);
@@ -224,15 +222,14 @@ ps2mrt1 ps_flow(v2f input)
     // Calculate distance
     float cLuma = tex2Dlod(s_cframe, float4(input.uv, 0.0, uPrefilter)).r;
     float pLuma = tex2Dlod(s_pframe, float4(input.uv, 0.0, uPrefilter)).r;
-    float cFrameTime = uTargetFPS / (1e+3 / uFrameTime);
     float dt = cLuma - pLuma;
 
     // Calculate gradients and optical flow
     float3 d;
     d.x = ddx(cLuma) + ddx(pLuma);
     d.y = ddy(cLuma) + ddy(pLuma);
-    d.z = rsqrt(dot(d.xy, d.xy) + cFrameTime);
-    float2 cFlow = uForce * dt * (d.xy * d.zz);
+    d.z = rsqrt(dot(d.xy, d.xy) + 1.0);
+    float2 cFlow = uScale * dt * (d.xy * d.zz);
 
     // Threshold
     float2 pFlow = tex2D(s_pflow, input.uv).xy;
@@ -240,7 +237,7 @@ ps2mrt1 ps_flow(v2f input)
     float nFlow = max(oFlow - uThreshold, 0.0);
     cFlow *= nFlow / oFlow;
 
-    output.render0 = lerp(pFlow, cFlow, saturate(uInterpolation));
+    output.render0 = lerp(pFlow, cFlow, saturate(uInterpolation)).xyxy;
     output.render1 = tex2Dlod(s_filter, float4(input.uv, 0.0, LOG2(DSIZE(2))));
     return output;
 }
