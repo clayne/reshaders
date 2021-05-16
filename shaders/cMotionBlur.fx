@@ -35,7 +35,7 @@
         ui_type = "drag"; ui_min = 0.0; 			  \
         > = value
 
-uOption(uThreshold, float, "Flow Basic", "Threshold", 0.000);
+uOption(uThreshold, float, "Flow Basic", "Threshold", 0.020);
 uOption(uScale,     float, "Flow Basic", "Scale",     16.00);
 
 uOption(uPrefilter,     int,   "Flow Advanced", "Prefilter LODs",     4);
