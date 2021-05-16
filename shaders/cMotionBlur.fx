@@ -29,22 +29,22 @@
     - Blur
 */
 
-#define uOption(option, type, category, label, value) \
-        uniform type option <                         \
-        ui_category = category; ui_label = label;     \
-        ui_type = "drag"; ui_min = 0.0; 			  \
+#define uOption(option, udata, ucategory, ulabel, uvalue, umin) \
+        uniform udata option <                                  \
+        ui_category = ucategory; ui_label = ulabel;             \
+        ui_type = "drag"; ui_min = umin;                        \
         > = value
 
-uOption(uThreshold, float, "Flow Basic", "Threshold", 0.064);
-uOption(uScale,     float, "Flow Basic", "Scale",     16.00);
+uOption(uThreshold, float, "Flow Basic", "Threshold", 0.064, 0.0);
+uOption(uScale,     float, "Flow Basic", "Scale",     16.00, 0.0);
 
-uOption(uInterpolation, float, "Flow Advanced", "Temporal Sharpness", 0.800);
-uOption(uOpticalLOD,    int,   "Flow Advanced", "Prefilter LOD",      4);
-uOption(uFlowLOD,       int,   "Flow Advanced", "Optical Flow LOD",   6);
+uOption(uInterpolation, float, "Flow Advanced", "Temporal Sharpness", 0.800, 0.0);
+uOption(uOpticalLOD,    int,   "Flow Advanced", "Prefilter LOD",      4,     0.0);
+uOption(uFlowLOD,       int,   "Flow Advanced", "Optical Flow LOD",   6,     0.0);
 
-uOption(uIntensity, float, "Automatic Exposure", "Intensity", 3.000);
-uOption(uKeyValue,  float, "Automatic Exposure", "Key Value", 0.180);
-uOption(uLowClamp,  float, "Automatic Exposure", "Low Clamp", 0.002);
+uOption(uIntensity, float, "Automatic Exposure", "Intensity", 3.000, 0.000);
+uOption(uKeyValue,  float, "Automatic Exposure", "Key Value", 0.180, 0.000);
+uOption(uLowClamp,  float, "Automatic Exposure", "Low Clamp", 0.002, 0.001);
 
 /*
     Round to nearest power of 2
