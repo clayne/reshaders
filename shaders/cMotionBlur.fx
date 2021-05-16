@@ -39,11 +39,10 @@ uOption(uThreshold, float, "Flow Basic", "Threshold", 0.064);
 uOption(uScale,     float, "Flow Basic", "Scale",     16.00);
 
 uOption(uInterpolation, float, "Flow Advanced", "Temporal Sharpness", 0.800);
-uOption(uBlurRadius,    float, "Flow Advanced", "Prefilter Blur",     16.00);
 uOption(uOpticalLOD,    int,   "Flow Advanced", "Prefilter LOD",      4);
 uOption(uFlowLOD,       int,   "Flow Advanced", "Optical Flow LOD",   6);
 
-uOption(uIntensity, float, "Automatic Exposure", "Intensity", 8.000);
+uOption(uIntensity, float, "Automatic Exposure", "Intensity", 3.000);
 uOption(uKeyValue,  float, "Automatic Exposure", "Key Value", 0.180);
 uOption(uLowClamp,  float, "Automatic Exposure", "Low Clamp", 0.002);
 
@@ -105,10 +104,7 @@ v2f vs_common(const uint id : SV_VertexID)
 /*
     [ Pixel Shaders ]
 
-    Pixel Blur from lygia
-    [https://github.com/patriciogonzalezvivo/lygia] [BSD-3]
-
-    logExposure2D() from MJP's TheBakingLab
+    exposure2D() from MJP's TheBakingLab
     [https://github.com/TheRealMJP/BakingLab] [MIT]
 
     ps_flow()'s ddx/ddy port of optical flow from PixelFlow
@@ -121,11 +117,11 @@ v2f vs_common(const uint id : SV_VertexID)
     [http://john-chapman-graphics.blogspot.com/2013/01/per-object-motion-blur.html]
 */
 
-float logExposure2D(float aLuma)
+float exposure2D(float aLuma)
 {
     aLuma = max(aLuma, uLowClamp);
     float aExposure = log2(max(uKeyValue / aLuma, uLowClamp));
-    return exp2(aExposure);
+    return exp2(aExposure + uIntensity);
 }
 
 float4 flow2D(v2f input, float2 flow, float i)
@@ -162,25 +158,7 @@ float2 random2D(float3 p3)
 
 float4 ps_source(v2f input) : SV_Target
 {
-
-    const float2 psize = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
-    const float2 rsize = uBlurRadius * psize;
-    const float  value[4] = { 0, 1, 2, 3 };
-    float4 c;
-
-    for (int i = 0; i < 4; ++i)
-    {
-        // Uniform sample the circle
-        float2 r = random2D(float3(input.vpos.xy, value[i]));
-        float2 sc; sincos(r.xx, sc.x, sc.y);
-        float2 cr = sc * sqrt(r.y);
-        float4 color = tex2D(s_color, cr * rsize + input.uv);
-
-        // Average the samples as we get em
-        // https://blog.demofox.org/2016/08/23/incremental-averaging/
-        c = lerp(c, color, rcp(value[i] + 1));
-    }
-
+    float4 c = tex2D(s_color, input.uv);
     return max(max(c.r, c.g), c.b);
 }
 
@@ -189,7 +167,7 @@ ps2mrt0 ps_convert(v2f input)
     ps2mrt0 output;
     output.render0.r = tex2D(s_buffer, input.uv).r;
     output.render0.g = tex2D(s_cframe, input.uv).r;
-    output.render1 = tex2D(s_cflow,  input.uv);
+    output.render1 = tex2D(s_cflow, input.uv);
     return output;
 }
 
@@ -200,8 +178,7 @@ float4 ps_filter(v2f input) : SV_Target
     float aLuma = lerp(pLuma, cLuma, 0.5);
 
     float c = tex2D(s_buffer, input.uv).r;
-    c = c * logExposure2D(aLuma);
-    return saturate(c * rcp(c + 1.0));
+    return saturate(1.0 - exp(-c * exposure2D(aLuma)));
 }
 
 ps2mrt1 ps_flow(v2f input)
