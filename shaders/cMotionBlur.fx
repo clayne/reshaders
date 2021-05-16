@@ -73,8 +73,8 @@ texture2D r_buffer { RSIZE; MipLevels = LOG2(DSIZE(2)) + 1;    Format = R8;    }
 texture2D r_pframe { Width = 256; Height = 256; MipLevels = 9; Format = RG8;   };
 texture2D r_cframe { Width = 256; Height = 256; MipLevels = 9; Format = R8;    };
 texture2D r_cflow  { Width = 256; Height = 256; MipLevels = 9; Format = RG16F; };
-texture2D r_pflow  { Width = 256; Height = 256; MipLevels = 9; Format = RG16F; };
-texture2D r_pluma  { Width = 256; Height = 256; MipLevels = 9; Format = R8;    };
+texture2D r_pflow  { Width = 256; Height = 256; Format = RG16F; };
+texture2D r_pluma  { Width = 256; Height = 256; Format = R8; };
 
 sampler2D s_color  { Texture = r_color; SRGBTexture = TRUE; };
 sampler2D s_buffer { Texture = r_buffer; };
@@ -147,15 +147,6 @@ struct ps2mrt1
     float4 render1 : SV_TARGET1;
 };
 
-float2 random2D(float3 p3)
-{
-    const float3 random3 = float3(0.1031, 0.1030, 0.0973);
-    const float tau = 6.2831853071795864769252867665590;
-    p3 = frac(p3 * random3);
-    p3 += dot(p3, p3.yzx + 19.19);
-    return frac((p3.xx + p3.yz) * p3.zy) * float2(tau, 1.0);
-}
-
 float4 ps_source(v2f input) : SV_Target
 {
     float4 c = tex2D(s_color, input.uv);
@@ -173,7 +164,7 @@ ps2mrt0 ps_convert(v2f input)
 
 float4 ps_filter(v2f input) : SV_Target
 {
-    float cLuma = tex2Dlod(s_pframe, float4(input.uv, 0.0, LOG2(DSIZE(2)))).r;
+    float cLuma = tex2Dlod(s_pframe, float4(input.uv, 0.0, 8.0)).r;
     float pLuma = tex2D(s_pluma, input.uv).r;
     float aLuma = lerp(pLuma, cLuma, 0.5);
 
@@ -204,7 +195,7 @@ ps2mrt1 ps_flow(v2f input)
     cFlow *= nFlow / oFlow;
 
     output.render0 = lerp(pFlow, cFlow, saturate(uInterpolation)).xyxy;
-    output.render1 = tex2Dlod(s_pframe, float4(input.uv, 0.0, LOG2(DSIZE(2)))).r;
+    output.render1 = tex2Dlod(s_pframe, float4(input.uv, 0.0, 8.0)).r;
     return output;
 }
 
