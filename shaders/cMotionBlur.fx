@@ -33,7 +33,7 @@
         uniform udata option <                                  \
         ui_category = ucategory; ui_label = ulabel;             \
         ui_type = "drag"; ui_min = umin;                        \
-        > = value
+        > = uvalue
 
 uOption(uThreshold, float, "Flow Basic", "Threshold", 0.064, 0.0);
 uOption(uScale,     float, "Flow Basic", "Scale",     16.00, 0.0);
