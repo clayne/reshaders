@@ -86,7 +86,7 @@ void common2Dvs(in uint id, in float uFact,
     uv[1].zw = coord + offset.zy; // +-
 }
 
-v2fd downsample2Dvs(const uint id, float uFact)
+v2fd downsample2Dvs(uint id, float uFact)
 {
     v2fd output;
     float2 coord;
@@ -95,7 +95,7 @@ v2fd downsample2Dvs(const uint id, float uFact)
     return output;
 }
 
-v2fu upsample2Dvs(const uint id, float uFact)
+v2fu upsample2Dvs(uint id, float uFact)
 {
     v2fu output;
     float2 coord;
