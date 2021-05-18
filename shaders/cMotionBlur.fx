@@ -35,7 +35,7 @@
         ui_type = "drag"; ui_min = umin;                        \
         > = uvalue
 
-uOption(uThreshold, float, "Flow Basic", "Threshold", 0.024, 0.0);
+uOption(uThreshold, float, "Flow Basic", "Threshold", 0.016, 0.0);
 uOption(uScale,     float, "Flow Basic", "Scale",     6.400, 0.0);
 
 uOption(uInterpolation, float, "Flow Advanced", "Temporal Sharpness", 1.000, 0.0);
@@ -155,11 +155,10 @@ float4 ps_filter(v2f input) : SV_Target
     float aLuma = lerp(pLuma, cLuma, 0.5);
 
     float c = tex2D(s_buffer, input.uv).r;
-    c = c * exposure2D(aLuma);
-    return saturate(c * rcp(c + 1.0));
+    return saturate(1.0 - exp(-c * exposure2D(aLuma)));
 }
 
-struct ps2mrt1
+struct ps2mrt
 {
     float4 render0 : SV_TARGET0;
     float4 render1 : SV_TARGET1;
@@ -191,9 +190,9 @@ void calcFlow(  in float2 uCoord,
     oFlow = cFlow + uFlow;
 }
 
-ps2mrt1 ps_flow(v2f input)
+ps2mrt ps_flow(v2f input)
 {
-    ps2mrt1 output;
+    ps2mrt output;
     float2 oFlow[9];
     calcFlow(input.uv, 8.0, 0.0,      5.0, oFlow[8]);
     calcFlow(input.uv, 7.0, oFlow[8], 4.0, oFlow[7]);
