@@ -43,7 +43,7 @@ uOption(uFlowLOD,       int,   "slider", "Flow Advanced", "Optical Flow LOD",   
 
 uOption(uIntensity, float, "slider", "Automatic Exposure", "Intensity", 4.000, 0.000, 32.00);
 uOption(uKeyValue,  float, "slider", "Automatic Exposure", "Key Value", 0.180, 0.000, 1.000);
-uOption(uLowClamp,  float, "slider", "Automatic Exposure", "Low Clamp", 0.002, 0.001, 1.000);
+uOption(uLowClamp,  float, "slider", "Automatic Exposure", "Low Clamp", 0.001, 0.001, 1.000);
 
 /*
     Round to nearest power of 2
