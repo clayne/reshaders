@@ -184,7 +184,7 @@ void calcFlow(  in float2 uCoord,
     float2 cFlow = cScale * dt * (d.xy * d.zz);
 
     // Threshold
-    float oldFlow = length(cFlow);
+    float oldFlow = sqrt(dot(cFlow, cFlow) + 1e-5);
     float newFlow = max(oldFlow - uThreshold, 0.0);
     cFlow *= newFlow / oldFlow;
     oFlow = cFlow + uFlow;
