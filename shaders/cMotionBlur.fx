@@ -155,7 +155,8 @@ float4 ps_filter(v2f input) : SV_Target
     float aLuma = lerp(pLuma, cLuma, 0.5);
 
     float c = tex2D(s_buffer, input.uv).r;
-    return saturate(1.0 - exp(-c * exposure2D(aLuma)));
+    c = c * exposure2D(aLuma);
+    return saturate(c * rcp(c + 1.0));
 }
 
 struct ps2mrt1
