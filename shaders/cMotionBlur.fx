@@ -35,7 +35,7 @@
         ui_type = "drag"; ui_min = umin;                        \
         > = uvalue
 
-uOption(uThreshold, float, "Flow Basic", "Threshold", 0.032, 0.0);
+uOption(uThreshold, float, "Flow Basic", "Threshold", 0.024, 0.0);
 uOption(uScale,     float, "Flow Basic", "Scale",     6.400, 0.0);
 
 uOption(uInterpolation, float, "Flow Advanced", "Temporal Sharpness", 1.000, 0.0);
