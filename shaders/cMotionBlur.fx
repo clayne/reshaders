@@ -109,6 +109,9 @@ v2f vs_common(const uint id : SV_VertexID)
     ps_flow()'s ddx/ddy port of optical flow from PixelFlow
     [https://github.com/diwi/PixelFlow] [MIT]
 
+    HLSL implementation of coarse-fine pyramid (calcFlow) from
+    [https://www.youtube.com/watch?v=VSSyPskheaE]
+
     flow2D()'s Interleaved Gradient Noise from the following presentation
     [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
 
