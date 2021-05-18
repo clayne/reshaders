@@ -35,8 +35,8 @@
         ui_type = "drag"; ui_min = umin;                        \
         > = uvalue
 
-uOption(uThreshold, float, "Flow Basic", "Threshold", 0.032, 0.0);
-uOption(uScale,     float, "Flow Basic", "Scale",     6.400, 0.0);
+uOption(uThreshold, float, "Flow Basic", "Threshold", 0.064, 0.0);
+uOption(uScale,     float, "Flow Basic", "Scale",     16.00, 0.0);
 
 uOption(uInterpolation, float, "Flow Advanced", "Temporal Sharpness", 1.000, 0.0);
 uOption(uFlowLOD,       int,   "Flow Advanced", "Optical Flow LOD",   5,     0.0);
@@ -164,19 +164,21 @@ struct ps2mrt1
 void calcFlow(  in float2 uCoord,
                 in float  uLOD,
                 in float2 uFlow,
-				out float2 oFlow)
+                in float2 uFact,
+                out float2 oFlow)
 {
     // Calculate distance
     float pLuma = tex2Dlod(s_pframe, float4(uCoord + uFlow, 0.0, uLOD)).g;
     float cLuma = tex2Dlod(s_cframe, float4(uCoord, 0.0, uLOD)).r;
     float dt = cLuma - pLuma;
+    const float2 cScale = uScale * exp2(-uFact);
 
     // Calculate gradients and optical flow
     float3 d;
     d.x = ddx(cLuma) + ddx(pLuma);
     d.y = ddy(cLuma) + ddy(pLuma);
     d.z = rsqrt(dot(d.xy, d.xy) + 1.0);
-    float2 cFlow = uScale * dt * (d.xy * d.zz);
+    float2 cFlow = cScale * dt * (d.xy * d.zz);
 
     // Threshold
     float oldFlow = length(cFlow);
@@ -189,15 +191,15 @@ ps2mrt1 ps_flow(v2f input)
 {
     ps2mrt1 output;
     float2 oFlow[9];
-    calcFlow(input.uv, 8.0, 0.0,      oFlow[8]);
-    calcFlow(input.uv, 7.0, oFlow[8], oFlow[7]);
-    calcFlow(input.uv, 6.0, oFlow[7], oFlow[6]);
-    calcFlow(input.uv, 5.0, oFlow[6], oFlow[5]);
-    calcFlow(input.uv, 4.0, oFlow[5], oFlow[4]);
-    calcFlow(input.uv, 3.0, oFlow[4], oFlow[3]);
-    calcFlow(input.uv, 2.0, oFlow[3], oFlow[2]);
-    calcFlow(input.uv, 1.0, oFlow[2], oFlow[1]);
-    calcFlow(input.uv, 0.0, oFlow[1], oFlow[0]);
+    calcFlow(input.uv, 8.0, 0.0,      5.0, oFlow[8]);
+    calcFlow(input.uv, 7.0, oFlow[8], 4.0, oFlow[7]);
+    calcFlow(input.uv, 6.0, oFlow[7], 3.0, oFlow[6]);
+    calcFlow(input.uv, 5.0, oFlow[6], 2.0, oFlow[5]);
+    calcFlow(input.uv, 4.0, oFlow[5], 1.0, oFlow[4]);
+    calcFlow(input.uv, 3.0, oFlow[4], 2.0, oFlow[3]);
+    calcFlow(input.uv, 2.0, oFlow[3], 3.0, oFlow[2]);
+    calcFlow(input.uv, 1.0, oFlow[2], 4.0, oFlow[1]);
+    calcFlow(input.uv, 0.0, oFlow[1], 5.0, oFlow[0]);
     float2 pFlow = tex2D(s_pflow, input.uv).rg;
     output.render0 = lerp(pFlow, oFlow[0], uInterpolation).xyxy;
     output.render1 = tex2Dlod(s_pframe, float4(input.uv, 0.0, 8.0)).r;
