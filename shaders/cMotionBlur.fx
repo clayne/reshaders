@@ -35,13 +35,13 @@
         ui_type = "drag"; ui_min = umin;                        \
         > = uvalue
 
-uOption(uThreshold, float, "Flow Basic", "Threshold", 0.064, 0.0);
-uOption(uScale,     float, "Flow Basic", "Scale",     16.00, 0.0);
+uOption(uThreshold, float, "Flow Basic", "Threshold", 0.032, 0.0);
+uOption(uScale,     float, "Flow Basic", "Scale",     6.400, 0.0);
 
 uOption(uInterpolation, float, "Flow Advanced", "Temporal Sharpness", 1.000, 0.0);
-uOption(uFlowLOD,       int,   "Flow Advanced", "Optical Flow LOD",   5,     0.0);
+uOption(uFlowLOD,       int,   "Flow Advanced", "Optical Flow LOD",   4,     0.0);
 
-uOption(uIntensity, float, "Automatic Exposure", "Intensity", 3.000, 0.000);
+uOption(uIntensity, float, "Automatic Exposure", "Intensity", 4.000, 0.000);
 uOption(uKeyValue,  float, "Automatic Exposure", "Key Value", 0.180, 0.000);
 uOption(uLowClamp,  float, "Automatic Exposure", "Low Clamp", 0.002, 0.001);
 
