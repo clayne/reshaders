@@ -29,14 +29,14 @@
     - Blur
 */
 
-#define uOption(option, udata, utype, ucategory, ulabel, uvalue, umin, umax) \
-        uniform udata option <                                               \
-        ui_category = ucategory; ui_label = ulabel;                          \
-        ui_type = utype; ui_min = umin; ui_max = umax;                       \
+#define uOption(option, udata, utype, ucategory, ulabel, uvalue, umin, umax)    \
+        uniform udata option <                                                  \
+        ui_category = ucategory; ui_label = ulabel;                             \
+        ui_type = utype; ui_min = umin; ui_max = umax;                          \
         > = uvalue
 
-uOption(uThreshold, float, "slider", "Flow Basic", "Threshold", 0.016, 0.000, 1.000);
-uOption(uScale,     float, "slider", "Flow Basic", "Scale",     6.400, 0.000, 32.00);
+uOption(uThreshold, float, "slider", "Flow Basic", "Threshold", 0.008, 0.000, 1.000);
+uOption(uScale,     float, "slider", "Flow Basic", "Scale",     8.000, 0.000, 32.00);
 
 uOption(uInterpolation, float, "slider", "Flow Advanced", "Temporal Sharpness", 1.000, 0.000, 1.000);
 uOption(uFlowLOD,       int,   "slider", "Flow Advanced", "Optical Flow LOD",   4, 0, 9);
