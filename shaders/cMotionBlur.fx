@@ -69,8 +69,8 @@ uOption(uLowClamp,  float, "Automatic Exposure", "Low Clamp", 0.002, 0.001);
 
 texture2D r_color  : COLOR;
 texture2D r_buffer { RSIZE; MipLevels = LOG2(DSIZE(2)) + 1;    Format = R8;    };
-texture2D r_pframe { Width = 256; Height = 256; MipLevels = 9; Format = RG8;   };
-texture2D r_cframe { Width = 256; Height = 256; MipLevels = 9; Format = R8;    };
+texture2D r_pframe { Width = 256; Height = 256; MipLevels = 9; Format = RG16F; };
+texture2D r_cframe { Width = 256; Height = 256; MipLevels = 9; Format = R16F;  };
 texture2D r_cflow  { Width = 256; Height = 256; MipLevels = 9; Format = RG16F; };
 texture2D r_pflow  { Width = 256; Height = 256; Format = RG16F; };
 texture2D r_pluma  { Width = 256; Height = 256; Format = R8; };
@@ -155,7 +155,7 @@ float4 ps_filter(v2f input) : SV_Target
     float aLuma = lerp(pLuma, cLuma, 0.5);
 
     float c = tex2D(s_buffer, input.uv).r;
-    return saturate(1.0 - exp(-c * exposure2D(aLuma)));
+    return exp(-c * exposure2D(aLuma));
 }
 
 struct ps2mrt
