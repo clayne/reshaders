@@ -205,7 +205,7 @@ technique cBloom
     #define psd(i) PixelShader  = ps_downsample##i
     #define psu(i) PixelShader  = ps_upsample##i
     #define rt(i)  RenderTarget = r_bloom##i
-    #define blend(i) BlendEnable = TRUE; DestBlend = ##i
+    #define blend(i, j, k) BlendEnable = TRUE; BlendOp = i; SrcBlend = j; DestBlend = k
 
     pass { vsd(0); psd(0); rt(1); }
     pass { vsd(1); psd(1); rt(2); }
@@ -215,16 +215,16 @@ technique cBloom
     pass { vsd(5); psd(5); rt(6); }
     pass { vsd(6); psd(6); rt(7); }
     pass { vsd(7); psd(7); rt(8); }
-    pass { vsu(8); psu(8); rt(7); blend(ONE); }
-    pass { vsu(7); psu(7); rt(6); blend(ONE); }
-    pass { vsu(6); psu(6); rt(5); blend(ONE); }
-    pass { vsu(5); psu(5); rt(4); blend(ONE); }
-    pass { vsu(4); psu(4); rt(3); blend(ONE); }
-    pass { vsu(3); psu(3); rt(2); blend(ONE); }
-    pass { vsu(2); psu(2); rt(1); blend(ONE); }
-    pass { vsu(1); psu(1); blend(INVSRCCOLOR);
+    pass { vsu(8); psu(8); rt(7); blend(ADD, ONE, ONE); }
+    pass { vsu(7); psu(7); rt(6); blend(ADD, ONE, ONE); }
+    pass { vsu(6); psu(6); rt(5); blend(ADD, ONE, ONE); }
+    pass { vsu(5); psu(5); rt(4); blend(ADD, ONE, ONE); }
+    pass { vsu(4); psu(4); rt(3); blend(ADD, ONE, ONE); }
+    pass { vsu(3); psu(3); rt(2); blend(ADD, ONE, ONE); }
+    pass { vsu(2); psu(2); rt(1); blend(ADD, ONE, ONE); }
+    pass { vsu(1); psu(1); blend(ADD, ONE, INVSRCCOLOR);
         #if BUFFER_COLOR_BIT_DEPTH != 10
-            SRGBWriteEnable = true;
+            SRGBWriteEnable = TRUE;
         #endif
     }
 }

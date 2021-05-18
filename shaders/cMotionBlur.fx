@@ -38,12 +38,9 @@
 uOption(uThreshold, float, "slider", "Flow Basic", "Threshold", 0.016, 0.000, 1.000);
 uOption(uScale,     float, "slider", "Flow Basic", "Scale",     6.400, 0.000, 32.00);
 
+uOption(uIntensity,     float, "slider", "Flow Advanced", "Exposure Intensity", 5.000, 0.000, 32.00);
 uOption(uInterpolation, float, "slider", "Flow Advanced", "Temporal Sharpness", 1.000, 0.000, 1.000);
 uOption(uFlowLOD,       int,   "slider", "Flow Advanced", "Optical Flow LOD",   4, 0, 9);
-
-uOption(uIntensity, float, "slider", "Automatic Exposure", "Intensity", 4.000, 0.000, 32.00);
-uOption(uKeyValue,  float, "slider", "Automatic Exposure", "Key Value", 0.180, 0.000, 1.000);
-uOption(uLowClamp,  float, "slider", "Automatic Exposure", "Low Clamp", 0.001, 0.001, 1.000);
 
 /*
     Round to nearest power of 2
@@ -106,13 +103,16 @@ v2f vs_common(const uint id : SV_VertexID)
     exposure2D() from MJP's TheBakingLab
     [https://github.com/TheRealMJP/BakingLab] [MIT]
 
+    exposure2D()'s aKeyValue
+    [https://knarkowicz.wordpress.com/2016/01/09/automatic-exposure/]
+
     ps_flow()'s ddx/ddy port of optical flow from PixelFlow
     [https://github.com/diwi/PixelFlow] [MIT]
 
-    HLSL implementation of coarse-fine pyramid (calcFlow) from
+    HLSL implementation of coarse-fine pyramid (calcFlow)
     [https://www.youtube.com/watch?v=VSSyPskheaE]
 
-    flow2D()'s Interleaved Gradient Noise from the following presentation
+    flow2D()'s Interleaved Gradient Noise
     [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
 
     flow2D()'s blur centering from John Chapman
@@ -143,8 +143,9 @@ ps2mrt0 ps_convert(v2f input)
 
 float exposure2D(float aLuma)
 {
-    aLuma = max(aLuma, uLowClamp);
-    float aExposure = log2(max(uKeyValue / aLuma, uLowClamp));
+    aLuma = max(aLuma, 1e-5);
+    float aKeyValue = 1.03 - (2.0 / (2.0 + log10(aLuma + 1.0)));
+    float aExposure = log2(max(aKeyValue / aLuma, 1e-5));
     return exp2(aExposure + uIntensity);
 }
 
