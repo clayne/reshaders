@@ -41,7 +41,7 @@ uOption(uScale,     float, "slider", "Flow Basic", "Scale",     8.000, 0.000, 32
 uOption(uInterpolation, float, "slider", "Flow Advanced", "Temporal Sharpness", 1.000, 0.000, 1.000);
 uOption(uFlowLOD,       int,   "slider", "Flow Advanced", "Optical Flow LOD",   4, 0, 9);
 
-uOption(uIntensity, float, "slider", "Automatic Exposure", "Intensity", 4.000, 0.000, 32.00);
+uOption(uIntensity, float, "slider", "Automatic Exposure", "Intensity", 5.000, 0.000, 32.00);
 uOption(uKeyValue,  float, "slider", "Automatic Exposure", "Key Value", 0.180, 0.000, 1.000);
 uOption(uLowClamp,  float, "slider", "Automatic Exposure", "Low Clamp", 0.002, 0.001, 1.000);
 
@@ -155,7 +155,7 @@ float4 ps_filter(v2f input) : SV_Target
     float aLuma = lerp(pLuma, cLuma, 0.5);
 
     float c = tex2D(s_buffer, input.uv).r;
-    return exp(-c * exposure2D(aLuma));
+    return exp2(-c * exposure2D(aLuma));
 }
 
 struct ps2mrt
