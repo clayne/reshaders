@@ -41,9 +41,9 @@ uOption(uScale,     float, "slider", "Flow Basic", "Scale",     8.000, 0.000, 32
 uOption(uInterpolation, float, "slider", "Flow Advanced", "Temporal Sharpness", 1.000, 0.000, 1.000);
 uOption(uFlowLOD,       int,   "slider", "Flow Advanced", "Optical Flow LOD",   4, 0, 9);
 
-uOption(uIntensity, float, "slider", "Automatic Exposure", "Intensity", 5.000, 0.000, 32.00);
+uOption(uIntensity, float, "slider", "Automatic Exposure", "Intensity", 4.000, 0.000, 32.00);
 uOption(uKeyValue,  float, "slider", "Automatic Exposure", "Key Value", 0.180, 0.000, 1.000);
-uOption(uLowClamp,  float, "slider", "Automatic Exposure", "Low Clamp", 0.002, 0.001, 1.000);
+uOption(uLowClamp,  float, "slider", "Automatic Exposure", "Low Clamp", 0.001, 0.001, 1.000);
 
 /*
     Round to nearest power of 2
@@ -155,7 +155,7 @@ float4 ps_filter(v2f input) : SV_Target
     float aLuma = lerp(pLuma, cLuma, 0.5);
 
     float c = tex2D(s_buffer, input.uv).r;
-    return exp2(-c * exposure2D(aLuma));
+    return exp(-c * exposure2D(aLuma));
 }
 
 struct ps2mrt
@@ -192,9 +192,6 @@ void calcFlow(  in float2 uCoord,
 
 ps2mrt ps_flow(v2f input)
 {
-    float upos = floor(dot(input.vpos.xy, 1.0));
-    upos = frac(upos * 0.5) * 2.0;
-
     ps2mrt output;
     float2 oFlow[9];
     calcFlow(input.uv, 8.0, 0.0,      5.0, oFlow[8]);
@@ -207,7 +204,7 @@ ps2mrt ps_flow(v2f input)
     calcFlow(input.uv, 1.0, oFlow[2], 4.0, oFlow[1]);
     calcFlow(input.uv, 0.0, oFlow[1], 5.0, oFlow[0]);
     float2 pFlow = tex2D(s_pflow, input.uv).rg;
-    output.render0 = lerp(pFlow, oFlow[0], uInterpolation * upos).xyxy;
+    output.render0 = lerp(pFlow, oFlow[0], uInterpolation).xyxy;
     output.render1 = tex2Dlod(s_pframe, float4(input.uv, 0.0, 8.0)).r;
     return output;
 }
