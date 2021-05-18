@@ -20,7 +20,7 @@
     - Apply adaptive exposure to downsampled current frame
 
     [4] ps_flow
-    - Calculate optical flow
+    - Calculate optical flow pyramid
     - RenderTarget0: Output optical flow
     - RenderTarget1: Store current 1x1 luma for next frame
 
@@ -35,12 +35,11 @@
         ui_type = "drag"; ui_min = umin;                        \
         > = uvalue
 
-uOption(uThreshold, float, "Flow Basic", "Threshold", 0.064, 0.0);
-uOption(uScale,     float, "Flow Basic", "Scale",     16.00, 0.0);
+uOption(uThreshold, float, "Flow Basic", "Threshold", 0.032, 0.0);
+uOption(uScale,     float, "Flow Basic", "Scale",     6.400, 0.0);
 
-uOption(uInterpolation, float, "Flow Advanced", "Temporal Sharpness", 0.800, 0.0);
-uOption(uOpticalLOD,    int,   "Flow Advanced", "Prefilter LOD",      4,     0.0);
-uOption(uFlowLOD,       int,   "Flow Advanced", "Optical Flow LOD",   6,     0.0);
+uOption(uInterpolation, float, "Flow Advanced", "Temporal Sharpness", 1.000, 0.0);
+uOption(uFlowLOD,       int,   "Flow Advanced", "Optical Flow LOD",   5,     0.0);
 
 uOption(uIntensity, float, "Automatic Exposure", "Intensity", 3.000, 0.000);
 uOption(uKeyValue,  float, "Automatic Exposure", "Key Value", 0.180, 0.000);
@@ -117,34 +116,11 @@ v2f vs_common(const uint id : SV_VertexID)
     [http://john-chapman-graphics.blogspot.com/2013/01/per-object-motion-blur.html]
 */
 
-float exposure2D(float aLuma)
-{
-    aLuma = max(aLuma, uLowClamp);
-    float aExposure = log2(max(uKeyValue / aLuma, uLowClamp));
-    return exp2(aExposure + uIntensity);
-}
-
-float4 flow2D(v2f input, float2 flow, float i)
-{
-    const float3 value = float3(52.9829189, 0.06711056, 0.00583715);
-    float noise = frac(value.x * frac(dot(input.vpos.xy, value.yz)));
-
-    const float samples = 1.0 / (16.0 - 1.0);
-    float2 calc = (noise * 2.0 + i) * samples - 0.5;
-    return tex2D(s_color, flow * calc + input.uv);
-}
-
 struct ps2mrt0
 {
     float4 render0 : SV_TARGET0;
     float4 render1 : SV_TARGET1;
     float4 render2 : SV_TARGET2;
-};
-
-struct ps2mrt1
-{
-    float4 render0 : SV_TARGET0;
-    float4 render1 : SV_TARGET1;
 };
 
 float4 ps_source(v2f input) : SV_Target
@@ -162,6 +138,13 @@ ps2mrt0 ps_convert(v2f input)
     return output;
 }
 
+float exposure2D(float aLuma)
+{
+    aLuma = max(aLuma, uLowClamp);
+    float aExposure = log2(max(uKeyValue / aLuma, uLowClamp));
+    return exp2(aExposure + uIntensity);
+}
+
 float4 ps_filter(v2f input) : SV_Target
 {
     float cLuma = tex2Dlod(s_pframe, float4(input.uv, 0.0, 8.0)).r;
@@ -172,31 +155,65 @@ float4 ps_filter(v2f input) : SV_Target
     return saturate(1.0 - exp(-c * exposure2D(aLuma)));
 }
 
-ps2mrt1 ps_flow(v2f input)
+struct ps2mrt1
 {
-    ps2mrt1 output;
+    float4 render0 : SV_TARGET0;
+    float4 render1 : SV_TARGET1;
+};
 
+void calcFlow(  in float2 uCoord,
+                in float  uLOD,
+                in float2 uFlow,
+                in float  uFact,
+                out float2 oFlow)
+{
     // Calculate distance
-    float cLuma = tex2Dlod(s_cframe, float4(input.uv, 0.0, uOpticalLOD)).r;
-    float pLuma = tex2Dlod(s_pframe, float4(input.uv, 0.0, uOpticalLOD)).g;
+    float cLuma = tex2Dlod(s_cframe, float4(uCoord + uFlow, 0.0, uLOD)).r;
+    float pLuma = tex2Dlod(s_pframe, float4(uCoord, 0.0, uLOD)).g;
     float dt = cLuma - pLuma;
+    float cScale = uScale * exp2(-uFact);
 
     // Calculate gradients and optical flow
     float3 d;
     d.x = ddx(cLuma) + ddx(pLuma);
     d.y = ddy(cLuma) + ddy(pLuma);
     d.z = rsqrt(dot(d.xy, d.xy) + 1.0);
-    float2 cFlow = uScale * dt * (d.xy * d.zz);
+    float2 cFlow = cScale * dt * (d.xy * d.zz);
 
     // Threshold
-    float2 pFlow = tex2D(s_pflow, input.uv).xy;
-    float oFlow = length(cFlow);
-    float nFlow = max(oFlow - uThreshold, 0.0);
-    cFlow *= nFlow / oFlow;
+    float oldFlow = length(cFlow);
+    float newFlow = max(oldFlow - uThreshold, 0.0);
+    cFlow *= newFlow / oldFlow;
+    oFlow = cFlow + uFlow;
+}
 
-    output.render0 = lerp(pFlow, cFlow, saturate(uInterpolation)).xyxy;
+ps2mrt1 ps_flow(v2f input)
+{
+    ps2mrt1 output;
+    float2 oFlow[9];
+    calcFlow(input.uv, 8.0, 0.0,      5.0, oFlow[8]);
+    calcFlow(input.uv, 7.0, oFlow[8], 4.0, oFlow[7]);
+    calcFlow(input.uv, 6.0, oFlow[7], 3.0, oFlow[6]);
+    calcFlow(input.uv, 5.0, oFlow[6], 2.0, oFlow[5]);
+    calcFlow(input.uv, 4.0, oFlow[5], 1.0, oFlow[4]);
+    calcFlow(input.uv, 3.0, oFlow[4], 2.0, oFlow[3]);
+    calcFlow(input.uv, 2.0, oFlow[3], 3.0, oFlow[2]);
+    calcFlow(input.uv, 1.0, oFlow[2], 4.0, oFlow[1]);
+    calcFlow(input.uv, 0.0, oFlow[1], 5.0, oFlow[0]);
+    float2 pFlow = tex2D(s_pflow, input.uv).rg;
+    output.render0 = lerp(pFlow, oFlow[0], uInterpolation).xyxy;
     output.render1 = tex2Dlod(s_pframe, float4(input.uv, 0.0, 8.0)).r;
     return output;
+}
+
+float4 flow2D(v2f input, float2 flow, float i)
+{
+    const float3 value = float3(52.9829189, 0.06711056, 0.00583715);
+    float noise = frac(value.x * frac(dot(input.vpos.xy, value.yz)));
+
+    const float samples = 1.0 / (16.0 - 1.0);
+    float2 calc = (noise * 2.0 + i) * samples - 0.5;
+    return tex2D(s_color, flow * calc + input.uv);
 }
 
 float4 ps_output(v2f input) : SV_Target
