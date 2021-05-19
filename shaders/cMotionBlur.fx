@@ -36,11 +36,11 @@
         > = uvalue
 
 uOption(uThreshold, float, "slider", "Flow Basic", "Threshold", 0.016, 0.000, 1.000);
-uOption(uScale,     float, "slider", "Flow Basic", "Scale",     6.400, 0.000, 32.00);
+uOption(uScale,     float, "slider", "Flow Basic", "Scale",     3.200, 0.000, 32.00);
 
 uOption(uIntensity,     float, "slider", "Flow Advanced", "Exposure Intensity", 5.000, 0.000, 32.00);
 uOption(uInterpolation, float, "slider", "Flow Advanced", "Temporal Sharpness", 1.000, 0.000, 1.000);
-uOption(uFlowLOD,       int,   "slider", "Flow Advanced", "Optical Flow LOD",   4, 0, 9);
+uOption(uFlowLOD,       int,   "slider", "Flow Advanced", "Optical Flow LOD",   4, 0, 8);
 
 /*
     Round to nearest power of 2
@@ -100,23 +100,17 @@ v2f vs_common(const uint id : SV_VertexID)
 /*
     [ Pixel Shaders ]
 
-    exposure2D() from MJP's TheBakingLab
-    [https://github.com/TheRealMJP/BakingLab] [MIT]
+    exposure2D()
+    aExposure - [https://github.com/TheRealMJP/BakingLab] [MIT]
+    aKeyValue - [https://knarkowicz.wordpress.com/2016/01/09/automatic-exposure/]
 
-    exposure2D()'s aKeyValue
-    [https://knarkowicz.wordpress.com/2016/01/09/automatic-exposure/]
+    ps_flow()
+    Optical Flow - [https://github.com/diwi/PixelFlow] [MIT]
+    Pyramid HLSL Idea - [https://www.youtube.com/watch?v=VSSyPskheaE]
 
-    ps_flow()'s ddx/ddy port of optical flow from PixelFlow
-    [https://github.com/diwi/PixelFlow] [MIT]
-
-    HLSL implementation of coarse-fine pyramid (calcFlow)
-    [https://www.youtube.com/watch?v=VSSyPskheaE]
-
-    flow2D()'s Interleaved Gradient Noise
-    [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
-
-    flow2D()'s blur centering from John Chapman
-    [http://john-chapman-graphics.blogspot.com/2013/01/per-object-motion-blur.html]
+    flow2D()
+    Noise - [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
+    Blurs - [http://john-chapman-graphics.blogspot.com/2013/01/per-object-motion-blur.html]
 */
 
 struct ps2mrt0
@@ -194,15 +188,15 @@ ps2mrt ps_flow(v2f input)
 {
     ps2mrt output;
     float2 oFlow[9];
-    calcFlow(input.uv, 8.0, 0.0,      5.0, oFlow[8]);
-    calcFlow(input.uv, 7.0, oFlow[8], 4.0, oFlow[7]);
-    calcFlow(input.uv, 6.0, oFlow[7], 3.0, oFlow[6]);
-    calcFlow(input.uv, 5.0, oFlow[6], 2.0, oFlow[5]);
-    calcFlow(input.uv, 4.0, oFlow[5], 1.0, oFlow[4]);
-    calcFlow(input.uv, 3.0, oFlow[4], 2.0, oFlow[3]);
-    calcFlow(input.uv, 2.0, oFlow[3], 3.0, oFlow[2]);
-    calcFlow(input.uv, 1.0, oFlow[2], 4.0, oFlow[1]);
-    calcFlow(input.uv, 0.0, oFlow[1], 5.0, oFlow[0]);
+    calcFlow(input.uv, 8.0, 0.0,      4.0, oFlow[8]);
+    calcFlow(input.uv, 7.0, oFlow[8], 3.0, oFlow[7]);
+    calcFlow(input.uv, 6.0, oFlow[7], 2.0, oFlow[6]);
+    calcFlow(input.uv, 5.0, oFlow[6], 1.0, oFlow[5]);
+    calcFlow(input.uv, 4.0, oFlow[5], 0.0, oFlow[4]);
+    calcFlow(input.uv, 3.0, oFlow[4], 1.0, oFlow[3]);
+    calcFlow(input.uv, 2.0, oFlow[3], 2.0, oFlow[2]);
+    calcFlow(input.uv, 1.0, oFlow[2], 3.0, oFlow[1]);
+    calcFlow(input.uv, 0.0, oFlow[1], 4.0, oFlow[0]);
     float2 pFlow = tex2D(s_pflow, input.uv).rg;
     output.render0 = lerp(pFlow, oFlow[0], uInterpolation).xyxy;
     output.render1 = tex2Dlod(s_pframe, float4(input.uv, 0.0, 8.0)).r;
