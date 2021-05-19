@@ -70,7 +70,7 @@ texture2D r_pframe { Width = 256; Height = 256; MipLevels = 9; Format = RG16F; }
 texture2D r_cframe { Width = 256; Height = 256; MipLevels = 9; Format = R16F;  };
 texture2D r_cflow  { Width = 256; Height = 256; MipLevels = 9; Format = RG16F; };
 texture2D r_pflow  { Width = 256; Height = 256; Format = RG16F; };
-texture2D r_pluma  { Width = 256; Height = 256; Format = R8; };
+texture2D r_pluma  { Width = 256; Height = 256; Format = R16F; };
 
 sampler2D s_color  { Texture = r_color; SRGBTexture = TRUE; };
 sampler2D s_buffer { Texture = r_buffer; };
