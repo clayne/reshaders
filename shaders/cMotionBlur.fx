@@ -36,10 +36,10 @@
         > = uvalue
 
 uOption(uThreshold, float, "slider", "Flow Basic", "Threshold", 0.032, 0.000, 1.000);
-uOption(uScale,     float, "slider", "Flow Basic", "Scale",     3.200, 0.000, 32.00);
+uOption(uScale,     float, "slider", "Flow Basic", "Scale",     3.200, 0.000, 10.00);
 
-uOption(uIntensity,     float, "slider", "Flow Advanced", "Exposure Intensity", 4.000, 0.000, 32.00);
-uOption(uInterpolation, float, "slider", "Flow Advanced", "Temporal Sharpness", 1.000, 0.000, 1.000);
+uOption(uIntensity,     float, "slider", "Flow Advanced", "Exposure Intensity", 4.000, 0.000, 8.000);
+uOption(uInterpolation, float, "slider", "Flow Advanced", "Temporal Smoothing", 0.500, 0.000, 1.000);
 uOption(uFlowLOD,       int,   "slider", "Flow Advanced", "Optical Flow LOD",   4, 0, 8);
 
 /*
@@ -193,7 +193,7 @@ ps2mrt ps_flow(v2f input)
     calcFlow(input.uv, 4.0, oFlow[2], oFlow[1]);
     calcFlow(input.uv, 3.0, oFlow[1], oFlow[0]);
     float2 pFlow = tex2D(s_pflow, input.uv).rg;
-    output.render0 = lerp(pFlow, oFlow[0], uInterpolation).xyxy;
+    output.render0 = lerp(pFlow, oFlow[0], 1.0 - (uInterpolation * 0.5)).xyxy;
     output.render1 = tex2Dlod(s_pframe, float4(input.uv, 0.0, 8.0)).r;
     return output;
 }
@@ -201,10 +201,10 @@ ps2mrt ps_flow(v2f input)
 float4 flow2D(v2f input, float2 flow, float i)
 {
     const float3 value = float3(52.9829189, 0.06711056, 0.00583715);
-    float noise = frac(value.x * frac(dot(input.vpos.xy, value.yz)));
+    float cNoise = frac(value.x * frac(dot(input.vpos.xy, value.yz)));
 
     const float samples = 1.0 / (16.0 - 1.0);
-    float2 calc = (noise * 2.0 + i) * samples - 0.5;
+    float2 calc = (cNoise * 2.0 + i) * samples - 0.5;
     return tex2D(s_color, flow * calc + input.uv);
 }
 
