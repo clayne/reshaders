@@ -35,12 +35,12 @@
         ui_type = utype; ui_min = umin; ui_max = umax;                          \
         > = uvalue
 
-uOption(uThreshold, float, "slider", "Flow Basic", "Threshold", 0.032, 0.000, 1.000);
-uOption(uScale,     float, "slider", "Flow Basic", "Scale",     3.200, 0.000, 10.00);
+uOption(uThreshold, float, "slider", "Flow Basic", "Threshold", 1.000, 0.000, 4.000);
+uOption(uScale,     float, "slider", "Flow Basic", "Scale",     1.000, 0.000, 4.000);
 
 uOption(uIntensity,     float, "slider", "Flow Advanced", "Exposure Intensity", 4.000, 0.000, 8.000);
-uOption(uInterpolation, float, "slider", "Flow Advanced", "Temporal Smoothing", 0.500, 0.000, 1.000);
-uOption(uFlowLOD,       int,   "slider", "Flow Advanced", "Optical Flow LOD",   4, 0, 8);
+uOption(uInterpolation, float, "slider", "Flow Advanced", "Temporal Smoothing", 0.000, 0.000, 1.000);
+uOption(uFlowLOD,       int,   "slider", "Flow Advanced", "Optical Flow LOD",   5, 0, 8);
 
 /*
     Round to nearest power of 2
@@ -66,11 +66,11 @@ uOption(uFlowLOD,       int,   "slider", "Flow Advanced", "Optical Flow LOD",   
 
 texture2D r_color  : COLOR;
 texture2D r_buffer { RSIZE; MipLevels = LOG2(DSIZE(2)) + 1;    Format = R8;    };
-texture2D r_pframe { Width = 256; Height = 256; MipLevels = 9; Format = RG16F; };
-texture2D r_cframe { Width = 256; Height = 256; MipLevels = 9; Format = R16F;  };
-texture2D r_cflow  { Width = 256; Height = 256; MipLevels = 9; Format = RG16F; };
-texture2D r_pflow  { Width = 256; Height = 256; Format = RG16F; };
-texture2D r_pluma  { Width = 256; Height = 256; Format = R16F; };
+texture2D r_pframe { Width = 128; Height = 128; MipLevels = 8; Format = RG16F; };
+texture2D r_cframe { Width = 128; Height = 128; MipLevels = 8; Format = R16F;  };
+texture2D r_cflow  { Width = 128; Height = 128; MipLevels = 8; Format = RG16F; };
+texture2D r_pflow  { Width = 128; Height = 128; Format = RG16F; };
+texture2D r_pluma  { Width = 128; Height = 128; Format = R16F; };
 
 sampler2D s_color  { Texture = r_color; SRGBTexture = TRUE; };
 sampler2D s_buffer { Texture = r_buffer; };
@@ -164,34 +164,31 @@ void calcFlow(  in float2 uCoord,
                 out float2 oFlow)
 {
     // Calculate distance
-    float pLuma = tex2Dlod(s_pframe, float4(uCoord + uFlow, 0.0, uLOD)).g;
-    float cLuma = tex2Dlod(s_cframe, float4(uCoord, 0.0, uLOD)).r;
+    float pLuma = tex2Dlod(s_pframe, float4(uCoord + uFlow, 0.0, uLOD)).g * uScale;
+    float cLuma = tex2Dlod(s_cframe, float4(uCoord, 0.0, uLOD)).r * uScale;
     float dt = cLuma - pLuma;
 
     // Calculate gradients and optical flow
     float3 d;
     d.x = ddx(cLuma) + ddx(pLuma);
     d.y = ddy(cLuma) + ddy(pLuma);
-    d.z = rsqrt(dot(d.xy, d.xy) + 1.0);
-    float2 cFlow = uScale * dt * (d.xy * d.zz);
-
-    // Threshold
-    float oldFlow = sqrt(dot(cFlow, cFlow) + 1e-5);
-    float newFlow = max(oldFlow - uThreshold, 0.0);
-    cFlow *= newFlow / oldFlow;
+    d.z = rsqrt(dot(d.xy, d.xy) + uThreshold);
+    float2 cFlow = dt * (d.xy * d.zz);
     oFlow = cFlow + uFlow;
 }
 
 ps2mrt ps_flow(v2f input)
 {
     ps2mrt output;
-    float2 oFlow[6];
-    calcFlow(input.uv, 8.0, 0.000000, oFlow[5]);
-    calcFlow(input.uv, 7.0, oFlow[5], oFlow[4]);
-    calcFlow(input.uv, 6.0, oFlow[4], oFlow[3]);
-    calcFlow(input.uv, 5.0, oFlow[3], oFlow[2]);
-    calcFlow(input.uv, 4.0, oFlow[2], oFlow[1]);
-    calcFlow(input.uv, 3.0, oFlow[1], oFlow[0]);
+    float2 oFlow[8];
+    calcFlow(input.uv, 8.0, 0.000000, oFlow[7]);
+    calcFlow(input.uv, 7.0, oFlow[7], oFlow[6]);
+    calcFlow(input.uv, 6.0, oFlow[6], oFlow[5]);
+    calcFlow(input.uv, 5.0, oFlow[5], oFlow[4]);
+    calcFlow(input.uv, 4.0, oFlow[4], oFlow[3]);
+    calcFlow(input.uv, 3.0, oFlow[3], oFlow[2]);
+    calcFlow(input.uv, 2.0, oFlow[2], oFlow[1]);
+    calcFlow(input.uv, 1.0, oFlow[1], oFlow[0]);
     float2 pFlow = tex2D(s_pflow, input.uv).rg;
     output.render0 = lerp(pFlow, oFlow[0], 1.0 - (uInterpolation * 0.5)).xyxy;
     output.render1 = tex2Dlod(s_pframe, float4(input.uv, 0.0, 8.0)).r;
