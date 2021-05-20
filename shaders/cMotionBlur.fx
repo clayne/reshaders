@@ -35,12 +35,13 @@
         ui_type = utype; ui_min = umin; ui_max = umax;                          \
         > = uvalue
 
-uOption(uThreshold, float, "slider", "Flow Basic", "Threshold", 1.000, 0.000, 4.000);
-uOption(uScale,     float, "slider", "Flow Basic", "Scale",     1.000, 0.000, 4.000);
+uOption(uLambda, float, "slider", "Flow Basic", "Lambda", 1.000, 0.001, 4.000);
+uOption(uScale,  float, "slider", "Flow Basic", "Scale",  0.800, 0.001, 4.000);
 
-uOption(uIntensity,     float, "slider", "Flow Advanced", "Exposure Intensity", 4.000, 0.000, 8.000);
-uOption(uInterpolation, float, "slider", "Flow Advanced", "Temporal Smoothing", 0.000, 0.000, 1.000);
-uOption(uFlowLOD,       int,   "slider", "Flow Advanced", "Optical Flow LOD",   5, 0, 8);
+uOption(uIntensity,     float, "slider", "Flow Advanced", "Exposure Intensity",  4.000, 0.000, 8.000);
+uOption(uInterpolation, float, "slider", "Flow Advanced", "Temporal Smoothing",  0.000, 0.000, 1.000);
+uOption(uFlowLOD,       int,   "slider", "Flow Advanced", "Optical Flow LOD",    4, 0, 8);
+uOption(uDither,        bool,  "radio",  "Flow Advanced", "Optical Flow Smooth", false, 0, 0);
 
 /*
     Round to nearest power of 2
@@ -172,13 +173,18 @@ void calcFlow(  in float2 uCoord,
     float3 d;
     d.x = ddx(cLuma) + ddx(pLuma);
     d.y = ddy(cLuma) + ddy(pLuma);
-    d.z = rsqrt(dot(d.xy, d.xy) + uThreshold);
+    d.z = rsqrt(dot(d.xy, d.xy) + uLambda);
     float2 cFlow = dt * (d.xy * d.zz);
     oFlow = cFlow + uFlow;
 }
 
 ps2mrt ps_flow(v2f input)
 {
+    float2 cPos = floor(input.vpos.xy);
+    float cBoard = frac(dot(cPos, 1.0) * 0.5) * 2.0;
+    float cInterpolation = 1.0 - (uInterpolation * 0.5);
+    float cFactor = (uDither) ? cBoard : 1.0;
+
     ps2mrt output;
     float2 oFlow[8];
     calcFlow(input.uv, 8.0, 0.000000, oFlow[7]);
@@ -190,7 +196,7 @@ ps2mrt ps_flow(v2f input)
     calcFlow(input.uv, 2.0, oFlow[2], oFlow[1]);
     calcFlow(input.uv, 1.0, oFlow[1], oFlow[0]);
     float2 pFlow = tex2D(s_pflow, input.uv).rg;
-    output.render0 = lerp(pFlow, oFlow[0], 1.0 - (uInterpolation * 0.5)).xyxy;
+    output.render0 = lerp(pFlow, oFlow[0], cInterpolation * cFactor).xyxy;
     output.render1 = tex2Dlod(s_pframe, float4(input.uv, 0.0, 8.0)).r;
     return output;
 }
