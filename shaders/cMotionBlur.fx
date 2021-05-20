@@ -167,7 +167,7 @@ void calcFlow(  in float2 uCoord,
     // Calculate distance
     float pLuma = tex2Dlod(s_pframe, float4(uCoord + uFlow, 0.0, uLOD)).g;
     float cLuma = tex2Dlod(s_cframe, float4(uCoord, 0.0, uLOD)).r;
-    float dt = cLuma - pLuma;
+    float dt = (cLuma - pLuma) * 0.5;
 
     // Calculate gradients and optical flow
     float3 d;
