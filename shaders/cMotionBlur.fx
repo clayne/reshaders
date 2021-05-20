@@ -36,7 +36,7 @@
         > = uvalue
 
 uOption(uLambda, float, "slider", "Flow Basic", "Lambda", 1.000, 0.001, 4.000);
-uOption(uScale,  float, "slider", "Flow Basic", "Scale",  1.000, 0.001, 4.000);
+uOption(uScale,  float, "slider", "Flow Basic", "Scale",  2.000, 0.001, 4.000);
 
 uOption(uIntensity,     float, "slider", "Flow Advanced", "Exposure Intensity",  4.000, 0.000, 8.000);
 uOption(uInterpolation, float, "slider", "Flow Advanced", "Temporal Smoothing",  0.000, 0.000, 1.000);
@@ -165,8 +165,8 @@ void calcFlow(  in float2 uCoord,
                 out float2 oFlow)
 {
     // Calculate distance
-    float pLuma = tex2Dlod(s_pframe, float4(uCoord + uFlow, 0.0, uLOD)).g * uScale;
-    float cLuma = tex2Dlod(s_cframe, float4(uCoord, 0.0, uLOD)).r * uScale;
+    float pLuma = tex2Dlod(s_pframe, float4(uCoord + uFlow, 0.0, uLOD)).g;
+    float cLuma = tex2Dlod(s_cframe, float4(uCoord, 0.0, uLOD)).r;
     float dt = cLuma - pLuma;
 
     // Calculate gradients and optical flow
@@ -197,7 +197,7 @@ ps2mrt ps_flow(v2f input)
     calcFlow(input.uv, 2.0, oFlow[2], oFlow[1]);
     calcFlow(input.uv, 1.0, oFlow[1], oFlow[0]);
     float2 pFlow = tex2D(s_pflow, input.uv).rg;
-    output.render0 = lerp(pFlow, oFlow[0], cInterpolation * cFactor).xyxy;
+    output.render0 = lerp(pFlow, oFlow[0] * uScale, cInterpolation * cFactor).xyxy;
     output.render1 = tex2Dlod(s_pframe, float4(input.uv, 0.0, 8.0)).r;
     return output;
 }
