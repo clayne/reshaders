@@ -36,7 +36,7 @@
         > = uvalue
 
 uOption(uLambda, float, "slider", "Flow Basic", "Lambda", 1.000, 0.001, 4.000);
-uOption(uScale,  float, "slider", "Flow Basic", "Scale",  0.800, 0.001, 4.000);
+uOption(uScale,  float, "slider", "Flow Basic", "Scale",  1.000, 0.001, 4.000);
 
 uOption(uIntensity,     float, "slider", "Flow Advanced", "Exposure Intensity",  4.000, 0.000, 8.000);
 uOption(uInterpolation, float, "slider", "Flow Advanced", "Temporal Smoothing",  0.000, 0.000, 1.000);
@@ -173,6 +173,7 @@ void calcFlow(  in float2 uCoord,
     float3 d;
     d.x = ddx(cLuma) + ddx(pLuma);
     d.y = ddy(cLuma) + ddy(pLuma);
+    d.xy *= 0.5;
     d.z = rsqrt(dot(d.xy, d.xy) + uLambda);
     float2 cFlow = dt * (d.xy * d.zz);
     oFlow = cFlow + uFlow;
