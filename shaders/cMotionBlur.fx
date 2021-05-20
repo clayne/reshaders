@@ -103,7 +103,6 @@ v2f vs_common(const uint id : SV_VertexID)
 
     exposure2D()
     aExposure - [https://github.com/TheRealMJP/BakingLab] [MIT]
-    aKeyValue - [https://knarkowicz.wordpress.com/2016/01/09/automatic-exposure/]
 
     ps_flow()
     Optical Flow - [https://github.com/diwi/PixelFlow] [MIT]
@@ -138,9 +137,8 @@ ps2mrt0 ps_convert(v2f input)
 
 float exposure2D(float aLuma)
 {
-    aLuma = max(aLuma, 1e-8);
-    float aKeyValue = 1.03 - (2.0 / (2.0 + log10(aLuma + 1.0)));
-    float aExposure = log2(max(aKeyValue / aLuma, 1e-8));
+    aLuma = max(aLuma, 1e-5);
+    float aExposure = log2(max(0.18 / aLuma, 1e-5));
     return exp2(aExposure + uIntensity);
 }
 
