@@ -188,14 +188,14 @@ ps2mrt ps_flow(v2f input)
 
     ps2mrt output;
     float2 oFlow[8];
-    calcFlow(input.uv, 8.0, 0.000000, oFlow[7]);
-    calcFlow(input.uv, 7.0, oFlow[7], oFlow[6]);
-    calcFlow(input.uv, 6.0, oFlow[6], oFlow[5]);
-    calcFlow(input.uv, 5.0, oFlow[5], oFlow[4]);
-    calcFlow(input.uv, 4.0, oFlow[4], oFlow[3]);
-    calcFlow(input.uv, 3.0, oFlow[3], oFlow[2]);
-    calcFlow(input.uv, 2.0, oFlow[2], oFlow[1]);
-    calcFlow(input.uv, 1.0, oFlow[1], oFlow[0]);
+    calcFlow(input.uv, 7.0, 0.000000, oFlow[7]);
+    calcFlow(input.uv, 6.0, oFlow[7], oFlow[6]);
+    calcFlow(input.uv, 5.0, oFlow[6], oFlow[5]);
+    calcFlow(input.uv, 4.0, oFlow[5], oFlow[4]);
+    calcFlow(input.uv, 3.0, oFlow[4], oFlow[3]);
+    calcFlow(input.uv, 2.0, oFlow[3], oFlow[2]);
+    calcFlow(input.uv, 1.0, oFlow[2], oFlow[1]);
+    calcFlow(input.uv, 0.0, oFlow[1], oFlow[0]);
     float2 pFlow = tex2D(s_pflow, input.uv).rg;
     output.render0 = lerp(pFlow, oFlow[0] * uScale, cInterpolation * cFactor).xyxy;
     output.render1 = tex2Dlod(s_pframe, float4(input.uv, 0.0, 8.0)).r;
