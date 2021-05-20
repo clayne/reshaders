@@ -167,7 +167,7 @@ void calcFlow(  in float2 uCoord,
     float3 d;
     d.x = ddx(cLuma) + ddx(pLuma);
     d.y = ddy(cLuma) + ddy(pLuma);
-    d.z = rsqrt(dot(d.xy, d.xy) + uLambda);
+    d.z = rsqrt(dot(d.xy, d.xy) + 1.0);
     float2 cFlow = uScale * dt * (d.xy * d.zz);
     oFlow = cFlow + uFlow;
 }
