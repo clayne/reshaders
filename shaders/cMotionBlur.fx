@@ -35,13 +35,9 @@
         ui_type = utype; ui_min = umin; ui_max = umax;                          \
         > = uvalue
 
-uOption(uLambda, float, "slider", "Flow Basic", "Lambda", 1.000, 0.001, 4.000);
-uOption(uScale,  float, "slider", "Flow Basic", "Scale",  2.000, 0.001, 4.000);
-
-uOption(uIntensity,     float, "slider", "Flow Advanced", "Exposure Intensity",  4.000, 0.000, 8.000);
-uOption(uInterpolation, float, "slider", "Flow Advanced", "Temporal Smoothing",  0.000, 0.000, 1.000);
-uOption(uFlowLOD,       int,   "slider", "Flow Advanced", "Optical Flow LOD",    4, 0, 8);
-uOption(uDither,        bool,  "radio",  "Flow Advanced", "Optical Flow Smooth", false, 0, 0);
+uOption(uScale,     float, "slider", "Flow Basic", "Scale",              1.000, 0.001, 8.000);
+uOption(uIntensity, float, "slider", "Flow Basic", "Exposure Intensity", 4.000, 0.000, 8.000);
+uOption(uFlowLOD,   int,   "slider", "Flow Basic", "Optical Flow LOD",   4, 0, 8);
 
 /*
     Round to nearest power of 2
@@ -137,8 +133,8 @@ ps2mrt0 ps_convert(v2f input)
 
 float exposure2D(float aLuma)
 {
-    aLuma = max(aLuma, 1e-5);
-    float aExposure = log2(max(0.18 / aLuma, 1e-5));
+    aLuma = max(aLuma, 1e-8);
+    float aExposure = log2(max(0.18 / aLuma, 1e-8));
     return exp2(aExposure + uIntensity);
 }
 
@@ -165,25 +161,19 @@ void calcFlow(  in float2 uCoord,
     // Calculate distance
     float pLuma = tex2Dlod(s_pframe, float4(uCoord + uFlow, 0.0, uLOD)).g;
     float cLuma = tex2Dlod(s_cframe, float4(uCoord, 0.0, uLOD)).r;
-    float dt = (cLuma - pLuma) * 0.5;
+    float dt = cLuma - pLuma;
 
     // Calculate gradients and optical flow
     float3 d;
     d.x = ddx(cLuma) + ddx(pLuma);
     d.y = ddy(cLuma) + ddy(pLuma);
-    d.xy *= 0.5;
     d.z = rsqrt(dot(d.xy, d.xy) + uLambda);
-    float2 cFlow = dt * (d.xy * d.zz);
+    float2 cFlow = uScale * dt * (d.xy * d.zz);
     oFlow = cFlow + uFlow;
 }
 
 ps2mrt ps_flow(v2f input)
 {
-    float2 cPos = floor(input.vpos.xy);
-    float cBoard = frac(dot(cPos, 1.0) * 0.5) * 2.0;
-    float cInterpolation = 1.0 - (uInterpolation * 0.5);
-    float cFactor = (uDither) ? cBoard : 1.0;
-
     ps2mrt output;
     float2 oFlow[8];
     calcFlow(input.uv, 7.0, 0.000000, oFlow[7]);
@@ -194,8 +184,8 @@ ps2mrt ps_flow(v2f input)
     calcFlow(input.uv, 2.0, oFlow[3], oFlow[2]);
     calcFlow(input.uv, 1.0, oFlow[2], oFlow[1]);
     calcFlow(input.uv, 0.0, oFlow[1], oFlow[0]);
-    float2 pFlow = tex2D(s_pflow, input.uv).rg;
-    output.render0 = lerp(pFlow, oFlow[0] * uScale, cInterpolation * cFactor).xyxy;
+    float2 pFlow = tex2D(s_pflow, input.uv).xy;
+    output.render0 = lerp(oFlow[0], pFlow, 0.1).xyxy;
     output.render1 = tex2Dlod(s_pframe, float4(input.uv, 0.0, 8.0)).r;
     return output;
 }
