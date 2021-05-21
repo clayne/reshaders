@@ -36,7 +36,7 @@
         > = uvalue
 
 uOption(uLambda, float, "slider", "Flow Basic", "Lambda", 1.000, 0.001, 4.000);
-uOption(uScale,  float, "slider", "Flow Basic", "Scale",  2.000, 0.001, 8.000);
+uOption(uScale,  float, "slider", "Flow Basic", "Scale",  4.000, 0.001, 8.000);
 
 uOption(uSmooth,    float, "slider", "Flow Advanced", "Temporal Smoothing", 0.050, 0.000, 0.500);
 uOption(uIntensity, float, "slider", "Flow Advanced", "Exposure Intensity", 4.000, 0.000, 8.000);
@@ -170,8 +170,10 @@ void calcFlow(  in float2 uCoord,
     float3 d;
     d.x = ddx(cLuma) + ddx(pLuma);
     d.y = ddy(cLuma) + ddy(pLuma);
+    d.xy *= 0.5;
     d.z = rsqrt(dot(d.xy, d.xy) + uLambda);
-    float2 cFlow = uScale * dt * (d.xy * d.zz);
+    float2 cFlow = dt * (d.xy * d.zz);
+    cFlow = cFlow * uScale;
     oFlow = cFlow + uFlow;
 }
 
@@ -185,6 +187,7 @@ ps2mrt ps_flow(v2f input)
     calcFlow(input.uv, 4.0, oFlow[3], oFlow[2]);
     calcFlow(input.uv, 3.0, oFlow[2], oFlow[1]);
     calcFlow(input.uv, 2.0, oFlow[1], oFlow[0]);
+
     float2 pFlow = tex2D(s_pflow, input.uv).xy;
     output.render0 = lerp(oFlow[0], pFlow, uSmooth).xyxy;
     output.render1 = tex2Dlod(s_pframe, float4(input.uv, 0.0, 8.0)).r;
