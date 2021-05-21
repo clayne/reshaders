@@ -36,12 +36,12 @@
         > = uvalue
 
 uOption(uThreshold, float, "slider", "Flow Basic", "Threshold", 0.010, 0.001, 1.000);
-uOption(uScale,     float, "slider", "Flow Basic", "Scale",     4.000, 0.001, 8.000);
+uOption(uScale,     float, "slider", "Flow Basic", "Scale",     5.000, 0.001, 8.000);
 uOption(uLevels,    int,   "slider", "Flow Basic", "Detail",    5, 1, 7);
 
 uOption(uRadius,    float, "slider", "Flow Advanced", "Prefilter Blur",      8.000, 0.000, 32.00);
 uOption(uIntensity, float, "slider", "Flow Advanced", "Exposure Intensity",  4.000, 0.000, 8.000);
-uOption(uSmooth,    float, "slider", "Flow Advanced", "Temporal Smoothing",  0.050, 0.000, 0.500);
+uOption(uSmooth,    float, "slider", "Flow Advanced", "Temporal Smoothing",  0.100, 0.000, 0.500);
 uOption(uFlowLOD,   int,   "slider", "Flow Advanced", "Optical Flow LOD",    4, 0, 8);
 
 /*
