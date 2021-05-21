@@ -39,7 +39,7 @@ uOption(uThreshold, float, "slider", "Flow Basic", "Threshold", 0.010, 0.001, 1.
 uOption(uScale,     float, "slider", "Flow Basic", "Scale",     4.000, 0.001, 8.000);
 uOption(uLevels,    int,   "slider", "Flow Basic", "Detail",    5, 1, 7);
 
-uOption(uRadius,    float, "slider", "Flow Advanced", "Prefilter Blur",      16.00, 0.000, 64.00);
+uOption(uRadius,    float, "slider", "Flow Advanced", "Prefilter Blur",      8.000, 0.000, 32.00);
 uOption(uIntensity, float, "slider", "Flow Advanced", "Exposure Intensity",  4.000, 0.000, 8.000);
 uOption(uSmooth,    float, "slider", "Flow Advanced", "Temporal Smoothing",  0.050, 0.000, 0.500);
 uOption(uFlowLOD,   int,   "slider", "Flow Advanced", "Optical Flow LOD",    4, 0, 8);
@@ -102,10 +102,6 @@ v2f vs_common(const uint id : SV_VertexID)
 /*
     [ Pixel Shaders ]
 
-    ps_source()
-    max3() luma = [https://gpuopen.com/learn/optimized-reversible-tonemapper-for-resolve/]
-    Noise Blur = [https://github.com/patriciogonzalezvivo/lygia] [BSD-3]
-
     exposure2D()
     aExposure - [https://github.com/TheRealMJP/BakingLab] [MIT]
 
@@ -137,14 +133,15 @@ float4 ps_source(v2f input) : SV_Target
 {
     const float2 psize = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
     const float2 rsize = uRadius * psize;
+    const float tau = 6.2831853071795864769252867665590;
 
     float4 c;
 
     for (int i = 0; i < 4; ++i)
     {
         // Uniform sample the circle
-        float2 r = random2D(float3(input.vpos.xy, i));
-        float2 sc; sincos(r.xx, sc.x, sc.y);
+        float2 r = random2D(float3(input.vpos.xy, i)) * tau;
+        float2 sc; sincos(r.xy, sc.x, sc.y);
         float2 cr = sc * sqrt(-log(r.y));
         float4 color = tex2D(s_color, cr * rsize + input.uv);
 
