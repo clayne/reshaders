@@ -35,8 +35,8 @@
         ui_type = utype; ui_min = umin; ui_max = umax;                          \
         > = uvalue
 
-uOption(uLambda, float, "slider", "Flow Basic", "Lambda", 1.000, 0.001, 4.000);
-uOption(uScale,  float, "slider", "Flow Basic", "Scale",  4.000, 0.001, 8.000);
+uOption(uThreshold, float, "slider", "Flow Basic", "Threshold", 0.010, 0.001, 1.000);
+uOption(uScale,     float, "slider", "Flow Basic", "Scale",     4.000, 0.001, 8.000);
 
 uOption(uSmooth,    float, "slider", "Flow Advanced", "Temporal Smoothing", 0.050, 0.000, 0.500);
 uOption(uIntensity, float, "slider", "Flow Advanced", "Exposure Intensity", 4.000, 0.000, 8.000);
@@ -156,9 +156,9 @@ struct ps2mrt
     float4 render1 : SV_TARGET1;
 };
 
-void calcFlow(  in float2 uCoord,
-                in float  uLOD,
-                in float2 uFlow,
+void calcFlow(  in  float2 uCoord,
+                in  float  uLOD,
+                in  float2 uFlow,
                 out float2 oFlow)
 {
     // Warp previous frame and calculate distance
@@ -171,9 +171,12 @@ void calcFlow(  in float2 uCoord,
     d.x = ddx(cLuma) + ddx(pLuma);
     d.y = ddy(cLuma) + ddy(pLuma);
     d.xy *= 0.5;
-    d.z = rsqrt(dot(d.xy, d.xy) + uLambda);
-    float2 cFlow = dt * (d.xy * d.zz);
-    cFlow = cFlow * uScale;
+    d.z = rsqrt(dot(d.xy, d.xy) + 1.0);
+    float2 cFlow = uScale * dt * (d.xy * d.zz);
+
+    float pFlow = sqrt(dot(cFlow, cFlow) + 1e-5);
+    float nFlow = max(pFlow - uThreshold, 0.0);
+    cFlow *= nFlow / pFlow;
     oFlow = cFlow + uFlow;
 }
 
