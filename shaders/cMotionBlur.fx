@@ -37,10 +37,12 @@
 
 uOption(uThreshold, float, "slider", "Flow Basic", "Threshold", 0.010, 0.001, 1.000);
 uOption(uScale,     float, "slider", "Flow Basic", "Scale",     4.000, 0.001, 8.000);
+uOption(uLevels,    int,   "slider", "Flow Basic", "Detail",    5, 1, 7);
 
-uOption(uSmooth,    float, "slider", "Flow Advanced", "Temporal Smoothing", 0.050, 0.000, 0.500);
-uOption(uIntensity, float, "slider", "Flow Advanced", "Exposure Intensity", 4.000, 0.000, 8.000);
-uOption(uFlowLOD,   int,   "slider", "Flow Advanced", "Optical Flow LOD",   4, 0, 8);
+uOption(uRadius,    float, "slider", "Flow Advanced", "Prefilter Blur",      16.00, 0.000, 64.00);
+uOption(uIntensity, float, "slider", "Flow Advanced", "Exposure Intensity",  4.000, 0.000, 8.000);
+uOption(uSmooth,    float, "slider", "Flow Advanced", "Temporal Smoothing",  0.050, 0.000, 0.500);
+uOption(uFlowLOD,   int,   "slider", "Flow Advanced", "Optical Flow LOD",    4, 0, 8);
 
 /*
     Round to nearest power of 2
@@ -100,6 +102,10 @@ v2f vs_common(const uint id : SV_VertexID)
 /*
     [ Pixel Shaders ]
 
+    ps_source()
+    max3() luma = [https://gpuopen.com/learn/optimized-reversible-tonemapper-for-resolve/]
+    Noise Blur = [https://github.com/patriciogonzalezvivo/lygia] [BSD-3]
+
     exposure2D()
     aExposure - [https://github.com/TheRealMJP/BakingLab] [MIT]
 
@@ -119,9 +125,34 @@ struct ps2mrt0
     float4 render2 : SV_TARGET2;
 };
 
+float2 random2D(float3 p3)
+{
+    const float3 random3 = float3(0.1031, 0.1030, 0.0973);
+    p3 = frac(p3 * random3);
+    p3 += dot(p3, p3.yzx + 19.19);
+    return frac((p3.xx + p3.yz) * p3.zy);
+}
+
 float4 ps_source(v2f input) : SV_Target
 {
-    float4 c = tex2D(s_color, input.uv);
+    const float2 psize = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
+    const float2 rsize = uRadius * psize;
+
+    float4 c;
+
+    for (int i = 0; i < 4; ++i)
+    {
+        // Uniform sample the circle
+        float2 r = random2D(float3(input.vpos.xy, i));
+        float2 sc; sincos(r.xx, sc.x, sc.y);
+        float2 cr = sc * sqrt(-log(r.y));
+        float4 color = tex2D(s_color, cr * rsize + input.uv);
+
+        // Average the samples as we get em
+        // https://blog.demofox.org/2016/08/23/incremental-averaging/
+        c = lerp(c, color, rcp(i + 1));
+    }
+
     return max(max(c.r, c.g), c.b);
 }
 
@@ -183,16 +214,18 @@ void calcFlow(  in  float2 uCoord,
 ps2mrt ps_flow(v2f input)
 {
     ps2mrt output;
-    float2 oFlow[6];
-    calcFlow(input.uv, 7.0, 0.000000, oFlow[5]);
-    calcFlow(input.uv, 6.0, oFlow[5], oFlow[4]);
-    calcFlow(input.uv, 5.0, oFlow[4], oFlow[3]);
-    calcFlow(input.uv, 4.0, oFlow[3], oFlow[2]);
-    calcFlow(input.uv, 3.0, oFlow[2], oFlow[1]);
-    calcFlow(input.uv, 2.0, oFlow[1], oFlow[0]);
+    float2 oFlow[8];
+    calcFlow(input.uv, 7.0, 0.000000, oFlow[7]);
+    calcFlow(input.uv, 6.0, oFlow[7], oFlow[6]);
+    calcFlow(input.uv, 5.0, oFlow[6], oFlow[5]);
+    calcFlow(input.uv, 4.0, oFlow[5], oFlow[4]);
+    calcFlow(input.uv, 3.0, oFlow[4], oFlow[3]);
+    calcFlow(input.uv, 2.0, oFlow[3], oFlow[2]);
+    calcFlow(input.uv, 1.0, oFlow[2], oFlow[1]);
+    calcFlow(input.uv, 0.0, oFlow[1], oFlow[0]);
 
-    float2 pFlow = tex2D(s_pflow, input.uv + oFlow[0]).xy;
-    output.render0 = lerp(oFlow[0], pFlow, uSmooth).xyxy;
+    float2 pFlow = tex2D(s_pflow, input.uv + oFlow[7 - uLevels]).xy;
+    output.render0 = lerp(oFlow[7 - uLevels], pFlow, uSmooth).xyxy;
     output.render1 = tex2Dlod(s_pframe, float4(input.uv, 0.0, 8.0)).r;
     return output;
 }
