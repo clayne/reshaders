@@ -161,7 +161,7 @@ void calcFlow(  in float2 uCoord,
                 in float2 uFlow,
                 out float2 oFlow)
 {
-    // Calculate distance
+    // Warp previous frame and calculate distance
     float pLuma = tex2Dlod(s_pframe, float4(uCoord + uFlow, 0.0, uLOD)).g;
     float cLuma = tex2Dlod(s_cframe, float4(uCoord, 0.0, uLOD)).r;
     float dt = cLuma - pLuma;
@@ -188,7 +188,7 @@ ps2mrt ps_flow(v2f input)
     calcFlow(input.uv, 3.0, oFlow[2], oFlow[1]);
     calcFlow(input.uv, 2.0, oFlow[1], oFlow[0]);
 
-    float2 pFlow = tex2D(s_pflow, input.uv).xy;
+    float2 pFlow = tex2D(s_pflow, input.uv + oFlow[0]).xy;
     output.render0 = lerp(oFlow[0], pFlow, uSmooth).xyxy;
     output.render1 = tex2Dlod(s_pframe, float4(input.uv, 0.0, 8.0)).r;
     return output;
