@@ -207,7 +207,7 @@ ps2mrt ps_flow(v2f input)
 {
     ps2mrt output;
     float2 oFlow[8];
-    calcFlow(input.uv, 7.0, 0.000000, false, oFlow[7],);
+    calcFlow(input.uv, 7.0, 0.000000, false, oFlow[7]);
     calcFlow(input.uv, 6.0, oFlow[7], false, oFlow[6]);
     calcFlow(input.uv, 5.0, oFlow[6], false, oFlow[5]);
     calcFlow(input.uv, 4.0, oFlow[5], false, oFlow[4]);
