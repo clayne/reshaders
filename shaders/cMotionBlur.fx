@@ -200,7 +200,7 @@ void calcFlow(  in  float2 uCoord,
     d.y = ddy(cLuma) + ddy(pLuma);
     d.z = rsqrt(dot(d.xy, d.xy) + uLambda);
     float2 cFlow = dt * (d.xy * d.zz);
-    oFlow = (uFine) ? 2.0 * (cFlow + uFlow) : cFlow;
+    oFlow = (uFine) ? cFlow : 2.0 * (cFlow + uFlow);
 }
 
 ps2mrt ps_flow(v2f input)
