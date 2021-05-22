@@ -35,11 +35,10 @@
         ui_type = utype; ui_min = umin; ui_max = umax;                          \
         > = uvalue
 
-uOption(uLambda, float, "slider", "Flow Basic", "Lambda", 1.0, 0.001,   2.000);
-uOption(uScale,  float, "slider", "Flow Basic", "Scale",  5.000, 0.001, 8.000);
-uOption(uLevels, int,   "slider", "Flow Basic", "Detail", 5, 1, 7);
+uOption(uThreshold, float, "slider", "Flow Basic", "Threshold", 0.020, 0.001, 2.000);
+uOption(uScale,     float, "slider", "Flow Basic", "Scale",     2.000, 0.001, 4.000);
+uOption(uLevels,    int,   "slider", "Flow Basic", "Detail",    5, 1, 7);
 
-uOption(uRadius,    float, "slider", "Flow Advanced", "Prefilter Blur",      8.000, 0.000, 32.00);
 uOption(uIntensity, float, "slider", "Flow Advanced", "Exposure Intensity",  4.000, 0.000, 8.000);
 uOption(uFlowLOD,   int,   "slider", "Flow Advanced", "Optical Flow LOD",    4, 0, 8);
 
@@ -70,7 +69,6 @@ texture2D r_buffer { RSIZE; MipLevels = LOG2(DSIZE(2)) + 1;    Format = R8;    }
 texture2D r_pframe { Width = 128; Height = 128; MipLevels = 8; Format = RG16F; };
 texture2D r_cframe { Width = 128; Height = 128; MipLevels = 8; Format = R16F;  };
 texture2D r_cflow  { Width = 128; Height = 128; MipLevels = 8; Format = RG16F; };
-texture2D r_pflow  { Width = 128; Height = 128; Format = RG16F; };
 texture2D r_pluma  { Width = 128; Height = 128; Format = R16F; };
 
 sampler2D s_color  { Texture = r_color; SRGBTexture = TRUE; };
@@ -78,7 +76,6 @@ sampler2D s_buffer { Texture = r_buffer; };
 sampler2D s_pframe { Texture = r_pframe; };
 sampler2D s_cframe { Texture = r_cframe; };
 sampler2D s_cflow  { Texture = r_cflow; };
-sampler2D s_pflow  { Texture = r_pflow; };
 sampler2D s_pluma  { Texture = r_pluma; };
 
 /* [ Vertex Shaders ] */
@@ -98,66 +95,67 @@ v2f vs_common(const uint id : SV_VertexID)
     return output;
 }
 
-/*
-    [ Pixel Shaders ]
-
-    exposure2D()
-    aExposure - [https://github.com/TheRealMJP/BakingLab] [MIT]
-
-    ps_flow()
-    Optical Flow - [https://github.com/diwi/PixelFlow] [MIT]
-    Pyramid HLSL Idea - [https://www.youtube.com/watch?v=VSSyPskheaE]
-
-    flow2D()
-    Noise - [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
-    Blurs - [http://john-chapman-graphics.blogspot.com/2013/01/per-object-motion-blur.html]
-*/
-
-struct ps2mrt0
+struct v2f_median
 {
-    float4 render0 : SV_TARGET0;
-    float4 render1 : SV_TARGET1;
-    float4 render2 : SV_TARGET2;
+    float4 vpos : SV_POSITION;
+    float2 uv0 : TEXCOORD0;
+    float4 uv1[2] : TEXCOORD1;
 };
 
-float2 random2D(float3 p3)
+v2f_median vs_median(const uint id : SV_VertexID)
 {
-    const float3 random3 = float3(0.1031, 0.1030, 0.0973);
-    p3 = frac(p3 * random3);
-    p3 += dot(p3, p3.yzx + 19.19);
-    return frac((p3.xx + p3.yz) * p3.zy);
+    v2f_median output;
+    float2 coord;
+    coord.x = (id == 2) ? 2.0 : 0.0;
+    coord.y = (id == 1) ? 2.0 : 0.0;
+    output.vpos = float4(coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+
+    const float2 ts = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
+    const float3 d = ts.xyx * float3(1.0, 1.0, 0.0);
+    output.uv0 = coord;
+    output.uv1[0].xy = coord - d.xz;
+    output.uv1[0].zw = coord + d.xz;
+    output.uv1[1].xy = coord - d.zy;
+    output.uv1[1].zw = coord + d.zy;
+    return output;
 }
 
-float4 ps_source(v2f input) : SV_Target
+/*
+    [ Pixel Shaders ]
+    Median Filter - [https://github.com/keijiro/KinoBloom] [MIT]
+    aExposure     - [https://github.com/TheRealMJP/BakingLab] [MIT]
+    Optical Flow  - [https://github.com/diwi/PixelFlow] [MIT]
+    Pyramid HLSL  - [https://www.youtube.com/watch?v=VSSyPskheaE]
+    Noise         - [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
+    Blurs         - [http://john-chapman-graphics.blogspot.com/2013/01/per-object-motion-blur.html]
+*/
+
+float max3(float3 c)
 {
-    const float2 psize = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
-    const float2 rsize = uRadius * psize;
-    const float tau = 6.2831853071795864769252867665590;
-
-    float4 c;
-
-    for (int i = 0; i < 4; ++i)
-    {
-        // Uniform sample the circle
-        float2 r = random2D(float3(input.vpos.xy, i)) * tau;
-        float2 sc; sincos(r.xy, sc.x, sc.y);
-        float2 cr = sc * sqrt(-log(r.y));
-        float4 color = tex2D(s_color, cr * rsize + input.uv);
-
-        // Average the samples as we get em
-        // https://blog.demofox.org/2016/08/23/incremental-averaging/
-        c = lerp(c, color, rcp(i + 1));
-    }
-
     return max(max(c.r, c.g), c.b);
 }
 
-ps2mrt0 ps_convert(v2f input)
+// 3-tap median filter
+float Median(float a, float b, float c)
 {
-    ps2mrt0 output;
-    output.render0.r = tex2D(s_buffer, input.uv).r;
-    output.render0.g = tex2D(s_cframe, input.uv).r;
-    output.render1 = tex2D(s_cflow, input.uv);
+    return a + b + c - min(min(a, b), c) - max(max(a, b), c);
+}
+
+float4 ps_source(v2f_median input) : SV_Target
+{
+    float s0 = max3(tex2D(s_color, input.uv0).rgb);
+    float s1 = max3(tex2D(s_color, input.uv1[0].xy).rgb);
+    float s2 = max3(tex2D(s_color, input.uv1[0].zw).rgb);
+    float s3 = max3(tex2D(s_color, input.uv1[1].xy).rgb);
+    float s4 = max3(tex2D(s_color, input.uv1[1].zw).rgb);
+    return Median(Median(s0, s1, s2), s3, s4);
+}
+
+float4 ps_convert(v2f input) : SV_Target
+{
+    float4 output;
+    output.r = tex2D(s_buffer, input.uv).r;
+    output.g = tex2D(s_cframe, input.uv).r;
     return output;
 }
 
@@ -198,8 +196,11 @@ void calcFlow(  in  float2 uCoord,
     float3 d;
     d.x = ddx(cLuma) + ddx(pLuma);
     d.y = ddy(cLuma) + ddy(pLuma);
-    d.z = rsqrt(dot(d.xy, d.xy) + uLambda);
-    float2 cFlow = dt * (d.xy * d.zz);
+    d.z = rsqrt(dot(d.xy, d.xy) + 1.0);
+    float2 cFlow = uScale *  dt * (d.xy * d.zz);
+    float pFlow = sqrt(dot(cFlow, cFlow) + 1e-5);
+    float nFlow = max(pFlow - uThreshold, 0.0);
+    cFlow *= nFlow / pFlow;
     oFlow = (uFine) ? cFlow : 2.0 * (cFlow + uFlow);
 }
 
@@ -215,9 +216,7 @@ ps2mrt ps_flow(v2f input)
     calcFlow(input.uv, 2.0, oFlow[3], false, oFlow[2]);
     calcFlow(input.uv, 1.0, oFlow[2], false, oFlow[1]);
     calcFlow(input.uv, 0.0, oFlow[1], true,  oFlow[0]);
-
-    float2 pFlow = tex2D(s_pflow, input.uv + oFlow[0]).xy;
-    output.render0 = lerp(oFlow[0], pFlow, 0.5);
+    output.render0 = oFlow[7 - uLevels];
     output.render1 = tex2Dlod(s_pframe, float4(input.uv, 0.0, 8.0)).r;
     return output;
 }
@@ -235,7 +234,7 @@ float4 flow2D(v2f input, float2 flow, float i)
 float4 ps_output(v2f input) : SV_Target
 {
     float4 oBlur;
-    float2 oFlow = saturate(tex2Dlod(s_cflow, float4(input.uv, 0.0, uFlowLOD)).xy);
+    float2 oFlow = tex2Dlod(s_cflow, float4(input.uv, 0.0, uFlowLOD)).xy;
     oBlur += flow2D(input, oFlow, 2.0) * exp2(-3.0);
     oBlur += flow2D(input, oFlow, 4.0) * exp2(-3.0);
     oBlur += flow2D(input, oFlow, 6.0) * exp2(-3.0);
@@ -244,14 +243,14 @@ float4 ps_output(v2f input) : SV_Target
     oBlur += flow2D(input, oFlow, 12.0) * exp2(-3.0);
     oBlur += flow2D(input, oFlow, 14.0) * exp2(-3.0);
     oBlur += flow2D(input, oFlow, 16.0) * exp2(-3.0);
-    return oFlow.xyxy;
+    return oBlur;
 }
 
 technique cMotionBlur
 {
     pass
     {
-        VertexShader = vs_common;
+        VertexShader = vs_median;
         PixelShader = ps_source;
         RenderTarget0 = r_buffer;
     }
@@ -261,7 +260,6 @@ technique cMotionBlur
         VertexShader = vs_common;
         PixelShader = ps_convert;
         RenderTarget0 = r_pframe;
-        RenderTarget1 = r_pflow;
     }
 
     pass
