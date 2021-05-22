@@ -35,13 +35,12 @@
         ui_type = utype; ui_min = umin; ui_max = umax;                          \
         > = uvalue
 
-uOption(uThreshold, float, "slider", "Flow Basic", "Threshold", 0.010, 0.001, 1.000);
-uOption(uScale,     float, "slider", "Flow Basic", "Scale",     5.000, 0.001, 8.000);
-uOption(uLevels,    int,   "slider", "Flow Basic", "Detail",    5, 1, 7);
+uOption(uLambda, float, "slider", "Flow Basic", "Lambda", 1.0, 0.001,   2.000);
+uOption(uScale,  float, "slider", "Flow Basic", "Scale",  5.000, 0.001, 8.000);
+uOption(uLevels, int,   "slider", "Flow Basic", "Detail", 5, 1, 7);
 
 uOption(uRadius,    float, "slider", "Flow Advanced", "Prefilter Blur",      8.000, 0.000, 32.00);
 uOption(uIntensity, float, "slider", "Flow Advanced", "Exposure Intensity",  4.000, 0.000, 8.000);
-uOption(uSmooth,    float, "slider", "Flow Advanced", "Temporal Smoothing",  0.100, 0.000, 0.500);
 uOption(uFlowLOD,   int,   "slider", "Flow Advanced", "Optical Flow LOD",    4, 0, 8);
 
 /*
@@ -187,6 +186,7 @@ struct ps2mrt
 void calcFlow(  in  float2 uCoord,
                 in  float  uLOD,
                 in  float2 uFlow,
+                in  bool   uFine,
                 out float2 oFlow)
 {
     // Warp previous frame and calculate distance
@@ -198,31 +198,26 @@ void calcFlow(  in  float2 uCoord,
     float3 d;
     d.x = ddx(cLuma) + ddx(pLuma);
     d.y = ddy(cLuma) + ddy(pLuma);
-    d.xy *= 0.5;
-    d.z = rsqrt(dot(d.xy, d.xy) + 1.0);
-    float2 cFlow = uScale * dt * (d.xy * d.zz);
-
-    float pFlow = sqrt(dot(cFlow, cFlow) + 1e-5);
-    float nFlow = max(pFlow - uThreshold, 0.0);
-    cFlow *= nFlow / pFlow;
-    oFlow = cFlow + uFlow;
+    d.z = rsqrt(dot(d.xy, d.xy) + uLambda);
+    float2 cFlow = dt * (d.xy * d.zz);
+    oFlow = (uFine) ? 2.0 * (cFlow + uFlow) : cFlow;
 }
 
 ps2mrt ps_flow(v2f input)
 {
     ps2mrt output;
     float2 oFlow[8];
-    calcFlow(input.uv, 7.0, 0.000000, oFlow[7]);
-    calcFlow(input.uv, 6.0, oFlow[7], oFlow[6]);
-    calcFlow(input.uv, 5.0, oFlow[6], oFlow[5]);
-    calcFlow(input.uv, 4.0, oFlow[5], oFlow[4]);
-    calcFlow(input.uv, 3.0, oFlow[4], oFlow[3]);
-    calcFlow(input.uv, 2.0, oFlow[3], oFlow[2]);
-    calcFlow(input.uv, 1.0, oFlow[2], oFlow[1]);
-    calcFlow(input.uv, 0.0, oFlow[1], oFlow[0]);
+    calcFlow(input.uv, 7.0, 0.000000, false, oFlow[7],);
+    calcFlow(input.uv, 6.0, oFlow[7], false, oFlow[6]);
+    calcFlow(input.uv, 5.0, oFlow[6], false, oFlow[5]);
+    calcFlow(input.uv, 4.0, oFlow[5], false, oFlow[4]);
+    calcFlow(input.uv, 3.0, oFlow[4], false, oFlow[3]);
+    calcFlow(input.uv, 2.0, oFlow[3], false, oFlow[2]);
+    calcFlow(input.uv, 1.0, oFlow[2], false, oFlow[1]);
+    calcFlow(input.uv, 0.0, oFlow[1], true,  oFlow[0]);
 
-    float2 pFlow = tex2D(s_pflow, input.uv + oFlow[7 - uLevels]).xy;
-    output.render0 = lerp(oFlow[7 - uLevels], pFlow, uSmooth).xyxy;
+    float2 pFlow = tex2D(s_pflow, input.uv + oFlow[0]).xy;
+    output.render0 = lerp(oFlow[0], pFlow, 0.5);
     output.render1 = tex2Dlod(s_pframe, float4(input.uv, 0.0, 8.0)).r;
     return output;
 }
@@ -240,7 +235,7 @@ float4 flow2D(v2f input, float2 flow, float i)
 float4 ps_output(v2f input) : SV_Target
 {
     float4 oBlur;
-    float2 oFlow = tex2Dlod(s_cflow, float4(input.uv, 0.0, uFlowLOD)).xy;
+    float2 oFlow = saturate(tex2Dlod(s_cflow, float4(input.uv, 0.0, uFlowLOD)).xy);
     oBlur += flow2D(input, oFlow, 2.0) * exp2(-3.0);
     oBlur += flow2D(input, oFlow, 4.0) * exp2(-3.0);
     oBlur += flow2D(input, oFlow, 6.0) * exp2(-3.0);
@@ -249,7 +244,7 @@ float4 ps_output(v2f input) : SV_Target
     oBlur += flow2D(input, oFlow, 12.0) * exp2(-3.0);
     oBlur += flow2D(input, oFlow, 14.0) * exp2(-3.0);
     oBlur += flow2D(input, oFlow, 16.0) * exp2(-3.0);
-    return oBlur;
+    return oFlow.xyxy;
 }
 
 technique cMotionBlur
