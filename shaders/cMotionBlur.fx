@@ -35,10 +35,10 @@
         ui_type = utype; ui_min = umin; ui_max = umax;                          \
         > = uvalue
 
-uOption(uLambda, float, "slider", "Flow Basic", "Lambda", 1.000, 0.000, 2.000);
-uOption(uScale,  float, "slider", "Flow Basic", "Scale",  4.000, 0.000, 8.000);
+uOption(uLambda, float, "slider", "Flow Basic", "Lambda",    1.000, 0.000, 2.000);
+uOption(uScale,  float, "slider", "Flow Basic", "Scale",     4.000, 0.000, 8.000);
+uOption(uSmooth, float, "slider", "Flow Basic", "Smoothing", 0.250, 0.000, 0.500);
 
-uOption(uInterpolate, float, "slider", "Flow Advanced", "Temporal Smoothing", 0.100, 0.000, 0.500);
 uOption(uIntensity,   float, "slider", "Flow Advanced", "Exposure Intensity", 4.000, 0.000, 8.000);
 uOption(uFlowLOD,     int,   "slider", "Flow Advanced", "Optical Flow LOD",   4, 0, 8);
 
@@ -216,7 +216,7 @@ ps2mrt ps_flow(v2f input)
     calcFlow(input.uv, 3.0, oFlow[2], false, oFlow[1]);
     calcFlow(input.uv, 2.0, oFlow[1], true,  oFlow[0]);
     float2 pFlow = tex2D(s_pflow, input.uv + oFlow[0]).rg;
-    output.render0 = lerp(oFlow[0], pFlow, uInterpolate);
+    output.render0 = lerp(oFlow[0], pFlow, uSmooth);
     output.render1 = tex2Dlod(s_pframe, float4(input.uv, 0.0, 8.0)).r;
     return output;
 }
