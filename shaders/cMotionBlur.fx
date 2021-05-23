@@ -35,12 +35,12 @@
         ui_type = utype; ui_min = umin; ui_max = umax;                          \
         > = uvalue
 
-uOption(uThreshold, float, "slider", "Flow Basic", "Threshold", 0.020, 0.001, 2.000);
-uOption(uScale,     float, "slider", "Flow Basic", "Scale",     2.000, 0.001, 4.000);
-uOption(uLevels,    int,   "slider", "Flow Basic", "Detail",    5, 1, 7);
+uOption(uLambda, float, "slider", "Flow Basic", "Lambda", 1.000, 0.000, 2.000);
+uOption(uScale,  float, "slider", "Flow Basic", "Scale",  4.000, 0.000, 8.000);
 
-uOption(uIntensity, float, "slider", "Flow Advanced", "Exposure Intensity",  4.000, 0.000, 8.000);
-uOption(uFlowLOD,   int,   "slider", "Flow Advanced", "Optical Flow LOD",    4, 0, 8);
+uOption(uInterpolate, float, "slider", "Flow Advanced", "Temporal Smoothing", 0.100, 0.000, 0.500);
+uOption(uIntensity,   float, "slider", "Flow Advanced", "Exposure Intensity", 4.000, 0.000, 8.000);
+uOption(uFlowLOD,     int,   "slider", "Flow Advanced", "Optical Flow LOD",   4, 0, 8);
 
 /*
     Round to nearest power of 2
@@ -69,13 +69,15 @@ texture2D r_buffer { RSIZE; MipLevels = LOG2(DSIZE(2)) + 1;    Format = R8;    }
 texture2D r_pframe { Width = 128; Height = 128; MipLevels = 8; Format = RG16F; };
 texture2D r_cframe { Width = 128; Height = 128; MipLevels = 8; Format = R16F;  };
 texture2D r_cflow  { Width = 128; Height = 128; MipLevels = 8; Format = RG16F; };
-texture2D r_pluma  { Width = 128; Height = 128; Format = R16F; };
+texture2D r_pflow  { Width = 128; Height = 128; Format = RG16F; };
+texture2D r_pluma  { Width = 128; Height = 128; Format = R16F;  };
 
 sampler2D s_color  { Texture = r_color; SRGBTexture = TRUE; };
 sampler2D s_buffer { Texture = r_buffer; };
 sampler2D s_pframe { Texture = r_pframe; };
 sampler2D s_cframe { Texture = r_cframe; };
 sampler2D s_cflow  { Texture = r_cflow; };
+sampler2D s_pflow  { Texture = r_pflow; };
 sampler2D s_pluma  { Texture = r_pluma; };
 
 /* [ Vertex Shaders ] */
@@ -130,6 +132,12 @@ v2f_median vs_median(const uint id : SV_VertexID)
     Blurs         - [http://john-chapman-graphics.blogspot.com/2013/01/per-object-motion-blur.html]
 */
 
+struct ps2mrt
+{
+    float4 render0 : SV_TARGET0;
+    float4 render1 : SV_TARGET1;
+};
+
 float max3(float3 c)
 {
     return max(max(c.r, c.g), c.b);
@@ -151,11 +159,12 @@ float4 ps_source(v2f_median input) : SV_Target
     return Median(Median(s0, s1, s2), s3, s4);
 }
 
-float4 ps_convert(v2f input) : SV_Target
+ps2mrt ps_convert(v2f input)
 {
-    float4 output;
-    output.r = tex2D(s_buffer, input.uv).r;
-    output.g = tex2D(s_cframe, input.uv).r;
+    ps2mrt output;
+    output.render0.r = tex2D(s_buffer, input.uv).r;
+    output.render0.g = tex2D(s_cframe, input.uv).r;
+    output.render1 = tex2D(s_cflow, input.uv).r;
     return output;
 }
 
@@ -175,12 +184,6 @@ float4 ps_filter(v2f input) : SV_Target
     return saturate(exp(-c * exposure2D(aLuma)));
 }
 
-struct ps2mrt
-{
-    float4 render0 : SV_TARGET0;
-    float4 render1 : SV_TARGET1;
-};
-
 void calcFlow(  in  float2 uCoord,
                 in  float  uLOD,
                 in  float2 uFlow,
@@ -196,27 +199,24 @@ void calcFlow(  in  float2 uCoord,
     float3 d;
     d.x = ddx(cLuma) + ddx(pLuma);
     d.y = ddy(cLuma) + ddy(pLuma);
-    d.z = rsqrt(dot(d.xy, d.xy) + 1.0);
-    float2 cFlow = uScale *  dt * (d.xy * d.zz);
-    float pFlow = sqrt(dot(cFlow, cFlow) + 1e-5);
-    float nFlow = max(pFlow - uThreshold, 0.0);
-    cFlow *= nFlow / pFlow;
+    d.xy *= 0.5;
+    d.z = rsqrt(dot(d.xy, d.xy) + uLambda);
+    float2 cFlow = dt * (d.xy * d.zz);
     oFlow = (uFine) ? cFlow : 2.0 * (cFlow + uFlow);
 }
 
 ps2mrt ps_flow(v2f input)
 {
     ps2mrt output;
-    float2 oFlow[8];
-    calcFlow(input.uv, 7.0, 0.000000, false, oFlow[7]);
-    calcFlow(input.uv, 6.0, oFlow[7], false, oFlow[6]);
-    calcFlow(input.uv, 5.0, oFlow[6], false, oFlow[5]);
-    calcFlow(input.uv, 4.0, oFlow[5], false, oFlow[4]);
-    calcFlow(input.uv, 3.0, oFlow[4], false, oFlow[3]);
-    calcFlow(input.uv, 2.0, oFlow[3], false, oFlow[2]);
-    calcFlow(input.uv, 1.0, oFlow[2], false, oFlow[1]);
-    calcFlow(input.uv, 0.0, oFlow[1], true,  oFlow[0]);
-    output.render0 = oFlow[7 - uLevels];
+    float2 oFlow[6];
+    calcFlow(input.uv, 7.0, oFlow[0], false, oFlow[5]);
+    calcFlow(input.uv, 6.0, oFlow[5], false, oFlow[4]);
+    calcFlow(input.uv, 5.0, oFlow[4], false, oFlow[3]);
+    calcFlow(input.uv, 4.0, oFlow[3], false, oFlow[2]);
+    calcFlow(input.uv, 3.0, oFlow[2], false, oFlow[1]);
+    calcFlow(input.uv, 2.0, oFlow[1], true,  oFlow[0]);
+    float2 pFlow = tex2D(s_pflow, input.uv + oFlow[0]).rg;
+    output.render0 = lerp(oFlow[0], pFlow, uInterpolate);
     output.render1 = tex2Dlod(s_pframe, float4(input.uv, 0.0, 8.0)).r;
     return output;
 }
@@ -228,7 +228,7 @@ float4 flow2D(v2f input, float2 flow, float i)
 
     const float samples = 1.0 / (16.0 - 1.0);
     float2 calc = (cNoise * 2.0 + i) * samples - 0.5;
-    return tex2D(s_color, flow * calc + input.uv);
+    return tex2D(s_color, flow * uScale * calc + input.uv);
 }
 
 float4 ps_output(v2f input) : SV_Target
@@ -260,6 +260,7 @@ technique cMotionBlur
         VertexShader = vs_common;
         PixelShader = ps_convert;
         RenderTarget0 = r_pframe;
+        RenderTarget1 = r_pflow;
     }
 
     pass
