@@ -181,7 +181,7 @@ float4 ps_filter(v2f input) : SV_Target
     float pLuma = tex2D(s_pluma, input.uv).r;
     float aLuma = lerp(pLuma, cLuma, 0.5);
     float c = tex2D(s_buffer, input.uv).r;
-    return saturate(exp(-c * exposure2D(aLuma)));
+    return exp(-c * exposure2D(aLuma));
 }
 
 void calcFlow(  in  float2 uCoord,
@@ -215,8 +215,8 @@ ps2mrt ps_flow(v2f input)
     calcFlow(input.uv, 4.0, oFlow[3], false, oFlow[2]);
     calcFlow(input.uv, 3.0, oFlow[2], false, oFlow[1]);
     calcFlow(input.uv, 2.0, oFlow[1], true,  oFlow[0]);
-    float2 pFlow = tex2D(s_pflow, input.uv + oFlow[0]).rg;
-    output.render0 = lerp(oFlow[0], pFlow, uSmooth);
+    float2 pFlow = tex2D(s_pflow, input.uv + oFlow[0]).xy;
+    output.render0 = lerp(oFlow[0], pFlow, uSmooth).xyxy;
     output.render1 = tex2Dlod(s_pframe, float4(input.uv, 0.0, 8.0)).r;
     return output;
 }
@@ -228,13 +228,14 @@ float4 flow2D(v2f input, float2 flow, float i)
 
     const float samples = 1.0 / (16.0 - 1.0);
     float2 calc = (cNoise * 2.0 + i) * samples - 0.5;
-    return tex2D(s_color, flow * uScale * calc + input.uv);
+    return tex2D(s_color, flow * calc + input.uv);
 }
 
 float4 ps_output(v2f input) : SV_Target
 {
     float4 oBlur;
     float2 oFlow = tex2Dlod(s_cflow, float4(input.uv, 0.0, uFlowLOD)).xy;
+    oFlow *= uScale;
     oBlur += flow2D(input, oFlow, 2.0) * exp2(-3.0);
     oBlur += flow2D(input, oFlow, 4.0) * exp2(-3.0);
     oBlur += flow2D(input, oFlow, 6.0) * exp2(-3.0);
