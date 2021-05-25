@@ -38,7 +38,7 @@
 uOption(uLambda, float, "slider", "Flow Basic", "Lambda",    1.000, 0.000, 2.000);
 uOption(uScale,  float, "slider", "Flow Basic", "Scale",     4.000, 0.000, 8.000);
 
-uOption(uIntensity, float, "slider", "Flow Advanced", "Exposure Intensity", 4.000, 0.000, 4.000);
+uOption(uIntensity, float, "slider", "Flow Advanced", "Exposure Intensity", 2.000, 0.000, 4.000);
 uOption(uFlowLOD,   float, "slider", "Flow Advanced", "Optical Flow LOD",   3.500, 0.000, 7.000);
 
 /*
