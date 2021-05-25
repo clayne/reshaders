@@ -38,8 +38,8 @@
 uOption(uLambda, float, "slider", "Flow Basic", "Lambda",    1.000, 0.000, 2.000);
 uOption(uScale,  float, "slider", "Flow Basic", "Scale",     4.000, 0.000, 8.000);
 
-uOption(uIntensity, float, "slider", "Flow Advanced", "Exposure Intensity", 4.000, 0.000, 8.000);
-uOption(uFlowLOD,   float, "slider", "Flow Advanced", "Optical Flow LOD",   3.500, 0.000, 8.000);
+uOption(uIntensity, float, "slider", "Flow Advanced", "Exposure Intensity", 4.000, 0.000, 4.000);
+uOption(uFlowLOD,   float, "slider", "Flow Advanced", "Optical Flow LOD",   3.500, 0.000, 7.000);
 
 /*
     Round to nearest power of 2
@@ -180,7 +180,7 @@ float4 ps_filter(v2f input) : SV_Target
     float pLuma = tex2D(s_pluma, input.uv).r;
     float aLuma = lerp(pLuma, cLuma, 0.5);
     float c = tex2D(s_buffer, input.uv).r;
-    return exp(-c * exposure2D(aLuma));
+    return saturate(c * exposure2D(aLuma));
 }
 
 void calcFlow(  in  float2 uCoord,
