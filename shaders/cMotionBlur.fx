@@ -206,9 +206,6 @@ void calcFlow(  in  float2 uCoord,
 
 ps2mrt ps_flow(v2f input)
 {
-    float cBoard = floor(dot(input.vpos.xy, 1.0));
-    cBoard = frac(cBoard * 0.5) * 2.0;
-
     ps2mrt output;
     float2 oFlow[6];
     calcFlow(input.uv, 7.0, 0.000000, false, oFlow[5]);
@@ -218,7 +215,7 @@ ps2mrt ps_flow(v2f input)
     calcFlow(input.uv, 3.0, oFlow[2], false, oFlow[1]);
     calcFlow(input.uv, 2.0, oFlow[1], true,  oFlow[0]);
     float2 pFlow = tex2D(s_pflow, input.uv + oFlow[0]).xy;
-    output.render0 = lerp(oFlow[0] * cBoard, pFlow * cBoard, 0.5);
+    output.render0 = lerp(oFlow[0], pFlow, 0.5);
     output.render1 = tex2Dlod(s_pframe, float4(input.uv, 0.0, 8.0)).r;
     return output;
 }
