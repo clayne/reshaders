@@ -35,11 +35,11 @@
         ui_type = utype; ui_min = umin; ui_max = umax;                          \
         > = uvalue
 
-uOption(uLambda, float, "slider", "Flow Basic", "Lambda",    1.000, 0.000, 2.000);
-uOption(uScale,  float, "slider", "Flow Basic", "Scale",     6.000, 0.000, 8.000);
-
-uOption(uIntensity, float, "slider", "Flow Advanced", "Exposure Intensity", 2.000, 0.000, 4.000);
-uOption(uFlowLOD,   float, "slider", "Flow Advanced", "Optical Flow LOD",   3.500, 0.000, 7.000);
+uOption(uScale,     float, "slider", "Flow Basic", "Scale",              2.000, 0.000, 4.000);
+uOption(uIntensity, float, "slider", "Flow Basic", "Exposure Intensity", 2.000, 0.000, 4.000);
+uOption(uRadius,    float, "slider", "Flow Advanced", "Prefilter Radius",   32.00, 0.000, 64.00);
+uOption(uLOD,       float, "slider", "Flow Advanced", "Optical Flow LOD",   3.500, 0.000, 8.000);
+uOption(uSmooth,    float, "slider", "Flow Advanced", "Flow Interpolation", 0.100, 0.000, 0.500);
 
 /*
     Round to nearest power of 2
@@ -64,12 +64,12 @@ uOption(uFlowLOD,   float, "slider", "Flow Advanced", "Optical Flow LOD",   3.50
 #define RSIZE      Width = BUFFER_WIDTH / 2; Height = BUFFER_HEIGHT / 2
 
 texture2D r_color  : COLOR;
-texture2D r_buffer { RSIZE; MipLevels = LOG2(DSIZE(2)) + 1;    Format = R8;    };
-texture2D r_pframe { Width = 128; Height = 128; MipLevels = 8; Format = RG16F; };
-texture2D r_cframe { Width = 128; Height = 128; MipLevels = 8; Format = R16F;  };
-texture2D r_cflow  { Width = 128; Height = 128; MipLevels = 8; Format = RG16F; };
-texture2D r_pflow  { Width = 128; Height = 128; Format = RG16F; };
-texture2D r_pluma  { Width = 128; Height = 128; Format = R16F;  };
+texture2D r_buffer { RSIZE; MipLevels = LOG2(DSIZE(2)) + 1;  Format = R8;    };
+texture2D r_pframe { Width = 64; Height = 64; MipLevels = 7; Format = RG16F; };
+texture2D r_cframe { Width = 64; Height = 64; MipLevels = 7; Format = R16F;  };
+texture2D r_cflow  { Width = 64; Height = 64; MipLevels = 7; Format = RG16F; };
+texture2D r_pflow  { Width = 64; Height = 64; Format = RG16F; };
+texture2D r_pluma  { Width = 64; Height = 64; Format = R16F;  };
 
 sampler2D s_color  { Texture = r_color; SRGBTexture = TRUE; };
 sampler2D s_buffer { Texture = r_buffer; };
@@ -137,25 +137,58 @@ struct ps2mrt
     float4 render1 : SV_TARGET1;
 };
 
-float max3(float3 c)
+float nrand(float2 n)
 {
-    return max(max(c.r, c.g), c.b);
+    const float3 value = float3(52.9829189, 0.06711056, 0.00583715);
+    return frac(value.x * frac(dot(n.xy, value.yz)));
 }
 
-// 3-tap median filter
-float Median(float a, float b, float c)
+float2 rotate2D(float2 p, float a)
 {
-    return a + b + c - min(min(a, b), c) - max(max(a, b), c);
+    float2 output;
+    float2 sc;
+    sincos(a, sc.x, sc.y);
+    output.x = dot(p, float2(sc.y, -sc.x));
+    output.y = dot(p, float2(sc.x,  sc.y));
+    return output.xy;
 }
 
 float4 ps_source(v2f_median input) : SV_Target
 {
-    float s0 = max3(tex2D(s_color, input.uv0).rgb);
-    float s1 = max3(tex2D(s_color, input.uv1[0].xy).rgb);
-    float s2 = max3(tex2D(s_color, input.uv1[0].zw).rgb);
-    float s3 = max3(tex2D(s_color, input.uv1[1].xy).rgb);
-    float s4 = max3(tex2D(s_color, input.uv1[1].zw).rgb);
-    return Median(Median(s0, s1, s2), s3, s4);
+    const int uTaps = 12;
+    const float uSize = uRadius;
+
+    float2 cTaps[uTaps];
+    cTaps[0]  = float2(-0.326,-0.406);
+    cTaps[1]  = float2(-0.840,-0.074);
+    cTaps[2]  = float2(-0.696, 0.457);
+    cTaps[3]  = float2(-0.203, 0.621);
+    cTaps[4]  = float2( 0.962,-0.195);
+    cTaps[5]  = float2( 0.473,-0.480);
+    cTaps[6]  = float2( 0.519, 0.767);
+    cTaps[7]  = float2( 0.185,-0.893);
+    cTaps[8]  = float2( 0.507, 0.064);
+    cTaps[9]  = float2( 0.896, 0.412);
+    cTaps[10] = float2(-0.322,-0.933);
+    cTaps[11] = float2(-0.792,-0.598);
+
+    float4 uColor = 0.0;
+    float  uRand = 6.28 * nrand(input.vpos.xy);
+    float4 uBasis;
+    uBasis.xy = rotate2D(float2(1.0, 0.0), uRand);
+    uBasis.zw = rotate2D(float2(0.0, 1.0), uRand);
+
+    for (int i = 0; i < uTaps; i++)
+    {
+        float2 ofs = cTaps[i];
+        ofs.x = dot(ofs, uBasis.xz);
+        ofs.y = dot(ofs, uBasis.yw);
+        float2 uv = input.uv0 + uSize * ofs / float2(BUFFER_WIDTH, BUFFER_HEIGHT);
+        uColor += tex2Dlod(s_color, float4(uv, 0.0, 0.0));
+    }
+
+    float3 c = uColor.rgb / uTaps;
+    return max(max(c.r, c.g), c.b);
 }
 
 ps2mrt ps_convert(v2f input)
@@ -176,7 +209,7 @@ float exposure2D(float aLuma)
 
 float4 ps_filter(v2f input) : SV_Target
 {
-    float cLuma = tex2Dlod(s_pframe, float4(input.uv, 0.0, 8.0)).r;
+    float cLuma = tex2Dlod(s_pframe, float4(input.uv, 0.0, 6.0)).r;
     float pLuma = tex2D(s_pluma, input.uv).r;
     float aLuma = lerp(pLuma, cLuma, 0.5);
     float c = tex2D(s_buffer, input.uv).r;
@@ -192,48 +225,48 @@ void calcFlow(  in  float2 uCoord,
     // Warp previous frame and calculate distance
     float pLuma = tex2Dlod(s_pframe, float4(uCoord + uFlow, 0.0, uLOD)).g;
     float cLuma = tex2Dlod(s_cframe, float4(uCoord, 0.0, uLOD)).r;
-    float dt = cLuma - pLuma;
+    float dt = (cLuma - pLuma) * 0.0625;
 
     // Calculate gradients and optical flow
     float3 d;
     d.x = ddx(cLuma) + ddx(pLuma);
     d.y = ddy(cLuma) + ddy(pLuma);
-    d.xy *= 0.5;
-    d.z = rsqrt(dot(d.xy, d.xy) + uLambda);
+    d.z = rsqrt(dot(d.xy, d.xy));
     float2 cFlow = dt * (d.xy * d.zz);
-    oFlow = (uFine) ? cFlow : 2.0 * (cFlow + uFlow);
+    oFlow = (uFine) ? cFlow : (cFlow + uFlow) * 2.0;
 }
 
 ps2mrt ps_flow(v2f input)
 {
+    float cBoard = floor(dot(input.vpos.xy, 1.0));
+    cBoard = frac(cBoard * 0.5) * 2.0;
+
     ps2mrt output;
-    float2 oFlow[6];
-    calcFlow(input.uv, 7.0, 0.000000, false, oFlow[5]);
-    calcFlow(input.uv, 6.0, oFlow[5], false, oFlow[4]);
-    calcFlow(input.uv, 5.0, oFlow[4], false, oFlow[3]);
-    calcFlow(input.uv, 4.0, oFlow[3], false, oFlow[2]);
-    calcFlow(input.uv, 3.0, oFlow[2], false, oFlow[1]);
-    calcFlow(input.uv, 2.0, oFlow[1], true,  oFlow[0]);
+    float2 oFlow[7];
+    calcFlow(input.uv, 6.0, 0.000000, false, oFlow[6]);
+    calcFlow(input.uv, 5.0, oFlow[6], false, oFlow[5]);
+    calcFlow(input.uv, 4.0, oFlow[5], false, oFlow[4]);
+    calcFlow(input.uv, 3.0, oFlow[4], false, oFlow[3]);
+    calcFlow(input.uv, 2.0, oFlow[3], false, oFlow[2]);
+    calcFlow(input.uv, 1.0, oFlow[2], false, oFlow[1]);
+    calcFlow(input.uv, 0.0, oFlow[1], true,  oFlow[0]);
     float2 pFlow = tex2D(s_pflow, input.uv + oFlow[0]).xy;
-    output.render0 = lerp(oFlow[0], pFlow, 0.5);
-    output.render1 = tex2Dlod(s_pframe, float4(input.uv, 0.0, 8.0)).r;
+    output.render0 = lerp(oFlow[0] * uScale, pFlow, uSmooth);
+    output.render1 = tex2Dlod(s_pframe, float4(input.uv, 0.0, 6.0)).r;
     return output;
 }
 
 float4 flow2D(v2f input, float2 flow, float i)
 {
-    const float3 value = float3(52.9829189, 0.06711056, 0.00583715);
-    float cNoise = frac(value.x * frac(dot(input.vpos.xy, value.yz)));
-
     const float samples = 1.0 / (16.0 - 1.0);
-    float2 calc = (cNoise * 2.0 + i) * samples - 0.5;
+    float2 calc = (nrand(input.vpos.xy) * 2.0 + i) * samples - 0.5;
     return tex2D(s_color, (uScale * flow) * calc + input.uv);
 }
 
 float4 ps_output(v2f input) : SV_Target
 {
     float4 oBlur;
-    float2 oFlow = tex2Dlod(s_cflow, float4(input.uv, 0.0, uFlowLOD)).xy;
+    float2 oFlow = tex2Dlod(s_cflow, float4(input.uv, 0.0, uLOD)).xy;
     oBlur += flow2D(input, oFlow, 2.0) * exp2(-3.0);
     oBlur += flow2D(input, oFlow, 4.0) * exp2(-3.0);
     oBlur += flow2D(input, oFlow, 6.0) * exp2(-3.0);

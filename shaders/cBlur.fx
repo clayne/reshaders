@@ -1,6 +1,6 @@
 
 /*
-    Unlimited 11-Tap blur using mipmaps
+    Unlimited 16-Tap blur using mipmaps
     Based on https://github.com/spite/Wagner/blob/master/fragment-shaders/box-blur-fs.glsl [MIT]
     Special Thanks to BlueSkyDefender for help and patience
 */
@@ -8,48 +8,14 @@
 uniform float kRadius <
     ui_label = "Radius";
     ui_type = "slider";
-    ui_step = 0.01;
+    ui_max = 1024.0;
 > = 0.1;
 
 texture2D r_color : COLOR;
+texture2D r_blur { Width = BUFFER_WIDTH/2; Height = BUFFER_HEIGHT/2; Format = RGB10A2; MipLevels = 11; };
 
-texture2D r_mip
-{
-    Width = BUFFER_WIDTH / 2.0;
-    Height = BUFFER_HEIGHT / 2.0;
-    Format = RGB10A2;
-    MipLevels = 3;
-};
-
-texture2D r_blur
-{
-    Width = BUFFER_WIDTH / 2.0;
-    Height = BUFFER_HEIGHT / 2.0;
-    Format = RGB10A2;
-    MipLevels = 3;
-};
-
-sampler2D s_color
-{
-    Texture = r_color;
-    AddressU = MIRROR;
-    AddressV = MIRROR;
-    SRGBTexture = true;
-};
-
-sampler2D s_mip
-{
-    Texture = r_mip;
-    AddressU = MIRROR;
-    AddressV = MIRROR;
-};
-
-sampler2D s_blur
-{
-    Texture = r_blur;
-    AddressU = MIRROR;
-    AddressV = MIRROR;
-};
+sampler2D s_color { Texture = r_color; SRGBTexture = TRUE; };
+sampler2D s_blur  { Texture = r_blur; };
 
 struct v2f
 {
@@ -66,45 +32,100 @@ v2f vs_common(const uint id : SV_VertexID)
     return output;
 }
 
-float4 ps_mip(v2f input) : SV_TARGET
+float nrand(float2 n)
 {
-    return tex2D(s_color, input.uv);
+    const float3 value = float3(52.9829189, 0.06711056, 0.00583715);
+    return frac(value.x * frac(dot(n.xy, value.yz)));
 }
 
-float4 p_noiseblur(sampler2D src, float2 uv, float2 pos, float2 delta)
+float2 rotate2D(float2 p, float a)
 {
-    float4 kColor;
-    float kTotal;
-    const float kSampleCount = 2.0;
+    float2 output;
+    float2 sc;
+    sincos(a, sc.x, sc.y);
+    output.x = dot(p, float2(sc.y, -sc.x));
+    output.y = dot(p, float2(sc.x,  sc.y));
+    return output.xy;
+}
 
-    // Interleaved Gradient Noise from
-    // http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare
-    const float3 kValue = float3(52.9829189, 0.06711056, 0.00583715);
-    float kOffset = frac(kValue.x * frac(dot(pos, kValue.yz)));
+float4 ps_blur(v2f input) : SV_TARGET
+{
+    const int uTaps = 12;
+    const float uSize = kRadius;
 
-    for(float t= -kSampleCount; t <= kSampleCount; t++)
+    float2 cTaps[uTaps];
+    cTaps[0]  = float2(-0.326,-0.406);
+    cTaps[1]  = float2(-0.840,-0.074);
+    cTaps[2]  = float2(-0.696, 0.457);
+    cTaps[3]  = float2(-0.203, 0.621);
+    cTaps[4]  = float2( 0.962,-0.195);
+    cTaps[5]  = float2( 0.473,-0.480);
+    cTaps[6]  = float2( 0.519, 0.767);
+    cTaps[7]  = float2( 0.185,-0.893);
+    cTaps[8]  = float2( 0.507, 0.064);
+    cTaps[9]  = float2( 0.896, 0.412);
+    cTaps[10] = float2(-0.322,-0.933);
+    cTaps[11] = float2(-0.792,-0.598);
+
+    float4 uColor = 0.0;
+    float  uRand = 6.28 * nrand(input.vpos.xy);
+    float4 uBasis;
+    uBasis.xy = rotate2D(float2(1.0, 0.0), uRand);
+    uBasis.zw = rotate2D(float2(0.0, 1.0), uRand);
+
+    for (int i = 0; i < uTaps; i++)
     {
-        float kPercent = (t + kOffset - 0.5) / (kSampleCount * 2.0);
-        float kWeight = 1.0 - abs(kPercent);
-
-        float4 kSample = tex2Dlod(src, float4(uv + delta * kPercent, 0.0, 2.0));
-        kColor += kSample * kWeight;
-        kTotal += kWeight;
+        float2 ofs = cTaps[i];
+        ofs.x = dot(ofs, uBasis.xz);
+        ofs.y = dot(ofs, uBasis.yw);
+        float2 uv = input.uv + uSize * ofs / float2(BUFFER_WIDTH, BUFFER_HEIGHT);
+        uColor += tex2Dlod(s_color, float4(uv, 0.0, -10));
     }
 
-    return kColor / kTotal;
+    return uColor / uTaps;
 }
 
-float4 ps_blurh(v2f input) : SV_TARGET
+float4 calcweights(float s)
 {
-    float2 sc; sincos(radians(0.0), sc[0], sc[1]);
-    return p_noiseblur(s_mip, input.uv, input.vpos.xy, sc.yx * kRadius);
+    const float4 w1 = float4(-0.5, 0.1666, 0.3333, -0.3333);
+    const float4 w2 = float4( 1.0, 0.0, -0.5, 0.5);
+    const float4 w3 = float4(-0.6666, 0.0, 0.8333, 0.1666);
+    float4 t = mad(w1, s, w2);
+    t = mad(t, s, w2.yyzw);
+    t = mad(t, s, w3);
+    t.xy = mad(t.xy, rcp(t.zw), 1.0);
+    t.x += s;
+    t.y -= s;
+    return t;
 }
 
-float4 ps_blurv(v2f input) : SV_TARGET
+
+float4 ps_smooth(v2f input) : SV_TARGET
 {
-    float2 sc; sincos(radians(90.0), sc[0], sc[1]);
-    return p_noiseblur(s_blur, input.uv, input.vpos.xy, sc.yx * kRadius);
+
+    const float kPi = 3.14159265359f;
+    float area   = kPi * (kRadius * kRadius);
+          area   = area / 12; // area per sample
+    float lod    = ceil(log2(sqrt(area)))-1; // select mip level with similar area to the sample
+
+    float2 texsize = tex2Dsize(s_blur, lod);
+    float2 pt = 1.0 / texsize;
+    float2 fcoord = frac(input.uv * texsize + 0.5);
+    float4 parmx = calcweights(fcoord.x);
+    float4 parmy = calcweights(fcoord.y);
+    float4 cdelta;
+    cdelta.xz = parmx.rg * float2(-pt.x, pt.x);
+    cdelta.yw = parmy.rg * float2(-pt.y, pt.y);
+    // first y-interpolation
+    float4 ar = tex2Dlod(s_blur, float4(input.uv + cdelta.xy, 0.0, lod));
+    float4 ag = tex2Dlod(s_blur, float4(input.uv + cdelta.xw, 0.0, lod));
+    float4 ab = lerp(ag, ar, parmy.b);
+    // second y-interpolation
+    float4 br = tex2Dlod(s_blur, float4(input.uv + cdelta.zy, 0.0, lod));
+    float4 bg = tex2Dlod(s_blur, float4(input.uv + cdelta.zw, 0.0, lod));
+    float4 aa = lerp(bg, br, parmy.b);
+    // x-interpolation
+    return lerp(aa, ab, parmx.b);
 }
 
 technique cBlur
@@ -112,21 +133,14 @@ technique cBlur
     pass
     {
         VertexShader = vs_common;
-        PixelShader = ps_mip;
-        RenderTarget = r_mip;
-    }
-
-    pass
-    {
-        VertexShader = vs_common;
-        PixelShader = ps_blurh;
+        PixelShader = ps_blur;
         RenderTarget = r_blur;
     }
 
     pass
     {
         VertexShader = vs_common;
-        PixelShader = ps_blurv;
-        SRGBWriteEnable = true;
+        PixelShader = ps_smooth;
+        SRGBWriteEnable = TRUE;
     }
 }
