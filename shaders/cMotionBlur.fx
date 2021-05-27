@@ -156,13 +156,14 @@ float4 ps_source(v2f input) : SV_Target
     uBasis.xy = rotate2D(float2(1.0, 0.0), uRand);
     uBasis.zw = rotate2D(float2(0.0, 1.0), uRand);
 
+    [unroll]
     for (int i = 0; i < uTaps; i++)
     {
         float2 ofs = cTaps[i];
         ofs.x = dot(ofs, uBasis.xz);
         ofs.y = dot(ofs, uBasis.yw);
         float2 uv = input.uv + uSize * ofs / float2(BUFFER_WIDTH, BUFFER_HEIGHT);
-        float uColor = tex2Dlod(s_color, float4(uv, 0.0, 0.0)).r;
+        float uColor = tex2D(s_color, uv).r;
         uOutput = lerp(uOutput, uColor, 1.0 / float(i + 1));
     }
 
@@ -243,16 +244,16 @@ float4 flow2D(v2f input, float2 flow, float i)
 
 float4 ps_output(v2f input) : SV_Target
 {
-    float4 oBlur;
     float2 oFlow = tex2Dlod(s_cflow, float4(input.uv, 0.0, uLOD)).xy;
-    oBlur += flow2D(input, oFlow, 2.0) * exp2(-3.0);
-    oBlur += flow2D(input, oFlow, 4.0) * exp2(-3.0);
-    oBlur += flow2D(input, oFlow, 6.0) * exp2(-3.0);
-    oBlur += flow2D(input, oFlow, 8.0) * exp2(-3.0);
-    oBlur += flow2D(input, oFlow, 10.0) * exp2(-3.0);
-    oBlur += flow2D(input, oFlow, 12.0) * exp2(-3.0);
-    oBlur += flow2D(input, oFlow, 14.0) * exp2(-3.0);
-    oBlur += flow2D(input, oFlow, 16.0) * exp2(-3.0);
+    float4 oBlur;
+
+    [unroll]
+    for(int i = 1; i < 9; i++)
+    {
+        float4 uColor = flow2D(input, oFlow, float(i * 2));
+        oBlur = lerp(oBlur, uColor, 1.0 / float(i + 1));
+    }
+
     return oBlur;
 }
 
