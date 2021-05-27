@@ -35,11 +35,13 @@
         ui_type = utype; ui_min = umin; ui_max = umax;                          \
         > = uvalue
 
-uOption(uScale,     float, "slider", "Flow Basic", "Scale",              4.000, 0.000, 8.000);
-uOption(uIntensity, float, "slider", "Flow Basic", "Exposure Intensity", 2.000, 0.000, 4.000);
+uOption(uThreshold, float, "slider", "Flow Basic", "Threshold", 0.005, 0.000, 0.100);
+uOption(uScale,     float, "slider", "Flow Basic", "Scale",     8.000, 0.000, 16.00);
+
+uOption(uIntensity, float, "slider", "Flow Advanced", "Exposure Intensity", 2.000, 0.000, 4.000);
 uOption(uRadius,    float, "slider", "Flow Advanced", "Prefilter Radius",   32.00, 0.000, 64.00);
 uOption(uLOD,       float, "slider", "Flow Advanced", "Optical Flow LOD",   3.500, 0.000, 7.000);
-uOption(uSmooth,    float, "slider", "Flow Advanced", "Flow Interpolation", 0.100, 0.000, 0.500);
+uOption(uSmooth,    float, "slider", "Flow Advanced", "Flow Smoothing",     0.500, 0.000, 0.500);
 
 /*
     Round to nearest power of 2
@@ -96,39 +98,14 @@ v2f vs_common(const uint id : SV_VertexID)
     return output;
 }
 
-struct v2f_median
-{
-    float4 vpos : SV_POSITION;
-    float2 uv0 : TEXCOORD0;
-    float4 uv1[2] : TEXCOORD1;
-};
-
-v2f_median vs_median(const uint id : SV_VertexID)
-{
-    v2f_median output;
-    float2 coord;
-    coord.x = (id == 2) ? 2.0 : 0.0;
-    coord.y = (id == 1) ? 2.0 : 0.0;
-    output.vpos = float4(coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
-
-    const float2 ts = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
-    const float3 d = ts.xyx * float3(1.0, 1.0, 0.0);
-    output.uv0 = coord;
-    output.uv1[0].xy = coord - d.xz;
-    output.uv1[0].zw = coord + d.xz;
-    output.uv1[1].xy = coord - d.zy;
-    output.uv1[1].zw = coord + d.zy;
-    return output;
-}
-
 /*
     [ Pixel Shaders ]
-    Median Filter - [https://github.com/keijiro/KinoBloom] [MIT]
-    aExposure     - [https://github.com/TheRealMJP/BakingLab] [MIT]
-    Optical Flow  - [https://github.com/diwi/PixelFlow] [MIT]
-    Pyramid HLSL  - [https://www.youtube.com/watch?v=VSSyPskheaE]
-    Noise         - [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
-    Blurs         - [http://john-chapman-graphics.blogspot.com/2013/01/per-object-motion-blur.html]
+    Disk Blur    - [https://github.com/spite/Wagner] [MIT]
+    aExposure    - [https://github.com/TheRealMJP/BakingLab] [MIT]
+    Optical Flow - [https://github.com/diwi/PixelFlow] [MIT]
+    Pyramid HLSL - [https://www.youtube.com/watch?v=VSSyPskheaE]
+    Noise        - [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
+    Blurs        - [http://john-chapman-graphics.blogspot.com/2013/01/per-object-motion-blur.html]
 */
 
 struct ps2mrt
@@ -153,7 +130,7 @@ float2 rotate2D(float2 p, float a)
     return output.xy;
 }
 
-float4 ps_source(v2f_median input) : SV_Target
+float4 ps_source(v2f input) : SV_Target
 {
     const int uTaps = 12;
     const float uSize = uRadius;
@@ -183,7 +160,7 @@ float4 ps_source(v2f_median input) : SV_Target
         float2 ofs = cTaps[i];
         ofs.x = dot(ofs, uBasis.xz);
         ofs.y = dot(ofs, uBasis.yw);
-        float2 uv = input.uv0 + uSize * ofs / float2(BUFFER_WIDTH, BUFFER_HEIGHT);
+        float2 uv = input.uv + uSize * ofs / float2(BUFFER_WIDTH, BUFFER_HEIGHT);
         uColor += tex2Dlod(s_color, float4(uv, 0.0, 0.0));
     }
 
@@ -247,6 +224,9 @@ ps2mrt ps_flow(v2f input)
     calcFlow(input.uv, 2.0, oFlow[3], false, oFlow[2]);
     calcFlow(input.uv, 1.0, oFlow[2], false, oFlow[1]);
     calcFlow(input.uv, 0.0, oFlow[1], true,  oFlow[0]);
+    float cFlow = length(oFlow[0]);
+    float nFlow = max(cFlow - uThreshold, 1e-8);
+    oFlow[0] *= nFlow / cFlow;
     float2 pFlow = tex2D(s_pflow, input.uv + oFlow[0]).xy;
     output.render0 = lerp(oFlow[0], pFlow, uSmooth);
     output.render1 = tex2Dlod(s_pframe, float4(input.uv, 0.0, 6.0)).r;
@@ -279,7 +259,7 @@ technique cMotionBlur
 {
     pass
     {
-        VertexShader = vs_median;
+        VertexShader = vs_common;
         PixelShader = ps_source;
         RenderTarget0 = r_buffer;
     }

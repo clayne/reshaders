@@ -9,6 +9,7 @@ uniform float kRadius <
     ui_label = "Radius";
     ui_type = "slider";
     ui_max = 1024.0;
+    ui_min = 0.001;
 > = 0.1;
 
 texture2D r_color : COLOR;
@@ -98,7 +99,6 @@ float4 calcweights(float s)
     t.y -= s;
     return t;
 }
-
 
 float4 ps_smooth(v2f input) : SV_TARGET
 {
