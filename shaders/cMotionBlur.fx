@@ -35,10 +35,10 @@
         ui_type = utype; ui_min = umin; ui_max = umax;                          \
         > = uvalue
 
-uOption(uScale,     float, "slider", "Flow Basic", "Scale",              2.000, 0.000, 4.000);
+uOption(uScale,     float, "slider", "Flow Basic", "Scale",              4.000, 0.000, 8.000);
 uOption(uIntensity, float, "slider", "Flow Basic", "Exposure Intensity", 2.000, 0.000, 4.000);
 uOption(uRadius,    float, "slider", "Flow Advanced", "Prefilter Radius",   32.00, 0.000, 64.00);
-uOption(uLOD,       float, "slider", "Flow Advanced", "Optical Flow LOD",   3.500, 0.000, 8.000);
+uOption(uLOD,       float, "slider", "Flow Advanced", "Optical Flow LOD",   3.500, 0.000, 7.000);
 uOption(uSmooth,    float, "slider", "Flow Advanced", "Flow Interpolation", 0.100, 0.000, 0.500);
 
 /*
@@ -231,16 +231,13 @@ void calcFlow(  in  float2 uCoord,
     float3 d;
     d.x = ddx(cLuma) + ddx(pLuma);
     d.y = ddy(cLuma) + ddy(pLuma);
-    d.z = rsqrt(dot(d.xy, d.xy));
+    d.z = rsqrt(dot(d.xy, d.xy) + 1e-8);
     float2 cFlow = dt * (d.xy * d.zz);
     oFlow = (uFine) ? cFlow : (cFlow + uFlow) * 2.0;
 }
 
 ps2mrt ps_flow(v2f input)
 {
-    float cBoard = floor(dot(input.vpos.xy, 1.0));
-    cBoard = frac(cBoard * 0.5) * 2.0;
-
     ps2mrt output;
     float2 oFlow[7];
     calcFlow(input.uv, 6.0, 0.000000, false, oFlow[6]);
@@ -251,7 +248,7 @@ ps2mrt ps_flow(v2f input)
     calcFlow(input.uv, 1.0, oFlow[2], false, oFlow[1]);
     calcFlow(input.uv, 0.0, oFlow[1], true,  oFlow[0]);
     float2 pFlow = tex2D(s_pflow, input.uv + oFlow[0]).xy;
-    output.render0 = lerp(oFlow[0] * uScale, pFlow, uSmooth);
+    output.render0 = lerp(oFlow[0], pFlow, uSmooth);
     output.render1 = tex2Dlod(s_pframe, float4(input.uv, 0.0, 6.0)).r;
     return output;
 }
