@@ -101,6 +101,7 @@ v2f vs_common(const uint id : SV_VertexID)
 /*
     [ Pixel Shaders ]
     Disk Blur    - [https://github.com/spite/Wagner] [MIT]
+    Blur Average - [https://blog.demofox.org/2016/08/23/incremental-averaging/]
     aExposure    - [https://github.com/TheRealMJP/BakingLab] [MIT]
     Optical Flow - [https://github.com/diwi/PixelFlow] [MIT]
     Pyramid HLSL - [https://www.youtube.com/watch?v=VSSyPskheaE]
@@ -149,7 +150,7 @@ float4 ps_source(v2f input) : SV_Target
     cTaps[10] = float2(-0.322,-0.933);
     cTaps[11] = float2(-0.792,-0.598);
 
-    float4 uColor = 0.0;
+    float4 uOutput = 0.0;
     float  uRand = 6.28 * nrand(input.vpos.xy);
     float4 uBasis;
     uBasis.xy = rotate2D(float2(1.0, 0.0), uRand);
@@ -161,11 +162,11 @@ float4 ps_source(v2f input) : SV_Target
         ofs.x = dot(ofs, uBasis.xz);
         ofs.y = dot(ofs, uBasis.yw);
         float2 uv = input.uv + uSize * ofs / float2(BUFFER_WIDTH, BUFFER_HEIGHT);
-        uColor += tex2Dlod(s_color, float4(uv, 0.0, 0.0));
+        float uColor = tex2Dlod(s_color, float4(uv, 0.0, 0.0));
+        uOutput = lerp(uOutput, uColor, 1.0 / float(i + 1));
     }
 
-    float3 c = uColor.rgb / uTaps;
-    return max(max(c.r, c.g), c.b);
+    return max(max(uOutput.r, uOutput.g), uOutput.b);
 }
 
 ps2mrt ps_convert(v2f input)
