@@ -162,7 +162,7 @@ float4 ps_source(v2f input) : SV_Target
         ofs.x = dot(ofs, uBasis.xz);
         ofs.y = dot(ofs, uBasis.yw);
         float2 uv = input.uv + uSize * ofs / float2(BUFFER_WIDTH, BUFFER_HEIGHT);
-        float uColor = tex2Dlod(s_color, float4(uv, 0.0, 0.0));
+        float uColor = tex2Dlod(s_color, float4(uv, 0.0, 0.0)).r;
         uOutput = lerp(uOutput, uColor, 1.0 / float(i + 1));
     }
 

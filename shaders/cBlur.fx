@@ -8,7 +8,7 @@
 uniform float kRadius <
     ui_label = "Radius";
     ui_type = "slider";
-    ui_max = 1024.0;
+    ui_max = 512.0;
     ui_min = 0.001;
 > = 0.1;
 
@@ -68,7 +68,7 @@ float4 ps_blur(v2f input) : SV_TARGET
     cTaps[10] = float2(-0.322,-0.933);
     cTaps[11] = float2(-0.792,-0.598);
 
-    float4 uColor = 0.0;
+    float4 uOutput = 0.0;
     float  uRand = 6.28 * nrand(input.vpos.xy);
     float4 uBasis;
     uBasis.xy = rotate2D(float2(1.0, 0.0), uRand);
@@ -80,10 +80,11 @@ float4 ps_blur(v2f input) : SV_TARGET
         ofs.x = dot(ofs, uBasis.xz);
         ofs.y = dot(ofs, uBasis.yw);
         float2 uv = input.uv + uSize * ofs / float2(BUFFER_WIDTH, BUFFER_HEIGHT);
-        uColor += tex2Dlod(s_color, float4(uv, 0.0, -10));
+        float4 uColor = tex2Dlod(s_color, float4(uv, 0.0, 0.0));
+        uOutput = lerp(uOutput, uColor, 1.0 / float(i + 1));
     }
 
-    return uColor / uTaps;
+    return uOutput;
 }
 
 float4 calcweights(float s)
