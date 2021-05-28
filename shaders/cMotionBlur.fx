@@ -38,7 +38,7 @@
 uOption(uThreshold, float, "slider", "Flow Basic", "Threshold", 0.005, 0.000, 0.100);
 uOption(uScale,     float, "slider", "Flow Basic", "Scale",     8.000, 0.000, 16.00);
 
-uOption(uIntensity, float, "slider", "Flow Advanced", "Exposure Intensity", 2.000, 0.000, 4.000);
+uOption(uIntensity, float, "slider", "Flow Advanced", "Exposure Intensity", 3.000, 0.000, 6.000);
 uOption(uRadius,    float, "slider", "Flow Advanced", "Prefilter Radius",   32.00, 0.000, 64.00);
 uOption(uLOD,       float, "slider", "Flow Advanced", "Optical Flow LOD",   3.500, 0.000, 7.000);
 uOption(uSmooth,    float, "slider", "Flow Advanced", "Flow Smoothing",     0.500, 0.000, 0.500);
@@ -102,7 +102,7 @@ v2f vs_common(const uint id : SV_VertexID)
     [ Pixel Shaders ]
     Disk Blur    - [https://github.com/spite/Wagner] [MIT]
     Blur Average - [https://blog.demofox.org/2016/08/23/incremental-averaging/]
-    aExposure    - [https://github.com/TheRealMJP/BakingLab] [MIT]
+    Exposure     - [https://john-chapman.github.io/2017/08/23/dynamic-local-exposure.html]
     Optical Flow - [https://github.com/diwi/PixelFlow] [MIT]
     Pyramid HLSL - [https://www.youtube.com/watch?v=VSSyPskheaE]
     Noise        - [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
@@ -179,20 +179,21 @@ ps2mrt ps_convert(v2f input)
     return output;
 }
 
-float exposure2D(float aLuma)
+float exposure2D(float pLuma, float cLuma)
 {
-    aLuma = max(aLuma, 1e-8);
-    float aExposure = log2(max(0.18 / aLuma, 1e-8));
-    return exp2(aExposure + uIntensity);
+    float aLuma = lerp(pLuma, cLuma, 0.5);
+    float ev100 = log2(aLuma * 100.0 / 12.5);
+    ev100 -= uIntensity;
+    return rcp(1.2 * exp2(ev100));
 }
 
 float4 ps_filter(v2f input) : SV_Target
 {
     float cLuma = tex2Dlod(s_pframe, float4(input.uv, 0.0, 6.0)).r;
     float pLuma = tex2D(s_pluma, input.uv).r;
-    float aLuma = lerp(pLuma, cLuma, 0.5);
-    float c = tex2D(s_buffer, input.uv).r;
-    return saturate(c * exposure2D(aLuma));
+    float aExposure = exposure2D(pLuma, cLuma);
+    float oColor = tex2D(s_buffer, input.uv).r;
+    return saturate(oColor * aExposure);
 }
 
 void calcFlow(  in  float2 uCoord,
@@ -226,8 +227,8 @@ ps2mrt ps_flow(v2f input)
     calcFlow(input.uv, 2.0, oFlow[3], false, oFlow[2]);
     calcFlow(input.uv, 1.0, oFlow[2], false, oFlow[1]);
     calcFlow(input.uv, 0.0, oFlow[1], true,  oFlow[0]);
-    float cFlow = length(oFlow[0]);
-    float nFlow = max(cFlow - uThreshold, 1e-8);
+    float cFlow = sqrt(dot(oFlow[0], oFlow[0]) + 1e-8);
+    float nFlow = max(cFlow - uThreshold, 0.0);
     oFlow[0] *= nFlow / cFlow;
     float2 pFlow = tex2D(s_pflow, input.uv + oFlow[0]).xy;
     output.render0 = lerp(oFlow[0], pFlow, uSmooth);
