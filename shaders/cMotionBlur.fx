@@ -35,7 +35,7 @@
         ui_type = utype; ui_min = umin; ui_max = umax;                          \
         > = uvalue
 
-uOption(uThreshold, float, "slider", "Flow Basic", "Threshold", 0.005, 0.000, 0.100);
+uOption(uThreshold, float, "slider", "Flow Basic", "Threshold", 0.010, 0.000, 0.100);
 uOption(uScale,     float, "slider", "Flow Basic", "Scale",     8.000, 0.000, 16.00);
 
 uOption(uIntensity, float, "slider", "Flow Advanced", "Exposure Intensity", 3.000, 0.000, 6.000);
