@@ -164,7 +164,7 @@ float4 ps_source(v2f input) : SV_Target
         ofs.y = dot(ofs, uBasis.yw);
         float2 uv = input.uv + uSize * ofs / float2(BUFFER_WIDTH, BUFFER_HEIGHT);
         float uColor = tex2D(s_color, uv).r;
-        uOutput = lerp(uOutput, uColor, 1.0 / float(i + 1));
+        uOutput = lerp(uOutput, uColor, rcp(i + 1));
     }
 
     return max(max(uOutput.r, uOutput.g), uOutput.b);
@@ -252,7 +252,7 @@ float4 ps_output(v2f input) : SV_Target
     for(int i = 1; i < 9; i++)
     {
         float4 uColor = flow2D(input, oFlow, float(i * 2));
-        oBlur = lerp(oBlur, uColor, 1.0 / float(i + 1));
+        oBlur = lerp(oBlur, uColor, rcp(i + 1));
     }
 
     return oBlur;
