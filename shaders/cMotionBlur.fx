@@ -39,7 +39,7 @@ uOption(uThreshold, float, "slider", "Flow Basic", "Threshold", 0.010, 0.000, 0.
 uOption(uScale,     float, "slider", "Flow Basic", "Scale",     8.000, 0.000, 16.00);
 
 uOption(uIntensity, float, "slider", "Flow Advanced", "Exposure Intensity", 3.000, 0.000, 6.000);
-uOption(uRadius,    float, "slider", "Flow Advanced", "Prefilter Radius",   32.00, 0.000, 64.00);
+uOption(uRadius,    float, "slider", "Flow Advanced", "Prefilter Radius",   16.00, 0.000, 32.00);
 uOption(uLOD,       float, "slider", "Flow Advanced", "Optical Flow LOD",   3.500, 0.000, 7.000);
 uOption(uSmooth,    float, "slider", "Flow Advanced", "Flow Smoothing",     0.500, 0.000, 0.500);
 
