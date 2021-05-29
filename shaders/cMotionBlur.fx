@@ -249,7 +249,7 @@ float4 ps_output(v2f input) : SV_Target
     float4 oBlur;
 
     [unroll]
-    for(int i = 1; i < 9; i++)
+    for(int i = 0; i < 9; i++)
     {
         float4 uColor = flow2D(input, oFlow, float(i * 2));
         oBlur = lerp(oBlur, uColor, rcp(i + 1));
