@@ -40,8 +40,8 @@ uOption(uScale,     float, "slider", "Flow Basic", "Scale",     8.000, 0.000, 16
 
 uOption(uIntensity, float, "slider", "Flow Advanced", "Exposure Intensity", 3.000, 0.000, 6.000);
 uOption(uRadius,    float, "slider", "Flow Advanced", "Prefilter Radius",   16.00, 0.000, 32.00);
-uOption(uLOD,       float, "slider", "Flow Advanced", "Optical Flow LOD",   3.500, 0.000, 7.000);
 uOption(uSmooth,    float, "slider", "Flow Advanced", "Flow Smoothing",     0.500, 0.000, 0.500);
+uOption(uLOD,       int,   "slider", "Flow Advanced", "Optical Flow LOD",   3, 0, 7);
 
 /*
     Round to nearest power of 2
@@ -106,6 +106,7 @@ v2f vs_common(const uint id : SV_VertexID)
     Optical Flow - [https://github.com/diwi/PixelFlow] [MIT]
     Pyramid HLSL - [https://www.youtube.com/watch?v=VSSyPskheaE]
     Noise        - [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
+    Cubic Filter - [https://github.com/haasn/libplacebo/blob/master/src/shaders/sampling.c] [GPL 2.1]
     Blurs        - [http://john-chapman-graphics.blogspot.com/2013/01/per-object-motion-blur.html]
 */
 
@@ -243,9 +244,41 @@ float4 flow2D(v2f input, float2 flow, float i)
     return tex2D(s_color, (uScale * flow) * calc + input.uv);
 }
 
+float4 calcweights(float s)
+{
+    const float4 w1 = float4(-0.5, 0.1666, 0.3333, -0.3333);
+    const float4 w2 = float4( 1.0, 0.0, -0.5, 0.5);
+    const float4 w3 = float4(-0.6666, 0.0, 0.8333, 0.1666);
+    float4 t = mad(w1, s, w2);
+    t = mad(t, s, w2.yyzw);
+    t = mad(t, s, w3);
+    t.xy = mad(t.xy, rcp(t.zw), 1.0);
+    t.x += s;
+    t.y -= s;
+    return t;
+}
+
 float4 ps_output(v2f input) : SV_Target
 {
-    float2 oFlow = tex2Dlod(s_cflow, float4(input.uv, 0.0, uLOD)).xy;
+    float2 texsize = tex2Dsize(s_cflow, uLOD);
+    float2 pt = 1.0 / texsize;
+    float2 fcoord = frac(input.uv * texsize + 0.5);
+    float4 parmx = calcweights(fcoord.x);
+    float4 parmy = calcweights(fcoord.y);
+    float4 cdelta;
+    cdelta.xz = parmx.rg * float2(-pt.x, pt.x);
+    cdelta.yw = parmy.rg * float2(-pt.y, pt.y);
+    // first y-interpolation
+    float2 ar = tex2Dlod(s_cflow, float4(input.uv + cdelta.xy, 0.0, uLOD)).xy;
+    float2 ag = tex2Dlod(s_cflow, float4(input.uv + cdelta.xw, 0.0, uLOD)).xy;
+    float2 ab = lerp(ag, ar, parmy.b);
+    // second y-interpolation
+    float2 br = tex2Dlod(s_cflow, float4(input.uv + cdelta.zy, 0.0, uLOD)).xy;
+    float2 bg = tex2Dlod(s_cflow, float4(input.uv + cdelta.zw, 0.0, uLOD)).xy;
+    float2 aa = lerp(bg, br, parmy.b);
+    // x-interpolation
+    float2 oFlow = lerp(aa, ab, parmx.b);
+
     float4 oBlur;
 
     [unroll]
