@@ -35,7 +35,7 @@
         ui_type = utype; ui_min = umin; ui_max = umax;                          \
         > = uvalue
 
-uOption(uThreshold, float, "slider", "Flow Basic", "Threshold", 0.010, 0.000, 0.100);
+uOption(uThreshold, float, "slider", "Flow Basic", "Threshold", 0.004, 0.000, 0.100);
 uOption(uScale,     float, "slider", "Flow Basic", "Scale",     8.000, 0.000, 16.00);
 
 uOption(uIntensity, float, "slider", "Flow Advanced", "Exposure Intensity", 3.000, 0.000, 6.000);
@@ -163,7 +163,7 @@ float4 ps_source(v2f input) : SV_Target
         ofs.x = dot(ofs, uBasis.xz);
         ofs.y = dot(ofs, uBasis.yw);
         float2 uv = input.uv + uSize * ofs / float2(BUFFER_WIDTH, BUFFER_HEIGHT);
-        float uColor = tex2D(s_color, uv).r;
+        float4 uColor = tex2D(s_color, uv);
         uOutput = lerp(uOutput, uColor, rcp(i + 1));
     }
 
@@ -193,7 +193,7 @@ float4 ps_filter(v2f input) : SV_Target
     float pLuma = tex2D(s_pluma, input.uv).r;
     float aExposure = exposure2D(pLuma, cLuma);
     float oColor = tex2D(s_buffer, input.uv).r;
-    return saturate(oColor * aExposure);
+    return exp(-oColor * aExposure);
 }
 
 void calcFlow(  in  float2 uCoord,
@@ -205,7 +205,7 @@ void calcFlow(  in  float2 uCoord,
     // Warp previous frame and calculate distance
     float pLuma = tex2Dlod(s_pframe, float4(uCoord + uFlow, 0.0, uLOD)).g;
     float cLuma = tex2Dlod(s_cframe, float4(uCoord, 0.0, uLOD)).r;
-    float dt = (cLuma - pLuma) * 0.0625;
+    float dt = (cLuma - pLuma) * (0.125 / 2.0);
 
     // Calculate gradients and optical flow
     float3 d;
