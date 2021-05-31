@@ -35,10 +35,10 @@
         ui_type = utype; ui_min = umin; ui_max = umax;                          \
         > = uvalue
 
-uOption(uThreshold, float, "slider", "Flow Basic", "Threshold", 0.004, 0.000, 0.100);
-uOption(uScale,     float, "slider", "Flow Basic", "Scale",     8.000, 0.000, 16.00);
+uOption(uThreshold, float, "slider", "Flow Basic", "Threshold", 0.002, 0.000, 0.100);
+uOption(uScale,     float, "slider", "Flow Basic", "Scale",     6.000, 0.000, 16.00);
 
-uOption(uIntensity, float, "slider", "Flow Advanced", "Exposure Intensity", 3.000, 0.000, 6.000);
+uOption(uIntensity, float, "slider", "Flow Advanced", "Exposure Intensity", 4.000, 0.000, 8.000);
 uOption(uRadius,    float, "slider", "Flow Advanced", "Prefilter Radius",   16.00, 0.000, 32.00);
 uOption(uSmooth,    float, "slider", "Flow Advanced", "Flow Smoothing",     0.500, 0.000, 0.500);
 uOption(uLOD,       int,   "slider", "Flow Advanced", "Optical Flow LOD",   3, 0, 7);
@@ -185,18 +185,18 @@ float4 ps_filter(v2f input) : SV_Target
     ev100 -= uIntensity;
     float aExposure = rcp(1.2 * exp2(ev100));
     float oColor = tex2D(s_buffer, input.uv).r;
-    return exp(-oColor * aExposure);
+    return saturate(exp2(-oColor * aExposure));
 }
 
 void calcFlow(  in  float2 uCoord,
-                in  float  uLOD,
+                in  float  uLevel,
                 in  float2 uFlow,
                 in  bool   uFine,
                 out float2 oFlow)
 {
     // Warp previous frame and calculate distance
-    float pLuma = tex2Dlod(s_pframe, float4(uCoord + uFlow, 0.0, uLOD)).g;
-    float cLuma = tex2Dlod(s_cframe, float4(uCoord, 0.0, uLOD)).r;
+    float pLuma = tex2Dlod(s_pframe, float4(uCoord + uFlow, 0.0, uLevel)).g;
+    float cLuma = tex2Dlod(s_cframe, float4(uCoord, 0.0, uLevel)).r;
     float dt = (cLuma - pLuma) * (0.125 / 2.0);
 
     // Calculate gradients and optical flow
