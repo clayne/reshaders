@@ -71,7 +71,6 @@ texture2D r_pframe { Width = 64; Height = 64; MipLevels = 7; Format = RG16F; };
 texture2D r_cframe { Width = 64; Height = 64; MipLevels = 7; Format = R16F;  };
 texture2D r_cflow  { Width = 64; Height = 64; MipLevels = 7; Format = RG16F; };
 texture2D r_pflow  { Width = 64; Height = 64; Format = RG16F; };
-texture2D r_pluma  { Width = 64; Height = 64; Format = R16F;  };
 
 sampler2D s_color  { Texture = r_color; SRGBTexture = TRUE; };
 sampler2D s_buffer { Texture = r_buffer; };
@@ -79,7 +78,6 @@ sampler2D s_pframe { Texture = r_pframe; };
 sampler2D s_cframe { Texture = r_cframe; };
 sampler2D s_cflow  { Texture = r_cflow; };
 sampler2D s_pflow  { Texture = r_pflow; };
-sampler2D s_pluma  { Texture = r_pluma; };
 
 /* [ Vertex Shaders ] */
 
@@ -180,19 +178,12 @@ ps2mrt ps_convert(v2f input)
     return output;
 }
 
-float exposure2D(float pLuma, float cLuma)
-{
-    float aLuma = lerp(pLuma, cLuma, 0.5);
-    float ev100 = log2(aLuma * 100.0 / 12.5);
-    ev100 -= uIntensity;
-    return rcp(1.2 * exp2(ev100));
-}
-
 float4 ps_filter(v2f input) : SV_Target
 {
-    float cLuma = tex2Dlod(s_pframe, float4(input.uv, 0.0, 6.0)).r;
-    float pLuma = tex2D(s_pluma, input.uv).r;
-    float aExposure = exposure2D(pLuma, cLuma);
+    float aLuma = tex2Dlod(s_pframe, float4(input.uv, 0.0, 6.0)).r;
+    float ev100 = log2(aLuma * 100.0 / 12.5);
+    ev100 -= uIntensity;
+    float aExposure = rcp(1.2 * exp2(ev100));
     float oColor = tex2D(s_buffer, input.uv).r;
     return exp(-oColor * aExposure);
 }
@@ -210,16 +201,15 @@ void calcFlow(  in  float2 uCoord,
 
     // Calculate gradients and optical flow
     float3 d;
-    d.x = ddx(cLuma) + ddx(pLuma);
-    d.y = ddy(cLuma) + ddy(pLuma);
+    d.xy  = float2(ddx(cLuma), ddy(cLuma));
+    d.xy += float2(ddx(pLuma), ddy(pLuma));
     d.z = rsqrt(dot(d.xy, d.xy) + 1e-8);
     float2 cFlow = dt * (d.xy * d.zz);
     oFlow = (uFine) ? cFlow : (cFlow + uFlow) * 2.0;
 }
 
-ps2mrt ps_flow(v2f input)
+float4 ps_flow(v2f input) : SV_Target
 {
-    ps2mrt output;
     float2 oFlow[7];
     calcFlow(input.uv, 6.0, 0.000000, false, oFlow[6]);
     calcFlow(input.uv, 5.0, oFlow[6], false, oFlow[5]);
@@ -232,9 +222,7 @@ ps2mrt ps_flow(v2f input)
     float nFlow = max(cFlow - uThreshold, 0.0);
     oFlow[0] *= nFlow / cFlow;
     float2 pFlow = tex2D(s_pflow, input.uv + oFlow[0]).xy;
-    output.render0 = lerp(oFlow[0], pFlow, uSmooth);
-    output.render1 = tex2Dlod(s_pframe, float4(input.uv, 0.0, 6.0)).r;
-    return output;
+    return lerp(oFlow[0], pFlow, uSmooth).xyxy;
 }
 
 float4 flow2D(v2f input, float2 flow, float i)
@@ -253,21 +241,19 @@ float4 calcweights(float s)
     t = mad(t, s, w2.yyzw);
     t = mad(t, s, w3);
     t.xy = mad(t.xy, rcp(t.zw), 1.0);
-    t.x += s;
-    t.y -= s;
+    t.xy += float2(s, -s);
     return t;
 }
 
 float4 ps_output(v2f input) : SV_Target
 {
-    float2 texsize = tex2Dsize(s_cflow, uLOD);
-    float2 pt = 1.0 / texsize;
+    const float2 texsize = tex2Dsize(s_cflow, uLOD);
+    const float2 pt = 1.0 / texsize;
+    const float4 po = float4(-pt.x, pt.x, -pt.y, pt.y);
     float2 fcoord = frac(input.uv * texsize + 0.5);
     float4 parmx = calcweights(fcoord.x);
     float4 parmy = calcweights(fcoord.y);
-    float4 cdelta;
-    cdelta.xz = parmx.rg * float2(-pt.x, pt.x);
-    cdelta.yw = parmy.rg * float2(-pt.y, pt.y);
+    float4 cdelta = float4(parmx.rg, parmy.rg).xzyw * po;
     // first y-interpolation
     float2 ar = tex2Dlod(s_cflow, float4(input.uv + cdelta.xy, 0.0, uLOD)).xy;
     float2 ag = tex2Dlod(s_cflow, float4(input.uv + cdelta.xw, 0.0, uLOD)).xy;
@@ -320,7 +306,6 @@ technique cMotionBlur
         VertexShader = vs_common;
         PixelShader = ps_flow;
         RenderTarget0 = r_cflow;
-        RenderTarget1 = r_pluma;
     }
 
     pass
