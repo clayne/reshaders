@@ -36,12 +36,12 @@
         > = uvalue
 
 uOption(uThreshold, float, "slider", "Flow Basic", "Threshold", 0.002, 0.000, 0.100);
-uOption(uScale,     float, "slider", "Flow Basic", "Scale",     4.000, 0.000, 8.000);
+uOption(uScale,     float, "slider", "Flow Basic", "Scale",     8.000, 0.000, 16.00);
 
 uOption(uIntensity, float, "slider", "Flow Advanced", "Exposure Intensity", 4.000, 0.000, 8.000);
 uOption(uRadius,    float, "slider", "Flow Advanced", "Prefilter Radius",   16.00, 0.000, 32.00);
 uOption(uSmooth,    float, "slider", "Flow Advanced", "Flow Smoothing",     0.500, 0.000, 0.500);
-uOption(uLOD,       int,   "slider", "Flow Advanced", "Optical Flow LOD",   3, 0, 7);
+uOption(uDetail,    int,   "slider", "Flow Advanced", "Optical Flow LOD",   3, 0, 6);
 
 /*
     Round to nearest power of 2
@@ -169,7 +169,8 @@ float4 ps_source(v2f input) : SV_Target
         uOutput = lerp(uOutput, uColor, rcp(i + 1));
     }
 
-    return max(max(uOutput.r, uOutput.g), uOutput.b);
+    float uImage = max(max(uOutput.r, uOutput.g), uOutput.b);
+    return max(sqrt(uImage), 1e-5);
 }
 
 ps2mrt ps_convert(v2f input)
@@ -194,15 +195,12 @@ float4 ps_filter(v2f input) : SV_Target
     float oColor = tex2D(s_buffer, input.uv).r;
 
     float2 output;
-    output.r = saturate(exp2(-oColor * aExposure));
+    output.r = saturate(oColor * aExposure);
     output.g = aLuma;
     return output.xyxy;
 }
 
-void calcFlow(  in  float2 uCoord,
-                in  float  uLevel,
-                in  float2 uFlow,
-                in  bool   uFine,
+void calcFlow(  in float2 uCoord, in float uLevel, in float2 uFlow, in bool uFine,
                 out float2 oFlow)
 {
     // Warp previous frame and calculate distance
@@ -214,7 +212,7 @@ void calcFlow(  in  float2 uCoord,
     float3 d;
     d.xy  = float2(ddx(cLuma), ddy(cLuma));
     d.xy += float2(ddx(pLuma), ddy(pLuma));
-    d.z = rsqrt(dot(d.xy, d.xy) + 1e-8);
+    d.z = rsqrt(dot(d.xy, d.xy) + 1e-5);
     float2 cFlow = dt * (d.xy * d.zz);
     oFlow = (uFine) ? cFlow : (cFlow + uFlow) * 2.0;
 }
@@ -229,7 +227,7 @@ float4 ps_flow(v2f input) : SV_Target
     calcFlow(input.uv, 2.0, oFlow[3], false, oFlow[2]);
     calcFlow(input.uv, 1.0, oFlow[2], false, oFlow[1]);
     calcFlow(input.uv, 0.0, oFlow[1], true,  oFlow[0]);
-    float cFlow = sqrt(dot(oFlow[0], oFlow[0]) + 1e-8);
+    float cFlow = sqrt(dot(oFlow[0], oFlow[0]) + 1e-5);
     float nFlow = max(cFlow - uThreshold, 0.0);
     oFlow[0] *= nFlow / cFlow;
     float2 pFlow = tex2D(s_pflow, input.uv + oFlow[0]).xy;
@@ -258,7 +256,7 @@ float4 calcweights(float s)
 
 float4 ps_output(v2f input) : SV_Target
 {
-    const float2 texsize = tex2Dsize(s_cflow, uLOD);
+    const float2 texsize = tex2Dsize(s_cflow, uDetail);
     const float2 pt = 1.0 / texsize;
     const float4 po = float4(-pt.x, pt.x, -pt.y, pt.y);
     float2 fcoord = frac(input.uv * texsize + 0.5);
@@ -266,12 +264,12 @@ float4 ps_output(v2f input) : SV_Target
     float4 parmy = calcweights(fcoord.y);
     float4 cdelta = float4(parmx.rg, parmy.rg).xzyw * po;
     // first y-interpolation
-    float2 ar = tex2Dlod(s_cflow, float4(input.uv + cdelta.xy, 0.0, uLOD)).xy;
-    float2 ag = tex2Dlod(s_cflow, float4(input.uv + cdelta.xw, 0.0, uLOD)).xy;
+    float2 ar = tex2Dlod(s_cflow, float4(input.uv + cdelta.xy, 0.0, uDetail)).xy;
+    float2 ag = tex2Dlod(s_cflow, float4(input.uv + cdelta.xw, 0.0, uDetail)).xy;
     float2 ab = lerp(ag, ar, parmy.b);
     // second y-interpolation
-    float2 br = tex2Dlod(s_cflow, float4(input.uv + cdelta.zy, 0.0, uLOD)).xy;
-    float2 bg = tex2Dlod(s_cflow, float4(input.uv + cdelta.zw, 0.0, uLOD)).xy;
+    float2 br = tex2Dlod(s_cflow, float4(input.uv + cdelta.zy, 0.0, uDetail)).xy;
+    float2 bg = tex2Dlod(s_cflow, float4(input.uv + cdelta.zw, 0.0, uDetail)).xy;
     float2 aa = lerp(bg, br, parmy.b);
     // x-interpolation
     float2 oFlow = lerp(aa, ab, parmx.b);
