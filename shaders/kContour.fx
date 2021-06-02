@@ -82,20 +82,19 @@ v2f vs_contour(in uint id : SV_VertexID)
 void ps_contour(v2f input, out float3 c : SV_Target0)
 {
     // Color samples
-    float4x3 co = float4x3(tex2D(s_color, input.uv[0].xy).rgb,
-                           tex2D(s_color, input.uv[0].zw).rgb,
-                           tex2D(s_color, input.uv[1].xy).rgb,
-                           tex2D(s_color, input.uv[1].zw).rgb);
+    float3 cImage[4];
+    cImage[0] = tex2D(s_color, input.uv[0].xy).rgb;
+    cImage[1] = tex2D(s_color, input.uv[0].zw).rgb;
+    cImage[2] = tex2D(s_color, input.uv[1].xy).rgb;
+    cImage[3] = tex2D(s_color, input.uv[1].zw).rgb;
 
     // Roberts cross operator
-    float cg1  = dot(co[1] - co[0], co[1] - co[0]);
-    float cg2  = dot(co[3] - co[2], co[3] - co[2]);
-          cg2 += cg1;
-
-    float cg = cg2 * rsqrt(cg2);
-    float edge = cg * kColorSensitivity;
+    float3 cga = cImage[1] - cImage[0];
+    float3 cgb = cImage[3] - cImage[2];
+    float cg = sqrt(dot(cga, cga) + dot(cgb, cgb));
 
     // Thresholding
+    float edge = cg * kColorSensitivity;
     edge = saturate((edge - kThreshold) * kInvRange);
     float3 cb = lerp(co[0], kBackColor.rgb, kBackColor.a);
     c = lerp(cb, kFrontColor.rgb, edge * kFrontColor.a);
