@@ -195,7 +195,7 @@ float4 ps_filter(v2f input) : SV_Target
     float oColor = tex2D(s_buffer, input.uv).r;
 
     float2 output;
-    output.r = saturate(oColor * aExposure);
+    output.r = saturate(exp2(-oColor * aExposure));
     output.g = aLuma;
     return output.xyxy;
 }
