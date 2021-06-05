@@ -96,7 +96,7 @@ void ps_contour(v2f input, out float3 c : SV_Target0)
     // Thresholding
     float edge = cg * kColorSensitivity;
     edge = saturate((edge - kThreshold) * kInvRange);
-    float3 cb = lerp(co[0], kBackColor.rgb, kBackColor.a);
+    float3 cb = lerp(cImage[0], kBackColor.rgb, kBackColor.a);
     c = lerp(cb, kFrontColor.rgb, edge * kFrontColor.a);
 }
 

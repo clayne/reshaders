@@ -52,9 +52,7 @@ sampler2D s_bloom8 { Texture = r_bloom8; };
 
 /*
     [ Vertex Shaders ]
-
-    Dual Filtering Algorithm
-    [https://github.com/powervr-graphics/Native_SDK] [MIT]
+    Dual Filtering Algorithm - [https://github.com/powervr-graphics/Native_SDK] [MIT]
 */
 
 struct v2fd
@@ -70,27 +68,20 @@ struct v2fu
     float4 uv0[2] : TEXCOORD0;
 };
 
-void common2Dvs(in uint id, in float uFact,
-                out float2 coord, out float4 vpos, out float4 uv[2])
-{
-    coord.x = (id == 2) ? 2.0 : 0.0;
-    coord.y = (id == 1) ? 2.0 : 0.0;
-    vpos = float4(coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
-
-    const float2 psize = ldexp(float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT), uFact);
-    const float2 hoffset = psize + (psize / 2.0f);
-    const float4 offset = float4(-hoffset.x, -hoffset.y, hoffset.x, hoffset.y);
-    uv[0].xy = coord + offset.xy; // --
-    uv[0].zw = coord + offset.zw; // ++
-    uv[1].xy = coord + offset.xw; // -+
-    uv[1].zw = coord + offset.zy; // +-
-}
-
 v2fd downsample2Dvs(uint id, float uFact)
 {
     v2fd output;
     float2 coord;
-    common2Dvs(id, uFact, coord, output.vpos, output.uv1);
+    coord.x = (id == 2) ? 2.0 : 0.0;
+    coord.y = (id == 1) ? 2.0 : 0.0;
+    output.vpos = float4(coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+
+    const float2 psize = ldexp(float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT), uFact);
+    const float4 offset = float4(-psize.x, -psize.y, psize.x, psize.y);
+    output.uv1[0].xy = coord + offset.xy; // --
+    output.uv1[0].zw = coord + offset.zw; // ++
+    output.uv1[1].xy = coord + offset.xw; // -+
+    output.uv1[1].zw = coord + offset.zy; // +-
     output.uv0 = coord;
     return output;
 }
@@ -99,7 +90,16 @@ v2fu upsample2Dvs(uint id, float uFact)
 {
     v2fu output;
     float2 coord;
-    common2Dvs(id, uFact, coord, output.vpos, output.uv0);
+    coord.x = (id == 2) ? 2.0 : 0.0;
+    coord.y = (id == 1) ? 2.0 : 0.0;
+    output.vpos = float4(coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    const float2 psize = ldexp(float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT), uFact);
+    const float2 hoffset = psize + (psize / 2.0f);
+    const float4 offset = float4(-hoffset.x, -hoffset.y, hoffset.x, hoffset.y);
+    output.uv0[0].xy = coord + offset.xy; // --
+    output.uv0[0].zw = coord + offset.zw; // ++
+    output.uv0[1].xy = coord + offset.xw; // -+
+    output.uv0[1].zw = coord + offset.zy; // +-
     return output;
 }
 
@@ -123,15 +123,9 @@ v2fu vs_upsample1(uint id : SV_VertexID) { return upsample2Dvs(id, 0.0); }
 
 /*
     [ Pixel Shaders ]
-
-    1st pass quadratic color thresholding
-    [https://github.com/keijiro/KinoBloom] [MIT]
-
-    ACES Filmic Tone Mapping Curve
-    [https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/]
-
-    Interleaved Gradient Noise
-    [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
+    Thresholding - [https://github.com/keijiro/KinoBloom] [MIT]
+    Tonemap - [https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/]
+    Noise - [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
 */
 
 float4 downsample2Dps(sampler2D src, v2fd input)
