@@ -187,7 +187,7 @@ float4 ps_filter(v2f input) : SV_Target
 {
     float cLuma = tex2Dlod(s_pframe, float4(input.uv, 0.0, 6.0)).r;
     float pLuma = tex2D(s_pluma, input.uv).r;
-    float aLuma = lerp(cLuma, pLuma, 0.5f);
+    float aLuma = lerp(pLuma, cLuma, 0.5f);
 
     float ev100 = log2(aLuma * 100.0 / 12.5);
     ev100 -= uIntensity;
