@@ -36,9 +36,9 @@
         > = uvalue
 
 uOption(uThreshold, float, "slider", "Flow Basic", "Threshold", 0.002, 0.000, 0.100);
-uOption(uScale,     float, "slider", "Flow Basic", "Scale",     8.000, 0.000, 16.00);
+uOption(uScale,     float, "slider", "Flow Basic", "Scale",     4.000, 0.000, 8.000);
 
-uOption(uIntensity, float, "slider", "Flow Advanced", "Exposure Intensity", 4.000, 0.000, 8.000);
+uOption(uIntensity, float, "slider", "Flow Advanced", "Exposure Intensity", 2.000, 0.000, 4.000);
 uOption(uRadius,    float, "slider", "Flow Advanced", "Prefilter Radius",   16.00, 0.000, 32.00);
 uOption(uSmooth,    float, "slider", "Flow Advanced", "Flow Smoothing",     0.500, 0.000, 0.500);
 uOption(uDetail,    int,   "slider", "Flow Advanced", "Optical Flow LOD",   3, 0, 6);
@@ -187,7 +187,7 @@ float4 ps_filter(v2f input) : SV_Target
 {
     float cLuma = tex2Dlod(s_pframe, float4(input.uv, 0.0, 6.0)).r;
     float pLuma = tex2D(s_pluma, input.uv).r;
-    float aLuma = lerp(cLuma, pLuma, 0.5f);
+    float aLuma = lerp(pLuma, cLuma, 0.5f);
 
     float ev100 = log2(aLuma * 100.0 / 12.5);
     ev100 -= uIntensity;
@@ -195,7 +195,7 @@ float4 ps_filter(v2f input) : SV_Target
     float oColor = tex2D(s_buffer, input.uv).r;
 
     float2 output;
-    output.r = saturate(exp2(-oColor * aExposure));
+    output.r = saturate(oColor * aExposure);
     output.g = aLuma;
     return output.xyxy;
 }
