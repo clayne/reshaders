@@ -66,7 +66,7 @@ uOption(uDetail,    int,   "slider", "Flow Advanced", "Optical Flow LOD",   3, 0
 #define RSIZE      Width = BUFFER_WIDTH / 2; Height = BUFFER_HEIGHT / 2
 
 texture2D r_color  : COLOR;
-texture2D r_buffer { RSIZE; MipLevels = LOG2(DSIZE(2)) + 1;  Format = R8;    };
+texture2D r_buffer { RSIZE; MipLevels = LOG2(DSIZE(2)) + 1;  Format = R16F;  };
 texture2D r_pframe { Width = 64; Height = 64; MipLevels = 7; Format = RG16F; };
 texture2D r_cframe { Width = 64; Height = 64; MipLevels = 7; Format = RG16F; };
 texture2D r_cflow  { Width = 64; Height = 64; MipLevels = 7; Format = RG16F; };
@@ -170,7 +170,7 @@ float4 ps_source(v2f input) : SV_Target
     }
 
     float uImage = max(max(uOutput.r, uOutput.g), uOutput.b);
-    return max(sqrt(uImage), 1e-5);
+    return max(uImage, 1e-5);
 }
 
 ps2mrt ps_convert(v2f input)
