@@ -67,14 +67,15 @@ uOption(uDetail,    int,   "slider", "Flow Advanced", "Optical Flow LOD",   3, 0
 
 texture2D r_color  : COLOR;
 texture2D r_buffer { RSIZE; MipLevels = LOG2(DSIZE(2)) + 1;  Format = R16F;  };
-texture2D r_pframe { Width = 64; Height = 64; MipLevels = 7; Format = RG16F; };
-texture2D r_cframe { Width = 64; Height = 64; MipLevels = 7; Format = RG16F; };
+texture2D r_pframe { Width = 64; Height = 64; MipLevels = 7; Format = RGBA16F; };
+texture2D r_cframe { Width = 64; Height = 64; MipLevels = 7; Format = RGBA16F; };
 texture2D r_cflow  { Width = 64; Height = 64; MipLevels = 7; Format = RG16F; };
 texture2D r_pflow  { Width = 64; Height = 64; Format = RG16F; };
 texture2D r_pluma  { Width = 64; Height = 64; Format = R16F; };
 
 sampler2D s_color  { Texture = r_color; SRGBTexture = TRUE; };
 sampler2D s_buffer { Texture = r_buffer; };
+sampler2D s_mcolor { Texture = r_buffer; MipLODBias = 2.0; };
 sampler2D s_pframe { Texture = r_pframe; };
 sampler2D s_cframe { Texture = r_cframe; };
 sampler2D s_cflow  { Texture = r_cflow; };
@@ -100,7 +101,6 @@ v2f vs_common(const uint id : SV_VertexID)
 
 /*
     [ Pixel Shaders ]
-    Disk Blur    - [https://github.com/spite/Wagner] [MIT]
     Blur Average - [https://blog.demofox.org/2016/08/23/incremental-averaging/]
     Exposure     - [https://john-chapman.github.io/2017/08/23/dynamic-local-exposure.html]
     Optical Flow - [https://github.com/diwi/PixelFlow] [MIT]
@@ -123,61 +123,18 @@ float nrand(float2 n)
     return frac(value.x * frac(dot(n.xy, value.yz)));
 }
 
-float2 rotate2D(float2 p, float a)
-{
-    float2 output;
-    float2 sc;
-    sincos(a, sc.x, sc.y);
-    output.x = dot(p, float2(sc.y, -sc.x));
-    output.y = dot(p, float2(sc.x,  sc.y));
-    return output.xy;
-}
-
 float4 ps_source(v2f input) : SV_Target
 {
-    const int uTaps = 12;
-    const float uSize = uRadius;
-
-    float2 cTaps[uTaps];
-    cTaps[0]  = float2(-0.326,-0.406);
-    cTaps[1]  = float2(-0.840,-0.074);
-    cTaps[2]  = float2(-0.696, 0.457);
-    cTaps[3]  = float2(-0.203, 0.621);
-    cTaps[4]  = float2( 0.962,-0.195);
-    cTaps[5]  = float2( 0.473,-0.480);
-    cTaps[6]  = float2( 0.519, 0.767);
-    cTaps[7]  = float2( 0.185,-0.893);
-    cTaps[8]  = float2( 0.507, 0.064);
-    cTaps[9]  = float2( 0.896, 0.412);
-    cTaps[10] = float2(-0.322,-0.933);
-    cTaps[11] = float2(-0.792,-0.598);
-
-    float4 uOutput = 0.0;
-    float  uRand = 6.28 * nrand(input.vpos.xy);
-    float4 uBasis;
-    uBasis.xy = rotate2D(float2(1.0, 0.0), uRand);
-    uBasis.zw = rotate2D(float2(0.0, 1.0), uRand);
-
-    [unroll]
-    for (int i = 0; i < uTaps; i++)
-    {
-        float2 ofs = cTaps[i];
-        ofs.x = dot(ofs, uBasis.xz);
-        ofs.y = dot(ofs, uBasis.yw);
-        float2 uv = input.uv + uSize * ofs / float2(BUFFER_WIDTH, BUFFER_HEIGHT);
-        float4 uColor = tex2D(s_color, uv);
-        uOutput = lerp(uOutput, uColor, rcp(i + 1));
-    }
-
-    float uImage = max(max(uOutput.r, uOutput.g), uOutput.b);
-    return max(uImage, 1e-5);
+    float4 uImage = tex2D(s_color, input.uv);
+    float uOutput = max(max(uImage.r, uImage.g), uImage.b);
+    return max(uOutput, 1e-5);
 }
 
 ps2mrt ps_convert(v2f input)
 {
     ps2mrt output;
-    output.render0.r = tex2D(s_buffer, input.uv).r;
-    output.render0.g = tex2D(s_cframe, input.uv).r;
+    output.render0.xyz = tex2D(s_cframe, input.uv).xyz;
+    output.render0.w = tex2D(s_mcolor, input.uv).r;
     output.render1 = tex2D(s_cflow, input.uv).rg;
     output.render2 = tex2D(s_cframe, input.uv).g;
     return output;
@@ -185,33 +142,34 @@ ps2mrt ps_convert(v2f input)
 
 float4 ps_filter(v2f input) : SV_Target
 {
-    float cLuma = tex2Dlod(s_pframe, float4(input.uv, 0.0, 6.0)).r;
+    float cLuma = tex2Dlod(s_pframe, float4(input.uv, 0.0, 6.0)).a;
     float pLuma = tex2D(s_pluma, input.uv).r;
     float aLuma = lerp(pLuma, cLuma, 0.5f);
 
     float ev100 = log2(aLuma * 100.0 / 12.5);
     ev100 -= uIntensity;
     float aExposure = rcp(1.2 * exp2(ev100));
-    float oColor = tex2D(s_buffer, input.uv).r;
+    float oColor = tex2D(s_pframe, input.uv).a;
 
-    float2 output;
-    output.r = saturate(oColor * aExposure);
-    output.g = aLuma;
-    return output.xyxy;
+    float4 output;
+    output.x = ddx(output.r);
+    output.y = ddy(output.r);
+    output.z = saturate(oColor * aExposure);
+    output.w = aLuma;
+    return output;
 }
 
 void calcFlow(  in float2 uCoord, in float uLevel, in float2 uFlow, in bool uFine,
                 out float2 oFlow)
 {
     // Warp previous frame and calculate distance
-    float pLuma = tex2Dlod(s_pframe, float4(uCoord + uFlow, 0.0, uLevel)).g;
-    float cLuma = tex2Dlod(s_cframe, float4(uCoord, 0.0, uLevel)).r;
-    float dt = (cLuma - pLuma) * (0.125 / 2.0);
+    float4 pLuma = tex2Dlod(s_pframe, float4(uCoord + uFlow, 0.0, uLevel));
+    float4 cLuma = tex2Dlod(s_cframe, float4(uCoord, 0.0, uLevel));
+    float dt = (cLuma.z - pLuma.z) * (0.125 / 2.0);
 
     // Calculate gradients and optical flow
     float3 d;
-    d.xy  = float2(ddx(cLuma), ddy(cLuma));
-    d.xy += float2(ddx(pLuma), ddy(pLuma));
+    d.xy = cLuma.xy + pLuma.xy;
     d.z = rsqrt(dot(d.xy, d.xy) + 1e-5);
     float2 cFlow = dt * (d.xy * d.zz);
     oFlow = (uFine) ? cFlow : (cFlow + uFlow) * 2.0;
