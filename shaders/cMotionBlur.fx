@@ -39,7 +39,6 @@ uOption(uThreshold, float, "slider", "Flow Basic", "Threshold", 0.002, 0.000, 0.
 uOption(uScale,     float, "slider", "Flow Basic", "Scale",     4.000, 0.000, 8.000);
 
 uOption(uIntensity, float, "slider", "Flow Advanced", "Exposure Intensity", 2.000, 0.000, 4.000);
-uOption(uRadius,    float, "slider", "Flow Advanced", "Prefilter Radius",   16.00, 0.000, 32.00);
 uOption(uSmooth,    float, "slider", "Flow Advanced", "Flow Smoothing",     0.500, 0.000, 0.500);
 uOption(uDetail,    int,   "slider", "Flow Advanced", "Optical Flow LOD",   3, 0, 6);
 
@@ -66,16 +65,15 @@ uOption(uDetail,    int,   "slider", "Flow Advanced", "Optical Flow LOD",   3, 0
 #define RSIZE      Width = BUFFER_WIDTH / 2; Height = BUFFER_HEIGHT / 2
 
 texture2D r_color  : COLOR;
-texture2D r_buffer { RSIZE; MipLevels = LOG2(DSIZE(2)) + 1;  Format = R16F;  };
-texture2D r_pframe { Width = 64; Height = 64; MipLevels = 7; Format = RGBA16F; };
-texture2D r_cframe { Width = 64; Height = 64; MipLevels = 7; Format = RGBA16F; };
-texture2D r_cflow  { Width = 64; Height = 64; MipLevels = 7; Format = RG16F; };
-texture2D r_pflow  { Width = 64; Height = 64; Format = RG16F; };
-texture2D r_pluma  { Width = 64; Height = 64; Format = R16F; };
+texture2D r_buffer { RSIZE; MipLevels = LOG2(DSIZE(2)) + 1;  Format = R32F;  };
+texture2D r_pframe { Width = 64; Height = 64; MipLevels = 7; Format = RG32F; };
+texture2D r_cframe { Width = 64; Height = 64; MipLevels = 7; Format = RG32F; };
+texture2D r_cflow  { Width = 64; Height = 64; MipLevels = 7; Format = RG32F; };
+texture2D r_pflow  { Width = 64; Height = 64; Format = RG32F; };
+texture2D r_pluma  { Width = 64; Height = 64; Format = R32F; };
 
 sampler2D s_color  { Texture = r_color; SRGBTexture = TRUE; };
 sampler2D s_buffer { Texture = r_buffer; };
-sampler2D s_mcolor { Texture = r_buffer; MipLODBias = 2.0; };
 sampler2D s_pframe { Texture = r_pframe; };
 sampler2D s_cframe { Texture = r_cframe; };
 sampler2D s_cflow  { Texture = r_cflow; };
@@ -117,12 +115,6 @@ struct ps2mrt
     float4 render2 : SV_TARGET2;
 };
 
-float nrand(float2 n)
-{
-    const float3 value = float3(52.9829189, 0.06711056, 0.00583715);
-    return frac(value.x * frac(dot(n.xy, value.yz)));
-}
-
 float4 ps_source(v2f input) : SV_Target
 {
     float4 uImage = tex2D(s_color, input.uv);
@@ -133,8 +125,8 @@ float4 ps_source(v2f input) : SV_Target
 ps2mrt ps_convert(v2f input)
 {
     ps2mrt output;
-    output.render0.xyz = tex2D(s_cframe, input.uv).xyz;
-    output.render0.w = tex2D(s_mcolor, input.uv).r;
+    output.render0.r = tex2D(s_cframe, input.uv).r;
+    output.render0.g = tex2D(s_buffer, input.uv).r;
     output.render1 = tex2D(s_cflow, input.uv).rg;
     output.render2 = tex2D(s_cframe, input.uv).g;
     return output;
@@ -142,34 +134,33 @@ ps2mrt ps_convert(v2f input)
 
 float4 ps_filter(v2f input) : SV_Target
 {
-    float cLuma = tex2Dlod(s_pframe, float4(input.uv, 0.0, 6.0)).a;
+    float cLuma = tex2Dlod(s_pframe, float4(input.uv, 0.0, 6.0)).g;
     float pLuma = tex2D(s_pluma, input.uv).r;
     float aLuma = lerp(pLuma, cLuma, 0.5f);
 
     float ev100 = log2(aLuma * 100.0 / 12.5);
     ev100 -= uIntensity;
     float aExposure = rcp(1.2 * exp2(ev100));
-    float oColor = tex2D(s_pframe, input.uv).a;
+    float oColor = tex2D(s_buffer, input.uv).r;
 
-    float4 output;
-    output.x = ddx(output.r);
-    output.y = ddy(output.r);
-    output.z = saturate(oColor * aExposure);
-    output.w = aLuma;
-    return output;
+    float2 output;
+    output.r = saturate(oColor * aExposure);
+    output.g = aLuma;
+    return output.rgrg;
 }
 
 void calcFlow(  in float2 uCoord, in float uLevel, in float2 uFlow, in bool uFine,
                 out float2 oFlow)
 {
     // Warp previous frame and calculate distance
-    float4 pLuma = tex2Dlod(s_pframe, float4(uCoord + uFlow, 0.0, uLevel));
-    float4 cLuma = tex2Dlod(s_cframe, float4(uCoord, 0.0, uLevel));
-    float dt = (cLuma.z - pLuma.z) * (0.125 / 2.0);
+    float pLuma = tex2Dlod(s_pframe, float4(uCoord + uFlow, 0.0, uLevel)).r;
+    float cLuma = tex2Dlod(s_cframe, float4(uCoord, 0.0, uLevel)).r;
+    float dt = (cLuma - pLuma) * (0.125 / 2.0);
 
     // Calculate gradients and optical flow
     float3 d;
-    d.xy = cLuma.xy + pLuma.xy;
+    d.xy  = float2(ddx(cLuma), ddy(cLuma));
+    d.xy += float2(ddx(pLuma), ddy(pLuma));
     d.z = rsqrt(dot(d.xy, d.xy) + 1e-5);
     float2 cFlow = dt * (d.xy * d.zz);
     oFlow = (uFine) ? cFlow : (cFlow + uFlow) * 2.0;
@@ -194,8 +185,11 @@ float4 ps_flow(v2f input) : SV_Target
 
 float4 flow2D(v2f input, float2 flow, float i)
 {
+    const float3 value = float3(52.9829189, 0.06711056, 0.00583715);
+    float noise = frac(value.x * frac(dot(input.vpos.xy, value.yz)));
+
     const float samples = 1.0 / (16.0 - 1.0);
-    float2 calc = (nrand(input.vpos.xy) * 2.0 + i) * samples - 0.5;
+    float2 calc = (noise * 2.0 + i) * samples - 0.5;
     return tex2D(s_color, (uScale * flow) * calc + input.uv);
 }
 
