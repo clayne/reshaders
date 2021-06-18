@@ -189,7 +189,7 @@ float4 ps_filter(v2f input) : SV_Target
     float pLuma = tex2D(s_pluma, input.uv).r;
     float aLuma = lerp(pLuma, cLuma, 0.5f);
 
-    float aExposure = log2(max(0.148 / aLuma, 1e-5));
+    float aExposure = log2(max(0.18 / aLuma, 1e-5));
     aExposure = exp2(aExposure + uIntensity);
     float oColor = tex2D(s_pframe, input.uv).g;
 
