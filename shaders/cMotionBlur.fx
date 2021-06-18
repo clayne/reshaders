@@ -102,7 +102,7 @@ v2f vs_common(const uint id : SV_VertexID)
     [ Pixel Shaders ]
     Disk Blur    - [https://github.com/spite/Wagner] [MIT]
     Blur Average - [https://blog.demofox.org/2016/08/23/incremental-averaging/]
-    Exposure     - [https://john-chapman.github.io/2017/08/23/dynamic-local-exposure.html]
+    Exposure     - [https://github.com/TheRealMJP/BakingLab] [MIT]
     Optical Flow - [https://github.com/diwi/PixelFlow] [MIT]
     Pyramid HLSL - [https://www.youtube.com/watch?v=VSSyPskheaE]
     Noise        - [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
@@ -189,9 +189,8 @@ float4 ps_filter(v2f input) : SV_Target
     float pLuma = tex2D(s_pluma, input.uv).r;
     float aLuma = lerp(pLuma, cLuma, 0.5f);
 
-    float ev100 = log2(aLuma * 100.0 / 12.5);
-    ev100 -= uIntensity;
-    float aExposure = rcp(1.2 * exp2(ev100));
+    float aExposure = log2(max(0.148 / aLuma, 1e-5));
+    aExposure = exp2(aExposure + uIntensity);
     float oColor = tex2D(s_pframe, input.uv).g;
 
     float2 output;
