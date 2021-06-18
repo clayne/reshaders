@@ -77,7 +77,8 @@ v2fd downsample2Dvs(uint id, float uFact)
     output.vpos = float4(coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 
     const float2 psize = ldexp(float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT), uFact);
-    const float4 offset = float4(-psize.x, -psize.y, psize.x, psize.y);
+    const float2 hoffset = psize + (psize / 2.0f);
+    const float4 offset = float4(-hoffset.x, -hoffset.y, hoffset.x, hoffset.y);
     output.uv1[0].xy = coord + offset.xy; // --
     output.uv1[0].zw = coord + offset.zw; // ++
     output.uv1[1].xy = coord + offset.xw; // -+
