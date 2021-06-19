@@ -35,8 +35,8 @@
         ui_type = utype; ui_min = umin; ui_max = umax;                          \
         > = uvalue
 
-uOption(uThreshold, float, "slider", "Flow Basic", "Threshold", 0.002, 0.000, 0.100);
-uOption(uScale,     float, "slider", "Flow Basic", "Scale",     4.000, 0.000, 8.000);
+uOption(uThreshold, float, "slider", "Flow Basic", "Threshold", 0.010, 0.000, 0.100);
+uOption(uScale,     float, "slider", "Flow Basic", "Scale",     0.500, 0.000, 1.000);
 
 uOption(uIntensity, float, "slider", "Flow Advanced", "Exposure Intensity", 2.000, 0.000, 4.000);
 uOption(uRadius,    float, "slider", "Flow Advanced", "Prefilter Radius",   64.00, 0.000, 256.0);
@@ -67,8 +67,8 @@ uOption(uDetail,    int,   "slider", "Flow Advanced", "Optical Flow LOD",   3, 0
 
 texture2D r_color  : COLOR;
 texture2D r_buffer { RSIZE; MipLevels = LOG2(DSIZE(2)) + 1;  Format = R32F;  };
-texture2D r_pframe { Width = 64; Height = 64; MipLevels = 7; Format = RG32F; };
-texture2D r_cframe { Width = 64; Height = 64; MipLevels = 7; Format = RG32F; };
+texture2D r_pframe { Width = 64; Height = 64; Format = RG32F; };
+texture2D r_cframe { Width = 64; Height = 64; Format = RG32F; };
 texture2D r_cflow  { Width = 64; Height = 64; MipLevels = 7; Format = RG32F; };
 texture2D r_pflow  { Width = 64; Height = 64; Format = RG32F; };
 texture2D r_pluma  { Width = 64; Height = 64; Format = R32F; };
@@ -100,11 +100,10 @@ v2f vs_common(const uint id : SV_VertexID)
 
 /*
     [ Pixel Shaders ]
-    Disk Blur    - [https://github.com/spite/Wagner] [MIT]
+    Noise Blur   - [https://github.com/patriciogonzalezvivo/lygia] [BSD-3]
     Blur Average - [https://blog.demofox.org/2016/08/23/incremental-averaging/]
-    Exposure     - [https://github.com/TheRealMJP/BakingLab] [MIT]
+    Exposure     - [https://knarkowicz.wordpress.com/2016/01/09/automatic-exposure/]
     Optical Flow - [https://github.com/diwi/PixelFlow] [MIT]
-    Pyramid HLSL - [https://www.youtube.com/watch?v=VSSyPskheaE]
     Noise        - [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
     Cubic Filter - [https://github.com/haasn/libplacebo/blob/master/src/shaders/sampling.c] [GPL 2.1]
     Blurs        - [http://john-chapman-graphics.blogspot.com/2013/01/per-object-motion-blur.html]
@@ -199,13 +198,12 @@ float4 ps_filter(v2f input) : SV_Target
     return output.rgrg;
 }
 
-void calcFlow(  in float2 uCoord, in float uLevel, in float2 uFlow, in bool uFine,
-                out float2 oFlow)
+float4 ps_flow(v2f input) : SV_Target
 {
     // Warp previous frame and calculate distance
-    float pLuma = tex2Dlod(s_pframe, float4(uCoord + uFlow, 0.0, uLevel)).r;
-    float cLuma = tex2Dlod(s_cframe, float4(uCoord, 0.0, uLevel)).r;
-    float dt = (cLuma - pLuma) * (0.125 / 2.0);
+    float pLuma = tex2D(s_pframe, input.uv).r;
+    float cLuma = tex2D(s_cframe, input.uv).r;
+    float dt = cLuma - pLuma;
 
     // Calculate gradients and optical flow
     float3 d;
@@ -213,24 +211,12 @@ void calcFlow(  in float2 uCoord, in float uLevel, in float2 uFlow, in bool uFin
     d.xy += float2(ddx(pLuma), ddy(pLuma));
     d.z = rsqrt(dot(d.xy, d.xy) + 1e-5);
     float2 cFlow = dt * (d.xy * d.zz);
-    oFlow = (uFine) ? cFlow : (cFlow + uFlow) * 2.0;
-}
+    float pFlow = length(cFlow);
+    float nFlow = max(pFlow - uThreshold, 0.0);
+    cFlow *= nFlow / pFlow;
 
-float4 ps_flow(v2f input) : SV_Target
-{
-    float2 oFlow[7];
-    calcFlow(input.uv, 6.0, 0.000000, false, oFlow[6]);
-    calcFlow(input.uv, 5.0, oFlow[6], false, oFlow[5]);
-    calcFlow(input.uv, 4.0, oFlow[5], false, oFlow[4]);
-    calcFlow(input.uv, 3.0, oFlow[4], false, oFlow[3]);
-    calcFlow(input.uv, 2.0, oFlow[3], false, oFlow[2]);
-    calcFlow(input.uv, 1.0, oFlow[2], false, oFlow[1]);
-    calcFlow(input.uv, 0.0, oFlow[1], true,  oFlow[0]);
-    float cFlow = sqrt(dot(oFlow[0], oFlow[0]) + 1e-5);
-    float nFlow = max(cFlow - uThreshold, 0.0);
-    oFlow[0] *= nFlow / cFlow;
-    float2 pFlow = tex2D(s_pflow, input.uv + oFlow[0]).xy;
-    return lerp(oFlow[0], pFlow, uSmooth).xyxy;
+    float2 sFlow = tex2D(s_pflow, input.uv).xy;
+    return lerp(cFlow, sFlow, uSmooth).xyxy;
 }
 
 float4 flow2D(v2f input, float2 flow, float i)
