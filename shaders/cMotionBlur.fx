@@ -103,7 +103,7 @@ v2f vs_common(const uint id : SV_VertexID)
     Noise Blur   - [https://github.com/patriciogonzalezvivo/lygia] [BSD-3]
     Blur Average - [https://blog.demofox.org/2016/08/23/incremental-averaging/]
     Exposure     - [https://knarkowicz.wordpress.com/2016/01/09/automatic-exposure/]
-    Optical Flow - [https://github.com/diwi/PixelFlow] [MIT]
+    Optical Flow - [https://core.ac.uk/download/pdf/148690295.pdf]
     Noise        - [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
     Cubic Filter - [https://github.com/haasn/libplacebo/blob/master/src/shaders/sampling.c] [GPL 2.1]
     Blurs        - [http://john-chapman-graphics.blogspot.com/2013/01/per-object-motion-blur.html]
@@ -204,13 +204,16 @@ float4 ps_flow(v2f input) : SV_Target
     float pLuma = tex2D(s_pframe, input.uv).r;
     float cLuma = tex2D(s_cframe, input.uv).r;
     float dt = cLuma - pLuma;
+    
+    float2 dFdp = float2(ddx(pLuma), ddy(pLuma));
+    float2 dFdc = float2(ddx(cLuma), ddy(cLuma));
 
     // Calculate gradients and optical flow
-    float3 d;
-    d.xy  = float2(ddx(cLuma), ddy(cLuma));
-    d.xy += float2(ddx(pLuma), ddy(pLuma));
-    d.z = rsqrt(dot(d.xy, d.xy) + 1e-5);
-    float2 cFlow = dt * (d.xy * d.zz);
+    float p = dot(dFdp, dFdc) + dt;
+    float d = dot(dfdp, dFdp) + 1e-5;
+    float2 cFlow = dFdc - dFdp * (p / d);
+    
+    // Threshold
     float pFlow = length(cFlow);
     float nFlow = max(pFlow - uThreshold, 0.0);
     cFlow *= nFlow / pFlow;
