@@ -23,9 +23,10 @@
         ui_type = utype; ui_min = umin; ui_max = umax;                          \
         > = uvalue
 
-uOption(uScale,  float, "slider", "Flow", "Scale",     0.010, 0.000, 0.020);
-uOption(uRadius, float, "slider", "Flow", "Prefilter", 64.00, 0.000, 256.0);
-uOption(uDetail, float, "slider", "Flow", "MipBias",   2.500, 0.000, 6.000);
+uOption(uScale,  float, "slider", "Flow Basic", "Scale",       0.020, 0.000, 0.040);
+uOption(uRadius, float, "slider", "Flow Basic", "Prefilter",   64.00, 0.000, 256.0);
+uOption(uSmooth, float, "slider", "Flow Basic", "Flow Smooth", 0.100, 0.000, 0.500);
+uOption(uDetail, float, "slider", "Flow Basic", "Flow Blur",   2.750, 0.000, 6.000);
 
 /*
     Round to nearest power of 2
@@ -198,7 +199,7 @@ float4 ps_flow(v2f input) : SV_Target
 
     // Smooth optical flow
     float2 sFlow = tex2D(s_pflow, input.uv).xy;
-    return lerp(cFlow, sFlow, 0.5).xyxy;
+    return lerp(cFlow, sFlow, uSmooth).xyxy;
 }
 
 float4 flow2D(v2f input, float2 flow, float i)
