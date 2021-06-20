@@ -35,12 +35,11 @@
         ui_type = utype; ui_min = umin; ui_max = umax;                          \
         > = uvalue
 
-uOption(uThreshold, float, "slider", "Flow Basic", "Threshold", 0.010, 0.000, 0.100);
-uOption(uScale,     float, "slider", "Flow Basic", "Scale",     0.500, 0.000, 1.000);
+uOption(uThreshold, float, "slider", "Flow Basic", "Threshold", 0.010, 0.000, 0.020);
+uOption(uScale,     float, "slider", "Flow Basic", "Scale",     0.010, 0.000, 0.020);
 
 uOption(uIntensity, float, "slider", "Flow Advanced", "Exposure Intensity", 2.000, 0.000, 4.000);
 uOption(uRadius,    float, "slider", "Flow Advanced", "Prefilter Radius",   64.00, 0.000, 256.0);
-uOption(uSmooth,    float, "slider", "Flow Advanced", "Flow Smoothing",     0.500, 0.000, 0.500);
 uOption(uDetail,    int,   "slider", "Flow Advanced", "Optical Flow LOD",   3, 0, 6);
 
 /*
@@ -103,9 +102,9 @@ v2f vs_common(const uint id : SV_VertexID)
     Noise Blur   - [https://github.com/patriciogonzalezvivo/lygia] [BSD-3]
     Blur Average - [https://blog.demofox.org/2016/08/23/incremental-averaging/]
     Exposure     - [https://knarkowicz.wordpress.com/2016/01/09/automatic-exposure/]
-    Optical Flow - [https://github.com/diwi/PixelFlow] [MIT]
+    Optical Flow - [https://core.ac.uk/download/pdf/148690295.pdf]
+    Threshold    - [https://github.com/diwi/PixelFlow] [MIT]
     Noise        - [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
-    Cubic Filter - [https://github.com/haasn/libplacebo/blob/master/src/shaders/sampling.c] [GPL 2.1]
     Blurs        - [http://john-chapman-graphics.blogspot.com/2013/01/per-object-motion-blur.html]
 */
 
@@ -200,23 +199,27 @@ float4 ps_filter(v2f input) : SV_Target
 
 float4 ps_flow(v2f input) : SV_Target
 {
-    // Warp previous frame and calculate distance
+    // Calculate distance
     float pLuma = tex2D(s_pframe, input.uv).r;
     float cLuma = tex2D(s_cframe, input.uv).r;
     float dt = cLuma - pLuma;
 
+    float2 dFdp = float2(ddx(pLuma), ddy(pLuma));
+    float2 dFdc = float2(ddx(cLuma), ddy(cLuma));
+
     // Calculate gradients and optical flow
-    float3 d;
-    d.xy  = float2(ddx(cLuma), ddy(cLuma));
-    d.xy += float2(ddx(pLuma), ddy(pLuma));
-    d.z = rsqrt(dot(d.xy, d.xy) + 1e-5);
-    float2 cFlow = dt * (d.xy * d.zz);
+    float p = dot(dFdp, dFdc) + dt;
+    float d = dot(dFdp, dFdp) + 1e-5;
+    float2 cFlow = dFdc - dFdp * (p / d);
+
+    // Threshold
     float pFlow = length(cFlow);
     float nFlow = max(pFlow - uThreshold, 0.0);
     cFlow *= nFlow / pFlow;
 
+    // Smooth optical flow
     float2 sFlow = tex2D(s_pflow, input.uv).xy;
-    return lerp(cFlow, sFlow, uSmooth).xyxy;
+    return lerp(cFlow, sFlow, 0.5).xyxy;
 }
 
 float4 flow2D(v2f input, float2 flow, float i)
@@ -229,38 +232,9 @@ float4 flow2D(v2f input, float2 flow, float i)
     return tex2D(s_color, (uScale * flow) * calc + input.uv);
 }
 
-float4 calcweights(float s)
-{
-    const float4 w1 = float4(-0.5, 0.1666, 0.3333, -0.3333);
-    const float4 w2 = float4( 1.0, 0.0, -0.5, 0.5);
-    const float4 w3 = float4(-0.6666, 0.0, 0.8333, 0.1666);
-    float4 t = mad(w1, s, w2);
-    t = mad(t, s, w2.yyzw);
-    t = mad(t, s, w3);
-    t.xy = mad(t.xy, rcp(t.zw), 1.0);
-    t.xy += float2(s, -s);
-    return t;
-}
-
 float4 ps_output(v2f input) : SV_Target
 {
-    const float2 texsize = tex2Dsize(s_cflow, uDetail);
-    const float2 pt = 1.0 / texsize;
-    const float4 po = float4(-pt.x, pt.x, -pt.y, pt.y);
-    float2 fcoord = frac(input.uv * texsize + 0.5);
-    float4 parmx = calcweights(fcoord.x);
-    float4 parmy = calcweights(fcoord.y);
-    float4 cdelta = float4(parmx.rg, parmy.rg).xzyw * po;
-    // first y-interpolation
-    float2 ar = tex2Dlod(s_cflow, float4(input.uv + cdelta.xy, 0.0, uDetail)).xy;
-    float2 ag = tex2Dlod(s_cflow, float4(input.uv + cdelta.xw, 0.0, uDetail)).xy;
-    float2 ab = lerp(ag, ar, parmy.b);
-    // second y-interpolation
-    float2 br = tex2Dlod(s_cflow, float4(input.uv + cdelta.zy, 0.0, uDetail)).xy;
-    float2 bg = tex2Dlod(s_cflow, float4(input.uv + cdelta.zw, 0.0, uDetail)).xy;
-    float2 aa = lerp(bg, br, parmy.b);
-    // x-interpolation
-    float2 oFlow = lerp(aa, ab, parmx.b);
+    float2 oFlow = tex2Dlod(s_cflow, float4(input.uv, 0.0, uDetail)).xy;
     float4 oBlur;
 
     [unroll]
