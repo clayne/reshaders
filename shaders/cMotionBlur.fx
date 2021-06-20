@@ -38,7 +38,7 @@
 uOption(uThreshold, float, "slider", "Flow Basic", "Threshold", 0.010, 0.000, 0.020);
 uOption(uScale,     float, "slider", "Flow Basic", "Scale",     0.020, 0.000, 0.040);
 uOption(uRadius,    float, "slider", "Flow Advanced", "Prefilter Radius",   64.00, 0.000, 256.0);
-uOption(uDetail,    int,   "slider", "Flow Advanced", "Optical Flow LOD",   3, 0, 6);
+uOption(uDetail,    float, "slider", "Flow Advanced", "Optical Flow LOD",   2.500, 0.000, 6.000);
 
 /*
     Round to nearest power of 2
@@ -183,7 +183,7 @@ float4 ps_filter(v2f input) : SV_Target
 {
     float cLuma = tex2Dlod(s_pframe, float4(input.uv, 0.0, 8.0)).g;
     float pLuma = tex2D(s_pluma, input.uv).r;
-    float aLuma = lerp(pLuma, cLuma, 0.5f);
+    float aLuma = lerp(cLuma, pLuma, 0.5f);
 
     float ev100 = log2(aLuma * 100.0 / 12.5);
     ev100 = rcp(1.2 * exp2(ev100));
