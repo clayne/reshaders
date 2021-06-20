@@ -23,10 +23,9 @@
         ui_type = utype; ui_min = umin; ui_max = umax;                          \
         > = uvalue
 
-uOption(uThreshold, float, "slider", "Flow Basic", "Threshold", 0.010, 0.000, 0.020);
-uOption(uScale,     float, "slider", "Flow Basic", "Scale",     0.020, 0.000, 0.040);
-uOption(uRadius,    float, "slider", "Flow Advanced", "Prefilter Radius",   64.00, 0.000, 256.0);
-uOption(uDetail,    float, "slider", "Flow Advanced", "Optical Flow LOD",   2.500, 0.000, 6.000);
+uOption(uScale,  float, "slider", "Flow", "Scale",     0.010, 0.000, 0.020);
+uOption(uRadius, float, "slider", "Flow", "Prefilter", 64.00, 0.000, 256.0);
+uOption(uDetail, float, "slider", "Flow", "MipBias",   2.500, 0.000, 6.000);
 
 /*
     Round to nearest power of 2
@@ -89,7 +88,6 @@ v2f vs_common(const uint id : SV_VertexID)
     Blur Average - [https://blog.demofox.org/2016/08/23/incremental-averaging/]
     Exposure     - [https://john-chapman.github.io/2017/08/23/dynamic-local-exposure.html]
     Optical Flow - [https://core.ac.uk/download/pdf/148690295.pdf]
-    Threshold    - [https://github.com/diwi/PixelFlow] [MIT]
     Noise        - [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
     Blurs        - [http://john-chapman-graphics.blogspot.com/2013/01/per-object-motion-blur.html]
 */
@@ -197,11 +195,6 @@ float4 ps_flow(v2f input) : SV_Target
     float p = dot(dFdp, dFdc) + dt;
     float d = dot(dFdp, dFdp) + 1e-5;
     float2 cFlow = dFdc - dFdp * (p / d);
-
-    // Threshold
-    float pFlow = length(cFlow);
-    float nFlow = max(pFlow - uThreshold, 0.0);
-    cFlow *= nFlow / pFlow;
 
     // Smooth optical flow
     float2 sFlow = tex2D(s_pflow, input.uv).xy;
