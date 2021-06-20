@@ -37,8 +37,6 @@
 
 uOption(uThreshold, float, "slider", "Flow Basic", "Threshold", 0.010, 0.000, 0.020);
 uOption(uScale,     float, "slider", "Flow Basic", "Scale",     0.010, 0.000, 0.020);
-
-uOption(uIntensity, float, "slider", "Flow Advanced", "Exposure Intensity", 2.000, 0.000, 4.000);
 uOption(uRadius,    float, "slider", "Flow Advanced", "Prefilter Radius",   64.00, 0.000, 256.0);
 uOption(uDetail,    int,   "slider", "Flow Advanced", "Optical Flow LOD",   3, 0, 6);
 
@@ -101,7 +99,7 @@ v2f vs_common(const uint id : SV_VertexID)
     [ Pixel Shaders ]
     Noise Blur   - [https://github.com/patriciogonzalezvivo/lygia] [BSD-3]
     Blur Average - [https://blog.demofox.org/2016/08/23/incremental-averaging/]
-    Exposure     - [https://knarkowicz.wordpress.com/2016/01/09/automatic-exposure/]
+    Exposure     - [https://john-chapman.github.io/2017/08/23/dynamic-local-exposure.html]
     Optical Flow - [https://core.ac.uk/download/pdf/148690295.pdf]
     Threshold    - [https://github.com/diwi/PixelFlow] [MIT]
     Noise        - [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
@@ -183,16 +181,16 @@ ps2mrt ps_convert(v2f input)
 
 float4 ps_filter(v2f input) : SV_Target
 {
-    float cLuma = tex2Dlod(s_pframe, float4(input.uv, 0.0, 6.0)).g;
+    float cLuma = tex2Dlod(s_pframe, float4(input.uv, 0.0, 8.0)).g;
     float pLuma = tex2D(s_pluma, input.uv).r;
     float aLuma = lerp(pLuma, cLuma, 0.5f);
 
-    float aExposure = log2(max(0.18 / aLuma, 1e-5));
-    aExposure = exp2(aExposure + uIntensity);
+    float ev100 = log2(aLuma * 100.0 / 12.5);
+    ev100 = rcp(1.2 * exp2(ev100));
     float oColor = tex2D(s_pframe, input.uv).g;
 
     float2 output;
-    output.r = saturate(oColor * aExposure);
+    output.r = saturate(oColor * ev100);
     output.g = aLuma;
     return output.rgrg;
 }
