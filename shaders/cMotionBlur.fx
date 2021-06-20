@@ -36,7 +36,7 @@
         > = uvalue
 
 uOption(uThreshold, float, "slider", "Flow Basic", "Threshold", 0.010, 0.000, 0.020);
-uOption(uScale,     float, "slider", "Flow Basic", "Scale",     0.010, 0.000, 0.020);
+uOption(uScale,     float, "slider", "Flow Basic", "Scale",     0.020, 0.000, 0.040);
 uOption(uRadius,    float, "slider", "Flow Advanced", "Prefilter Radius",   64.00, 0.000, 256.0);
 uOption(uDetail,    int,   "slider", "Flow Advanced", "Optical Flow LOD",   3, 0, 6);
 
@@ -64,19 +64,19 @@ uOption(uDetail,    int,   "slider", "Flow Advanced", "Optical Flow LOD",   3, 0
 
 texture2D r_color  : COLOR;
 texture2D r_buffer { RSIZE; MipLevels = LOG2(DSIZE(2)) + 1;  Format = R32F;  };
-texture2D r_pframe { Width = 64; Height = 64; Format = RG32F; };
-texture2D r_cframe { Width = 64; Height = 64; Format = RG32F; };
 texture2D r_cflow  { Width = 64; Height = 64; MipLevels = 7; Format = RG32F; };
 texture2D r_pflow  { Width = 64; Height = 64; Format = RG32F; };
-texture2D r_pluma  { Width = 64; Height = 64; Format = R32F; };
+texture2D r_cframe { Width = 64; Height = 64; Format = RG32F; };
+texture2D r_pframe { Width = 64; Height = 64; Format = RG32F; };
+texture2D r_pluma  { Width = 64; Height = 64; Format = R32F;  };
 
 sampler2D s_color  { Texture = r_color; SRGBTexture = TRUE; };
 sampler2D s_buffer { Texture = r_buffer; };
-sampler2D s_pframe { Texture = r_pframe; };
+sampler2D s_cflow  { Texture = r_cflow;  };
+sampler2D s_pflow  { Texture = r_pflow;  };
 sampler2D s_cframe { Texture = r_cframe; };
-sampler2D s_cflow  { Texture = r_cflow; };
-sampler2D s_pflow  { Texture = r_pflow; };
-sampler2D s_pluma  { Texture = r_pluma; };
+sampler2D s_pframe { Texture = r_pframe; };
+sampler2D s_pluma  { Texture = r_pluma;  };
 
 /* [ Vertex Shaders ] */
 
