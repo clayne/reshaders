@@ -4,29 +4,17 @@
     Special Thanks to MartinBFFan and Pao on Discord for reporting bugs
     And BSD for bug propaganda and helping to solve my issue
 
-    [1] ps_source
-    - Calculate brightness using max3()
-    - Output to r_buffer with miplevels to 1x1
+    [1] ps_source : Calculate brightness using max3()
 
     [2] ps_convert
-    - RenderTarget0.r: Input downsampled current frame to scale and mip
-    - RenderTarget0.g: Copy boxed frame from previous ps_filter()
-    - RenderTarget1: Copy optical flow from previous ps_flow()
+    - RenderTarget0.r : Input downsampled current frame to scale and mip
+    - RenderTarget0.g : Copy boxed frame from previous ps_filter()
+    - RenderTarget1   : Copy optical flow from previous ps_flow()
     - Render both to powers of 2 resolution to smooth miplevels
 
-    [3] ps_filter
-    - Get 1x1 mip from power of 2 current frame
-    - Get 1x1 mip from previous luma
-    - Apply adaptive exposure to downsampled current frame
-
-    [4] ps_flow
-    - Calculate optical flow
-    - RenderTarget0: Output optical flow
-    - RenderTarget1: Store current 1x1 luma for next frame
-
-    [5] ps_output
-    - Input optical flow with mip bias for smoothing
-    - Blur
+    [3] ps_filter : Apply adaptive exposure to downsampled current frame
+    [4] ps_flow   : Calculate optical flow
+    [5] ps_output : Blur
 */
 
 #define uOption(option, udata, utype, ucategory, ulabel, uvalue, umin, umax)    \
