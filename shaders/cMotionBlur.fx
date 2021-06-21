@@ -26,7 +26,6 @@
 uOption(uThreshold, float, "slider", "Flow", "Threshold",   0.500, 0.000, 2.000);
 uOption(uScale,     float, "slider", "Flow", "Scale",       0.020, 0.000, 0.040);
 uOption(uRadius,    float, "slider", "Flow", "Prefilter",   64.00, 0.000, 256.0);
-uOption(uSmooth,    float, "slider", "Flow", "Flow Smooth", 0.100, 0.000, 0.500);
 uOption(uDetail,    float, "slider", "Flow", "Flow Blur",   2.750, 0.000, 6.000);
 
 #ifndef PREFILTER_BIAS
@@ -58,7 +57,6 @@ uOption(uDetail,    float, "slider", "Flow", "Flow Blur",   2.750, 0.000, 6.000)
 texture2D r_color  : COLOR;
 texture2D r_buffer { RSIZE; MipLevels = LOG2(DSIZE(2)) + 1;  Format = R32F;  };
 texture2D r_cflow  { Width = 64; Height = 64; MipLevels = 7; Format = RG32F; };
-texture2D r_pflow  { Width = 64; Height = 64; Format = RG32F; };
 texture2D r_cframe { Width = 64; Height = 64; Format = RG32F; };
 texture2D r_pframe { Width = 64; Height = 64; Format = RG32F; };
 texture2D r_pluma  { Width = 64; Height = 64; Format = R32F;  };
@@ -66,7 +64,6 @@ texture2D r_pluma  { Width = 64; Height = 64; Format = R32F;  };
 sampler2D s_color  { Texture = r_color;  SRGBTexture = TRUE; };
 sampler2D s_buffer { Texture = r_buffer; MipLODBias = PREFILTER_BIAS; };
 sampler2D s_cflow  { Texture = r_cflow;  };
-sampler2D s_pflow  { Texture = r_pflow;  };
 sampler2D s_cframe { Texture = r_cframe; };
 sampler2D s_pframe { Texture = r_pframe; };
 sampler2D s_pluma  { Texture = r_pluma;  };
@@ -90,6 +87,7 @@ v2f vs_common(const uint id : SV_VertexID)
 
 /*
     [ Pixel Shaders ]
+    Noise Blur   - [https://github.com/patriciogonzalezvivo/lygia] [BSD-3]
     Blur Average - [https://blog.demofox.org/2016/08/23/incremental-averaging/]
     Exposure     - [https://john-chapman.github.io/2017/08/23/dynamic-local-exposure.html]
     Optical Flow - [https://core.ac.uk/download/pdf/148690295.pdf]
@@ -101,7 +99,6 @@ struct ps2mrt
 {
     float4 render0 : SV_TARGET0;
     float4 render1 : SV_TARGET1;
-    float4 render2 : SV_TARGET2;
 };
 
 float nrand(float2 n)
@@ -122,8 +119,41 @@ float2 rotate2D(float2 p, float a)
 
 float4 ps_source(v2f input) : SV_Target
 {
-    float4 uColor = tex2D(s_color, input.uv);
-    float uImage = max(max(uColor.r, uColor.g), uColor.b);
+    const int uTaps = 12;
+    const float uSize = uRadius;
+
+    float2 cTaps[uTaps];
+    cTaps[0]  = float2(-0.326,-0.406);
+    cTaps[1]  = float2(-0.840,-0.074);
+    cTaps[2]  = float2(-0.696, 0.457);
+    cTaps[3]  = float2(-0.203, 0.621);
+    cTaps[4]  = float2( 0.962,-0.195);
+    cTaps[5]  = float2( 0.473,-0.480);
+    cTaps[6]  = float2( 0.519, 0.767);
+    cTaps[7]  = float2( 0.185,-0.893);
+    cTaps[8]  = float2( 0.507, 0.064);
+    cTaps[9]  = float2( 0.896, 0.412);
+    cTaps[10] = float2(-0.322,-0.933);
+    cTaps[11] = float2(-0.792,-0.598);
+
+    float4 uOutput = 0.0;
+    float  uRand = 6.28 * nrand(input.vpos.xy);
+    float4 uBasis;
+    uBasis.xy = rotate2D(float2(1.0, 0.0), uRand);
+    uBasis.zw = rotate2D(float2(0.0, 1.0), uRand);
+
+    [unroll]
+    for (int i = 0; i < uTaps; i++)
+    {
+        float2 ofs = cTaps[i];
+        ofs.x = dot(ofs, uBasis.xz);
+        ofs.y = dot(ofs, uBasis.yw);
+        float2 uv = input.uv + uSize * ofs / float2(BUFFER_WIDTH, BUFFER_HEIGHT);
+        float4 uColor = tex2D(s_color, uv);
+        uOutput = lerp(uOutput, uColor, rcp(i + 1));
+    }
+
+    float uImage = max(max(uOutput.r, uOutput.g), uOutput.b);
     return max(uImage, 1e-5);
 }
 
@@ -132,8 +162,7 @@ ps2mrt ps_convert(v2f input)
     ps2mrt output;
     output.render0.r = tex2D(s_cframe, input.uv).r;
     output.render0.g = tex2D(s_buffer, input.uv).r;
-    output.render1 = tex2D(s_cflow, input.uv).rg;
-    output.render2 = tex2D(s_cframe, input.uv).g;
+    output.render1 = tex2D(s_cframe, input.uv).g;
     return output;
 }
 
@@ -172,10 +201,7 @@ float4 ps_flow(v2f input) : SV_Target
     float pFlow = length(cFlow);
     float nFlow = max(pFlow - uThreshold, 0.0);
     cFlow *= nFlow / pFlow;
-
-    // Smooth optical flow
-    float2 sFlow = tex2D(s_pflow, input.uv).xy;
-    return lerp(cFlow, sFlow, uSmooth).xyxy;
+    return cFlow.rgrg;
 }
 
 float4 flow2D(v2f input, float2 flow, float i)
@@ -217,8 +243,7 @@ technique cMotionBlur
         VertexShader = vs_common;
         PixelShader = ps_convert;
         RenderTarget0 = r_pframe;
-        RenderTarget1 = r_pflow;
-        RenderTarget2 = r_pluma;
+        RenderTarget1 = r_pluma;
     }
 
     pass
