@@ -3,17 +3,6 @@
     Optical flow motion blur using color by Brimson
     Special Thanks to MartinBFFan and Pao on Discord for reporting bugs
     And BSD for bug propaganda and helping to solve my issue
-
-    [1] ps_source : Calculate brightness using max3()
-
-    [2] ps_convert (Render to powers of 2 size to smooth miplevels
-    - RenderTarget0.rg : Copy optical flow from previous ps_flow()
-    - RenderTarget0.z  : Input downsampled current frame to scale and mip
-    - RenderTarget0.w  : Copy boxed frame from previous ps_filter()
-
-    [3] ps_filter : Apply adaptive exposure to downsampled current frame
-    [4] ps_flow   : Calculate optical flow
-    [5] ps_output : Blur
 */
 
 #define uOption(option, udata, utype, ucategory, ulabel, uvalue, umin, umax)    \
@@ -154,9 +143,9 @@ float4 ps_source(v2f input) : SV_Target
 float4 ps_convert(v2f input) : SV_Target
 {
     float4 output;
-    output.xy = tex2D(s_cflow, input.uv).rg;
-    output.z  = tex2D(s_cframe, input.uv).r;
-    output.w  = max(tex2D(s_buffer, input.uv).r, 1e-5);
+    output.xy = tex2D(s_cflow, input.uv).rg; // Copy optical flow from previous ps_flow()
+    output.z  = tex2D(s_cframe, input.uv).r; // Copy exposed frame from previous ps_filter()
+    output.w  = max(tex2D(s_buffer, input.uv).r, 1e-5); // Input downsampled current frame to scale and mip
     return output;
 }
 
