@@ -23,7 +23,7 @@
         ui_type = utype; ui_min = umin; ui_max = umax;                          \
         > = uvalue
 
-uOption(uThreshold, float, "slider", "Flow", "Threshold",   0.010, 0.000, 0.020);
+uOption(uThreshold, float, "slider", "Flow", "Threshold",   0.500, 0.000, 2.000);
 uOption(uScale,     float, "slider", "Flow", "Scale",       0.020, 0.000, 0.040);
 uOption(uRadius,    float, "slider", "Flow", "Prefilter",   64.00, 0.000, 256.0);
 uOption(uSmooth,    float, "slider", "Flow", "Flow Smooth", 0.100, 0.000, 0.500);
