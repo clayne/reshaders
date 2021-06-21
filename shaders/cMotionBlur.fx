@@ -6,11 +6,10 @@
 
     [1] ps_source : Calculate brightness using max3()
 
-    [2] ps_convert
-    - RenderTarget0.r : Input downsampled current frame to scale and mip
-    - RenderTarget0.g : Copy boxed frame from previous ps_filter()
-    - RenderTarget1   : Copy optical flow from previous ps_flow()
-    - Render both to powers of 2 resolution to smooth miplevels
+    [2] ps_convert (Render to powers of 2 size to smooth miplevels
+    - RenderTarget0.rg : Copy optical flow from previous ps_flow()
+    - RenderTarget0.z  : Input downsampled current frame to scale and mip
+    - RenderTarget0.w  : Copy boxed frame from previous ps_filter()
 
     [3] ps_filter : Apply adaptive exposure to downsampled current frame
     [4] ps_flow   : Calculate optical flow
@@ -23,10 +22,13 @@
         ui_type = utype; ui_min = umin; ui_max = umax;                          \
         > = uvalue
 
-uOption(uThreshold, float, "slider", "Flow", "Threshold",   0.500, 0.000, 2.000);
-uOption(uScale,     float, "slider", "Flow", "Scale",       0.020, 0.000, 0.040);
-uOption(uRadius,    float, "slider", "Flow", "Prefilter",   64.00, 0.000, 256.0);
-uOption(uDetail,    float, "slider", "Flow", "Flow Blur",   2.750, 0.000, 6.000);
+uOption(uThreshold, float, "slider", "Basic",    "Threshold",   0.010, 0.000, 0.020);
+uOption(uScale,     float, "slider", "Basic",    "Scale",       0.020, 0.000, 0.040);
+uOption(uRadius,    float, "slider", "Basic",    "Prefilter",   64.00, 0.000, 256.0);
+
+uOption(uIntensity, float, "slider", "Advanced", "Exposure",    2.000, 0.000, 4.000);
+uOption(uSmooth,    float, "slider", "Advanced", "Flow Smooth", 0.100, 0.000, 0.500);
+uOption(uDetail,    float, "slider", "Advanced", "Flow Blur",   2.750, 0.000, 6.000);
 
 #ifndef PREFILTER_BIAS
     #define PREFILTER_BIAS 1.5
@@ -57,16 +59,14 @@ uOption(uDetail,    float, "slider", "Flow", "Flow Blur",   2.750, 0.000, 6.000)
 texture2D r_color  : COLOR;
 texture2D r_buffer { RSIZE; MipLevels = LOG2(DSIZE(2)) + 1;  Format = R32F;  };
 texture2D r_cflow  { Width = 64; Height = 64; MipLevels = 7; Format = RG32F; };
-texture2D r_cframe { Width = 64; Height = 64; Format = RG32F; };
-texture2D r_pframe { Width = 64; Height = 64; Format = RG32F; };
-texture2D r_pluma  { Width = 64; Height = 64; Format = R32F;  };
+texture2D r_cframe { Width = 64; Height = 64; Format = RG32F;   };
+texture2D r_pframe { Width = 64; Height = 64; Format = RGBA32F; };
 
 sampler2D s_color  { Texture = r_color;  SRGBTexture = TRUE; };
 sampler2D s_buffer { Texture = r_buffer; MipLODBias = PREFILTER_BIAS; };
 sampler2D s_cflow  { Texture = r_cflow;  };
 sampler2D s_cframe { Texture = r_cframe; };
 sampler2D s_pframe { Texture = r_pframe; };
-sampler2D s_pluma  { Texture = r_pluma;  };
 
 /* [ Vertex Shaders ] */
 
@@ -94,12 +94,6 @@ v2f vs_common(const uint id : SV_VertexID)
     Noise        - [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
     Blurs        - [http://john-chapman-graphics.blogspot.com/2013/01/per-object-motion-blur.html]
 */
-
-struct ps2mrt
-{
-    float4 render0 : SV_TARGET0;
-    float4 render1 : SV_TARGET1;
-};
 
 float nrand(float2 n)
 {
@@ -136,7 +130,7 @@ float4 ps_source(v2f input) : SV_Target
     cTaps[10] = float2(-0.322,-0.933);
     cTaps[11] = float2(-0.792,-0.598);
 
-    float4 uOutput = 0.0;
+    float4 uImage;
     float  uRand = 6.28 * nrand(input.vpos.xy);
     float4 uBasis;
     uBasis.xy = rotate2D(float2(1.0, 0.0), uRand);
@@ -150,42 +144,35 @@ float4 ps_source(v2f input) : SV_Target
         ofs.y = dot(ofs, uBasis.yw);
         float2 uv = input.uv + uSize * ofs / float2(BUFFER_WIDTH, BUFFER_HEIGHT);
         float4 uColor = tex2D(s_color, uv);
-        uOutput = lerp(uOutput, uColor, rcp(i + 1));
+        uImage = lerp(uImage, uColor, rcp(i + 1));
     }
 
-    float uImage = max(max(uOutput.r, uOutput.g), uOutput.b);
-    return max(uImage, 1e-5);
+    return max(max(uImage.r, uImage.g), uImage.b);
 }
 
-ps2mrt ps_convert(v2f input)
+float4 ps_convert(v2f input) : SV_Target
 {
-    ps2mrt output;
-    output.render0.r = tex2D(s_cframe, input.uv).r;
-    output.render0.g = tex2D(s_buffer, input.uv).r;
-    output.render1 = tex2D(s_cframe, input.uv).g;
+    float4 output;
+    output.xy = tex2D(s_cflow, input.uv).rg;
+    output.z  = tex2D(s_cframe, input.uv).r;
+    output.w  = max(tex2D(s_buffer, input.uv).r, 1e-5);
     return output;
 }
 
 float4 ps_filter(v2f input) : SV_Target
 {
-    float cLuma = tex2Dlod(s_pframe, float4(input.uv, 0.0, 8.0)).g;
-    float pLuma = tex2D(s_pluma, input.uv).r;
-    float aLuma = lerp(cLuma, pLuma, 0.5f);
-
-    float ev100 = log2(aLuma * 100.0 / 12.5);
+    float aLuma = tex2Dlod(s_pframe, float4(input.uv, 0.0, 8.0)).w;
+    aLuma = exp(aLuma);
+    float ev100 = log2(aLuma * 100.0 / 12.5) - uIntensity;
     ev100 = rcp(1.2 * exp2(ev100));
-    float oColor = tex2D(s_pframe, input.uv).g;
-
-    float2 output;
-    output.r = saturate(oColor * ev100);
-    output.g = aLuma;
-    return output.rgrg;
+    float oColor = tex2D(s_pframe, input.uv).w;
+    return saturate(oColor * ev100);
 }
 
 float4 ps_flow(v2f input) : SV_Target
 {
     // Calculate distance
-    float pLuma = tex2D(s_pframe, input.uv).r;
+    float pLuma = tex2D(s_pframe, input.uv).z;
     float cLuma = tex2D(s_cframe, input.uv).r;
     float dt = cLuma - pLuma;
 
@@ -198,10 +185,13 @@ float4 ps_flow(v2f input) : SV_Target
     float2 cFlow = dFdc - dFdp * (p / d);
 
     // Threshold
-    float pFlow = sqrt(dot(cFlow, cFlow) + 1e-5);
+    float pFlow = length(cFlow);
     float nFlow = max(pFlow - uThreshold, 0.0);
     cFlow *= nFlow / pFlow;
-    return cFlow.rgrg;
+
+    // Smooth optical flow
+    float2 sFlow = tex2D(s_pframe, input.uv).xy;
+    return lerp(cFlow, sFlow, uSmooth).xyxy;
 }
 
 float4 flow2D(v2f input, float2 flow, float i)
@@ -243,7 +233,6 @@ technique cMotionBlur
         VertexShader = vs_common;
         PixelShader = ps_convert;
         RenderTarget0 = r_pframe;
-        RenderTarget1 = r_pluma;
     }
 
     pass
