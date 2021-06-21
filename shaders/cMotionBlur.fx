@@ -105,7 +105,6 @@ float4 ps_source(v2f input) : SV_Target
 {
     const int uTaps = 12;
     const float uSize = uRadius;
-
     float2 cTaps[uTaps];
     cTaps[0]  = float2(-0.326,-0.406);
     cTaps[1]  = float2(-0.840,-0.074);
@@ -121,8 +120,8 @@ float4 ps_source(v2f input) : SV_Target
     cTaps[11] = float2(-0.792,-0.598);
 
     float4 uImage;
-    float  uRand = 6.28 * nrand(input.vpos.xy);
     float4 uBasis;
+    float  uRand = 6.28 * nrand(input.vpos.xy);
     uBasis.xy = rotate2D(float2(1.0, 0.0), uRand);
     uBasis.zw = rotate2D(float2(0.0, 1.0), uRand);
 
