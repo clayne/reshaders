@@ -198,7 +198,7 @@ float4 ps_flow(v2f input) : SV_Target
     float2 cFlow = dFdc - dFdp * (p / d);
 
     // Threshold
-    float pFlow = length(cFlow);
+    float pFlow = sqrt(dot(cFlow, cFlow) + 1e-5);
     float nFlow = max(pFlow - uThreshold, 0.0);
     cFlow *= nFlow / pFlow;
     return cFlow.rgrg;
