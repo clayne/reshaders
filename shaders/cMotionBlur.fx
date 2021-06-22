@@ -80,7 +80,7 @@ v2f vs_common(const uint id : SV_VertexID)
     Blur Average - [https://blog.demofox.org/2016/08/23/incremental-averaging/]
     Blur Center  - [http://john-chapman-graphics.blogspot.com/2013/01/per-object-motion-blur.html]
     Disk Blur    - [https://github.com/spite/Wagner] [MIT]
-    Blur Kernels - [https://github.com/GPUOpen-Effects/ShadowFX] [MIT]
+    Disk Kernels - [https://github.com/GPUOpen-Effects/ShadowFX] [MIT]
     Exposure     - [https://john-chapman.github.io/2017/08/23/dynamic-local-exposure.html]
     Noise        - [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
     Optical Flow - [https://core.ac.uk/download/pdf/148690295.pdf]
