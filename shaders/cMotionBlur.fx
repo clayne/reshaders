@@ -13,7 +13,7 @@
 
 uOption(uThreshold, float, "slider", "Basic",    "Threshold",   0.010, 0.000, 0.020);
 uOption(uScale,     float, "slider", "Basic",    "Scale",       0.020, 0.000, 0.040);
-uOption(uRadius,    float, "slider", "Basic",    "Prefilter",   32.00, 0.000, 64.00);
+uOption(uRadius,    float, "slider", "Basic",    "Prefilter",   64.00, 0.000, 256.00);
 
 uOption(uIntensity, float, "slider", "Advanced", "Exposure",    4.000, 0.000, 8.000);
 uOption(uSmooth,    float, "slider", "Advanced", "Flow Smooth", 0.100, 0.000, 0.500);
@@ -80,7 +80,7 @@ v2f vs_common(const uint id : SV_VertexID)
     Blur Average - [https://blog.demofox.org/2016/08/23/incremental-averaging/]
     Blur Center  - [http://john-chapman-graphics.blogspot.com/2013/01/per-object-motion-blur.html]
     Disk Blur    - [https://github.com/spite/Wagner] [MIT]
-    Disk Kernels - [https://github.com/GPUOpen-Effects/ShadowFX] [MIT]
+    Disk Kernels - [http://blog.marmakoide.org/?p=1.]
     Exposure     - [https://john-chapman.github.io/2017/08/23/dynamic-local-exposure.html]
     Noise        - [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
     Optical Flow - [https://core.ac.uk/download/pdf/148690295.pdf]
@@ -103,30 +103,40 @@ float2 rotate2D(float2 p, float a)
     return output.xy;
 }
 
+static const int uTaps = 16;
+
+float2 Vogel2D(int sampleIndex)
+{
+  const float GoldenAngle = 2.4f;
+  const float r = sqrt(sampleIndex + 0.5f) / sqrt(uTaps);
+  const float theta = sampleIndex * GoldenAngle;
+
+  float sine, cosine;
+  sincos(theta, sine, cosine);
+  return float2(r * cosine, r * sine);
+}
+
 float4 ps_source(v2f input) : SV_Target
 {
-    const int uTaps = 18;
     const float uSize = uRadius;
     static const float2 cTaps[uTaps] =
     {
-        float2(-0.7393085f,  3.280662f ),
-        float2(-2.47004f,    2.328731f ),
-        float2(-0.6732481f,  1.042242f ),
-        float2( 0.6072469f,  1.525136f ),
-        float2( 0.9831414f,  3.14807f  ),
-        float2( 1.894908f,   0.6981092f),
-        float2( 0.5978739f,  0.0825575f),
-        float2( 2.06167f,   -0.6915861f),
-        float2(-1.294738f,  -0.2353872f),
-        float2( 3.23345f,    1.27049f  ),
-        float2(-2.976625f,   0.1078734f),
-        float2(-1.566728f,  -2.490001f ),
-        float2( 0.022746f,  -1.93031f  ),
-        float2(-2.484528f,  -1.378844f ),
-        float2( 1.984003f,  -2.342571f ),
-        float2(-0.2734823f, -3.234874f ),
-        float2( 3.35825f,   -0.3363621f),
-        float2( 2.090277f,   2.286526f )
+        Vogel2D(1),
+        Vogel2D(2),
+        Vogel2D(3),
+        Vogel2D(4),
+        Vogel2D(5),
+        Vogel2D(6),
+        Vogel2D(7),
+        Vogel2D(8),
+        Vogel2D(9),
+        Vogel2D(10),
+        Vogel2D(11),
+        Vogel2D(12),
+        Vogel2D(13),
+        Vogel2D(14),
+        Vogel2D(15),
+        Vogel2D(16),
     };
 
     float4 uImage;

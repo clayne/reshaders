@@ -2,6 +2,7 @@
 /*
     Unlimited 16-Tap blur using mipmaps
     Based on https://github.com/spite/Wagner/blob/master/fragment-shaders/box-blur-fs.glsl [MIT]
+    and [http://blog.marmakoide.org/?p=1.]
     Special Thanks to BlueSkyDefender for help and patience
 */
 
@@ -49,24 +50,41 @@ float2 rotate2D(float2 p, float a)
     return output.xy;
 }
 
+static const int uTaps = 16;
+
+float2 Vogel2D(int sampleIndex)
+{
+  float GoldenAngle = 2.4f;
+  float r = sqrt(sampleIndex + 0.5f) / sqrt(uTaps);
+  float theta = sampleIndex * GoldenAngle;
+
+  float sine, cosine;
+  sincos(theta, sine, cosine);
+  return float2(r * cosine, r * sine);
+}
+
 float4 ps_blur(v2f input) : SV_TARGET
 {
-    const int uTaps = 12;
     const float uSize = kRadius;
-
-    float2 cTaps[uTaps];
-    cTaps[0]  = float2(-0.326,-0.406);
-    cTaps[1]  = float2(-0.840,-0.074);
-    cTaps[2]  = float2(-0.696, 0.457);
-    cTaps[3]  = float2(-0.203, 0.621);
-    cTaps[4]  = float2( 0.962,-0.195);
-    cTaps[5]  = float2( 0.473,-0.480);
-    cTaps[6]  = float2( 0.519, 0.767);
-    cTaps[7]  = float2( 0.185,-0.893);
-    cTaps[8]  = float2( 0.507, 0.064);
-    cTaps[9]  = float2( 0.896, 0.412);
-    cTaps[10] = float2(-0.322,-0.933);
-    cTaps[11] = float2(-0.792,-0.598);
+    static const float2 cTaps[uTaps] =
+    {
+        Vogel2D(1),
+        Vogel2D(2),
+        Vogel2D(3),
+        Vogel2D(4),
+        Vogel2D(5),
+        Vogel2D(6),
+        Vogel2D(7),
+        Vogel2D(8),
+        Vogel2D(9),
+        Vogel2D(10),
+        Vogel2D(11),
+        Vogel2D(12),
+        Vogel2D(13),
+        Vogel2D(14),
+        Vogel2D(15),
+        Vogel2D(16),
+    };
 
     float4 uOutput = 0.0;
     float  uRand = 6.28 * nrand(input.vpos.xy);
