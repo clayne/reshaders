@@ -15,12 +15,12 @@ uOption(uThreshold, float, "slider", "Basic",    "Threshold",   0.010, 0.000, 0.
 uOption(uScale,     float, "slider", "Basic",    "Scale",       0.020, 0.000, 0.040);
 uOption(uRadius,    float, "slider", "Basic",    "Prefilter",   64.00, 0.000, 256.0);
 
-uOption(uIntensity, float, "slider", "Advanced", "Exposure",    2.000, 0.000, 4.000);
+uOption(uIntensity, float, "slider", "Advanced", "Exposure",    4.000, 0.000, 8.000);
 uOption(uSmooth,    float, "slider", "Advanced", "Flow Smooth", 0.100, 0.000, 0.500);
-uOption(uDetail,    float, "slider", "Advanced", "Flow Blur",   2.750, 0.000, 6.000);
+uOption(uDetail,    int,   "slider", "Advanced", "Flow Mip",    3, 0, 6);
 
 #ifndef PREFILTER_BIAS
-    #define PREFILTER_BIAS 1.5
+    #define PREFILTER_BIAS 0.0
 #endif
 
 /*
@@ -76,13 +76,13 @@ v2f vs_common(const uint id : SV_VertexID)
 
 /*
     [ Pixel Shaders ]
-    Noise Blur   - [https://github.com/patriciogonzalezvivo/lygia] [BSD-3]
+    Cubic Filter - [https://github.com/haasn/libplacebo/blob/master/src/shaders/sampling.c] [GPL 2.1]
     Blur Average - [https://blog.demofox.org/2016/08/23/incremental-averaging/]
+    Blur Center  - [http://john-chapman-graphics.blogspot.com/2013/01/per-object-motion-blur.html]
     Exposure     - [https://john-chapman.github.io/2017/08/23/dynamic-local-exposure.html]
+    Noise        - [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
     Optical Flow - [https://core.ac.uk/download/pdf/148690295.pdf]
     Threshold    - [https://github.com/diwi/PixelFlow] [MIT]
-    Noise        - [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
-    Blurs        - [http://john-chapman-graphics.blogspot.com/2013/01/per-object-motion-blur.html]
 */
 
 float nrand(float2 n)
@@ -183,6 +183,19 @@ float4 ps_flow(v2f input) : SV_Target
     return lerp(cFlow, sFlow, uSmooth).xyxy;
 }
 
+float4 calcweights(float s)
+{
+    const float4 w1 = float4(-0.5, 0.1666, 0.3333, -0.3333);
+    const float4 w2 = float4( 1.0, 0.0, -0.5, 0.5);
+    const float4 w3 = float4(-0.6666, 0.0, 0.8333, 0.1666);
+    float4 t = mad(w1, s, w2);
+    t = mad(t, s, w2.yyzw);
+    t = mad(t, s, w3);
+    t.xy = mad(t.xy, rcp(t.zw), 1.0);
+    t.xy += float2(s, -s);
+    return t;
+}
+
 float4 flow2D(v2f input, float2 flow, float i)
 {
     float noise = nrand(input.vpos.xy);
@@ -193,7 +206,23 @@ float4 flow2D(v2f input, float2 flow, float i)
 
 float4 ps_output(v2f input) : SV_Target
 {
-    float2 oFlow = tex2Dlod(s_cflow, float4(input.uv, 0.0, uDetail)).xy;
+    const float2 texsize = tex2Dsize(s_cflow, uDetail);
+    const float2 pt = 1.0 / texsize;
+    float2 fcoord = frac(input.uv * texsize + 0.5);
+    float4 parmx = calcweights(fcoord.x);
+    float4 parmy = calcweights(fcoord.y);
+    float4 cdelta;
+    cdelta.xzyw = float4(parmx.rg, parmy.rg) * float4(-pt.x, pt.x, -pt.y, pt.y);
+    // first y-interpolation
+    float2 ar = tex2Dlod(s_cflow, float4(input.uv + cdelta.xy, 0.0, uDetail)).rg;
+    float2 ag = tex2Dlod(s_cflow, float4(input.uv + cdelta.xw, 0.0, uDetail)).rg;
+    float2 ab = lerp(ag, ar, parmy.b);
+    // second y-interpolation
+    float2 br = tex2Dlod(s_cflow, float4(input.uv + cdelta.zy, 0.0, uDetail)).rg;
+    float2 bg = tex2Dlod(s_cflow, float4(input.uv + cdelta.zw, 0.0, uDetail)).rg;
+    float2 aa = lerp(bg, br, parmy.b);
+    // x-interpolation
+    float2 oFlow = lerp(aa, ab, parmx.b);
     float4 oBlur;
 
     [unroll]
