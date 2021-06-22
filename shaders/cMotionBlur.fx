@@ -13,7 +13,7 @@
 
 uOption(uThreshold, float, "slider", "Basic",    "Threshold",   0.010, 0.000, 0.020);
 uOption(uScale,     float, "slider", "Basic",    "Scale",       0.020, 0.000, 0.040);
-uOption(uRadius,    float, "slider", "Basic",    "Prefilter",   64.00, 0.000, 256.0);
+uOption(uRadius,    float, "slider", "Basic",    "Prefilter",   32.00, 0.000, 64.00);
 
 uOption(uIntensity, float, "slider", "Advanced", "Exposure",    4.000, 0.000, 8.000);
 uOption(uSmooth,    float, "slider", "Advanced", "Flow Smooth", 0.100, 0.000, 0.500);
@@ -79,6 +79,8 @@ v2f vs_common(const uint id : SV_VertexID)
     Cubic Filter - [https://github.com/haasn/libplacebo/blob/master/src/shaders/sampling.c] [GPL 2.1]
     Blur Average - [https://blog.demofox.org/2016/08/23/incremental-averaging/]
     Blur Center  - [http://john-chapman-graphics.blogspot.com/2013/01/per-object-motion-blur.html]
+    Disk Blur    - [https://github.com/spite/Wagner] [MIT]
+    Blur Kernels - [https://github.com/GPUOpen-Effects/ShadowFX] [MIT]
     Exposure     - [https://john-chapman.github.io/2017/08/23/dynamic-local-exposure.html]
     Noise        - [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
     Optical Flow - [https://core.ac.uk/download/pdf/148690295.pdf]
@@ -103,21 +105,29 @@ float2 rotate2D(float2 p, float a)
 
 float4 ps_source(v2f input) : SV_Target
 {
-    const int uTaps = 12;
+    const int uTaps = 18;
     const float uSize = uRadius;
-    float2 cTaps[uTaps];
-    cTaps[0]  = float2(-0.326,-0.406);
-    cTaps[1]  = float2(-0.840,-0.074);
-    cTaps[2]  = float2(-0.696, 0.457);
-    cTaps[3]  = float2(-0.203, 0.621);
-    cTaps[4]  = float2( 0.962,-0.195);
-    cTaps[5]  = float2( 0.473,-0.480);
-    cTaps[6]  = float2( 0.519, 0.767);
-    cTaps[7]  = float2( 0.185,-0.893);
-    cTaps[8]  = float2( 0.507, 0.064);
-    cTaps[9]  = float2( 0.896, 0.412);
-    cTaps[10] = float2(-0.322,-0.933);
-    cTaps[11] = float2(-0.792,-0.598);
+    static const float2 cTaps[uTaps] =
+    {
+        float2(-0.7393085f,  3.280662f ),
+        float2(-2.47004f,    2.328731f ),
+        float2(-0.6732481f,  1.042242f ),
+        float2( 0.6072469f,  1.525136f ),
+        float2( 0.9831414f,  3.14807f  ),
+        float2( 1.894908f,   0.6981092f),
+        float2( 0.5978739f,  0.0825575f),
+        float2( 2.06167f,   -0.6915861f),
+        float2(-1.294738f,  -0.2353872f),
+        float2( 3.23345f,    1.27049f  ),
+        float2(-2.976625f,   0.1078734f),
+        float2(-1.566728f,  -2.490001f ),
+        float2( 0.022746f,  -1.93031f  ),
+        float2(-2.484528f,  -1.378844f ),
+        float2( 1.984003f,  -2.342571f ),
+        float2(-0.2734823f, -3.234874f ),
+        float2( 3.35825f,   -0.3363621f),
+        float2( 2.090277f,   2.286526f )
+    };
 
     float4 uImage;
     float4 uBasis;
