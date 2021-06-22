@@ -208,35 +208,35 @@ float4 ps_output(v2f input) : SV_Target
 
 technique cMotionBlur
 {
-    pass
+    pass cBlur
     {
         VertexShader = vs_common;
         PixelShader = ps_source;
         RenderTarget0 = r_buffer;
     }
 
-    pass
+    pass cCopyPrevious
     {
         VertexShader = vs_common;
         PixelShader = ps_convert;
         RenderTarget0 = r_pframe;
     }
 
-    pass
+    pass cAutoExposure
     {
         VertexShader = vs_common;
         PixelShader = ps_filter;
         RenderTarget0 = r_cframe;
     }
 
-    pass
+    pass cOpticalFlow
     {
         VertexShader = vs_common;
         PixelShader = ps_flow;
         RenderTarget0 = r_cflow;
     }
 
-    pass
+    pass cFlowBlur
     {
         VertexShader = vs_common;
         PixelShader = ps_output;
