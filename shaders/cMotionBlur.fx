@@ -152,6 +152,7 @@ float4 ps_flow(v2f input) : SV_Target
     float dt = cLuma - pLuma;
 
     float2 dFdp = float2(ddx(pLuma), ddy(pLuma));
+    dFdp *= rsqrt(dot(dFdp, dFdp) + 1.0);
     float2 dFdc = float2(ddx(cLuma), ddy(cLuma));
 
     // Calculate gradients and optical flow
