@@ -16,7 +16,7 @@ uOption(uScale,     float, "slider", "Basic",    "Scale",       0.020, 0.000, 0.
 uOption(uRadius,    float, "slider", "Basic",    "Prefilter",   64.00, 0.000, 256.0);
 
 uOption(uIntensity, float, "slider", "Advanced", "Exposure",    4.000, 0.000, 8.000);
-uOption(uSmooth,    float, "slider", "Advanced", "Flow Smooth", 0.100, 0.000, 0.500);
+uOption(uSmooth,    float, "slider", "Advanced", "Flow Smooth", 0.200, 0.000, 0.500);
 uOption(uDetail,    int,   "slider", "Advanced", "Flow Mip",    3, 0, 6);
 uOption(uDebug,     bool,  "radio",  "Advanced", "Debug",       false, 0, 0);
 
