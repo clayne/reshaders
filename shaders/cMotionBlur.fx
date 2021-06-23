@@ -83,6 +83,7 @@ v2f vs_common(const uint id : SV_VertexID)
     Exposure     - [https://john-chapman.github.io/2017/08/23/dynamic-local-exposure.html]
     Noise        - [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
     Optical Flow - [https://core.ac.uk/download/pdf/148690295.pdf]
+    Pi Constant  - [https://github.com/microsoft/DirectX-Graphics-Samples] [MIT]
     Threshold    - [https://github.com/diwi/PixelFlow] [MIT]
 */
 
@@ -94,13 +95,14 @@ float nrand(float2 n)
 
 float2 Vogel2D(int sampleIndex, int sampleTaps, float phi)
 {
-  const float GoldenAngle = 2.4f;
-  const float r = sqrt(sampleIndex + 0.5f) / sqrt(sampleTaps);
-  float theta = sampleIndex * GoldenAngle + phi;
+    const float pi = 3.1415926535897932384626433832795;
+    const float GoldenAngle = pi * (3.0 - sqrt(5.0));
+    const float r = sqrt(sampleIndex + 0.5f) / sqrt(sampleTaps);
+    float theta = sampleIndex * GoldenAngle + phi;
 
-  float2 sc;
-  sincos(theta, sc.x, sc.y);
-  return r * sc.yx;
+    float2 sc;
+    sincos(theta, sc.x, sc.y);
+    return r * sc.yx;
 }
 
 float4 ps_source(v2f input) : SV_Target
