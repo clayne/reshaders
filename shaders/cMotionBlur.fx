@@ -18,6 +18,7 @@ uOption(uRadius,    float, "slider", "Basic",    "Prefilter",   64.00, 0.000, 25
 uOption(uIntensity, float, "slider", "Advanced", "Exposure",    4.000, 0.000, 8.000);
 uOption(uSmooth,    float, "slider", "Advanced", "Flow Smooth", 0.100, 0.000, 0.500);
 uOption(uDetail,    int,   "slider", "Advanced", "Flow Mip",    3, 0, 6);
+uOption(uDebug,     bool,  "radio",  "Advanced", "Debug",       false, 0, 0);
 
 #ifndef PREFILTER_BIAS
     #define PREFILTER_BIAS 0.0
@@ -217,7 +218,7 @@ float4 ps_output(v2f input) : SV_Target
         oBlur = lerp(oBlur, uColor, rcp(i + 1));
     }
 
-    return oBlur;
+    return (uDebug) ? float4(oFlow, 0.0, 0.0) : oBlur;
 }
 
 technique cMotionBlur
