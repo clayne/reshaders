@@ -11,8 +11,8 @@
         ui_type = utype; ui_min = umin; ui_max = umax;                          \
         > = uvalue
 
-uOption(uThreshold, float, "slider", "Basic",    "Threshold",   0.010, 0.000, 0.020);
-uOption(uScale,     float, "slider", "Basic",    "Scale",       0.020, 0.000, 0.040);
+uOption(uThreshold, float, "slider", "Basic",    "Threshold",   0.100, 0.000, 1.000);
+uOption(uScale,     float, "slider", "Basic",    "Scale",       1.000, 0.000, 2.000);
 uOption(uRadius,    float, "slider", "Basic",    "Prefilter",   64.00, 0.000, 256.0);
 
 uOption(uIntensity, float, "slider", "Advanced", "Exposure",    4.000, 0.000, 8.000);
@@ -147,6 +147,7 @@ float4 ps_filter(v2f input) : SV_Target
 float4 ps_flow(v2f input) : SV_Target
 {
     // Calculate distance
+    const float2 pSize = tex2Dsize(s_cframe, 0.0);
     float pLuma = tex2D(s_pframe, input.uv).z;
     float cLuma = tex2D(s_cframe, input.uv).r;
     float dt = cLuma - pLuma;
@@ -160,10 +161,11 @@ float4 ps_flow(v2f input) : SV_Target
     float d = dot(dFdp, dFdp) + 1e-5;
     float2 cFlow = dFdc - dFdp * (p / d);
 
-    // Threshold
+    // Threshold and normalize
     float pFlow = sqrt(dot(cFlow, cFlow) + 1e-5);
     float nFlow = max(pFlow - uThreshold, 0.0);
     cFlow *= nFlow / pFlow;
+    cFlow /= pSize;
 
     // Smooth optical flow
     float2 sFlow = tex2D(s_pframe, input.uv).xy;
