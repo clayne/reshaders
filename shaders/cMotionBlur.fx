@@ -93,12 +93,12 @@ float nrand(float2 n)
     return frac(value.x * frac(dot(n.xy, value.yz)));
 }
 
-float2 Vogel2D(int sampleIndex, int sampleTaps, float phi)
+float2 Vogel2D(int uIndex, int nTaps, float phi)
 {
     const float pi = 3.1415926535897932384626433832795;
     const float GoldenAngle = pi * (3.0 - sqrt(5.0));
-    const float r = sqrt(sampleIndex + 0.5f) / sqrt(sampleTaps);
-    float theta = sampleIndex * GoldenAngle + phi;
+    const float r = sqrt(uIndex + 0.5f) / sqrt(nTaps);
+    float theta = uIndex * GoldenAngle + phi;
 
     float2 sc;
     sincos(theta, sc.x, sc.y);
