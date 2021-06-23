@@ -11,12 +11,12 @@
         ui_type = utype; ui_min = umin; ui_max = umax;                          \
         > = uvalue
 
-uOption(uThreshold, float, "slider", "Basic",    "Threshold",   0.100, 0.000, 1.000);
+uOption(uThreshold, float, "slider", "Basic",    "Threshold",   0.500, 0.000, 1.000);
 uOption(uScale,     float, "slider", "Basic",    "Scale",       1.000, 0.000, 2.000);
-uOption(uRadius,    float, "slider", "Basic",    "Prefilter",   64.00, 0.000, 256.0);
+uOption(uRadius,    float, "slider", "Basic",    "Prefilter",   32.00, 0.000, 64.00);
 
 uOption(uIntensity, float, "slider", "Advanced", "Exposure",    4.000, 0.000, 8.000);
-uOption(uSmooth,    float, "slider", "Advanced", "Flow Smooth", 0.200, 0.000, 0.500);
+uOption(uSmooth,    float, "slider", "Advanced", "Flow Smooth", 0.250, 0.000, 0.500);
 uOption(uDetail,    int,   "slider", "Advanced", "Flow Mip",    3, 0, 6);
 uOption(uDebug,     bool,  "radio",  "Advanced", "Debug",       false, 0, 0);
 
