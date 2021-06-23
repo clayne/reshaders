@@ -57,15 +57,17 @@ sampler2D s_bloom8 { Texture = r_bloom8; };
 
 struct v2fd
 {
-    float4 vpos   : SV_Position;
-    float2 uv0    : TEXCOORD0;
-    float4 uv1[2] : TEXCOORD1;
+    float4 vpos : SV_Position;
+    float2 uOffset0 : TEXCOORD0;
+    float4 uOffset1 : TEXCOORD1;
+    float4 uOffset2 : TEXCOORD2;
 };
 
 struct v2fu
 {
-    float4 vpos   : SV_Position;
-    float4 uv0[2] : TEXCOORD0;
+    float4 vpos : SV_Position;
+    float4 uOffset0 : TEXCOORD0;
+    float4 uOffset1 : TEXCOORD1;
 };
 
 v2fd downsample2Dvs(uint id, float uFact)
@@ -79,11 +81,11 @@ v2fd downsample2Dvs(uint id, float uFact)
     const float2 psize = ldexp(float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT), uFact);
     const float2 hoffset = psize + (psize / 2.0f);
     const float4 offset = float4(-hoffset.x, -hoffset.y, hoffset.x, hoffset.y);
-    output.uv1[0].xy = coord + offset.xy; // --
-    output.uv1[0].zw = coord + offset.zw; // ++
-    output.uv1[1].xy = coord + offset.xw; // -+
-    output.uv1[1].zw = coord + offset.zy; // +-
-    output.uv0 = coord;
+    output.uOffset0 = coord;
+    output.uOffset1.xy = coord + offset.xy; // --
+    output.uOffset1.zw = coord + offset.zw; // ++
+    output.uOffset2.xy = coord + offset.xw; // -+
+    output.uOffset2.zw = coord + offset.zy; // +-
     return output;
 }
 
@@ -97,10 +99,10 @@ v2fu upsample2Dvs(uint id, float uFact)
     const float2 psize = ldexp(float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT), uFact);
     const float2 hoffset = psize + (psize / 2.0f);
     const float4 offset = float4(-hoffset.x, -hoffset.y, hoffset.x, hoffset.y);
-    output.uv0[0].xy = coord + offset.xy; // --
-    output.uv0[0].zw = coord + offset.zw; // ++
-    output.uv0[1].xy = coord + offset.xw; // -+
-    output.uv0[1].zw = coord + offset.zy; // +-
+    output.uOffset0.xy = coord + offset.xy; // --
+    output.uOffset0.zw = coord + offset.zw; // ++
+    output.uOffset1.xy = coord + offset.xw; // -+
+    output.uOffset1.zw = coord + offset.zy; // +-
     return output;
 }
 
@@ -132,21 +134,21 @@ v2fu vs_upsample1(uint id : SV_VertexID) { return upsample2Dvs(id, 0.0); }
 float4 downsample2Dps(sampler2D src, v2fd input)
 {
     float4 output;
-    output  = tex2D(src, input.uv0) * exp2(-1.0);
-    output += tex2D(src, input.uv1[0].xy) * exp2(-3.0);
-    output += tex2D(src, input.uv1[0].zw) * exp2(-3.0);
-    output += tex2D(src, input.uv1[1].xy) * exp2(-3.0);
-    output += tex2D(src, input.uv1[1].zw) * exp2(-3.0);
+    output  = tex2D(src, input.uOffset0) * exp2(-1.0);
+    output += tex2D(src, input.uOffset1.xy) * exp2(-3.0);
+    output += tex2D(src, input.uOffset1.zw) * exp2(-3.0);
+    output += tex2D(src, input.uOffset2.xy) * exp2(-3.0);
+    output += tex2D(src, input.uOffset2.zw) * exp2(-3.0);
     return output;
 }
 
 float4 upsample2Dps(sampler2D src, v2fu input)
 {
     float4 output;
-    output  = tex2D(src, input.uv0[0].xy) * exp2(-2.0);
-    output += tex2D(src, input.uv0[0].zw) * exp2(-2.0);
-    output += tex2D(src, input.uv0[1].xy) * exp2(-2.0);
-    output += tex2D(src, input.uv0[1].zw) * exp2(-2.0);
+    output  = tex2D(src, input.uOffset0.xy) * exp2(-2.0);
+    output += tex2D(src, input.uOffset0.zw) * exp2(-2.0);
+    output += tex2D(src, input.uOffset1.xy) * exp2(-2.0);
+    output += tex2D(src, input.uOffset1.zw) * exp2(-2.0);
     return output;
 }
 

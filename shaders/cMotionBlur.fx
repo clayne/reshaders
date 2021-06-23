@@ -114,7 +114,7 @@ float4 ps_source(v2f input) : SV_Target
     for (int i = 0; i < uTaps; i++)
     {
         float2 ofs = Vogel2D(i, uTaps, urand);
-        float2 uv = ofs * ps + input.uv;
+        float2 uv = input.uv + ofs * ps;
         float4 uColor = tex2D(s_color, uv);
         uImage = lerp(uImage, uColor, rcp(i + 1));
     }

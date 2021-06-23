@@ -40,69 +40,34 @@ float nrand(float2 n)
     return frac(value.x * frac(dot(n.xy, value.yz)));
 }
 
-float2 rotate2D(float2 p, float a)
+float2 Vogel2D(int sampleIndex, int sampleTaps, float phi)
 {
-    float2 output;
-    float2 sc;
-    sincos(a, sc.x, sc.y);
-    output.x = dot(p, float2(sc.y, -sc.x));
-    output.y = dot(p, float2(sc.x,  sc.y));
-    return output.xy;
-}
+  const float GoldenAngle = 2.4f;
+  const float r = sqrt(sampleIndex + 0.5f) / sqrt(sampleTaps);
+  float theta = sampleIndex * GoldenAngle + phi;
 
-static const int uTaps = 16;
-
-float2 Vogel2D(int sampleIndex)
-{
-  float GoldenAngle = 2.4f;
-  float r = sqrt(sampleIndex + 0.5f) / sqrt(uTaps);
-  float theta = sampleIndex * GoldenAngle;
-
-  float sine, cosine;
-  sincos(theta, sine, cosine);
-  return float2(r * cosine, r * sine);
+  float2 sc;
+  sincos(theta, sc.x, sc.y);
+  return r * sc.yx;
 }
 
 float4 ps_blur(v2f input) : SV_TARGET
 {
-    const float uSize = kRadius;
-    static const float2 cTaps[uTaps] =
-    {
-        Vogel2D(1),
-        Vogel2D(2),
-        Vogel2D(3),
-        Vogel2D(4),
-        Vogel2D(5),
-        Vogel2D(6),
-        Vogel2D(7),
-        Vogel2D(8),
-        Vogel2D(9),
-        Vogel2D(10),
-        Vogel2D(11),
-        Vogel2D(12),
-        Vogel2D(13),
-        Vogel2D(14),
-        Vogel2D(15),
-        Vogel2D(16),
-    };
+	const int uTaps = 16;
+    const float2 ps = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT) * kRadius;
+    float urand = nrand(input.vpos.xy) * 2.0;
+    float4 uImage;
 
-    float4 uOutput = 0.0;
-    float  uRand = 6.28 * nrand(input.vpos.xy);
-    float4 uBasis;
-    uBasis.xy = rotate2D(float2(1.0, 0.0), uRand);
-    uBasis.zw = rotate2D(float2(0.0, 1.0), uRand);
-
+    [unroll]
     for (int i = 0; i < uTaps; i++)
     {
-        float2 ofs = cTaps[i];
-        ofs.x = dot(ofs, uBasis.xz);
-        ofs.y = dot(ofs, uBasis.yw);
-        float2 uv = input.uv + uSize * ofs / float2(BUFFER_WIDTH, BUFFER_HEIGHT);
-        float4 uColor = tex2Dlod(s_color, float4(uv, 0.0, 0.0));
-        uOutput = lerp(uOutput, uColor, 1.0 / float(i + 1));
+        float2 ofs = Vogel2D(i, uTaps, urand);
+        float2 uv = input.uv + ofs * ps;
+        float4 uColor = tex2D(s_color, uv);
+        uImage = lerp(uImage, uColor, rcp(i + 1));
     }
 
-    return uOutput;
+    return uImage;
 }
 
 float4 calcweights(float s)
