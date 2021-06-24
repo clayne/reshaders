@@ -41,9 +41,9 @@ uOption(uDebug,     bool,  "radio",  "Advanced", "Debug",       false, 0, 0);
 #define BIT8_LOG2(x)  (BIT4_LOG2(x) | BIT4_LOG2(x) >> 4)
 #define BIT16_LOG2(x) (BIT8_LOG2(x) | BIT8_LOG2(x) >> 8)
 #define LOG2(x)       (CONST_LOG2((BIT16_LOG2(x) >> 1) + 1))
+#define RMAX(x, y)     x ^ ((x ^ y) & -(x < y)) // max(x, y)
 
 #define RSIZE      uint2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2)
-#define RMAX(x, y) x ^ ((x ^ y) & -(x < y)) // max(x, y)
 #define DSIZE      1 << LOG2(RMAX(RSIZE.x, RSIZE.y))
 
 texture2D r_color  : COLOR;
