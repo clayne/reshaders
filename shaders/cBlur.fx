@@ -34,28 +34,31 @@ v2f vs_common(const uint id : SV_VertexID)
     return output;
 }
 
+static const float pi = 3.1415926535897932384626433832795;
+static const float tpi = pi * 2.0;
+
 float nrand(float2 n)
 {
     const float3 value = float3(52.9829189, 0.06711056, 0.00583715);
     return frac(value.x * frac(dot(n.xy, value.yz)));
 }
 
-float2 Vogel2D(int sampleIndex, int sampleTaps, float phi)
+float2 Vogel2D(int uIndex, int nTaps, float phi)
 {
-  const float GoldenAngle = 2.4f;
-  const float r = sqrt(sampleIndex + 0.5f) / sqrt(sampleTaps);
-  float theta = sampleIndex * GoldenAngle + phi;
+    const float GoldenAngle = pi * (3.0 - sqrt(5.0));
+    const float r = sqrt(uIndex + 0.5f) / sqrt(nTaps);
+    float theta = uIndex * GoldenAngle + phi;
 
-  float2 sc;
-  sincos(theta, sc.x, sc.y);
-  return r * sc.yx;
+    float2 sc;
+    sincos(theta, sc.x, sc.y);
+    return r * sc.yx;
 }
 
 float4 ps_blur(v2f input) : SV_TARGET
 {
 	const int uTaps = 16;
     const float2 ps = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT) * kRadius;
-    float urand = nrand(input.vpos.xy) * 2.0;
+    float urand = nrand(input.vpos.xy) * tpi;
     float4 uImage;
 
     [unroll]

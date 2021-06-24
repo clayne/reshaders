@@ -88,6 +88,9 @@ v2f vs_common(const uint id : SV_VertexID)
     Threshold    - [https://github.com/diwi/PixelFlow] [MIT]
 */
 
+static const float pi = 3.1415926535897932384626433832795;
+static const float tpi = pi * 2.0;
+
 float nrand(float2 n)
 {
     const float3 value = float3(52.9829189, 0.06711056, 0.00583715);
@@ -96,7 +99,6 @@ float nrand(float2 n)
 
 float2 Vogel2D(int uIndex, int nTaps, float phi)
 {
-    const float pi = 3.1415926535897932384626433832795;
     const float GoldenAngle = pi * (3.0 - sqrt(5.0));
     const float r = sqrt(uIndex + 0.5f) / sqrt(nTaps);
     float theta = uIndex * GoldenAngle + phi;
@@ -110,7 +112,7 @@ float4 ps_source(v2f input) : SV_Target
 {
     const int uTaps = 16;
     const float2 ps = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT) * uRadius;
-    float urand = nrand(input.vpos.xy) * 2.0;
+    float urand = nrand(input.vpos.xy) * tpi;
     float4 uImage;
 
     [unroll]
@@ -147,7 +149,6 @@ float4 ps_filter(v2f input) : SV_Target
 float4 ps_flow(v2f input) : SV_Target
 {
     // Calculate distance
-    const float2 pSize = tex2Dsize(s_cframe, 0.0);
     float pLuma = tex2D(s_pframe, input.uv).z;
     float cLuma = tex2D(s_cframe, input.uv).r;
     float dt = cLuma - pLuma;
@@ -165,7 +166,6 @@ float4 ps_flow(v2f input) : SV_Target
     float pFlow = sqrt(dot(cFlow, cFlow) + 1e-5);
     float nFlow = max(pFlow - uThreshold, 0.0);
     cFlow *= nFlow / pFlow;
-    cFlow /= pSize;
 
     // Smooth optical flow
     float2 sFlow = tex2D(s_pframe, input.uv).xy;
@@ -187,6 +187,8 @@ float4 calcweights(float s)
 
 float4 flow2D(v2f input, float2 flow, float i)
 {
+    const float2 pSize = tex2Dsize(s_cflow, 0.0);
+    flow /= pSize;
     float noise = nrand(input.vpos.xy);
     const float samples = 1.0 / (16.0 - 1.0);
     float2 calc = (noise * 2.0 + i) * samples - 0.5;
