@@ -44,7 +44,7 @@ uOption(uDebug,     bool,  "radio",  "Advanced", "Debug",       false, 0, 0);
 #define RMAX(x, y)     x ^ ((x ^ y) & -(x < y)) // max(x, y)
 
 #define DSIZE      uint2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2)
-#define RSIZE      1 << LOG2(RMAX(RSIZE.x, RSIZE.y))
+#define RSIZE      1 << LOG2(RMAX(DSIZE.x, DSIZE.y))
 
 texture2D r_color  : COLOR;
 texture2D r_buffer { Width = DSIZE.x; Height = DSIZE.y; MipLevels = LOG2(RSIZE) + 1; Format = R32F;  };
