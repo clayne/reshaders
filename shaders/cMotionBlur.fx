@@ -13,7 +13,7 @@
 
 uOption(uThreshold, float, "slider", "Basic",    "Threshold",   0.500, 0.000, 1.000);
 uOption(uScale,     float, "slider", "Basic",    "Scale",       1.000, 0.000, 2.000);
-uOption(uRadius,    float, "slider", "Basic",    "Prefilter",   32.00, 0.000, 64.00);
+uOption(uRadius,    float, "slider", "Basic",    "Prefilter",   64.00, 0.000, 256.00);
 
 uOption(uIntensity, float, "slider", "Advanced", "Exposure",    4.000, 0.000, 8.000);
 uOption(uSmooth,    float, "slider", "Advanced", "Flow Smooth", 0.250, 0.000, 0.500);
@@ -42,12 +42,12 @@ uOption(uDebug,     bool,  "radio",  "Advanced", "Debug",       false, 0, 0);
 #define BIT16_LOG2(x) (BIT8_LOG2(x) | BIT8_LOG2(x) >> 8)
 #define LOG2(x)       (CONST_LOG2((BIT16_LOG2(x) >> 1) + 1))
 
+#define RSIZE      uint2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2)
 #define RMAX(x, y) x ^ ((x ^ y) & -(x < y)) // max(x, y)
-#define DSIZE(x)   1 << LOG2(RMAX(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2))
-#define RSIZE      Width = BUFFER_WIDTH / 2; Height = BUFFER_HEIGHT / 2
+#define DSIZE      1 << LOG2(RMAX(RSIZE.x, RSIZE.y))
 
 texture2D r_color  : COLOR;
-texture2D r_buffer { RSIZE; MipLevels = LOG2(DSIZE(2)) + 1;  Format = R32F;  };
+texture2D r_buffer { Width = RSIZE.x; Height = RSIZE.y; MipLevels = LOG2(DSIZE) + 1; Format = R32F;  };
 texture2D r_cflow  { Width = 64; Height = 64; MipLevels = 7; Format = RG32F; };
 texture2D r_cframe { Width = 64; Height = 64; Format = RG32F;   };
 texture2D r_pframe { Width = 64; Height = 64; Format = RGBA32F; };
@@ -81,7 +81,7 @@ v2f vs_common(const uint id : SV_VertexID)
     Blur Average - [https://blog.demofox.org/2016/08/23/incremental-averaging/]
     Blur Center  - [http://john-chapman-graphics.blogspot.com/2013/01/per-object-motion-blur.html]
     Disk Kernels - [http://blog.marmakoide.org/?p=1.]
-    Exposure     - [https://john-chapman.github.io/2017/08/23/dynamic-local-exposure.html]
+    Exposure     - [https://knarkowicz.wordpress.com/2016/01/09/automatic-exposure/]
     Noise        - [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
     Optical Flow - [https://core.ac.uk/download/pdf/148690295.pdf]
     Pi Constant  - [https://github.com/microsoft/DirectX-Graphics-Samples] [MIT]
@@ -97,29 +97,28 @@ float nrand(float2 n)
     return frac(value.x * frac(dot(n.xy, value.yz)));
 }
 
-float2 Vogel2D(int uIndex, int nTaps, float phi)
+float2 Vogel2D(int uIndex, int nTaps, float phi, float2 uv)
 {
-    const float GoldenAngle = pi * (3.0 - sqrt(5.0));
-    const float r = sqrt(uIndex + 0.5f) / sqrt(nTaps);
+    const float2 Size = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT) * uRadius;
+    const float  GoldenAngle = pi * (3.0 - sqrt(5.0));
+    const float2 Radius = (sqrt(uIndex + 0.5f) / sqrt(nTaps)) * Size;
     float theta = uIndex * GoldenAngle + phi;
 
-    float2 sc;
-    sincos(theta, sc.x, sc.y);
-    return r * sc.yx;
+    float2 SineCosine;
+    sincos(theta, SineCosine.x, SineCosine.y);
+    return Radius * SineCosine.yx + uv;
 }
 
 float4 ps_source(v2f input) : SV_Target
 {
     const int uTaps = 16;
-    const float2 ps = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT) * uRadius;
     float urand = nrand(input.vpos.xy) * tpi;
     float4 uImage;
 
     [unroll]
     for (int i = 0; i < uTaps; i++)
     {
-        float2 ofs = Vogel2D(i, uTaps, urand);
-        float2 uv = input.uv + ofs * ps;
+        float2 uv = Vogel2D(i, uTaps, urand, input.uv);
         float4 uColor = tex2D(s_color, uv);
         uImage = lerp(uImage, uColor, rcp(i + 1));
     }
@@ -139,11 +138,10 @@ float4 ps_convert(v2f input) : SV_Target
 float4 ps_filter(v2f input) : SV_Target
 {
     float aLuma = tex2Dlod(s_pframe, float4(input.uv, 0.0, 8.0)).w;
-    aLuma = exp(aLuma);
-    float ev100 = log2(aLuma * 100.0 / 12.5) - uIntensity;
-    ev100 = rcp(1.2 * exp2(ev100));
+    float aKeyValue = 1.03 - (2.0 / (log10(aLuma + 1.0) + 2.0));
+    float aExposure = (aKeyValue / aLuma) - uIntensity;
     float oColor = tex2D(s_pframe, input.uv).w;
-    return saturate(oColor * ev100);
+    return oColor * aExposure;
 }
 
 float4 ps_flow(v2f input) : SV_Target

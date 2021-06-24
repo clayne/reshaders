@@ -13,11 +13,32 @@ uniform float kRadius <
     ui_min = 0.001;
 > = 0.1;
 
+/*
+    Round to nearest power of 2
+    Help from Lord of Lunacy, KingEric1992, and Marty McFly
+*/
+
+#define CONST_LOG2(x) (\
+    (uint((x)  & 0xAAAAAAAA) != 0) | \
+    (uint(((x) & 0xFFFF0000) != 0) << 4) | \
+    (uint(((x) & 0xFF00FF00) != 0) << 3) | \
+    (uint(((x) & 0xF0F0F0F0) != 0) << 2) | \
+    (uint(((x) & 0xCCCCCCCC) != 0) << 1))
+
+#define BIT2_LOG2(x)  ((x) | (x) >> 1)
+#define BIT4_LOG2(x)  (BIT2_LOG2(x) | BIT2_LOG2(x) >> 2)
+#define BIT8_LOG2(x)  (BIT4_LOG2(x) | BIT4_LOG2(x) >> 4)
+#define BIT16_LOG2(x) (BIT8_LOG2(x) | BIT8_LOG2(x) >> 8)
+#define LOG2(x)       (CONST_LOG2((BIT16_LOG2(x) >> 1) + 1))
+
+#define RMAX(x, y) x ^ ((x ^ y) & -(x < y)) // max(x, y)
+#define DSIZE      1 << LOG2(RMAX(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2))
+
 texture2D r_color : COLOR;
-texture2D r_blur { Width = BUFFER_WIDTH/2; Height = BUFFER_HEIGHT/2; Format = RGB10A2; MipLevels = 11; };
+texture2D r_blur { Width = DSIZE; Height = DSIZE; Format = RGB10A2; MipLevels = LOG2(DSIZE) + 1; };
 
 sampler2D s_color { Texture = r_color; SRGBTexture = TRUE; };
-sampler2D s_blur  { Texture = r_blur; };
+sampler2D s_blur  { Texture = r_blur; AddressU = MIRROR; AddressV = MIRROR; };
 
 struct v2f
 {
