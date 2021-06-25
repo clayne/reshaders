@@ -68,6 +68,8 @@ struct v2fu
     float4 vpos : SV_Position;
     float4 uOffset0 : TEXCOORD0;
     float4 uOffset1 : TEXCOORD1;
+    float4 uOffset2 : TEXCOORD2;
+    float4 uOffset3 : TEXCOORD3;
 };
 
 v2fd downsample2Dvs(uint id, float uFact)
@@ -96,13 +98,28 @@ v2fu upsample2Dvs(uint id, float uFact)
     coord.x = (id == 2) ? 2.0 : 0.0;
     coord.y = (id == 1) ? 2.0 : 0.0;
     output.vpos = float4(coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+
     const float2 psize = ldexp(float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT), uFact);
     const float2 hoffset = psize + (psize / 2.0f);
     const float4 offset = float4(-hoffset.x, -hoffset.y, hoffset.x, hoffset.y);
-    output.uOffset0.xy = coord + offset.xy; // --
-    output.uOffset0.zw = coord + offset.zw; // ++
-    output.uOffset1.xy = coord + offset.xw; // -+
-    output.uOffset1.zw = coord + offset.zy; // +-
+    /*
+    	configUniforms[i][0] = glm::vec2(-dUV.x * 2.0, 0.0);
+				configUniforms[i][1] = glm::vec2(-dUV.x, dUV.y);
+				configUniforms[i][2] = glm::vec2(0.0, dUV.y * 2.0);
+				configUniforms[i][3] = glm::vec2(dUV.x, dUV.y);
+				configUniforms[i][4] = glm::vec2(dUV.x * 2.0, 0.0);
+				configUniforms[i][5] = glm::vec2(dUV.x, -dUV.y);
+				configUniforms[i][6] = glm::vec2(0.0, -dUV.y * 2.0);
+				configUniforms[i][7] = glm::vec2(-dUV.x, -dUV.y);
+    */
+    output.uOffset0.xy = coord + offset.xy * float2(2.0, 0.0);
+    output.uOffset0.zw = coord + offset.xw * float2(1.0, 1.0);
+    output.uOffset1.xy = coord + offset.xy * float2(0.0, 2.0);
+    output.uOffset1.zw = coord + offset.xy * float2(1.0, 1.0);
+    output.uOffset2.xy = coord + offset.xy * float2(2.0, 0.0);
+    output.uOffset2.zw = coord + offset.xy * float2(1.0, 1.0);
+    output.uOffset3.xy = coord + offset.xy * float2(0.0, 2.0);
+    output.uOffset3.zw = coord + offset.xy * float2(1.0, 1.0);
     return output;
 }
 
