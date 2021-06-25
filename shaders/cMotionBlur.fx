@@ -15,9 +15,9 @@ uOption(uThreshold, float, "slider", "Basic",    "Threshold",   0.010, 0.000, 1.
 uOption(uScale,     float, "slider", "Basic",    "Scale",       1.000, 0.000, 2.000);
 uOption(uRadius,    float, "slider", "Basic",    "Prefilter",   64.00, 0.000, 256.00);
 
-uOption(uSmooth,    float, "slider", "Advanced", "Flow Smooth", 0.250, 0.000, 0.500);
-uOption(uDetail,    int,   "slider", "Advanced", "Flow Mip",    3, 0, 6);
-uOption(uDebug,     bool,  "radio",  "Advanced", "Debug",       false, 0, 0);
+uOption(uSmooth, float, "slider", "Advanced", "Flow Smooth", 0.250, 0.000, 0.500);
+uOption(uDetail, int,   "slider", "Advanced", "Flow Mip",    3, 0, 6);
+uOption(uDebug,  bool,  "radio",  "Advanced", "Debug",       false, 0, 0);
 
 #ifndef PREFILTER_BIAS
     #define PREFILTER_BIAS 0.0
@@ -46,16 +46,16 @@ uOption(uDebug,     bool,  "radio",  "Advanced", "Debug",       false, 0, 0);
 #define RSIZE      LOG2(RMAX(DSIZE.x, DSIZE.y)) + 1
 
 texture2D r_color  : COLOR;
-texture2D r_buffer { Width = DSIZE.x; Height = DSIZE.y; MipLevels = RSIZE; Format = R32F; };
-texture2D r_cflow  { Width = 64; Height = 64; Format = RG32F;   MipLevels = 7; };
-texture2D r_cframe { Width = 64; Height = 64; Format = RG32F;   MipLevels = 7; };
-texture2D r_pframe { Width = 64; Height = 64; Format = RGBA32F; MipLevels = 7; };
+texture2D r_buffer { Width = DSIZE.x; Height = DSIZE.y; MipLevels = RSIZE; Format = R8; };
+texture2D r_pframe { Width = 64; Height = 64; Format = RGBA16F; MipLevels = 7; };
+texture2D r_cflow  { Width = 64; Height = 64; Format = RG16F;   MipLevels = 7; };
+texture2D r_cframe { Width = 64; Height = 64; Format = R16F; };
 
 sampler2D s_color  { Texture = r_color;  SRGBTexture = TRUE; };
-sampler2D s_buffer { Texture = r_buffer; };
+sampler2D s_buffer { Texture = r_buffer; MipLODBias = PREFILTER_BIAS; };
+sampler2D s_pframe { Texture = r_pframe; };
 sampler2D s_cflow  { Texture = r_cflow;  };
-sampler2D s_cframe { Texture = r_cframe; MipLODBias = PREFILTER_BIAS; };
-sampler2D s_pframe { Texture = r_pframe; MipLODBias = PREFILTER_BIAS; };
+sampler2D s_cframe { Texture = r_cframe; };
 
 /* [ Vertex Shaders ] */
 
@@ -122,7 +122,7 @@ float4 ps_source(v2f input) : SV_Target
         uImage = lerp(uImage, uColor, rcp(i + 1));
     }
 
-    return max(max(uImage.r, uImage.g), uImage.b);
+    return sqrt(max(max(uImage.r, uImage.g), uImage.b));
 }
 
 float4 ps_convert(v2f input) : SV_Target
@@ -136,11 +136,11 @@ float4 ps_convert(v2f input) : SV_Target
 
 float4 ps_filter(v2f input) : SV_Target
 {
-    float aLuma = tex2Dlod(s_pframe, float4(input.uv, 0.0, 8.0)).w;
+    float aLuma = tex2Dlod(s_pframe, float4(input.uv, 0.0, 64.0)).w;
     float aKeyValue = 1.03 - (2.0 / (log10(aLuma + 1.0) + 2.0));
     float aExposure = aKeyValue / aLuma;
     float oColor = tex2D(s_pframe, input.uv).w;
-    return oColor * aExposure;
+    return sqrt(oColor * aExposure);
 }
 
 float4 ps_flow(v2f input) : SV_Target
