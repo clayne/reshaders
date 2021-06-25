@@ -96,6 +96,7 @@ v2fu upsample2Dvs(uint id, float uFact)
     coord.x = (id == 2) ? 2.0 : 0.0;
     coord.y = (id == 1) ? 2.0 : 0.0;
     output.vpos = float4(coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+
     const float2 psize = ldexp(float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT), uFact);
     const float2 hoffset = psize + (psize / 2.0f);
     const float4 offset = float4(-hoffset.x, -hoffset.y, hoffset.x, hoffset.y);
