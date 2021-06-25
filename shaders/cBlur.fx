@@ -75,11 +75,14 @@ float2 Vogel2D(int uIndex, int nTaps, float phi)
     return r * sc.yx;
 }
 
+float mod2D(float x, float y) { return x - y * floor(x / y); }
+
 float4 ps_blur(v2f input) : SV_TARGET
 {
 	const int uTaps = 16;
+    float uBoard = mod2D(dot(input.vpos.xy, 1.0), 2.0);
     const float2 ps = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT) * kRadius;
-    float urand = nrand(input.vpos.xy) * tpi;
+    float urand = nrand(input.vpos.xy * uBoard) * tpi;
     float4 uImage;
 
     [unroll]

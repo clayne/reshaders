@@ -108,10 +108,12 @@ float2 Vogel2D(int uIndex, int nTaps, float phi, float2 uv)
     return Radius * SineCosine.yx + uv;
 }
 
+float mod2D(float x, float y) { return x - y * floor(x / y); }
+
 float4 ps_source(v2f input) : SV_Target
 {
     const int uTaps = 16;
-    float uBoard = dot(input.vpos.xy, 1.0) % 2.0;
+    float uBoard = mod2D(dot(input.vpos.xy, 1.0), 2.0);
     float urand = nrand(input.vpos.xy * uBoard) * tpi;
     float4 uImage;
 
