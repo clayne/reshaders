@@ -111,7 +111,8 @@ float2 Vogel2D(int uIndex, int nTaps, float phi, float2 uv)
 float4 ps_source(v2f input) : SV_Target
 {
     const int uTaps = 16;
-    float urand = nrand(input.vpos.xy) * tpi;
+    float cBoard = fmod(dot(input.vpos.xy, 1.0), 2.0);
+    float urand = nrand(input.vpos.xy * cBoard) * tpi;
     float4 uImage;
 
     [unroll]
