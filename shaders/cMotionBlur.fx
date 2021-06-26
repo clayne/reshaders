@@ -82,7 +82,7 @@ v2f vs_common(const uint id : SV_VertexID)
     Disk Kernels - [http://blog.marmakoide.org/?p=1.]
     Exposure     - [https://knarkowicz.wordpress.com/2016/01/09/automatic-exposure/]
     Noise        - [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
-    Optical Flow - [https://core.ac.uk/download/pdf/148690295.pdf]
+    Optical Flow - [https://dspace.mit.edu/handle/1721.1/6337]
     Pi Constant  - [https://github.com/microsoft/DirectX-Graphics-Samples] [MIT]
     Threshold    - [https://github.com/diwi/PixelFlow] [MIT]
 */
