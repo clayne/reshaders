@@ -148,15 +148,13 @@ float4 ps_filter(v2f input) : SV_Target
 
 float4 ps_flow(v2f input) : SV_Target
 {
-    // Calculate distance
     float pLuma = tex2D(s_pframe, input.uv).z;
     float cLuma = tex2D(s_cframe, input.uv).r;
-    float dt = cLuma - pLuma;
 
+    // Calculate optical flow
+    float dt = cLuma - pLuma;
     float2 dFdp = float2(ddx(pLuma), ddy(pLuma));
     float2 dFdc = float2(ddx(cLuma), ddy(cLuma));
-
-    // Calculate gradients and optical flow
     float p = dot(dFdp, dFdc) + dt;
     float d = dot(dFdp, dFdp) + 1e-5;
     float2 cFlow = dFdc - ((dFdp * p) / d);
