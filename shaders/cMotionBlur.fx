@@ -113,7 +113,6 @@ float mod2D(float x, float y) { return x - y * floor(x / y); }
 float4 ps_source(v2f input) : SV_Target
 {
     const int uTaps = 4;
-    float uBoard = mod2D(dot(input.vpos.xy, 1.0), 2.0);
     float urand = nrand(input.vpos.xy) * tpi;
     float4 uImage;
 
@@ -133,7 +132,8 @@ float4 ps_convert(v2f input) : SV_Target
     float4 output;
     output.xy = tex2D(s_cflow, input.uv).rg; // Copy optical flow from previous ps_flow()
     output.z  = tex2D(s_cframe, input.uv).r; // Copy exposed frame from previous ps_filter()
-    output.w  = max(tex2D(s_buffer, input.uv).r, 1e-5); // Input downsampled current frame to scale and mip
+    float uImage = tex2D(s_buffer, input.uv).r; // Input downsampled current frame to scale and mip
+    output.w  = max(uImage * uImage, 1e-5);
     return output;
 }
 
