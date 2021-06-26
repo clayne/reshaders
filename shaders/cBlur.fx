@@ -79,7 +79,7 @@ float mod2D(float x, float y) { return x - y * floor(x / y); }
 
 float4 ps_blur(v2f input) : SV_TARGET
 {
-	const int uTaps = 16;
+    const int uTaps = 16;
     float uBoard = mod2D(dot(input.vpos.xy, 1.0), 2.0);
     const float2 ps = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT) * kRadius;
     float urand = nrand(input.vpos.xy * uBoard) * tpi;
@@ -116,8 +116,8 @@ float4 ps_smooth(v2f input) : SV_TARGET
 
     const float kPi = 3.14159265359f;
     float area   = kPi * (kRadius * kRadius);
-          area   = area / 12; // area per sample
-    float lod    = ceil(log2(sqrt(area)))-1; // select mip level with similar area to the sample
+          area   = area / 16; // area per sample
+    float lod    = ceil(log2(sqrt(area))) - 1; // select mip level with similar area to the sample
 
     float2 texsize = tex2Dsize(s_blur, lod);
     float2 pt = 1.0 / texsize;
