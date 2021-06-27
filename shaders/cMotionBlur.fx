@@ -46,13 +46,13 @@ uOption(uDebug,  bool,  "radio",  "Advanced", "Debug",       false, 0, 0);
 #define RSIZE      LOG2(RMAX(DSIZE.x, DSIZE.y)) + 1
 
 texture2D r_color  : COLOR;
-texture2D r_buffer { Width = DSIZE.x; Height = DSIZE.y; MipLevels = RSIZE; Format = R8; };
+texture2D r_buffer { Width = DSIZE.x; Height = DSIZE.y; MipLevels = RSIZE; Format = RGBA8; };
 texture2D r_pframe { Width = 64; Height = 64; Format = RGBA16F; MipLevels = 7; };
 texture2D r_cflow  { Width = 64; Height = 64; Format = RG16F;   MipLevels = 7; };
 texture2D r_cframe { Width = 64; Height = 64; Format = R16F; };
 
 sampler2D s_color  { Texture = r_color;  SRGBTexture = TRUE; };
-sampler2D s_buffer { Texture = r_buffer; MipLODBias = PREFILTER_BIAS; };
+sampler2D s_buffer { Texture = r_buffer; SRGBTexture = TRUE; MipLODBias = PREFILTER_BIAS; };
 sampler2D s_pframe { Texture = r_pframe; };
 sampler2D s_cflow  { Texture = r_cflow;  };
 sampler2D s_cframe { Texture = r_cframe; };
@@ -96,33 +96,32 @@ float nrand(float2 n)
     return frac(value.x * frac(dot(n.xy, value.yz)));
 }
 
-float2 Vogel2D(int uIndex, int nTaps, float phi, float2 uv)
+float2 Vogel2D(int uIndex, int nTaps, float2 uv)
 {
     const float2 Size = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT) * uRadius;
     const float  GoldenAngle = pi * (3.0 - sqrt(5.0));
     const float2 Radius = (sqrt(uIndex + 0.5f) / sqrt(nTaps)) * Size;
-    float theta = uIndex * GoldenAngle + phi;
+    const float  Theta = uIndex * GoldenAngle;
 
     float2 SineCosine;
-    sincos(theta, SineCosine.x, SineCosine.y);
+    sincos(Theta, SineCosine.x, SineCosine.y);
     return Radius * SineCosine.yx + uv;
 }
 
 float4 ps_source(v2f input) : SV_Target
 {
-    const int uTaps = 4;
-    float urand = nrand(input.vpos.xy) * tpi;
+    const int uTaps = 16;
     float4 uImage;
 
     [unroll]
     for (int i = 0; i < uTaps; i++)
     {
-        float2 uv = Vogel2D(i, uTaps, urand, input.uv);
+        float2 uv = Vogel2D(i, uTaps, input.uv);
         float4 uColor = tex2D(s_color, uv);
         uImage = lerp(uImage, uColor, rcp(i + 1));
     }
 
-    return sqrt(max(max(uImage.r, uImage.g), uImage.b));
+    return uImage;
 }
 
 float4 ps_convert(v2f input) : SV_Target
@@ -130,8 +129,8 @@ float4 ps_convert(v2f input) : SV_Target
     float4 output;
     output.xy = tex2D(s_cflow, input.uv).rg; // Copy optical flow from previous ps_flow()
     output.z  = tex2D(s_cframe, input.uv).r; // Copy exposed frame from previous ps_filter()
-    float uImage = tex2D(s_buffer, input.uv).r; // Input downsampled current frame to scale and mip
-    output.w = max(uImage * uImage, 1e-5);
+    float4 uImage = tex2D(s_buffer, input.uv); // Input downsampled current frame to scale and mip
+    output.w = max(max(uImage.r, uImage.g), uImage.b);
     return output;
 }
 
@@ -141,7 +140,8 @@ float4 ps_filter(v2f input) : SV_Target
     float aKeyValue = 1.03 - (2.0 / (log10(aLuma + 1.0) + 2.0));
     float aExposure = aKeyValue / aLuma;
     float oColor = tex2D(s_pframe, input.uv).w;
-    return sqrt(oColor * aExposure);
+    oColor = sqrt(oColor * aExposure);
+    return max(sqrt(oColor), 1e-5);
 }
 
 float4 ps_flow(v2f input) : SV_Target
@@ -228,6 +228,7 @@ technique cMotionBlur
         VertexShader = vs_common;
         PixelShader = ps_source;
         RenderTarget0 = r_buffer;
+        SRGBWriteEnable = TRUE;
     }
 
     pass cCopyPrevious
