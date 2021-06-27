@@ -108,8 +108,6 @@ float2 Vogel2D(int uIndex, int nTaps, float phi, float2 uv)
     return Radius * SineCosine.yx + uv;
 }
 
-float mod2D(float x, float y) { return x - y * floor(x / y); }
-
 float4 ps_source(v2f input) : SV_Target
 {
     const int uTaps = 4;
@@ -133,7 +131,7 @@ float4 ps_convert(v2f input) : SV_Target
     output.xy = tex2D(s_cflow, input.uv).rg; // Copy optical flow from previous ps_flow()
     output.z  = tex2D(s_cframe, input.uv).r; // Copy exposed frame from previous ps_filter()
     float uImage = tex2D(s_buffer, input.uv).r; // Input downsampled current frame to scale and mip
-    output.w  = max(uImage * uImage, 1e-5);
+    output.w = max(uImage * uImage, 1e-5);
     return output;
 }
 
