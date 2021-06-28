@@ -47,15 +47,15 @@ uOption(uDebug,  bool,  "radio",  "Advanced", "Debug",       false, 0, 0);
 
 texture2D r_color  : COLOR;
 texture2D r_buffer { Width = DSIZE.x; Height = DSIZE.y; MipLevels = RSIZE; Format = RGBA8; };
-texture2D r_pframe { Width = 64; Height = 64; Format = RGBA16F; MipLevels = 7; };
-texture2D r_cflow  { Width = 64; Height = 64; Format = RG16F;   MipLevels = 7; };
+texture2D r_cflow  { Width = 64; Height = 64; Format = RG16F; MipLevels = 7; };
 texture2D r_cframe { Width = 64; Height = 64; Format = R16F; };
+texture2D r_pframe { Width = 64; Height = 64; Format = RGBA16F; };
 
 sampler2D s_color  { Texture = r_color;  SRGBTexture = TRUE; };
 sampler2D s_buffer { Texture = r_buffer; SRGBTexture = TRUE; MipLODBias = PREFILTER_BIAS; };
-sampler2D s_pframe { Texture = r_pframe; };
 sampler2D s_cflow  { Texture = r_cflow;  };
 sampler2D s_cframe { Texture = r_cframe; };
+sampler2D s_pframe { Texture = r_pframe; };
 
 /* [ Vertex Shaders ] */
 
@@ -80,7 +80,6 @@ v2f vs_common(const uint id : SV_VertexID)
     Blur Average - [https://blog.demofox.org/2016/08/23/incremental-averaging/]
     Blur Center  - [http://john-chapman-graphics.blogspot.com/2013/01/per-object-motion-blur.html]
     Disk Kernels - [http://blog.marmakoide.org/?p=1.]
-    Exposure     - [https://knarkowicz.wordpress.com/2016/01/09/automatic-exposure/]
     Noise        - [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
     Optical Flow - [https://dspace.mit.edu/handle/1721.1/6337]
     Pi Constant  - [https://github.com/microsoft/DirectX-Graphics-Samples] [MIT]
@@ -136,11 +135,7 @@ float4 ps_convert(v2f input) : SV_Target
 
 float4 ps_filter(v2f input) : SV_Target
 {
-    float aLuma = tex2Dlod(s_pframe, float4(input.uv, 0.0, 64.0)).w;
-    float aKeyValue = 1.03 - (2.0 / (log10(aLuma + 1.0) + 2.0));
-    float aExposure = aKeyValue / aLuma;
     float oColor = tex2D(s_pframe, input.uv).w;
-    oColor = sqrt(oColor * aExposure);
     return max(sqrt(oColor), 1e-5);
 }
 
@@ -150,9 +145,9 @@ float4 ps_flow(v2f input) : SV_Target
     float cLuma = tex2D(s_cframe, input.uv).r;
 
     // Calculate optical flow
-    float dt = cLuma - pLuma;
     float2 dFdp = float2(ddx(pLuma), ddy(pLuma));
     float2 dFdc = float2(ddx(cLuma), ddy(cLuma));
+    float dt = cLuma - pLuma;
     float p = dot(dFdp, dFdc) + dt;
     float d = dot(dFdp, dFdp) + 1e-5;
     float2 cFlow = dFdc - ((dFdp * p) / d);
