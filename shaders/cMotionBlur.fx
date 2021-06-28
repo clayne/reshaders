@@ -147,8 +147,7 @@ float4 ps_flow(v2f input) : SV_Target
     float2 dFdc = float2(ddx(cLuma), ddy(cLuma));
     float2 dFdp = float2(ddx(pLuma), ddy(pLuma));
     float dt = cLuma - pLuma;
-    float dMag  = dot(dFdp, dFdc) + dt;
-          dMag /= dot(dFdp, dFdp) + 1e-5;
+    float dMag = (dot(dFdp, dFdc) + dt) / (dot(dFdp, dFdp) + 1e-5);
     float2 cFlow = dFdc - dFdp * dMag;
 
     // Threshold and normalize
