@@ -150,7 +150,7 @@ float4 ps_flow(v2f input) : SV_Target
     float dt = cLuma - pLuma;
     float p = dot(dFdp, dFdc) + dt;
     float d = dot(dFdp, dFdp) + 1e-5;
-    float2 cFlow = dFdc - ((dFdp * p) / d);
+    float2 cFlow = dFdc - dFdp * (p / d);
 
     // Threshold and normalize
     float pFlow = sqrt(dot(cFlow, cFlow) + 1e-5);
