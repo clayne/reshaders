@@ -85,7 +85,6 @@ v2f vs_common(const uint id : SV_VertexID)
 static const float pi = 3.1415926535897932384626433832795;
 static const float tpi = pi * 2.0;
 
-
 float2 Vogel2D(int uIndex, int nTaps, float2 uv)
 {
     const float2 Size = exp2(-5.0) * uRadius;
