@@ -19,10 +19,6 @@ uOption(uSmooth, float, "slider", "Advanced", "Flow Smooth", 0.250, 0.000, 0.500
 uOption(uDetail, int,   "slider", "Advanced", "Flow Mip",    3, 0, 6);
 uOption(uDebug,  bool,  "radio",  "Advanced", "Debug",       false, 0, 0);
 
-#ifndef PREFILTER_BIAS
-    #define PREFILTER_BIAS 0.0
-#endif
-
 /*
     Round to nearest power of 2
     Help from Lord of Lunacy, KingEric1992, and Marty McFly
@@ -49,7 +45,7 @@ texture2D r_color  : COLOR;
 texture2D r_buffer { Width = DSIZE.x; Height = DSIZE.y; MipLevels = RSIZE; Format = R8; };
 texture2D r_cflow  { Width = 64; Height = 64; Format = RG32F; MipLevels = 7; };
 texture2D r_cframe { Width = 64; Height = 64; Format = R32F; };
-texture2D r_pframe { Width = 64; Height = 64; Format = RGBA32F; MipLevels = 7; };
+texture2D r_pframe { Width = 64; Height = 64; Format = RGBA32F; };
 
 sampler2D s_color  { Texture = r_color;  SRGBTexture = TRUE; };
 sampler2D s_buffer { Texture = r_buffer; };
