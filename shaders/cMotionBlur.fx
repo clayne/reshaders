@@ -11,9 +11,9 @@
         ui_type = utype; ui_min = umin; ui_max = umax;                          \
         > = uvalue
 
-uOption(uThreshold, float, "slider", "Basic",    "Threshold",   0.010, 0.000, 1.000);
+uOption(uThreshold, float, "slider", "Basic",    "Threshold",   0.000, 0.000, 1.000);
 uOption(uScale,     float, "slider", "Basic",    "Scale",       1.000, 0.000, 2.000);
-uOption(uRadius,    float, "slider", "Basic",    "Prefilter",   64.00, 0.000, 256.00);
+uOption(uRadius,    float, "slider", "Basic",    "Prefilter",   32.00, 0.000, 64.00);
 
 uOption(uSmooth, float, "slider", "Advanced", "Flow Smooth", 0.250, 0.000, 0.500);
 uOption(uDetail, int,   "slider", "Advanced", "Flow Mip",    3, 0, 6);
@@ -48,7 +48,7 @@ uOption(uDebug,  bool,  "radio",  "Advanced", "Debug",       false, 0, 0);
 texture2D r_color  : COLOR;
 texture2D r_buffer { Width = DSIZE.x; Height = DSIZE.y; MipLevels = RSIZE; Format = RGBA8; };
 texture2D r_cflow  { Width = 64; Height = 64; Format = RG32F; MipLevels = 7; };
-texture2D r_cframe { Width = 64; Height = 64; Format = R32F;    };
+texture2D r_cframe { Width = 64; Height = 64; Format = R32F; };
 texture2D r_pframe { Width = 64; Height = 64; Format = RGBA32F; };
 
 sampler2D s_color  { Texture = r_color;  SRGBTexture = TRUE; };
@@ -224,7 +224,7 @@ technique cMotionBlur
         SRGBWriteEnable = TRUE;
     }
 
-    pass cCopyAndScale
+    pass cCopyPrevious
     {
         VertexShader = vs_common;
         PixelShader = ps_convert;
