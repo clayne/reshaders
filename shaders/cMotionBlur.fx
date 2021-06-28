@@ -129,14 +129,14 @@ float4 ps_convert(v2f input) : SV_Target
     output.xy = tex2D(s_cflow, input.uv).rg; // Copy optical flow from previous ps_flow()
     output.z  = tex2D(s_cframe, input.uv).r; // Copy exposed frame from previous ps_filter()
     float4 uImage = tex2D(s_buffer, input.uv); // Input downsampled current frame to scale and mip
-    output.w = max(max(uImage.r, uImage.g), uImage.b);
+    output.w = sqrt(max(max(uImage.r, uImage.g), uImage.b));
     return output;
 }
 
 float4 ps_filter(v2f input) : SV_Target
 {
     float oColor = tex2D(s_pframe, input.uv).w;
-    return max(sqrt(oColor), 1e-5);
+    return max(oColor, 1e-5);
 }
 
 float4 ps_flow(v2f input) : SV_Target
