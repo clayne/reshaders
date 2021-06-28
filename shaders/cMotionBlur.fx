@@ -89,11 +89,6 @@ v2f vs_common(const uint id : SV_VertexID)
 static const float pi = 3.1415926535897932384626433832795;
 static const float tpi = pi * 2.0;
 
-float nrand(float2 n)
-{
-    const float3 value = float3(52.9829189, 0.06711056, 0.00583715);
-    return frac(value.x * frac(dot(n.xy, value.yz)));
-}
 
 float2 Vogel2D(int uIndex, int nTaps, float2 uv)
 {
@@ -116,7 +111,6 @@ float4 ps_source(v2f input) : SV_Target
 
 float4 ps_convert(v2f input) : SV_Target
 {
-
     float4 uImage;
     const int uTaps = 32;
 
@@ -177,9 +171,11 @@ float4 calcweights(float s)
 
 float4 flow2D(v2f input, float2 flow, float i)
 {
+    const float3 value = float3(52.9829189, 0.06711056, 0.00583715);
+    float noise = frac(value.x * frac(dot(input.vpos.xy, value.yz)));
     const float2 pSize = tex2Dsize(s_cflow, 0.0);
     flow /= pSize;
-    float noise = nrand(input.vpos.xy);
+
     const float samples = 1.0 / (16.0 - 1.0);
     float2 calc = (noise * 2.0 + i) * samples - 0.5;
     return tex2D(s_color, (uScale * flow) * calc + input.uv);
