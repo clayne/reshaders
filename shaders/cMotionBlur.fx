@@ -52,7 +52,7 @@ texture2D r_cframe { Width = 64; Height = 64; Format = R16F; };
 texture2D r_pframe { Width = 64; Height = 64; Format = RGBA16F; };
 
 sampler2D s_color  { Texture = r_color;  SRGBTexture = TRUE; };
-sampler2D s_buffer { Texture = r_buffer; SRGBTexture = TRUE; MipLODBias = PREFILTER_BIAS; };
+sampler2D s_buffer { Texture = r_buffer; MipLODBias = PREFILTER_BIAS; };
 sampler2D s_cflow  { Texture = r_cflow;  };
 sampler2D s_cframe { Texture = r_cframe; };
 sampler2D s_pframe { Texture = r_pframe; };
@@ -129,7 +129,7 @@ float4 ps_convert(v2f input) : SV_Target
     output.xy = tex2D(s_cflow, input.uv).rg; // Copy optical flow from previous ps_flow()
     output.z  = tex2D(s_cframe, input.uv).r; // Copy exposed frame from previous ps_filter()
     float4 uImage = tex2D(s_buffer, input.uv); // Input downsampled current frame to scale and mip
-    output.w = sqrt(max(max(uImage.r, uImage.g), uImage.b));
+    output.w = max(max(uImage.r, uImage.g), uImage.b);
     return output;
 }
 
