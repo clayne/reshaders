@@ -141,16 +141,15 @@ float4 ps_filter(v2f input) : SV_Target
 
 float4 ps_flow(v2f input) : SV_Target
 {
-    float pLuma = tex2D(s_pframe, input.uv).z;
-    float cLuma = tex2D(s_cframe, input.uv).r;
-
     // Calculate optical flow
-    float2 dFdp = float2(ddx(pLuma), ddy(pLuma));
+    float cLuma = tex2D(s_cframe, input.uv).r;
+    float pLuma = tex2D(s_pframe, input.uv).z;
     float2 dFdc = float2(ddx(cLuma), ddy(cLuma));
+    float2 dFdp = float2(ddx(pLuma), ddy(pLuma));
     float dt = cLuma - pLuma;
-    float p = dot(dFdp, dFdc) + dt;
-    float d = dot(dFdp, dFdp) + 1e-5;
-    float2 cFlow = dFdc - dFdp * (p / d);
+    float dMag  = dot(dFdp, dFdc) + dt;
+          dMag /= dot(dFdp, dFdp) + 1e-5;
+    float2 cFlow = dFdc - dFdp * dMag;
 
     // Threshold and normalize
     float pFlow = sqrt(dot(cFlow, cFlow) + 1e-5);
