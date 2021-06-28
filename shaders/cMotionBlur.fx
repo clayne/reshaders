@@ -47,12 +47,12 @@ uOption(uDebug,  bool,  "radio",  "Advanced", "Debug",       false, 0, 0);
 
 texture2D r_color  : COLOR;
 texture2D r_buffer { Width = DSIZE.x; Height = DSIZE.y; MipLevels = RSIZE; Format = RGBA8; };
-texture2D r_cflow  { Width = 64; Height = 64; Format = RG16F; MipLevels = 7; };
-texture2D r_cframe { Width = 64; Height = 64; Format = R16F; };
-texture2D r_pframe { Width = 64; Height = 64; Format = RGBA16F; };
+texture2D r_cflow  { Width = 64; Height = 64; Format = RG32F; MipLevels = 7; };
+texture2D r_cframe { Width = 64; Height = 64; Format = R32F;    };
+texture2D r_pframe { Width = 64; Height = 64; Format = RGBA32F; };
 
 sampler2D s_color  { Texture = r_color;  SRGBTexture = TRUE; };
-sampler2D s_buffer { Texture = r_buffer; MipLODBias = PREFILTER_BIAS; };
+sampler2D s_buffer { Texture = r_buffer; SRGBTexture = TRUE; MipLODBias = PREFILTER_BIAS; };
 sampler2D s_cflow  { Texture = r_cflow;  };
 sampler2D s_cframe { Texture = r_cframe; };
 sampler2D s_pframe { Texture = r_pframe; };
@@ -133,10 +133,10 @@ float4 ps_convert(v2f input) : SV_Target
     return output;
 }
 
-float4 ps_filter(v2f input) : SV_Target
+float4 ps_copy(v2f input) : SV_Target
 {
     float oColor = tex2D(s_pframe, input.uv).w;
-    return max(oColor, 1e-5);
+    return max(sqrt(abs(oColor)), 1e-5);
 }
 
 float4 ps_flow(v2f input) : SV_Target
@@ -224,17 +224,17 @@ technique cMotionBlur
         SRGBWriteEnable = TRUE;
     }
 
-    pass cCopyPrevious
+    pass cCopyAndScale
     {
         VertexShader = vs_common;
         PixelShader = ps_convert;
         RenderTarget0 = r_pframe;
     }
 
-    pass cAutoExposure
+    pass cCopyFrame
     {
         VertexShader = vs_common;
-        PixelShader = ps_filter;
+        PixelShader = ps_copy;
         RenderTarget0 = r_cframe;
     }
 
