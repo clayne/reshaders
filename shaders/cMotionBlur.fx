@@ -47,7 +47,7 @@ texture2D r_cflow  { Width = 64; Height = 64; Format = RG32F; MipLevels = 7; };
 texture2D r_cframe { Width = 64; Height = 64; Format = R32F; };
 texture2D r_pframe { Width = 64; Height = 64; Format = RGBA32F; };
 
-sampler2D s_color  { Texture = r_color;  SRGBTexture = TRUE; };
+sampler2D s_color  { Texture = r_color; SRGBTexture = TRUE; };
 sampler2D s_buffer { Texture = r_buffer; };
 sampler2D s_cflow  { Texture = r_cflow;  };
 sampler2D s_cframe { Texture = r_cframe; };
@@ -106,21 +106,21 @@ float4 ps_source(v2f input) : SV_Target
 
 float4 ps_convert(v2f input) : SV_Target
 {
-    float4 uImage;
+    float uImage;
     const int uTaps = 32;
 
     [unroll]
     for (int i = 0; i < uTaps; i++)
     {
         float2 uv = Vogel2D(i, uTaps, input.uv);
-        float4 uColor = tex2D(s_buffer, uv);
+        float uColor = tex2D(s_buffer, uv).r;
         uImage = lerp(uImage, uColor, rcp(i + 1));
     }
 
     float4 output;
     output.xy = tex2D(s_cflow, input.uv).rg; // Copy optical flow from previous ps_flow()
     output.z  = tex2D(s_cframe, input.uv).r; // Copy exposed frame from previous ps_filter()
-    output.w  = uImage.r; // Input downsampled current frame to scale and mip
+    output.w  = uImage; // Input downsampled current frame to scale and mip
     return output;
 }
 
