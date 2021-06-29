@@ -11,9 +11,9 @@
         ui_type = utype; ui_min = umin; ui_max = umax;                          \
         > = uvalue
 
-uOption(uThreshold, float, "slider", "Basic",    "Threshold",   0.000, 0.000, 1.000);
-uOption(uScale,     float, "slider", "Basic",    "Scale",       1.000, 0.000, 2.000);
-uOption(uRadius,    float, "slider", "Basic",    "Prefilter",   2.000, 0.000, 4.000);
+uOption(uThreshold, float, "slider", "Basic", "Threshold", 0.000, 0.000, 1.000);
+uOption(uScale,     float, "slider", "Basic", "Scale",     1.000, 0.000, 2.000);
+uOption(uRadius,    float, "slider", "Basic", "Prefilter", 2.000, 0.000, 4.000);
 
 uOption(uSmooth, float, "slider", "Advanced", "Flow Smooth", 0.250, 0.000, 0.500);
 uOption(uDetail, int,   "slider", "Advanced", "Flow Mip",    3, 0, 6);
@@ -38,8 +38,8 @@ uOption(uDebug,  bool,  "radio",  "Advanced", "Debug",       false, 0, 0);
 #define LOG2(x)       (CONST_LOG2((BIT16_LOG2(x) >> 1) + 1))
 #define RMAX(x, y)     x ^ ((x ^ y) & -(x < y)) // max(x, y)
 
-#define DSIZE      uint2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2)
-#define RSIZE      LOG2(RMAX(DSIZE.x, DSIZE.y)) + 1
+#define DSIZE uint2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2)
+#define RSIZE LOG2(RMAX(DSIZE.x, DSIZE.y)) + 1
 
 texture2D r_color  : COLOR;
 texture2D r_buffer { Width = DSIZE.x; Height = DSIZE.y; MipLevels = RSIZE; Format = R8; };
