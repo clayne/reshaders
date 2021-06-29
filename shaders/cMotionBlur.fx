@@ -1,8 +1,13 @@
 
 /*
     Optical flow motion blur using color by Brimson
-    Special Thanks to MartinBFFan and Pao on Discord for reporting bugs
-    And BSD for bug propaganda and helping to solve my issue
+    Special Thanks to
+    - MartinBFFan and Pao on Discord for reporting bugs
+    - BSD for bug propaganda and helping to solve my issue
+    - Lord of Lunacy, KingEric1992, and Marty McFly for power of 2 function
+
+    Notes:  Blurred previous + current frames must be 32Float textures.
+            This makes the optical flow not suffer from noise + banding
 */
 
 #define uOption(option, udata, utype, ucategory, ulabel, uvalue, umin, umax)    \
@@ -18,11 +23,6 @@ uOption(uRadius,    float, "slider", "Basic", "Prefilter", 4.000, 0.000, 8.000);
 uOption(uSmooth, float, "slider", "Advanced", "Flow Smooth", 0.250, 0.000, 0.500);
 uOption(uDetail, int,   "slider", "Advanced", "Flow Mip",    3, 0, 6);
 uOption(uDebug,  bool,  "radio",  "Advanced", "Debug",       false, 0, 0);
-
-/*
-    Round to nearest power of 2
-    Help from Lord of Lunacy, KingEric1992, and Marty McFly
-*/
 
 #define CONST_LOG2(x) (\
     (uint((x)  & 0xAAAAAAAA) != 0) | \
