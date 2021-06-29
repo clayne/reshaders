@@ -13,7 +13,7 @@
 
 uOption(uThreshold, float, "slider", "Basic", "Threshold", 0.000, 0.000, 1.000);
 uOption(uScale,     float, "slider", "Basic", "Scale",     1.000, 0.000, 2.000);
-uOption(uRadius,    float, "slider", "Basic", "Prefilter", 2.000, 0.000, 4.000);
+uOption(uRadius,    float, "slider", "Basic", "Prefilter", 4.000, 0.000, 8.000);
 
 uOption(uSmooth, float, "slider", "Advanced", "Flow Smooth", 0.250, 0.000, 0.500);
 uOption(uDetail, int,   "slider", "Advanced", "Flow Mip",    3, 0, 6);
@@ -87,7 +87,7 @@ static const float tpi = pi * 2.0;
 
 float2 Vogel2D(int uIndex, int nTaps, float2 uv)
 {
-    const float2 Size = exp2(-5.0) * uRadius;
+    const float2 Size = rcp(tex2Dsize(s_cframe, 0.0)) * uRadius;
     const float  GoldenAngle = pi * (3.0 - sqrt(5.0));
     const float2 Radius = (sqrt(uIndex + 0.5f) / sqrt(nTaps)) * Size;
     const float  Theta = uIndex * GoldenAngle;
@@ -107,7 +107,7 @@ float4 ps_source(v2f input) : SV_Target
 float4 ps_convert(v2f input) : SV_Target
 {
     float uImage;
-    const int uTaps = 32;
+    const int uTaps = 64;
 
     [unroll]
     for (int i = 0; i < uTaps; i++)
