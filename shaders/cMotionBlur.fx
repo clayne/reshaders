@@ -107,7 +107,7 @@ float4 ps_source(v2f input) : SV_Target
 float4 ps_convert(v2f input) : SV_Target
 {
     float uImage;
-    const int uTaps = 64;
+    const int uTaps = 16;
 
     [unroll]
     for (int i = 0; i < uTaps; i++)
@@ -126,8 +126,18 @@ float4 ps_convert(v2f input) : SV_Target
 
 float4 ps_copy(v2f input) : SV_Target
 {
-    float oColor = tex2D(s_pframe, input.uv).w;
-    return max(abs(oColor), 1e-5);
+    float uImage;
+    const int uTaps = 16;
+
+    [unroll]
+    for (int i = 0; i < uTaps; i++)
+    {
+        float2 uv = Vogel2D(i, uTaps, input.uv);
+        float uColor = tex2D(s_pframe, uv).w;
+        uImage = lerp(uImage, uColor, rcp(i + 1));
+    }
+
+    return max(abs(uImage), 1e-5);
 }
 
 float4 ps_flow(v2f input) : SV_Target
