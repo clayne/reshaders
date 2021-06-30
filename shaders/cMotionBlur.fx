@@ -122,7 +122,7 @@ float4 ps_convert(v2f input) : SV_Target
     return output;
 }
 
-float4 ps_copy(v2f input) : SV_Target
+float4 ps_filter(v2f input) : SV_Target
 {
     float uImage;
     const int uTaps = 16;
@@ -231,10 +231,10 @@ technique cMotionBlur
         RenderTarget0 = r_pframe;
     }
 
-    pass cCopyFrame
+    pass cBlurCopyFrame
     {
         VertexShader = vs_common;
-        PixelShader = ps_copy;
+        PixelShader = ps_filter;
         RenderTarget0 = r_cframe;
     }
 
