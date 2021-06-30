@@ -82,6 +82,13 @@ v2f vs_common(const uint id : SV_VertexID)
     Threshold    - [https://github.com/diwi/PixelFlow] [MIT]
 */
 
+float4 ps_source(v2f input) : SV_Target
+{
+    float4 uImage = tex2D(s_color, input.uv);
+    float uLuma = max(max(uImage.r, uImage.g), uImage.b);
+    return exp2(log2(uLuma) * rcp(2.2));
+}
+
 float2 Vogel2D(int uIndex, int nTaps, float2 uv)
 {
     const float  Pi = 3.1415926535897932384626433832795;
@@ -93,13 +100,6 @@ float2 Vogel2D(int uIndex, int nTaps, float2 uv)
     float2 SineCosine;
     sincos(Theta, SineCosine.x, SineCosine.y);
     return Radius * SineCosine.yx + uv;
-}
-
-float4 ps_source(v2f input) : SV_Target
-{
-    float4 uImage = tex2D(s_color, input.uv);
-    float uLuma = max(max(uImage.r, uImage.g), uImage.b);
-    return exp2(log2(uLuma) * rcp(2.2));
 }
 
 float4 ps_convert(v2f input) : SV_Target
@@ -116,8 +116,8 @@ float4 ps_convert(v2f input) : SV_Target
     }
 
     float4 output;
-    output.xy = tex2D(s_cflow, input.uv).rg; // Copy optical flow from previous ps_flow()
-    output.z  = tex2D(s_cframe, input.uv).r; // Copy exposed frame from previous ps_filter()
+    output.xy = tex2D(s_cflow, input.uv).rg; // Copy previous rendertarget from ps_flow()
+    output.z  = tex2D(s_cframe, input.uv).r; // Copy previous rendertarget from ps_filter()
     output.w  = uImage; // Input downsampled current frame to scale and mip
     return output;
 }
