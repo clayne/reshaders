@@ -150,9 +150,11 @@ float4 ps_flow(v2f input) : SV_Target
     float2 cFlow = dFdc - dFdp * dMag;
 
     // Threshold and normalize
+    const float2 pSize = tex2Dsize(s_cflow, 0.0);
     float pFlow = sqrt(dot(cFlow, cFlow) + 1e-5);
     float nFlow = max(pFlow - uThreshold, 0.0);
     cFlow *= nFlow / pFlow;
+    cFlow /= pSize;
 
     // Smooth optical flow
     float2 sFlow = tex2D(s_pframe, input.uv).xy;
@@ -176,9 +178,6 @@ float4 flow2D(v2f input, float2 flow, float i)
 {
     const float3 value = float3(52.9829189, 0.06711056, 0.00583715);
     float noise = frac(value.x * frac(dot(input.vpos.xy, value.yz)));
-    const float2 pSize = tex2Dsize(s_cflow, 0.0);
-    flow /= pSize;
-
     const float samples = 1.0 / (16.0 - 1.0);
     float2 calc = (noise * 2.0 + i) * samples - 0.5;
     return tex2D(s_color, (uScale * flow) * calc + input.uv);
