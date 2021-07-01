@@ -81,6 +81,9 @@ v2f vs_common(const uint id : SV_VertexID)
     Threshold    - [https://github.com/diwi/PixelFlow] [MIT]
 */
 
+static const float Pi = 3.1415926535897f;
+static const float ImageSize = 64.0;
+
 float4 ps_source(v2f input) : SV_Target
 {
     float4 uImage = tex2D(s_color, input.uv);
@@ -90,8 +93,7 @@ float4 ps_source(v2f input) : SV_Target
 
 float2 Vogel2D(int uIndex, int nTaps, float2 uv)
 {
-    const float  Pi = 3.1415926535897f;
-    const float2 Size = rcp(64.0) * uRadius;
+    const float2 Size = rcp(ImageSize) * uRadius;
     const float  GoldenAngle = Pi * (3.0 - sqrt(5.0));
     const float2 Radius = (sqrt(uIndex + 0.5f) / sqrt(nTaps)) * Size;
     const float  Theta = uIndex * GoldenAngle;
@@ -172,21 +174,9 @@ float4 calcweights(float s)
     return t;
 }
 
-float4 flow2D(v2f input, float2 flow, float i)
-{
-    const float3 value = float3(52.9829189, 0.06711056, 0.00583715);
-    float noise = frac(value.x * frac(dot(input.vpos.xy, value.yz)));
-    const float2 pSize = tex2Dsize(s_cflow, 0.0);
-    flow /= pSize;
-
-    const float samples = 1.0 / (16.0 - 1.0);
-    float2 calc = (noise * 2.0 + i) * samples - 0.5;
-    return tex2D(s_color, (uScale * flow) * calc + input.uv);
-}
-
 float4 ps_output(v2f input) : SV_Target
 {
-    const float2 texsize = ldexp(64.0, -uDetail);
+    const float2 texsize = ldexp(ImageSize, -uDetail);
     const float2 pt = 1.0 / texsize;
     float2 fcoord = frac(input.uv * texsize + 0.5);
     float4 parmx = calcweights(fcoord.x);
@@ -203,11 +193,18 @@ float4 ps_output(v2f input) : SV_Target
     float2 aa = lerp(bg, br, parmy.b);
     // x-interpolation
     float2 oFlow = lerp(aa, ab, parmx.b);
-    float4 oBlur;
+    oFlow *= rcp(uScale * ImageSize);
 
+    float4 oBlur;
+    const float3 value = float3(52.9829189, 0.06711056, 0.00583715);
+    float noise = frac(value.x * frac(dot(input.vpos.xy, value.yz))) * 2.0;
+    const float samples = 1.0 / (16.0 - 1.0);
+
+    [unroll]
     for(int i = 0; i < 9; i++)
     {
-        float4 uColor = flow2D(input, oFlow, float(i * 2));
+        float2 calc = (noise + i * 2.0) * samples - 0.5;
+        float4 uColor = tex2D(s_color, oFlow * calc + input.uv);
         oBlur = lerp(oBlur, uColor, rcp(i + 1));
     }
 
