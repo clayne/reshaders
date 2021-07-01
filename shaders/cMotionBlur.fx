@@ -82,6 +82,7 @@ v2f vs_common(const uint id : SV_VertexID)
 */
 
 static const float Pi = 3.1415926535897f;
+static const float Epsilon = 1.192092896e-07f;
 static const float ImageSize = 64.0;
 static const int uTaps = 16;
 
@@ -147,11 +148,11 @@ float4 ps_flow(v2f input) : SV_Target
     float2 dFdp = float2(ddx(pLuma), ddy(pLuma));
     float dt = cLuma - pLuma;
     float dConstraint = dot(dFdp, dFdc) + dt;
-    float dSmoothness = dot(dFdp, dFdp) + 1e-5;
+    float dSmoothness = dot(dFdp, dFdp) + Epsilon;
     float2 cFlow = dFdc - dFdp * (dConstraint / dSmoothness);
 
     // Threshold and normalize
-    float pFlow = sqrt(dot(cFlow, cFlow) + 1e-5);
+    float pFlow = sqrt(dot(cFlow, cFlow) + Epsilon);
     float nFlow = max(pFlow - uThreshold, 0.0);
     cFlow *= nFlow / pFlow;
 
