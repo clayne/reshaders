@@ -83,6 +83,7 @@ v2f vs_common(const uint id : SV_VertexID)
 
 static const float Pi = 3.1415926535897f;
 static const float ImageSize = 64.0;
+static const int uTaps = 16;
 
 float4 ps_source(v2f input) : SV_Target
 {
@@ -91,11 +92,11 @@ float4 ps_source(v2f input) : SV_Target
     return exp2(log2(uLuma) * rcp(2.2));
 }
 
-float2 Vogel2D(int uIndex, int nTaps, float2 uv)
+float2 Vogel2D(int uIndex, float2 uv)
 {
     const float2 Size = rcp(ImageSize) * uRadius;
     const float  GoldenAngle = Pi * (3.0 - sqrt(5.0));
-    const float2 Radius = (sqrt(uIndex + 0.5f) / sqrt(nTaps)) * Size;
+    const float2 Radius = (sqrt(uIndex + 0.5f) / sqrt(uTaps)) * Size;
     const float  Theta = uIndex * GoldenAngle;
 
     float2 SineCosine;
@@ -106,12 +107,11 @@ float2 Vogel2D(int uIndex, int nTaps, float2 uv)
 float4 ps_convert(v2f input) : SV_Target
 {
     float uImage;
-    const int uTaps = 16;
 
     [unroll]
     for (int i = 0; i < uTaps; i++)
     {
-        float2 uv = Vogel2D(i, uTaps, input.uv);
+        float2 uv = Vogel2D(i, input.uv);
         float uColor = tex2D(s_buffer, uv).r;
         uImage = lerp(uImage, uColor, rcp(i + 1));
     }
@@ -126,12 +126,11 @@ float4 ps_convert(v2f input) : SV_Target
 float4 ps_filter(v2f input) : SV_Target
 {
     float uImage;
-    const int uTaps = 16;
 
     [unroll]
     for (int i = 0; i < uTaps; i++)
     {
-        float2 uv = Vogel2D(i, uTaps, input.uv);
+        float2 uv = Vogel2D(i, input.uv);
         float uColor = tex2D(s_pframe, uv).w;
         uImage = lerp(uImage, uColor, rcp(i + 1));
     }
