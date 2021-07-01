@@ -91,7 +91,7 @@ float4 ps_source(v2f input) : SV_Target
 float2 Vogel2D(int uIndex, int nTaps, float2 uv)
 {
     const float  Pi = 3.1415926535897f;
-    const float2 Size = rcp(tex2Dsize(s_cframe, 0.0)) * uRadius;
+    const float2 Size = rcp(64.0) * uRadius;
     const float  GoldenAngle = Pi * (3.0 - sqrt(5.0));
     const float2 Radius = (sqrt(uIndex + 0.5f) / sqrt(nTaps)) * Size;
     const float  Theta = uIndex * GoldenAngle;
@@ -186,7 +186,7 @@ float4 flow2D(v2f input, float2 flow, float i)
 
 float4 ps_output(v2f input) : SV_Target
 {
-    const float2 texsize = tex2Dsize(s_cflow, uDetail);
+    const float2 texsize = ldexp(64.0, -uDetail);
     const float2 pt = 1.0 / texsize;
     float2 fcoord = frac(input.uv * texsize + 0.5);
     float4 parmx = calcweights(fcoord.x);
