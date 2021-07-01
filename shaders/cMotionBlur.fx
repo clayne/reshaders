@@ -72,13 +72,12 @@ v2f vs_common(const uint id : SV_VertexID)
 
 /*
     [ Pixel Shaders ]
-    Cubic Filter - [https://github.com/haasn/libplacebo/blob/master/src/shaders/sampling.c] [GPL 2.1]
     Blur Average - [https://blog.demofox.org/2016/08/23/incremental-averaging/]
     Blur Center  - [http://john-chapman-graphics.blogspot.com/2013/01/per-object-motion-blur.html]
     Disk Kernels - [http://blog.marmakoide.org/?p=1.]
     Noise        - [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
     Optical Flow - [https://dspace.mit.edu/handle/1721.1/6337]
-    Pi Constant  - [https://github.com/microsoft/DirectX-Graphics-Samples] [MIT]
+    Pi & Epsilon - [https://github.com/microsoft/DirectX-Graphics-Samples] [MIT]
     Threshold    - [https://github.com/diwi/PixelFlow] [MIT]
 */
 
@@ -91,7 +90,7 @@ float4 ps_source(v2f input) : SV_Target
 
 float2 Vogel2D(int uIndex, int nTaps, float2 uv)
 {
-    const float  Pi = 3.1415926535897932384626433832795;
+    const float  Pi = 3.1415926535897f;
     const float2 Size = rcp(tex2Dsize(s_cframe, 0.0)) * uRadius;
     const float  GoldenAngle = Pi * (3.0 - sqrt(5.0));
     const float2 Radius = (sqrt(uIndex + 0.5f) / sqrt(nTaps)) * Size;
@@ -146,15 +145,14 @@ float4 ps_flow(v2f input) : SV_Target
     float2 dFdc = float2(ddx(cLuma), ddy(cLuma));
     float2 dFdp = float2(ddx(pLuma), ddy(pLuma));
     float dt = cLuma - pLuma;
-    float dMag = (dot(dFdp, dFdc) + dt) / (dot(dFdp, dFdp) + 1e-5);
-    float2 cFlow = dFdc - dFdp * dMag;
+    float dConstraint = dot(dFdp, dFdc) + dt;
+    float dSmoothness = dot(dFdp, dFdp) + 1e-5;
+    float2 cFlow = dFdc - dFdp * (dConstraint / dSmoothness);
 
     // Threshold and normalize
-    const float2 pSize = tex2Dsize(s_cflow, 0.0);
     float pFlow = sqrt(dot(cFlow, cFlow) + 1e-5);
     float nFlow = max(pFlow - uThreshold, 0.0);
     cFlow *= nFlow / pFlow;
-    cFlow /= pSize;
 
     // Smooth optical flow
     float2 sFlow = tex2D(s_pframe, input.uv).xy;
@@ -178,6 +176,9 @@ float4 flow2D(v2f input, float2 flow, float i)
 {
     const float3 value = float3(52.9829189, 0.06711056, 0.00583715);
     float noise = frac(value.x * frac(dot(input.vpos.xy, value.yz)));
+    const float2 pSize = tex2Dsize(s_cflow, 0.0);
+    flow /= pSize;
+
     const float samples = 1.0 / (16.0 - 1.0);
     float2 calc = (noise * 2.0 + i) * samples - 0.5;
     return tex2D(s_color, (uScale * flow) * calc + input.uv);
@@ -204,7 +205,6 @@ float4 ps_output(v2f input) : SV_Target
     float2 oFlow = lerp(aa, ab, parmx.b);
     float4 oBlur;
 
-    [unroll]
     for(int i = 0; i < 9; i++)
     {
         float4 uColor = flow2D(input, oFlow, float(i * 2));
