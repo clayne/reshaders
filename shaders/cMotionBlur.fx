@@ -21,7 +21,7 @@ uOption(uScale,     float, "slider", "Basic", "Scale",     1.000, 0.000, 2.000);
 uOption(uRadius,    float, "slider", "Basic", "Prefilter", 2.000, 0.000, 4.000);
 
 uOption(uSmooth, float, "slider", "Advanced", "Flow Smooth", 0.250, 0.000, 0.500);
-uOption(uDetail, int,   "slider", "Advanced", "Flow Mip",    5, 0, 8);
+uOption(uDetail, int,   "slider", "Advanced", "Flow Mip",    4, 0, 8);
 uOption(uDebug,  bool,  "radio",  "Advanced", "Debug",       false, 0, 0);
 
 #define CONST_LOG2(x) (\
@@ -43,9 +43,9 @@ uOption(uDebug,  bool,  "radio",  "Advanced", "Debug",       false, 0, 0);
 
 texture2D r_color  : COLOR;
 texture2D r_buffer { Width = DSIZE.x; Height = DSIZE.y; MipLevels = RSIZE; Format = R8; };
-texture2D r_cflow  { Width = 64; Height = 64; Format = RG32F; MipLevels = 7; };
-texture2D r_cframe { Width = 64; Height = 64; Format = R32F; };
-texture2D r_pframe { Width = 64; Height = 64; Format = RGBA32F; };
+texture2D r_cflow  { Width = 256; Height = 256; Format = RG32F; MipLevels = 9; };
+texture2D r_cframe { Width = 256; Height = 256; Format = R32F; };
+texture2D r_pframe { Width = 256; Height = 256; Format = RGBA32F; };
 
 sampler2D s_color  { Texture = r_color; SRGBTexture = TRUE; };
 sampler2D s_buffer { Texture = r_buffer; };
@@ -83,7 +83,7 @@ v2f vs_common(const uint id : SV_VertexID)
 
 static const float Pi = 3.1415926535897f;
 static const float Epsilon = 1.192092896e-07f;
-static const float ImageSize = 64.0;
+static const float ImageSize = 256.0;
 static const int uTaps = 16;
 
 float4 ps_source(v2f input) : SV_Target
