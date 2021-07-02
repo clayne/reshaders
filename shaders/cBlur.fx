@@ -38,7 +38,7 @@ texture2D r_color : COLOR;
 texture2D r_blur { Width = DSIZE; Height = DSIZE; Format = RGBA8; MipLevels = LOG2(DSIZE) + 1; };
 
 sampler2D s_color { Texture = r_color; SRGBTexture = TRUE; };
-sampler2D s_blur  { Texture = r_blur;  SRGBTexture = TRUE; AddressU = MIRROR; AddressV = MIRROR; };
+sampler2D s_blur  { Texture = r_blur;  AddressU = MIRROR; AddressV = MIRROR; };
 
 struct v2f
 {
@@ -146,7 +146,7 @@ technique cBlur
         VertexShader = vs_common;
         PixelShader = ps_blur;
         RenderTarget = r_blur;
-        SRGBWriteEnable = TRUE;
+
     }
 
     pass

@@ -16,12 +16,12 @@
         ui_type = utype; ui_min = umin; ui_max = umax;                          \
         > = uvalue
 
-uOption(uThreshold, float, "slider", "Basic", "Threshold", 0.000, 0.000, 1.000);
+uOption(uThreshold, float, "slider", "Basic", "Threshold", 0.500, 0.000, 1.000);
 uOption(uScale,     float, "slider", "Basic", "Scale",     1.000, 0.000, 2.000);
 uOption(uRadius,    float, "slider", "Basic", "Prefilter", 2.000, 0.000, 4.000);
 
 uOption(uSmooth, float, "slider", "Advanced", "Flow Smooth", 0.250, 0.000, 0.500);
-uOption(uDetail, int,   "slider", "Advanced", "Flow Mip",    3, 0, 6);
+uOption(uDetail, int,   "slider", "Advanced", "Flow Mip",    5, 0, 8);
 uOption(uDebug,  bool,  "radio",  "Advanced", "Debug",       false, 0, 0);
 
 #define CONST_LOG2(x) (\
@@ -89,8 +89,7 @@ static const int uTaps = 16;
 float4 ps_source(v2f input) : SV_Target
 {
     float4 uImage = tex2D(s_color, input.uv);
-    float uLuma = max(max(uImage.r, uImage.g), uImage.b);
-    return exp2(log2(uLuma) * rcp(2.2));
+    return max(max(uImage.r, uImage.g), uImage.b);
 }
 
 float2 Vogel2D(int uIndex, float2 uv)
@@ -193,7 +192,7 @@ float4 ps_output(v2f input) : SV_Target
     float2 aa = lerp(bg, br, parmy.b);
     // x-interpolation
     float2 oFlow = lerp(aa, ab, parmx.b);
-    oFlow *= rcp(uScale * ImageSize);
+    oFlow /= ImageSize;
 
     float4 oBlur;
     const float3 value = float3(52.9829189, 0.06711056, 0.00583715);
