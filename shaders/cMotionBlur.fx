@@ -148,9 +148,9 @@ float4 ps_flow(v2f input) : SV_Target
     float2 dFdc = float2(ddx(cLuma), ddy(cLuma));
     float2 dFdp = float2(ddx(pLuma), ddy(pLuma));
     float dt = cLuma - pLuma;
-    float dConstraint = dot(dFdp, dFdc) + dt;
+    float dBrightness = dot(dFdp, dFdc) + dt;
     float dSmoothness = dot(dFdp, dFdp) + Epsilon;
-    float2 cFlow = dFdc - dFdp * (dConstraint / dSmoothness);
+    float2 cFlow = dFdc - dFdp * (dBrightness / dSmoothness);
 
     // Threshold and normalize
     float pFlow = sqrt(dot(cFlow, cFlow) + Epsilon);
