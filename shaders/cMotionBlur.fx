@@ -21,7 +21,7 @@ uOption(uScale,     float, "slider", "Basic", "Scale",     1.000, 0.000, 2.000);
 uOption(uRadius,    float, "slider", "Basic", "Prefilter", 4.000, 0.000, 8.000);
 
 uOption(uSmooth, float, "slider", "Advanced", "Flow Smooth", 0.250, 0.000, 0.500);
-uOption(uDetail, int,   "slider", "Advanced", "Flow Mip",    4, 0, 8);
+uOption(uDetail, int,   "slider", "Advanced", "Flow Mip",    5, 0, 8);
 uOption(uDebug,  bool,  "radio",  "Advanced", "Debug",       false, 0, 0);
 
 #define CONST_LOG2(x) (\
