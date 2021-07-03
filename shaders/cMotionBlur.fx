@@ -137,7 +137,7 @@ float4 ps_filter(v2f input) : SV_Target
         uImage = lerp(uImage, uColor, rcp(i + 1));
     }
 
-    return max(abs(uImage), 1e-5);
+    return max(sqrt(abs(uImage)), 1e-5);
 }
 
 float4 ps_flow(v2f input) : SV_Target
