@@ -106,7 +106,7 @@ float2 Vogel2D(int uIndex, float2 uv, float2 pSize)
 float4 ps_convert(v2f input) : SV_Target
 {
     const float cLOD = log2(max(DSIZE.x, DSIZE.y)) - log2(ImageSize);
-    const float2 uSize = 1.0 / ldexp(DSIZE.xy, cLOD);
+    const float2 uSize = 1.0 / ldexp(DSIZE.xy, -cLOD);
     float uImage;
 
     [unroll]
