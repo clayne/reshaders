@@ -41,11 +41,16 @@ uOption(uDebug,  bool,  "radio",  "Advanced", "Debug",       false, 0, 0);
 #define DSIZE uint2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2)
 #define RSIZE LOG2(RMAX(DSIZE.x, DSIZE.y)) + 1
 
+static const float Pi = 3.1415926535897f;
+static const float Epsilon = 1.192092896e-07f;
+static const float ImageSize = 256.0;
+static const int uTaps = 16;
+
 texture2D r_color  : COLOR;
 texture2D r_buffer { Width = DSIZE.x; Height = DSIZE.y; MipLevels = RSIZE; Format = R8; };
-texture2D r_cflow  { Width = 256; Height = 256; Format = RG32F; MipLevels = 9; };
-texture2D r_cframe { Width = 256; Height = 256; Format = R32F; };
-texture2D r_pframe { Width = 256; Height = 256; Format = RGBA32F; };
+texture2D r_cflow  { Width = ImageSize; Height = ImageSize; Format = RG32F; MipLevels = 9; };
+texture2D r_cframe { Width = ImageSize; Height = ImageSize; Format = R8; };
+texture2D r_pframe { Width = ImageSize; Height = ImageSize; Format = RGBA32F; };
 
 sampler2D s_color  { Texture = r_color; SRGBTexture = TRUE; };
 sampler2D s_buffer { Texture = r_buffer; };
@@ -81,20 +86,15 @@ v2f vs_common(const uint id : SV_VertexID)
     Threshold    - [https://github.com/diwi/PixelFlow] [MIT]
 */
 
-static const float Pi = 3.1415926535897f;
-static const float Epsilon = 1.192092896e-07f;
-static const float ImageSize = 256.0;
-static const int uTaps = 16;
-
 float4 ps_source(v2f input) : SV_Target
 {
     float4 uImage = tex2D(s_color, input.uv);
     return max(max(uImage.r, uImage.g), uImage.b);
 }
 
-float2 Vogel2D(int uIndex, float2 uv)
+float2 Vogel2D(int uIndex, float2 uv, float2 pSize)
 {
-    const float2 Size = rcp(ImageSize) * uRadius;
+    const float2 Size = pSize * uRadius;
     const float  GoldenAngle = Pi * (3.0 - sqrt(5.0));
     const float2 Radius = (sqrt(uIndex + 0.5f) / sqrt(uTaps)) * Size;
     const float  Theta = uIndex * GoldenAngle;
@@ -106,12 +106,14 @@ float2 Vogel2D(int uIndex, float2 uv)
 
 float4 ps_convert(v2f input) : SV_Target
 {
+    static const float cLOD = log2(max(DSIZE.x, DSIZE.y)) - log2(ImageSize);
+    const float2 uSize = 1.0 / tex2Dsize(s_buffer, cLOD);
     float uImage;
 
     [unroll]
     for (int i = 0; i < uTaps; i++)
     {
-        float2 uv = Vogel2D(i, input.uv);
+        float2 uv = Vogel2D(i, input.uv, uSize);
         float uColor = tex2D(s_buffer, uv).r;
         uImage = lerp(uImage, uColor, rcp(i + 1));
     }
@@ -125,12 +127,13 @@ float4 ps_convert(v2f input) : SV_Target
 
 float4 ps_filter(v2f input) : SV_Target
 {
+    const float2 uSize = 1.0 / ImageSize;
     float uImage;
 
     [unroll]
     for (int i = 0; i < uTaps; i++)
     {
-        float2 uv = Vogel2D(i, input.uv);
+        float2 uv = Vogel2D(i, input.uv, uSize);
         float uColor = tex2D(s_pframe, uv).w;
         uImage = lerp(uImage, uColor, rcp(i + 1));
     }
