@@ -8,6 +8,14 @@
 
     Notes:  Blurred previous + current frames must be 32Float textures.
             This makes the optical flow not suffer from noise + banding
+
+    Blur Average - [https://blog.demofox.org/2016/08/23/incremental-averaging/]
+    Blur Center  - [http://john-chapman-graphics.blogspot.com/2013/01/per-object-motion-blur.html]
+    Disk Kernels - [http://blog.marmakoide.org/?p=1.]
+    Noise        - [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
+    Optical Flow - [https://dspace.mit.edu/handle/1721.1/6337]
+    Pi & Epsilon - [https://github.com/microsoft/DirectX-Graphics-Samples] [MIT]
+    Threshold    - [https://github.com/diwi/PixelFlow] [MIT]
 */
 
 #define uOption(option, udata, utype, ucategory, ulabel, uvalue, umin, umax)    \
@@ -75,16 +83,7 @@ v2f vs_common(const uint id : SV_VertexID)
     return output;
 }
 
-/*
-    [ Pixel Shaders ]
-    Blur Average - [https://blog.demofox.org/2016/08/23/incremental-averaging/]
-    Blur Center  - [http://john-chapman-graphics.blogspot.com/2013/01/per-object-motion-blur.html]
-    Disk Kernels - [http://blog.marmakoide.org/?p=1.]
-    Noise        - [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
-    Optical Flow - [https://dspace.mit.edu/handle/1721.1/6337]
-    Pi & Epsilon - [https://github.com/microsoft/DirectX-Graphics-Samples] [MIT]
-    Threshold    - [https://github.com/diwi/PixelFlow] [MIT]
-*/
+/* [ Pixel Shaders ] */
 
 float4 ps_source(v2f input) : SV_Target
 {
@@ -106,8 +105,8 @@ float2 Vogel2D(int uIndex, float2 uv, float2 pSize)
 
 float4 ps_convert(v2f input) : SV_Target
 {
-    static const float cLOD = log2(max(DSIZE.x, DSIZE.y)) - log2(ImageSize);
-    const float2 uSize = 1.0 / tex2Dsize(s_buffer, cLOD);
+    const float cLOD = log2(max(DSIZE.x, DSIZE.y)) - log2(ImageSize);
+    const float2 uSize = 1.0 / ldexp(DSIZE.xy, cLOD);
     float uImage;
 
     [unroll]
