@@ -49,7 +49,7 @@ static const int uTaps = 16;
 texture2D r_color  : COLOR;
 texture2D r_buffer { Width = DSIZE.x; Height = DSIZE.y; MipLevels = RSIZE; Format = R8; };
 texture2D r_cflow  { Width = ImageSize; Height = ImageSize; Format = RG32F; MipLevels = 9; };
-texture2D r_cframe { Width = ImageSize; Height = ImageSize; Format = R8; };
+texture2D r_cframe { Width = ImageSize; Height = ImageSize; Format = R32F; };
 texture2D r_pframe { Width = ImageSize; Height = ImageSize; Format = RGBA32F; };
 
 sampler2D s_color  { Texture = r_color; SRGBTexture = TRUE; };
