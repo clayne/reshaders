@@ -80,6 +80,28 @@ v2f vs_common(const uint id : SV_VertexID)
     return output;
 }
 
+struct v2f_ds2x2
+{
+    float4 vpos : SV_POSITION;
+    float4 ofs[2] : TEXCOORD1;
+};
+
+v2f_ds2x2 vs_ds2x2(const uint id : SV_VertexID)
+{
+    v2f_ds2x2 output;
+    float2 uv;
+    uv.x = (id == 2) ? 2.0 : 0.0;
+    uv.y = (id == 1) ? 2.0 : 0.0;
+    output.vpos = float4(uv * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+
+    const float2 usize = rcp(float2(BUFFER_WIDTH, BUFFER_HEIGHT) / 2.0);
+    output.ofs[0].xy = uv + float2(1.0, 0.0) * usize;
+    output.ofs[0].zw = uv - float2(1.0, 0.0) * usize;
+    output.ofs[1].xy = uv + float2(0.0, 1.0) * usize;
+    output.ofs[1].zw = uv - float2(0.0, 1.0) * usize;
+    return output;
+}
+
 struct v2f_hblur
 {
     float4 vpos : SV_POSITION;
@@ -138,9 +160,13 @@ v2f_vblur vs_vblur(const uint id : SV_VertexID)
 
 /* [ Pixel Shaders ] */
 
-float4 ps_source(v2f input) : SV_Target
+float4 ps_source(v2f_ds2x2 input) : SV_Target
 {
-    float4 uImage = tex2D(s_color, input.uv);
+    float4 uImage;
+    uImage += tex2D(s_color, input.ofs[0].xy) * 0.25;
+    uImage += tex2D(s_color, input.ofs[0].zw) * 0.25;
+    uImage += tex2D(s_color, input.ofs[1].xy) * 0.25;
+    uImage += tex2D(s_color, input.ofs[1].zw) * 0.25;
     return max(max(uImage.r, uImage.g), uImage.b);
 }
 
@@ -260,7 +286,7 @@ technique cMotionBlur
 {
     pass cBlur
     {
-        VertexShader = vs_common;
+        VertexShader = vs_ds2x2;
         PixelShader = ps_source;
         RenderTarget0 = r_buffer;
     }
