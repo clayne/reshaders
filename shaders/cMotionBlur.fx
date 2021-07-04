@@ -9,9 +9,7 @@
     Notes:  Blurred previous + current frames must be 32Float textures.
             This makes the optical flow not suffer from noise + banding
 
-    Blur Average - [https://blog.demofox.org/2016/08/23/incremental-averaging/]
-    Blur Center  - [http://john-chapman-graphics.blogspot.com/2013/01/per-object-motion-blur.html]
-    Disk Kernels - [http://blog.marmakoide.org/?p=1.]
+    Gaussian     - [https://github.com/SleepKiller/shaderpatch] [MIT]
     Noise        - [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
     Optical Flow - [https://dspace.mit.edu/handle/1721.1/6337]
     Pi & Epsilon - [https://github.com/microsoft/DirectX-Graphics-Samples] [MIT]
@@ -52,11 +50,11 @@ uOption(uDebug,  bool,  "radio",  "Advanced", "Debug",       false, 0, 0);
 static const float Pi = 3.1415926535897f;
 static const float Epsilon = 1.192092896e-07f;
 static const float ImageSize = 256.0;
-static const int uTaps = 16;
+static const int uTaps = 6;
 
 texture2D r_color  : COLOR;
 texture2D r_buffer { Width = DSIZE.x; Height = DSIZE.y; MipLevels = RSIZE; Format = R8; };
-texture2D r_cflow  { Width = ImageSize; Height = ImageSize; Format = RG32F; MipLevels = 9; };
+texture2D r_cflow  { Width = ImageSize; Height = ImageSize; Format = RG32F; MipLevels = 7; };
 texture2D r_cframe { Width = ImageSize; Height = ImageSize; Format = R32F; };
 texture2D r_pframe { Width = ImageSize; Height = ImageSize; Format = RGBA32F; };
 
@@ -83,6 +81,62 @@ v2f vs_common(const uint id : SV_VertexID)
     return output;
 }
 
+struct v2f_hblur
+{
+    float4 vpos : SV_POSITION;
+    float2 uv : TEXCOORD0;
+    float4 ofs[uTaps] : TEXCOORD1;
+};
+
+static const float offsets[uTaps] =
+{
+    0.65772, 2.45017, 4.41096, 6.37285, 8.33626, 10.30153
+};
+
+v2f_hblur vs_hblur(const uint id : SV_VertexID)
+{
+    v2f_hblur output;
+    float2 uv;
+    uv.x = (id == 2) ? 2.0 : 0.0;
+    uv.y = (id == 1) ? 2.0 : 0.0;
+    output.vpos = float4(uv * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+
+    const float ulod = log2(max(DSIZE.x, DSIZE.y)) - log2(ImageSize);
+    const float2 usize = 1.0 / ldexp(DSIZE, -ulod);
+    output.uv = uv;
+    for(int i = 0; i < uTaps; i++)
+    {
+        const float2 uofs = offsets[i] * usize * float2(1.0, 0.0);
+        output.ofs[i].xy = uv + uofs;
+        output.ofs[i].zw = uv - uofs;
+    }
+    return output;
+}
+
+struct v2f_vblur
+{
+    float4 vpos : SV_POSITION;
+    float4 ofs[uTaps] : TEXCOORD0;
+};
+
+v2f_vblur vs_vblur(const uint id : SV_VertexID)
+{
+    v2f_vblur output;
+    float2 uv;
+    uv.x = (id == 2) ? 2.0 : 0.0;
+    uv.y = (id == 1) ? 2.0 : 0.0;
+    output.vpos = float4(uv * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+
+    const float usize =  1.0 / ImageSize;
+    for(int i = 0; i < uTaps; i++)
+    {
+        const float2 uofs = offsets[i] * usize * float2(0.0, 1.0);
+        output.ofs[i].xy = uv + uofs;
+        output.ofs[i].zw = uv - uofs;
+    }
+    return output;
+}
+
 /* [ Pixel Shaders ] */
 
 float4 ps_source(v2f input) : SV_Target
@@ -91,30 +145,21 @@ float4 ps_source(v2f input) : SV_Target
     return max(max(uImage.r, uImage.g), uImage.b);
 }
 
-float2 Vogel2D(int uIndex, float2 uv, float2 pSize)
+static const float weights[uTaps] =
 {
-    const float2 Size = pSize * uRadius;
-    const float  GoldenAngle = Pi * (3.0 - sqrt(5.0));
-    const float2 Radius = (sqrt(uIndex + 0.5f) / sqrt(uTaps)) * Size;
-    const float  Theta = uIndex * GoldenAngle;
+    0.16501, 0.17507, 0.10112, 0.04268, 0.01316, 0.00296
+};
 
-    float2 SineCosine;
-    sincos(Theta, SineCosine.x, SineCosine.y);
-    return Radius * SineCosine.yx + uv;
-}
-
-float4 ps_convert(v2f input) : SV_Target
+float4 ps_convert(v2f_hblur input) : SV_Target
 {
-    const float cLOD = log2(max(DSIZE.x, DSIZE.y)) - log2(ImageSize);
-    const float2 uSize = 1.0 / ldexp(DSIZE.xy, -cLOD);
     float uImage;
 
     [unroll]
     for (int i = 0; i < uTaps; i++)
     {
-        float2 uv = Vogel2D(i, input.uv, uSize);
-        float uColor = tex2D(s_buffer, uv).r;
-        uImage = lerp(uImage, uColor, rcp(i + 1));
+      float uColor = tex2D(s_buffer, input.ofs[i].xy).r
+                   + tex2D(s_buffer, input.ofs[i].zw).r;
+      uImage += weights[i] * uColor;
     }
 
     float4 output;
@@ -124,17 +169,16 @@ float4 ps_convert(v2f input) : SV_Target
     return output;
 }
 
-float4 ps_filter(v2f input) : SV_Target
+float4 ps_filter(v2f_vblur input) : SV_Target
 {
-    const float2 uSize = 1.0 / ImageSize;
     float uImage;
 
     [unroll]
     for (int i = 0; i < uTaps; i++)
     {
-        float2 uv = Vogel2D(i, input.uv, uSize);
-        float uColor = tex2D(s_pframe, uv).w;
-        uImage = lerp(uImage, uColor, rcp(i + 1));
+      float uColor = tex2D(s_pframe, input.ofs[i].xy).w;
+                   + tex2D(s_pframe, input.ofs[i].zw).w;
+      uImage += weights[i] * uColor;
     }
 
     return max(sqrt(abs(uImage)), 1e-5);
@@ -195,6 +239,7 @@ float4 ps_output(v2f input) : SV_Target
     // x-interpolation
     float2 oFlow = lerp(aa, ab, parmx.b);
     oFlow /= ImageSize;
+    oFlow *= uScale;
 
     float4 oBlur;
     const float3 value = float3(52.9829189, 0.06711056, 0.00583715);
@@ -223,14 +268,14 @@ technique cMotionBlur
 
     pass cCopyPrevious
     {
-        VertexShader = vs_common;
+        VertexShader = vs_hblur;
         PixelShader = ps_convert;
         RenderTarget0 = r_pframe;
     }
 
     pass cBlurCopyFrame
     {
-        VertexShader = vs_common;
+        VertexShader = vs_vblur;
         PixelShader = ps_filter;
         RenderTarget0 = r_cframe;
     }
