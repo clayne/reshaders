@@ -94,11 +94,11 @@ v2f_ds2x2 vs_ds2x2(const uint id : SV_VertexID)
     uv.y = (id == 1) ? 2.0 : 0.0;
     output.vpos = float4(uv * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 
-    const float2 usize = rcp(float2(BUFFER_WIDTH, BUFFER_HEIGHT) / 2.0);
-    output.ofs[0].xy = uv + float2(1.0, 0.0) * usize;
-    output.ofs[0].zw = uv - float2(1.0, 0.0) * usize;
-    output.ofs[1].xy = uv + float2(0.0, 1.0) * usize;
-    output.ofs[1].zw = uv - float2(0.0, 1.0) * usize;
+    const float2 usize = rcp(float2(BUFFER_WIDTH, BUFFER_HEIGHT));
+    output.ofs[0].xy = uv + float2( 1.0, -1.0) * usize;
+    output.ofs[0].zw = uv + float2(-1.0,  1.0) * usize;
+    output.ofs[1].xy = uv + float2(-1.0, -1.0) * usize;
+    output.ofs[1].zw = uv + float2( 1.0,  1.0) * usize;
     return output;
 }
 
