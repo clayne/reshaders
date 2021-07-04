@@ -24,10 +24,10 @@
 
 uOption(uThreshold, float, "slider", "Basic", "Threshold", 0.000, 0.000, 1.000);
 uOption(uScale,     float, "slider", "Basic", "Scale",     1.000, 0.000, 2.000);
+uOption(uDebug,     bool,  "radio",  "Basic", "Debug",     false, 0, 0);
 
 uOption(uSmooth, float, "slider", "Advanced", "Flow Smooth", 0.250, 0.000, 0.500);
 uOption(uDetail, int,   "slider", "Advanced", "Flow Mip",    4, 1, 7);
-uOption(uDebug,  bool,  "radio",  "Advanced", "Debug",       false, 0, 0);
 
 #define CONST_LOG2(x) (\
     (uint((x)  & 0xAAAAAAAA) != 0) | \
@@ -206,7 +206,7 @@ float4 ps_filter(v2f_vblur input) : SV_Target
         uImage += weights[i] * uColor;
     }
 
-    return max(sqrt(abs(uImage)), 1e-5);
+    return max(abs(uImage), 1e-5);
 }
 
 float4 ps_flow(v2f input) : SV_Target
