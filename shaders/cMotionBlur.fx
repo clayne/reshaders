@@ -123,7 +123,7 @@ v2f_hblur vs_hblur(const uint id : SV_VertexID)
     output.vpos = float4(uv * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 
     const float ulod = log2(max(DSIZE.x, DSIZE.y)) - log2(ImageSize);
-    const float2 usize = rcp(ldexp(DSIZE, -ulod));
+    const float2 usize = rcp(DSIZE / exp2(ulod));
     output.uv = uv;
     for(int i = 0; i < uTaps; i++)
     {
