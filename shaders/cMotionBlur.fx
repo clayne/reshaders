@@ -157,9 +157,9 @@ float4 ps_convert(v2f_hblur input) : SV_Target
     [unroll]
     for (int i = 0; i < uTaps; i++)
     {
-      float uColor = tex2D(s_buffer, input.ofs[i].xy).r
-                   + tex2D(s_buffer, input.ofs[i].zw).r;
-      uImage += weights[i] * uColor;
+        float uColor = tex2D(s_buffer, input.ofs[i].xy).r
+                     + tex2D(s_buffer, input.ofs[i].zw).r;
+        uImage += weights[i] * uColor;
     }
 
     float4 output;
@@ -176,9 +176,9 @@ float4 ps_filter(v2f_vblur input) : SV_Target
     [unroll]
     for (int i = 0; i < uTaps; i++)
     {
-      float uColor = tex2D(s_pframe, input.ofs[i].xy).w;
-                   + tex2D(s_pframe, input.ofs[i].zw).w;
-      uImage += weights[i] * uColor;
+        float uColor = tex2D(s_pframe, input.ofs[i].xy).w;
+                     + tex2D(s_pframe, input.ofs[i].zw).w;
+        uImage += weights[i] * uColor;
     }
 
     return max(sqrt(abs(uImage)), 1e-5);
