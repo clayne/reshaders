@@ -24,10 +24,9 @@
 
 uOption(uThreshold, float, "slider", "Basic", "Threshold", 0.000, 0.000, 1.000);
 uOption(uScale,     float, "slider", "Basic", "Scale",     1.000, 0.000, 2.000);
-uOption(uRadius,    float, "slider", "Basic", "Prefilter", 4.000, 0.000, 8.000);
 
 uOption(uSmooth, float, "slider", "Advanced", "Flow Smooth", 0.250, 0.000, 0.500);
-uOption(uDetail, int,   "slider", "Advanced", "Flow Mip",    5, 0, 8);
+uOption(uDetail, int,   "slider", "Advanced", "Flow Mip",    4, 1, 7);
 uOption(uDebug,  bool,  "radio",  "Advanced", "Debug",       false, 0, 0);
 
 #define CONST_LOG2(x) (\
@@ -49,12 +48,12 @@ uOption(uDebug,  bool,  "radio",  "Advanced", "Debug",       false, 0, 0);
 
 static const float Pi = 3.1415926535897f;
 static const float Epsilon = 1.192092896e-07f;
-static const float ImageSize = 256.0;
+static const float ImageSize = 128.0;
 static const int uTaps = 6;
 
 texture2D r_color  : COLOR;
 texture2D r_buffer { Width = DSIZE.x; Height = DSIZE.y; MipLevels = RSIZE; Format = R8; };
-texture2D r_cflow  { Width = ImageSize; Height = ImageSize; Format = RG32F; MipLevels = 7; };
+texture2D r_cflow  { Width = ImageSize; Height = ImageSize; Format = RG32F; MipLevels = 8; };
 texture2D r_cframe { Width = ImageSize; Height = ImageSize; Format = R32F; };
 texture2D r_pframe { Width = ImageSize; Height = ImageSize; Format = RGBA32F; };
 
@@ -102,7 +101,7 @@ v2f_hblur vs_hblur(const uint id : SV_VertexID)
     output.vpos = float4(uv * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 
     const float ulod = log2(max(DSIZE.x, DSIZE.y)) - log2(ImageSize);
-    const float2 usize = 1.0 / ldexp(DSIZE, -ulod);
+    const float2 usize = rcp(ldexp(DSIZE, -ulod));
     output.uv = uv;
     for(int i = 0; i < uTaps; i++)
     {
