@@ -89,11 +89,7 @@ v2f vs_common(const uint id : SV_VertexID)
 struct v2f_3x3
 {
     float4 vpos : SV_Position;
-    float2 uOffset0 : TEXCOORD0;
-    float4 uOffset1 : TEXCOORD1;
-    float4 uOffset2 : TEXCOORD2;
-    float4 uOffset3 : TEXCOORD3;
-    float4 uOffset4 : TEXCOORD4;
+    float4 ofs[2] : TEXCOORD0;
 };
 
 v2f_3x3 vs_3x3(const uint id : SV_VertexID)
@@ -103,15 +99,10 @@ v2f_3x3 vs_3x3(const uint id : SV_VertexID)
     v2f_core(id, uv, output.vpos);
 
     const float2 usize = rcp(float2(BUFFER_WIDTH, BUFFER_HEIGHT));
-    output.uOffset0.xy = uv + float2(-2.0,  2.0) * usize;
-    output.uOffset1.xy = uv + float2(-2.0,  0.0) * usize;
-    output.uOffset1.zw = uv + float2(-2.0, -2.0) * usize;
-    output.uOffset2.xy = uv + float2( 0.0,  2.0) * usize;
-    output.uOffset2.zw = uv + float2( 0.0,  0.0) * usize;
-    output.uOffset3.xy = uv + float2( 0.0, -2.0) * usize;
-    output.uOffset3.zw = uv + float2( 2.0,  2.0) * usize;
-    output.uOffset4.xy = uv + float2( 2.0,  0.0) * usize;
-    output.uOffset4.zw = uv + float2( 2.0, -2.0) * usize;
+    output.ofs[0].xy = uv + float2(-0.5,  0.5) * usize;
+    output.ofs[0].zw = uv + float2( 0.5,  0.5) * usize;
+    output.ofs[1].xy = uv + float2(-0.5, -0.5) * usize;
+    output.ofs[1].zw = uv + float2( 0.5, -0.5) * usize;
     return output;
 }
 
@@ -180,17 +171,12 @@ v2f_filter vs_filter(const uint id : SV_VertexID)
 
 float4 ps_source(v2f_3x3 input) : SV_Target
 {
-    const float3 uDivisor = rcp(float3(4.0, 8.0, 16.0));
     float4 uImage;
-    uImage += tex2D(s_color, input.uOffset0.xy) * uDivisor.z;
-    uImage += tex2D(s_color, input.uOffset1.xy) * uDivisor.y;
-    uImage += tex2D(s_color, input.uOffset1.zw) * uDivisor.z;
-    uImage += tex2D(s_color, input.uOffset2.xy) * uDivisor.y;
-    uImage += tex2D(s_color, input.uOffset2.zw) * uDivisor.x;
-    uImage += tex2D(s_color, input.uOffset3.xy) * uDivisor.y;
-    uImage += tex2D(s_color, input.uOffset3.zw) * uDivisor.z;
-    uImage += tex2D(s_color, input.uOffset4.xy) * uDivisor.y;
-    uImage += tex2D(s_color, input.uOffset4.zw) * uDivisor.z;
+    uImage += tex2D(s_color, input.ofs[0].xy);
+    uImage += tex2D(s_color, input.ofs[0].zw);
+    uImage += tex2D(s_color, input.ofs[1].xy);
+    uImage += tex2D(s_color, input.ofs[1].zw);
+    uImage *= 0.25;
     float uLuma = max(max(uImage.r, uImage.g), uImage.b);
     return fwidth(uLuma);
 }
