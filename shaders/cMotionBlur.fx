@@ -22,8 +22,9 @@
         ui_type = utype; ui_min = umin; ui_max = umax;                          \
         > = uvalue
 
-uOption(uThreshold, float, "slider", "Basic", "Threshold", 1.000, 0.000, 2.000);
-uOption(uScale,     float, "slider", "Basic", "Scale",     4.000, 0.000, 8.000);
+uOption(uThreshold, float, "slider", "Basic", "Threshold", 0.000, 0.000, 1.000);
+uOption(uScale,     float, "slider", "Basic", "Scale",     2.000, 0.000, 4.000);
+uOption(uRadius,    float, "slider", "Basic", "Prefilter", 4.000, 0.000, 8.000);
 
 uOption(uSmooth, float, "slider", "Advanced", "Flow Smooth", 0.250, 0.000, 0.500);
 uOption(uDetail, int,   "slider", "Advanced", "Flow Mip",    4, 1, 7);
@@ -49,7 +50,7 @@ uOption(uDebug,  bool,  "radio",  "Advanced", "Debug",       false, 0, 0);
 static const float Pi = 3.1415926535897f;
 static const float Epsilon = 1.192092896e-07f;
 static const float ImageSize = 128.0;
-static const int uTaps = 6;
+static const int uTaps = 14;
 
 texture2D r_color  : COLOR;
 texture2D r_buffer { Width = DSIZE.x; Height = DSIZE.y; MipLevels = RSIZE; Format = R8; };
@@ -65,6 +66,13 @@ sampler2D s_pframe { Texture = r_pframe; };
 
 /* [ Vertex Shaders ] */
 
+void v2f_core(in uint id, inout float2 uv, out float4 vpos)
+{
+    uv.x = (id == 2) ? 2.0 : 0.0;
+    uv.y = (id == 1) ? 2.0 : 0.0;
+    vpos = float4(uv * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+}
+
 struct v2f
 {
     float4 vpos : SV_POSITION;
@@ -74,9 +82,7 @@ struct v2f
 v2f vs_common(const uint id : SV_VertexID)
 {
     v2f output;
-    output.uv.x = (id == 2) ? 2.0 : 0.0;
-    output.uv.y = (id == 1) ? 2.0 : 0.0;
-    output.vpos = float4(output.uv * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    v2f_core(id, output.uv, output.vpos);
     return output;
 }
 
@@ -94,9 +100,7 @@ v2f_3x3 vs_3x3(const uint id : SV_VertexID)
 {
     v2f_3x3 output;
     float2 uv;
-    uv.x = (id == 2) ? 2.0 : 0.0;
-    uv.y = (id == 1) ? 2.0 : 0.0;
-    output.vpos = float4(uv * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    v2f_core(id, uv, output.vpos);
 
     const float2 usize = rcp(float2(BUFFER_WIDTH, BUFFER_HEIGHT));
     output.uOffset0.xy = uv + float2(-2.0,  2.0) * usize;
@@ -111,59 +115,64 @@ v2f_3x3 vs_3x3(const uint id : SV_VertexID)
     return output;
 }
 
-struct v2f_hblur
+static const int oNum = 7;
+
+float2 Vogel2D(int uIndex, float2 uv, float2 pSize)
 {
-    float4 vpos : SV_POSITION;
+    const float2 Size = pSize * uRadius;
+    const float  GoldenAngle = Pi * (3.0 - sqrt(5.0));
+    const float2 Radius = (sqrt(uIndex + 0.5f) / sqrt(uTaps)) * Size;
+    const float  Theta = uIndex * GoldenAngle;
+
+    float2 SineCosine;
+    sincos(Theta, SineCosine.x, SineCosine.y);
+    return Radius * SineCosine.yx + uv;
+}
+
+struct v2f_source
+{
+    float4 vpos : SV_Position;
     float2 uv : TEXCOORD0;
-    float4 ofs[uTaps] : TEXCOORD1;
+    float4 ofs[oNum] : TEXCOORD1;
 };
 
-static const float offsets[uTaps] =
+v2f_source vs_source(const uint id : SV_VertexID)
 {
-    0.65772, 2.45017, 4.41096, 6.37285, 8.33626, 10.30153
-};
+    const float cLOD = log2(max(DSIZE.x, DSIZE.y)) - log2(ImageSize);
+    const float2 uSize = rcp(DSIZE.xy / exp2(cLOD));
 
-v2f_hblur vs_hblur(const uint id : SV_VertexID)
-{
-    v2f_hblur output;
-    float2 uv;
-    uv.x = (id == 2) ? 2.0 : 0.0;
-    uv.y = (id == 1) ? 2.0 : 0.0;
-    output.vpos = float4(uv * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    v2f_source output;
+    v2f_core(id, output.uv, output.vpos);
 
-    const float ulod = log2(max(DSIZE.x, DSIZE.y)) - log2(ImageSize);
-    const float2 usize = rcp(DSIZE / exp2(ulod));
-    output.uv = uv;
-    for(int i = 0; i < uTaps; i++)
+    for(int i = 0; i < oNum; i++)
     {
-        const float2 uofs = offsets[i] * usize * float2(1.0, 0.0);
-        output.ofs[i].xy = uv + uofs;
-        output.ofs[i].zw = uv - uofs;
+        output.ofs[i].xy = Vogel2D(i, output.uv, uSize);
+        output.ofs[i].zw = Vogel2D(oNum + i, output.uv, uSize);
     }
+
     return output;
 }
 
-struct v2f_vblur
+struct v2f_filter
 {
-    float4 vpos : SV_POSITION;
-    float4 ofs[uTaps] : TEXCOORD0;
+    float4 vpos : SV_Position;
+    float4 ofs[oNum] : TEXCOORD1;
 };
 
-v2f_vblur vs_vblur(const uint id : SV_VertexID)
+v2f_filter vs_filter(const uint id : SV_VertexID)
 {
-    v2f_vblur output;
+    const float2 uSize = rcp(ImageSize);
     float2 uv;
-    uv.x = (id == 2) ? 2.0 : 0.0;
-    uv.y = (id == 1) ? 2.0 : 0.0;
-    output.vpos = float4(uv * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 
-    const float usize =  1.0 / ImageSize;
-    for(int i = 0; i < uTaps; i++)
+    v2f_filter output;
+    v2f_core(id, uv, output.vpos);
+
+    for(int i = 0; i < oNum; i++)
     {
-        const float2 uofs = offsets[i] * usize * float2(0.0, 1.0);
-        output.ofs[i].xy = uv + uofs;
-        output.ofs[i].zw = uv - uofs;
+        output.ofs[i].xy = Vogel2D(i, uv, uSize);
+        output.ofs[i].zw = Vogel2D(oNum + i, uv, uSize);
     }
+
     return output;
 }
 
@@ -186,21 +195,32 @@ float4 ps_source(v2f_3x3 input) : SV_Target
     return fwidth(uLuma);
 }
 
-static const float weights[uTaps] =
-{
-    0.16501, 0.17507, 0.10112, 0.04268, 0.01316, 0.00296
-};
-
-float4 ps_convert(v2f_hblur input) : SV_Target
+float4 ps_convert(v2f_source input) : SV_Target
 {
     float uImage;
+    float2 vofs[14] =
+    {
+        input.ofs[0].xy,
+        input.ofs[1].xy,
+        input.ofs[2].xy,
+        input.ofs[3].xy,
+        input.ofs[4].xy,
+        input.ofs[5].xy,
+        input.ofs[6].xy,
+        input.ofs[0].zw,
+        input.ofs[1].zw,
+        input.ofs[2].zw,
+        input.ofs[3].zw,
+        input.ofs[4].zw,
+        input.ofs[5].zw,
+        input.ofs[6].zw
+    };
 
     [unroll]
     for (int i = 0; i < uTaps; i++)
     {
-        float uColor = tex2D(s_buffer, input.ofs[i].xy).r
-                     + tex2D(s_buffer, input.ofs[i].zw).r;
-        uImage += weights[i] * uColor;
+        float uColor = tex2D(s_buffer, vofs[i]).r;
+        uImage = lerp(uImage, uColor, rcp(i + 1));
     }
 
     float4 output;
@@ -210,19 +230,35 @@ float4 ps_convert(v2f_hblur input) : SV_Target
     return output;
 }
 
-float4 ps_filter(v2f_vblur input) : SV_Target
+float4 ps_filter(v2f_filter input) : SV_Target
 {
     float uImage;
+    float2 vofs[14] =
+    {
+        input.ofs[0].xy,
+        input.ofs[1].xy,
+        input.ofs[2].xy,
+        input.ofs[3].xy,
+        input.ofs[4].xy,
+        input.ofs[5].xy,
+        input.ofs[6].xy,
+        input.ofs[0].zw,
+        input.ofs[1].zw,
+        input.ofs[2].zw,
+        input.ofs[3].zw,
+        input.ofs[4].zw,
+        input.ofs[5].zw,
+        input.ofs[6].zw
+    };
 
     [unroll]
     for (int i = 0; i < uTaps; i++)
     {
-        float uColor = tex2D(s_pframe, input.ofs[i].xy).w;
-                     + tex2D(s_pframe, input.ofs[i].zw).w;
-        uImage += weights[i] * uColor;
+        float uColor = tex2D(s_pframe, vofs[i]).w;
+        uImage = lerp(uImage, uColor, rcp(i + 1));
     }
 
-    return max(abs(uImage), 1e-5);
+    return max(sqrt(uImage), 1e-5);
 }
 
 float4 ps_flow(v2f input) : SV_Target
@@ -309,14 +345,14 @@ technique cMotionBlur
 
     pass cCopyPrevious
     {
-        VertexShader = vs_hblur;
+        VertexShader = vs_source;
         PixelShader = ps_convert;
         RenderTarget0 = r_pframe;
     }
 
     pass cBlurCopyFrame
     {
-        VertexShader = vs_vblur;
+        VertexShader = vs_filter;
         PixelShader = ps_filter;
         RenderTarget0 = r_cframe;
     }
