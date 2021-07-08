@@ -24,7 +24,7 @@
 
 uOption(uThreshold, float, "slider", "Basic", "Threshold", 0.000, 0.000, 1.000);
 uOption(uScale,     float, "slider", "Basic", "Scale",     2.000, 0.000, 4.000);
-uOption(uRadius,    float, "slider", "Basic", "Prefilter", 4.000, 0.000, 8.000);
+uOption(uRadius,    float, "slider", "Basic", "Prefilter", 2.000, 0.000, 4.000);
 
 uOption(uSmooth, float, "slider", "Advanced", "Flow Smooth", 0.250, 0.000, 0.500);
 uOption(uDetail, int,   "slider", "Advanced", "Flow Mip",    4, 1, 7);
@@ -270,11 +270,11 @@ float4 ps_flow(v2f input) : SV_Target
     float2 dFdp = float2(ddx(pLuma), ddy(pLuma));
     float dt = cLuma - pLuma;
     float dBrightness = dot(dFdp, dFdc) + dt;
-    float dSmoothness = dot(dFdp, dFdp) + 1e-5;
+    float dSmoothness = dot(dFdp, dFdp) + Epsilon;
     float2 cFlow = dFdc - dFdp * (dBrightness / dSmoothness);
 
     // Threshold and normalize
-    float pFlow = sqrt(dot(cFlow, cFlow) + 1e-5);
+    float pFlow = sqrt(dot(cFlow, cFlow) + Epsilon);
     float nFlow = max(pFlow - uThreshold, 0.0);
     cFlow *= nFlow / pFlow;
 
@@ -319,8 +319,8 @@ float4 ps_output(v2f input) : SV_Target
     oFlow *= uScale;
 
     float4 oBlur;
-    const float3 value = float3(52.9829189, 0.06711056, 0.00583715);
-    float noise = frac(value.x * frac(dot(input.vpos.xy, value.yz))) * 2.0;
+    const float4 value = float4(52.9829189, 0.06711056, 0.00583715, 2.0);
+    float noise = frac(value.x * frac(dot(input.vpos.xy, value.yz))) * value.w;
     const float samples = 1.0 / (16.0 - 1.0);
 
     [unroll]
