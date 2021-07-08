@@ -12,7 +12,7 @@
     Gaussian     - [https://github.com/SleepKiller/shaderpatch] [MIT]
     Noise        - [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
     Optical Flow - [https://dspace.mit.edu/handle/1721.1/6337]
-    Pi & Epsilon - [https://github.com/microsoft/DirectX-Graphics-Samples] [MIT]
+    Pi Constant  - [https://github.com/microsoft/DirectX-Graphics-Samples] [MIT]
     Threshold    - [https://github.com/diwi/PixelFlow] [MIT]
 */
 
@@ -48,7 +48,7 @@ uOption(uDebug,  bool,  "radio",  "Advanced", "Debug",       false, 0, 0);
 #define RSIZE LOG2(RMAX(DSIZE.x, DSIZE.y)) + 1
 
 static const float Pi = 3.1415926535897f;
-static const float Epsilon = 1.192092896e-07f;
+static const float Epsilon = 1e-7;
 static const float ImageSize = 128.0;
 static const int uTaps = 14;
 
@@ -258,7 +258,7 @@ float4 ps_filter(v2f_filter input) : SV_Target
         uImage = lerp(uImage, uColor, rcp(i + 1));
     }
 
-    return max(sqrt(uImage), 1e-5);
+    return max(sqrt(uImage), Epsilon);
 }
 
 float4 ps_flow(v2f input) : SV_Target
