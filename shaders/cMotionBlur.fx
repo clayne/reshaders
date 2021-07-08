@@ -22,12 +22,12 @@
         ui_type = utype; ui_min = umin; ui_max = umax;                          \
         > = uvalue
 
-uOption(uThreshold, float, "slider", "Basic", "Threshold", 0.000, 0.000, 1.000);
-uOption(uScale,     float, "slider", "Basic", "Scale",     1.000, 0.000, 2.000);
-uOption(uDebug,     bool,  "radio",  "Basic", "Debug",     false, 0, 0);
+uOption(uThreshold, float, "slider", "Basic", "Threshold", 1.000, 0.000, 2.000);
+uOption(uScale,     float, "slider", "Basic", "Scale",     4.000, 0.000, 8.000);
 
 uOption(uSmooth, float, "slider", "Advanced", "Flow Smooth", 0.250, 0.000, 0.500);
 uOption(uDetail, int,   "slider", "Advanced", "Flow Mip",    4, 1, 7);
+uOption(uDebug,  bool,  "radio",  "Advanced", "Debug",       false, 0, 0);
 
 #define CONST_LOG2(x) (\
     (uint((x)  & 0xAAAAAAAA) != 0) | \
@@ -80,25 +80,34 @@ v2f vs_common(const uint id : SV_VertexID)
     return output;
 }
 
-struct v2f_ds2x2
+struct v2f_3x3
 {
-    float4 vpos : SV_POSITION;
-    float4 ofs[2] : TEXCOORD1;
+    float4 vpos : SV_Position;
+    float2 uOffset0 : TEXCOORD0;
+    float4 uOffset1 : TEXCOORD1;
+    float4 uOffset2 : TEXCOORD2;
+    float4 uOffset3 : TEXCOORD3;
+    float4 uOffset4 : TEXCOORD4;
 };
 
-v2f_ds2x2 vs_ds2x2(const uint id : SV_VertexID)
+v2f_3x3 vs_3x3(const uint id : SV_VertexID)
 {
-    v2f_ds2x2 output;
+    v2f_3x3 output;
     float2 uv;
     uv.x = (id == 2) ? 2.0 : 0.0;
     uv.y = (id == 1) ? 2.0 : 0.0;
     output.vpos = float4(uv * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 
     const float2 usize = rcp(float2(BUFFER_WIDTH, BUFFER_HEIGHT));
-    output.ofs[0].xy = uv + float2( 1.0, -1.0) * usize;
-    output.ofs[0].zw = uv + float2(-1.0,  1.0) * usize;
-    output.ofs[1].xy = uv + float2(-1.0, -1.0) * usize;
-    output.ofs[1].zw = uv + float2( 1.0,  1.0) * usize;
+    output.uOffset0.xy = uv + float2(-2.0,  2.0) * usize;
+    output.uOffset1.xy = uv + float2(-2.0,  0.0) * usize;
+    output.uOffset1.zw = uv + float2(-2.0, -2.0) * usize;
+    output.uOffset2.xy = uv + float2( 0.0,  2.0) * usize;
+    output.uOffset2.zw = uv + float2( 0.0,  0.0) * usize;
+    output.uOffset3.xy = uv + float2( 0.0, -2.0) * usize;
+    output.uOffset3.zw = uv + float2( 2.0,  2.0) * usize;
+    output.uOffset4.xy = uv + float2( 2.0,  0.0) * usize;
+    output.uOffset4.zw = uv + float2( 2.0, -2.0) * usize;
     return output;
 }
 
@@ -160,14 +169,21 @@ v2f_vblur vs_vblur(const uint id : SV_VertexID)
 
 /* [ Pixel Shaders ] */
 
-float4 ps_source(v2f_ds2x2 input) : SV_Target
+float4 ps_source(v2f_3x3 input) : SV_Target
 {
+    const float3 uDivisor = rcp(float3(4.0, 8.0, 16.0));
     float4 uImage;
-    uImage += tex2D(s_color, input.ofs[0].xy) * 0.25;
-    uImage += tex2D(s_color, input.ofs[0].zw) * 0.25;
-    uImage += tex2D(s_color, input.ofs[1].xy) * 0.25;
-    uImage += tex2D(s_color, input.ofs[1].zw) * 0.25;
-    return max(max(uImage.r, uImage.g), uImage.b);
+    uImage += tex2D(s_color, input.uOffset0.xy) * uDivisor.z;
+    uImage += tex2D(s_color, input.uOffset1.xy) * uDivisor.y;
+    uImage += tex2D(s_color, input.uOffset1.zw) * uDivisor.z;
+    uImage += tex2D(s_color, input.uOffset2.xy) * uDivisor.y;
+    uImage += tex2D(s_color, input.uOffset2.zw) * uDivisor.x;
+    uImage += tex2D(s_color, input.uOffset3.xy) * uDivisor.y;
+    uImage += tex2D(s_color, input.uOffset3.zw) * uDivisor.z;
+    uImage += tex2D(s_color, input.uOffset4.xy) * uDivisor.y;
+    uImage += tex2D(s_color, input.uOffset4.zw) * uDivisor.z;
+    float uLuma = max(max(uImage.r, uImage.g), uImage.b);
+    return fwidth(uLuma);
 }
 
 static const float weights[uTaps] =
@@ -286,7 +302,7 @@ technique cMotionBlur
 {
     pass cBlur
     {
-        VertexShader = vs_ds2x2;
+        VertexShader = vs_3x3;
         PixelShader = ps_source;
         RenderTarget0 = r_buffer;
     }
