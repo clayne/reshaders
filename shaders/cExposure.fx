@@ -48,7 +48,7 @@ float4 ps_expose(v2f input) : SV_TARGET
     float4 oLuma = max(max(oColor.r, oColor.g), oColor.b);
 
     float aKeyValue = 1.03 - (2.0 / (log10(aLuma + 1.0) + 2.0));
-    float aExposure = log2(max(aKeyValue / aLuma, 1e-5));
+    float aExposure = log2(max(aKeyValue / aLuma, 1e-7));
     aExposure = exp2(aExposure + uIntensity);
     float4 expose = oColor * aExposure;
     return expose * rcp(oLuma + 1.0);
