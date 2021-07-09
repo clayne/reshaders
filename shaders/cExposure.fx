@@ -41,9 +41,8 @@ float4 ps_core(v2f input) : SV_TARGET
 
 float4 ps_expose(v2f input) : SV_TARGET
 {
-    float2 psize = tex2Dsize(s_aluma, 0.0);
-    float lod = log2(max(psize.x, psize.y)) - log2(1.0);
-    float aLuma = tex2Dlod(s_aluma, float4(input.uv, 0.0, lod)).r;
+    float uLod = log2(256.0) - log2(1.0);
+    float aLuma = tex2Dlod(s_aluma, float4(input.uv, 0.0, uLod)).r;
     float4 oColor = tex2D(s_color, input.uv);
     float4 oLuma = max(max(oColor.r, oColor.g), oColor.b);
 
