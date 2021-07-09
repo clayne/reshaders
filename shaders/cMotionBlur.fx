@@ -22,8 +22,8 @@
         ui_type = utype; ui_min = umin; ui_max = umax;                          \
         > = uvalue
 
-uOption(uThreshold, float, "slider", "Basic", "Threshold", 0.000, 0.000, 1.000);
-uOption(uScale,     float, "slider", "Basic", "Scale",     1.000, 0.000, 2.000);
+uOption(uThreshold, float, "slider", "Basic", "Threshold", 1.000, 0.000, 2.000);
+uOption(uScale,     float, "slider", "Basic", "Scale",     2.000, 0.000, 4.000);
 uOption(uRadius,    float, "slider", "Basic", "Prefilter", 4.000, 0.000, 8.000);
 
 uOption(uSmooth, float, "slider", "Advanced", "Flow Smooth", 0.250, 0.000, 0.500);
@@ -99,10 +99,10 @@ v2f_3x3 vs_3x3(const uint id : SV_VertexID)
     v2f_core(id, uv, output.vpos);
 
     const float2 usize = rcp(float2(BUFFER_WIDTH, BUFFER_HEIGHT));
-    output.ofs[0].xy = uv + float2(-0.5,  0.5) * usize;
-    output.ofs[0].zw = uv + float2( 0.5,  0.5) * usize;
-    output.ofs[1].xy = uv + float2(-0.5, -0.5) * usize;
-    output.ofs[1].zw = uv + float2( 0.5, -0.5) * usize;
+    output.ofs[0].xy = uv + float2(-1.0,  1.0) * usize;
+    output.ofs[0].zw = uv + float2( 1.0,  1.0) * usize;
+    output.ofs[1].xy = uv + float2(-1.0, -1.0) * usize;
+    output.ofs[1].zw = uv + float2( 1.0, -1.0) * usize;
     return output;
 }
 
@@ -177,9 +177,7 @@ float4 ps_source(v2f_3x3 input) : SV_Target
     uImage += tex2D(s_color, input.ofs[1].xy);
     uImage += tex2D(s_color, input.ofs[1].zw);
     uImage *= 0.25;
-    float3 dx = ddx(uImage.rgb);
-    float3 dy = ddy(uImage.rgb);
-    return sqrt(dot(dx, dx) + dot(dy, dy));
+    return max(max(uImage.r, uImage.g), uImage.b);
 }
 
 float4 ps_convert(v2f_source input) : SV_Target
