@@ -22,8 +22,8 @@
         ui_type = utype; ui_min = umin; ui_max = umax;                          \
         > = uvalue
 
-uOption(uThreshold, float, "slider", "Basic", "Threshold", 1.000, 0.000, 2.000);
-uOption(uScale,     float, "slider", "Basic", "Scale",     2.000, 0.000, 4.000);
+uOption(uThreshold, float, "slider", "Basic", "Threshold", 0.000, 0.000, 1.000);
+uOption(uScale,     float, "slider", "Basic", "Scale",     1.000, 0.000, 2.000);
 uOption(uRadius,    float, "slider", "Basic", "Prefilter", 4.000, 0.000, 8.000);
 
 uOption(uSmooth, float, "slider", "Advanced", "Flow Smooth", 0.250, 0.000, 0.500);
@@ -177,8 +177,9 @@ float4 ps_source(v2f_3x3 input) : SV_Target
     uImage += tex2D(s_color, input.ofs[1].xy);
     uImage += tex2D(s_color, input.ofs[1].zw);
     uImage *= 0.25;
-    float uLuma = max(max(uImage.r, uImage.g), uImage.b);
-    return fwidth(uLuma);
+    float3 dx = ddx(uImage.rgb);
+    float3 dy = ddy(uImage.rgb);
+    return sqrt(dot(dx, dx) + dot(dy, dy));
 }
 
 float4 ps_convert(v2f_source input) : SV_Target
