@@ -177,7 +177,7 @@ float4 ps_source(v2f_3x3 input) : SV_Target
     uImage += tex2D(s_color, input.ofs[1].xy);
     uImage += tex2D(s_color, input.ofs[1].zw);
     uImage *= 0.25;
-    return max(max(uImage.r, uImage.g), uImage.b);
+    return sqrt(max(max(uImage.r, uImage.g), uImage.b));
 }
 
 float4 ps_convert(v2f_source input) : SV_Target
@@ -243,7 +243,7 @@ float4 ps_filter(v2f_filter input) : SV_Target
         uImage = lerp(uImage, uColor, rcp(i + 1));
     }
 
-    return max(sqrt(uImage), Epsilon);
+    return max(uImage, Epsilon);
 }
 
 float4 ps_flow(v2f input) : SV_Target
