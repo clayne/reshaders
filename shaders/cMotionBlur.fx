@@ -169,6 +169,12 @@ v2f_filter vs_filter(const uint id : SV_VertexID)
 
 /* [ Pixel Shaders ] */
 
+float urand(float2 vpos)
+{
+    const float3 value = float3(52.9829189, 0.06711056, 0.00583715);
+    return frac(value.x * frac(dot(vpos.xy, value.yz)));
+}
+
 float4 ps_source(v2f_3x3 input) : SV_Target
 {
     float4 uImage;
@@ -177,7 +183,8 @@ float4 ps_source(v2f_3x3 input) : SV_Target
     uImage += tex2D(s_color, input.ofs[1].xy);
     uImage += tex2D(s_color, input.ofs[1].zw);
     uImage *= 0.25;
-    return sqrt(max(max(uImage.r, uImage.g), uImage.b));
+    float uLuma = max(max(uImage.r, uImage.g), uImage.b);
+    return sqrt(uLuma) + urand(input.vpos.xy) / 255.0;
 }
 
 float4 ps_convert(v2f_source input) : SV_Target
@@ -304,8 +311,7 @@ float4 ps_output(v2f input) : SV_Target
     oFlow *= uScale;
 
     float4 oBlur;
-    const float4 value = float4(52.9829189, 0.06711056, 0.00583715, 2.0);
-    float noise = frac(value.x * frac(dot(input.vpos.xy, value.yz))) * value.w;
+    float noise = urand(input.vpos.xy) * 2.0;
     const float samples = 1.0 / (16.0 - 1.0);
 
     [unroll]
