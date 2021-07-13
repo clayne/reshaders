@@ -44,13 +44,12 @@ float4 ps_expose(v2f input) : SV_TARGET
     float uLod = log2(256.0) - log2(1.0);
     float aLuma = tex2Dlod(s_aluma, float4(input.uv, 0.0, uLod)).r;
     float4 oColor = tex2D(s_color, input.uv);
-    float4 oLuma = max(max(oColor.r, oColor.g), oColor.b);
 
-    float aKeyValue = 1.03 - (2.0 / (log10(aLuma + 1.0) + 2.0));
-    float aExposure = log2(max(aKeyValue / aLuma, 1e-7));
-    aExposure = exp2(aExposure + uIntensity);
-    float4 expose = oColor * aExposure;
-    return expose * rcp(oLuma + 1.0);
+    float aExposure = log2(0.18) - log2(aLuma);
+    aExposure = exp2(aExposure);
+    float4 uExpose = oColor * aExposure;
+    float4 oLuma = max(max(uExpose.r, uExpose.g), uExpose.b);
+    return uExpose * rcp(oLuma + 1.0);
 }
 
 technique cExposure

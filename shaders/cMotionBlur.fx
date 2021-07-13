@@ -60,10 +60,10 @@ texture2D r_cframe { Width = ImageSize; Height = ImageSize; Format = R32F; };
 texture2D r_pframe { Width = ImageSize; Height = ImageSize; Format = RGBA32F; MipLevels = 8; };
 
 sampler2D s_color  { Texture = r_color; SRGBTexture = TRUE; };
-sampler2D s_buffer { Texture = r_buffer; AddressU = WRAP; AddressV = WRAP; };
-sampler2D s_cflow  { Texture = r_cflow;  AddressU = WRAP; AddressV = WRAP; };
-sampler2D s_cframe { Texture = r_cframe; AddressU = WRAP; AddressV = WRAP; };
-sampler2D s_pframe { Texture = r_pframe; AddressU = WRAP; AddressV = WRAP; };
+sampler2D s_buffer { Texture = r_buffer; AddressU = MIRROR; AddressV = MIRROR; };
+sampler2D s_cflow  { Texture = r_cflow;  AddressU = MIRROR; AddressV = MIRROR; };
+sampler2D s_cframe { Texture = r_cframe; AddressU = MIRROR; AddressV = MIRROR; };
+sampler2D s_pframe { Texture = r_pframe; AddressU = MIRROR; AddressV = MIRROR; };
 
 /* [ Vertex Shaders ] */
 
