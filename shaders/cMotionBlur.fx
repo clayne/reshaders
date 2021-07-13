@@ -10,6 +10,7 @@
             This makes the optical flow not suffer from noise + banding
 
     Gaussian     - [https://github.com/SleepKiller/shaderpatch] [MIT]
+    LOD Compute  - [https://john-chapman.github.io/2019/03/29/convolution.html]
     Noise        - [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
     Optical Flow - [https://dspace.mit.edu/handle/1721.1/6337]
     Pi Constant  - [https://github.com/microsoft/DirectX-Graphics-Samples] [MIT]
@@ -54,15 +55,15 @@ static const int uTaps = 14;
 
 texture2D r_color  : COLOR;
 texture2D r_buffer { Width = DSIZE.x; Height = DSIZE.y; MipLevels = RSIZE; Format = R8; };
-texture2D r_cflow  { Width = ImageSize; Height = ImageSize; Format = RG32F; MipLevels = 8; };
+texture2D r_cflow  { Width = ImageSize; Height = ImageSize; Format = RG32F;   MipLevels = 8; };
 texture2D r_cframe { Width = ImageSize; Height = ImageSize; Format = R32F; };
-texture2D r_pframe { Width = ImageSize; Height = ImageSize; Format = RGBA32F; };
+texture2D r_pframe { Width = ImageSize; Height = ImageSize; Format = RGBA32F; MipLevels = 8; };
 
 sampler2D s_color  { Texture = r_color; SRGBTexture = TRUE; };
-sampler2D s_buffer { Texture = r_buffer; };
-sampler2D s_cflow  { Texture = r_cflow;  };
-sampler2D s_cframe { Texture = r_cframe; };
-sampler2D s_pframe { Texture = r_pframe; };
+sampler2D s_buffer { Texture = r_buffer; AddressU = WRAP; AddressV = WRAP; };
+sampler2D s_cflow  { Texture = r_cflow;  AddressU = WRAP; AddressV = WRAP; };
+sampler2D s_cframe { Texture = r_cframe; AddressU = WRAP; AddressV = WRAP; };
+sampler2D s_pframe { Texture = r_pframe; AddressU = WRAP; AddressV = WRAP; };
 
 /* [ Vertex Shaders ] */
 
@@ -224,6 +225,9 @@ float4 ps_convert(v2f_source input) : SV_Target
 
 float4 ps_filter(v2f_filter input) : SV_Target
 {
+    const float uArea = Pi * (uRadius * uRadius) / uTaps;
+    const float uBias = log2(sqrt(uArea));
+
     float uImage;
     float2 vofs[14] =
     {
@@ -246,7 +250,7 @@ float4 ps_filter(v2f_filter input) : SV_Target
     [unroll]
     for (int i = 0; i < uTaps; i++)
     {
-        float uColor = tex2D(s_pframe, vofs[i]).w;
+        float uColor = tex2Dlod(s_pframe, float4(vofs[i], 0.0, uBias)).w;
         uImage = lerp(uImage, uColor, rcp(i + 1));
     }
 
