@@ -191,29 +191,18 @@ float4 ps_source(v2f_3x3 input) : SV_Target
 float4 ps_convert(v2f_source input) : SV_Target
 {
     float uImage;
-    float2 vofs[14] =
-    {
-        input.ofs[0].xy,
-        input.ofs[1].xy,
-        input.ofs[2].xy,
-        input.ofs[3].xy,
-        input.ofs[4].xy,
-        input.ofs[5].xy,
-        input.ofs[6].xy,
-        input.ofs[0].zw,
-        input.ofs[1].zw,
-        input.ofs[2].zw,
-        input.ofs[3].zw,
-        input.ofs[4].zw,
-        input.ofs[5].zw,
-        input.ofs[6].zw
-    };
+    float2 vofs[14];
 
-    [unroll]
-    for (int i = 0; i < uTaps; i++)
+    for (int i = 0; i < 7; i++)
     {
-        float uColor = tex2D(s_buffer, vofs[i]).r;
-        uImage = lerp(uImage, uColor, rcp(i + 1));
+        vofs[i] = input.ofs[i].xy;
+        vofs[i + 7] = input.ofs[i].zw;
+    }
+
+    for (int j = 0; j < uTaps; j++)
+    {
+        float uColor = tex2D(s_buffer, vofs[j]).r;
+        uImage = lerp(uImage, uColor, rcp(j + 1));
     }
 
     float4 output;
@@ -229,29 +218,18 @@ float4 ps_filter(v2f_filter input) : SV_Target
     const float uBias = log2(sqrt(uArea));
 
     float uImage;
-    float2 vofs[14] =
-    {
-        input.ofs[0].xy,
-        input.ofs[1].xy,
-        input.ofs[2].xy,
-        input.ofs[3].xy,
-        input.ofs[4].xy,
-        input.ofs[5].xy,
-        input.ofs[6].xy,
-        input.ofs[0].zw,
-        input.ofs[1].zw,
-        input.ofs[2].zw,
-        input.ofs[3].zw,
-        input.ofs[4].zw,
-        input.ofs[5].zw,
-        input.ofs[6].zw
-    };
+    float2 vofs[14];
 
-    [unroll]
-    for (int i = 0; i < uTaps; i++)
+    for (int i = 0; i < 7; i++)
     {
-        float uColor = tex2Dlod(s_pframe, float4(vofs[i], 0.0, uBias)).w;
-        uImage = lerp(uImage, uColor, rcp(i + 1));
+        vofs[i] = input.ofs[i].xy;
+        vofs[i + 7] = input.ofs[i].zw;
+    }
+
+    for (int j = 0; j < uTaps; j++)
+    {
+        float uColor = tex2Dlod(s_pframe, float4(vofs[j], 0.0, uBias)).w;
+        uImage = lerp(uImage, uColor, rcp(j + 1));
     }
 
     return max(uImage, Epsilon);
