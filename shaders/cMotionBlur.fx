@@ -100,6 +100,8 @@ v2f_3x3 vs_3x3(const uint id : SV_VertexID)
     v2f_core(id, uv, output.vpos);
 
     const float2 usize = rcp(float2(BUFFER_WIDTH, BUFFER_HEIGHT));
+    output.ofs[0] = 0.0;
+    output.ofs[1] = 0.0;
     output.ofs[0].xy = uv + float2(-1.0,  1.0) * usize;
     output.ofs[0].zw = uv + float2( 1.0,  1.0) * usize;
     output.ofs[1].xy = uv + float2(-1.0, -1.0) * usize;
@@ -138,6 +140,7 @@ v2f_source vs_source(const uint id : SV_VertexID)
 
     for(int i = 0; i < oNum; i++)
     {
+        output.ofs[i] = 0.0;
         output.ofs[i].xy = Vogel2D(i, output.uv, uSize);
         output.ofs[i].zw = Vogel2D(oNum + i, output.uv, uSize);
     }
@@ -161,6 +164,7 @@ v2f_filter vs_filter(const uint id : SV_VertexID)
 
     for(int i = 0; i < oNum; i++)
     {
+        output.ofs[i] = 0.0;
         output.ofs[i].xy = Vogel2D(i, uv, uSize);
         output.ofs[i].zw = Vogel2D(oNum + i, uv, uSize);
     }
