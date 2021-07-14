@@ -67,46 +67,33 @@ sampler2D s_pframe { Texture = r_pframe; AddressU = MIRROR; AddressV = MIRROR; }
 
 /* [ Vertex Shaders ] */
 
-void v2f_core(in uint id, inout float2 uv, out float4 vpos)
+void v2f_core(  in uint id,
+                inout float2 uv,
+                inout float4 vpos)
 {
     uv.x = (id == 2) ? 2.0 : 0.0;
     uv.y = (id == 1) ? 2.0 : 0.0;
     vpos = float4(uv * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
 
-struct v2f
+void vs_common( in uint id : SV_VERTEXID,
+                inout float4 vpos : SV_POSITION,
+                inout float2 uv : TEXCOORD0)
 {
-    float4 vpos : SV_POSITION;
-    float2 uv : TEXCOORD0;
-};
-
-v2f vs_common(const uint id : SV_VertexID)
-{
-    v2f output;
-    v2f_core(id, output.uv, output.vpos);
-    return output;
+    v2f_core(id, uv, vpos);
 }
 
-struct v2f_3x3
+void vs_3x3(in uint id : SV_VERTEXID,
+            inout float4 vpos : SV_POSITION,
+            inout float4 ofs[2] : TEXCOORD0)
 {
-    float4 vpos : SV_Position;
-    float4 ofs[2] : TEXCOORD0;
-};
-
-v2f_3x3 vs_3x3(const uint id : SV_VertexID)
-{
-    v2f_3x3 output;
     float2 uv;
-    v2f_core(id, uv, output.vpos);
-
+    v2f_core(id, uv, vpos);
     const float2 usize = rcp(float2(BUFFER_WIDTH, BUFFER_HEIGHT));
-    output.ofs[0] = 0.0;
-    output.ofs[1] = 0.0;
-    output.ofs[0].xy = uv + float2(-1.0,  1.0) * usize;
-    output.ofs[0].zw = uv + float2( 1.0,  1.0) * usize;
-    output.ofs[1].xy = uv + float2(-1.0, -1.0) * usize;
-    output.ofs[1].zw = uv + float2( 1.0, -1.0) * usize;
-    return output;
+    ofs[0].xy = uv + float2(-1.0,  1.0) * usize;
+    ofs[0].zw = uv + float2( 1.0,  1.0) * usize;
+    ofs[1].xy = uv + float2(-1.0, -1.0) * usize;
+    ofs[1].zw = uv + float2( 1.0, -1.0) * usize;
 }
 
 static const int oNum = 7;
@@ -123,53 +110,35 @@ float2 Vogel2D(int uIndex, float2 uv, float2 pSize)
     return Radius * SineCosine.yx + uv;
 }
 
-struct v2f_source
-{
-    float4 vpos : SV_Position;
-    float2 uv : TEXCOORD0;
-    float4 ofs[oNum] : TEXCOORD1;
-};
-
-v2f_source vs_source(const uint id : SV_VertexID)
+void vs_source( in uint id : SV_VERTEXID,
+                inout float4 vpos : SV_POSITION,
+                inout float2 uv : TEXCOORD0,
+                inout float4 ofs[oNum] : TEXCOORD1)
 {
     const float cLOD = log2(max(DSIZE.x, DSIZE.y)) - log2(ImageSize);
     const float2 uSize = rcp(DSIZE.xy / exp2(cLOD));
-
-    v2f_source output;
-    v2f_core(id, output.uv, output.vpos);
+    v2f_core(id, uv, vpos);
 
     for(int i = 0; i < oNum; i++)
     {
-        output.ofs[i] = 0.0;
-        output.ofs[i].xy = Vogel2D(i, output.uv, uSize);
-        output.ofs[i].zw = Vogel2D(oNum + i, output.uv, uSize);
+        ofs[i].xy = Vogel2D(i, uv, uSize);
+        ofs[i].zw = Vogel2D(oNum + i, uv, uSize);
     }
-
-    return output;
 }
 
-struct v2f_filter
-{
-    float4 vpos : SV_Position;
-    float4 ofs[oNum] : TEXCOORD1;
-};
-
-v2f_filter vs_filter(const uint id : SV_VertexID)
+void vs_filter( in uint id : SV_VERTEXID,
+                inout float4 vpos : SV_POSITION,
+                inout float4 ofs[oNum] : TEXCOORD0)
 {
     const float2 uSize = rcp(ImageSize);
     float2 uv;
-
-    v2f_filter output;
-    v2f_core(id, uv, output.vpos);
+    v2f_core(id, uv, vpos);
 
     for(int i = 0; i < oNum; i++)
     {
-        output.ofs[i] = 0.0;
-        output.ofs[i].xy = Vogel2D(i, uv, uSize);
-        output.ofs[i].zw = Vogel2D(oNum + i, uv, uSize);
+        ofs[i].xy = Vogel2D(i, uv, uSize);
+        ofs[i].zw = Vogel2D(oNum + i, uv, uSize);
     }
-
-    return output;
 }
 
 /* [ Pixel Shaders ] */
@@ -180,43 +149,43 @@ float urand(float2 vpos)
     return frac(value.x * frac(dot(vpos.xy, value.yz)));
 }
 
-float4 ps_source(v2f_3x3 input) : SV_Target
+float4 ps_source(float4 vpos : SV_POSITION, float4 uv[2] : TEXCOORD0) : SV_Target
 {
     float4 uImage;
-    uImage += tex2D(s_color, input.ofs[0].xy);
-    uImage += tex2D(s_color, input.ofs[0].zw);
-    uImage += tex2D(s_color, input.ofs[1].xy);
-    uImage += tex2D(s_color, input.ofs[1].zw);
+    uImage += tex2D(s_color, uv[0].xy);
+    uImage += tex2D(s_color, uv[0].zw);
+    uImage += tex2D(s_color, uv[1].xy);
+    uImage += tex2D(s_color, uv[1].zw);
     uImage *= 0.25;
     float uLuma = max(max(uImage.r, uImage.g), uImage.b);
-    return sqrt(uLuma) + urand(input.vpos.xy) / 255.0;
+    return sqrt(uLuma) + urand(vpos.xy) / 255.0;
 }
 
-float4 ps_convert(v2f_source input) : SV_Target
+float4 ps_convert(float4 vpos : SV_POSITION, float2 uv : TEXCOORD0, float4 ofs[7] : TEXCOORD1) : SV_Target
 {
     float uImage;
     float2 vofs[14];
 
     for (int i = 0; i < 7; i++)
     {
-        vofs[i] = input.ofs[i].xy;
-        vofs[i + 7] = input.ofs[i].zw;
+        vofs[i] = ofs[i].xy;
+        vofs[i + 7] = ofs[i].zw;
     }
 
     for (int j = 0; j < uTaps; j++)
     {
         float uColor = tex2D(s_buffer, vofs[j]).r;
-        uImage = lerp(uImage, uColor, rcp(j + 1));
+        uImage = lerp(uImage, uColor, rcp(float(j) + 1));
     }
 
     float4 output;
-    output.xy = tex2D(s_cflow, input.uv).rg; // Copy previous rendertarget from ps_flow()
-    output.z  = tex2D(s_cframe, input.uv).r; // Copy previous rendertarget from ps_filter()
+    output.xy = tex2D(s_cflow, uv).rg; // Copy previous rendertarget from ps_flow()
+    output.z  = tex2D(s_cframe, uv).r; // Copy previous rendertarget from ps_filter()
     output.w  = uImage; // Input downsampled current frame to scale and mip
     return output;
 }
 
-float4 ps_filter(v2f_filter input) : SV_Target
+float4 ps_filter(float4 vpos : SV_POSITION, float4 ofs[7] : TEXCOORD0) : SV_Target
 {
     const float uArea = Pi * (uRadius * uRadius) / uTaps;
     const float uBias = log2(sqrt(uArea));
@@ -226,24 +195,24 @@ float4 ps_filter(v2f_filter input) : SV_Target
 
     for (int i = 0; i < 7; i++)
     {
-        vofs[i] = input.ofs[i].xy;
-        vofs[i + 7] = input.ofs[i].zw;
+        vofs[i] = ofs[i].xy;
+        vofs[i + 7] = ofs[i].zw;
     }
 
     for (int j = 0; j < uTaps; j++)
     {
         float uColor = tex2Dlod(s_pframe, float4(vofs[j], 0.0, uBias)).w;
-        uImage = lerp(uImage, uColor, rcp(j + 1));
+        uImage = lerp(uImage, uColor, rcp(float(j) + 1));
     }
 
     return max(uImage, Epsilon);
 }
 
-float4 ps_flow(v2f input) : SV_Target
+float4 ps_flow(float4 vpos : SV_POSITION, float2 uv : TEXCOORD0) : SV_Target
 {
     // Calculate optical flow
-    float cLuma = tex2D(s_cframe, input.uv).r;
-    float pLuma = tex2D(s_pframe, input.uv).z;
+    float cLuma = tex2D(s_cframe, uv).r;
+    float pLuma = tex2D(s_pframe, uv).z;
     float2 dFdc = float2(ddx(cLuma), ddy(cLuma));
     float2 dFdp = float2(ddx(pLuma), ddy(pLuma));
     float dt = cLuma - pLuma;
@@ -257,7 +226,7 @@ float4 ps_flow(v2f input) : SV_Target
     cFlow *= nFlow / pFlow;
 
     // Smooth optical flow
-    float2 sFlow = tex2D(s_pframe, input.uv).xy;
+    float2 sFlow = tex2D(s_pframe, uv).xy;
     return lerp(cFlow, sFlow, uSmooth).xyxy;
 }
 
@@ -274,22 +243,22 @@ float4 calcweights(float s)
     return t;
 }
 
-float4 ps_output(v2f input) : SV_Target
+float4 ps_output(float4 vpos : SV_POSITION, float2 uv : TEXCOORD0) : SV_Target
 {
     const float2 texsize = ldexp(ImageSize, -uDetail);
     const float2 pt = 1.0 / texsize;
-    float2 fcoord = frac(input.uv * texsize + 0.5);
+    float2 fcoord = frac(uv * texsize + 0.5);
     float4 parmx = calcweights(fcoord.x);
     float4 parmy = calcweights(fcoord.y);
     float4 cdelta;
     cdelta.xzyw = float4(parmx.rg, parmy.rg) * float4(-pt.x, pt.x, -pt.y, pt.y);
     // first y-interpolation
-    float2 ar = tex2Dlod(s_cflow, float4(input.uv + cdelta.xy, 0.0, uDetail)).rg;
-    float2 ag = tex2Dlod(s_cflow, float4(input.uv + cdelta.xw, 0.0, uDetail)).rg;
+    float2 ar = tex2Dlod(s_cflow, float4(uv + cdelta.xy, 0.0, uDetail)).rg;
+    float2 ag = tex2Dlod(s_cflow, float4(uv + cdelta.xw, 0.0, uDetail)).rg;
     float2 ab = lerp(ag, ar, parmy.b);
     // second y-interpolation
-    float2 br = tex2Dlod(s_cflow, float4(input.uv + cdelta.zy, 0.0, uDetail)).rg;
-    float2 bg = tex2Dlod(s_cflow, float4(input.uv + cdelta.zw, 0.0, uDetail)).rg;
+    float2 br = tex2Dlod(s_cflow, float4(uv + cdelta.zy, 0.0, uDetail)).rg;
+    float2 bg = tex2Dlod(s_cflow, float4(uv + cdelta.zw, 0.0, uDetail)).rg;
     float2 aa = lerp(bg, br, parmy.b);
     // x-interpolation
     float2 oFlow = lerp(aa, ab, parmx.b);
@@ -297,15 +266,15 @@ float4 ps_output(v2f input) : SV_Target
     oFlow *= uScale;
 
     float4 oBlur;
-    float noise = urand(input.vpos.xy) * 2.0;
+    float noise = urand(vpos.xy) * 2.0;
     const float samples = 1.0 / (16.0 - 1.0);
 
     [unroll]
     for(int i = 0; i < 9; i++)
     {
         float2 calc = (noise + i * 2.0) * samples - 0.5;
-        float4 uColor = tex2D(s_color, oFlow * calc + input.uv);
-        oBlur = lerp(oBlur, uColor, rcp(i + 1));
+        float4 uColor = tex2D(s_color, oFlow * calc + uv);
+        oBlur = lerp(oBlur, uColor, rcp(float(i) + 1));
     }
 
     return (uDebug) ? float4(oFlow, 0.0, 0.0) : oBlur;
