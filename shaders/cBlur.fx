@@ -1,22 +1,17 @@
 
 /*
-    Unlimited 16-Tap blur using mipmaps
-    Based on https://github.com/spite/Wagner/blob/master/fragment-shaders/box-blur-fs.glsl [MIT]
-    and [http://blog.marmakoide.org/?p=1.]
-    Special Thanks to BlueSkyDefender for help and patience
+    Vogel Disk  - [http://blog.marmakoide.org/?p=1s]
+    LOD Compute - [https://john-chapman.github.io/2019/03/29/convolution.html]
+    Pi Constant - [https://github.com/microsoft/DirectX-Graphics-Samples] [MIT]
 */
 
-uniform float kRadius <
-    ui_label = "Radius";
-    ui_type = "slider";
-    ui_max = 512.0;
-    ui_min = 0.001;
-> = 0.1;
+#define uOption(option, udata, utype, ucategory, ulabel, uvalue, umin, umax)    \
+        uniform udata option <                                                  \
+        ui_category = ucategory; ui_label = ulabel;                             \
+        ui_type = utype; ui_min = umin; ui_max = umax;                          \
+        > = uvalue
 
-/*
-    Round to nearest power of 2
-    Help from Lord of Lunacy, KingEric1992, and Marty McFly
-*/
+uOption(uRadius, float, "slider", "Basic", "Blur Radius", 8.000, 0.000, 16.00);
 
 #define CONST_LOG2(x) (\
     (uint((x)  & 0xAAAAAAAA) != 0) | \
@@ -30,129 +25,184 @@ uniform float kRadius <
 #define BIT8_LOG2(x)  (BIT4_LOG2(x) | BIT4_LOG2(x) >> 4)
 #define BIT16_LOG2(x) (BIT8_LOG2(x) | BIT8_LOG2(x) >> 8)
 #define LOG2(x)       (CONST_LOG2((BIT16_LOG2(x) >> 1) + 1))
+#define RMAX(x, y)     x ^ ((x ^ y) & -(x < y)) // max(x, y)
 
-#define RMAX(x, y) x ^ ((x ^ y) & -(x < y)) // max(x, y)
-#define DSIZE      1 << LOG2(RMAX(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2))
+#define DSIZE uint2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2)
+#define RSIZE LOG2(RMAX(DSIZE.x, DSIZE.y)) + 1
 
-texture2D r_color : COLOR;
-texture2D r_blur { Width = DSIZE; Height = DSIZE; Format = RGBA8; MipLevels = LOG2(DSIZE) + 1; };
+static const float Pi = 3.1415926535897f;
+static const float Epsilon = 1e-7;
+static const float ImageSize = 128.0;
+static const int uTaps = 14;
+
+texture2D r_color  : COLOR;
+texture2D r_image { Width = DSIZE.x; Height = DSIZE.y; MipLevels = RSIZE; Format = RGBA8; };
+texture2D r_blur  { Width = ImageSize; Height = ImageSize; Format = RGBA8; MipLevels = 8; };
 
 sampler2D s_color { Texture = r_color; SRGBTexture = TRUE; };
-sampler2D s_blur  { Texture = r_blur;  AddressU = MIRROR; AddressV = MIRROR; };
+sampler2D s_image { Texture = r_image; SRGBTexture = TRUE; };
+sampler2D s_blur  { Texture = r_blur;  SRGBTexture = TRUE; };
 
-struct v2f
-{
-    float4 vpos : SV_Position;
-    float2 uv : TEXCOORD0;
-};
+/* [ Vertex Shaders ] */
 
-v2f vs_common(const uint id : SV_VertexID)
+void v2f_core(  in uint id,
+                inout float2 uv,
+                inout float4 vpos)
 {
-    v2f output;
-    output.uv.x = (id == 2) ? 2.0 : 0.0;
-    output.uv.y = (id == 1) ? 2.0 : 0.0;
-    output.vpos = float4(output.uv * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
-    return output;
+    uv.x = (id == 2) ? 2.0 : 0.0;
+    uv.y = (id == 1) ? 2.0 : 0.0;
+    vpos = float4(uv * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
 
-static const float pi = 3.1415926535897932384626433832795;
-static const float tpi = pi * 2.0;
+void vs_common( in uint id : SV_VERTEXID,
+                inout float4 vpos : SV_POSITION,
+                inout float2 uv : TEXCOORD0)
+{
+    v2f_core(id, uv, vpos);
+}
 
-float nrand(float2 n)
+void vs_3x3(in uint id : SV_VERTEXID,
+            inout float4 vpos : SV_POSITION,
+            inout float4 ofs[2] : TEXCOORD0)
+{
+    float2 uv;
+    v2f_core(id, uv, vpos);
+    const float2 usize = rcp(float2(BUFFER_WIDTH, BUFFER_HEIGHT));
+    ofs[0].xy = uv + float2(-1.0,  1.0) * usize;
+    ofs[0].zw = uv + float2( 1.0,  1.0) * usize;
+    ofs[1].xy = uv + float2(-1.0, -1.0) * usize;
+    ofs[1].zw = uv + float2( 1.0, -1.0) * usize;
+}
+
+static const int oNum = 7;
+
+float2 Vogel2D(int uIndex, float2 uv, float2 pSize)
+{
+    const float2 Size = pSize * uRadius;
+    const float  GoldenAngle = Pi * (3.0 - sqrt(5.0));
+    const float2 Radius = (sqrt(uIndex + 0.5f) / sqrt(uTaps)) * Size;
+    const float  Theta = uIndex * GoldenAngle;
+
+    float2 SineCosine;
+    sincos(Theta, SineCosine.x, SineCosine.y);
+    return Radius * SineCosine.yx + uv;
+}
+
+void vs_source( in uint id : SV_VERTEXID,
+                inout float4 vpos : SV_POSITION,
+                inout float4 ofs[oNum] : TEXCOORD0)
+{
+    const float cLOD = log2(max(DSIZE.x, DSIZE.y)) - log2(ImageSize);
+    const float2 uSize = rcp(DSIZE.xy / exp2(cLOD));
+    float2 uv;
+    v2f_core(id, uv, vpos);
+
+    for(int i = 0; i < oNum; i++)
+    {
+        ofs[i].xy = Vogel2D(i, uv, uSize);
+        ofs[i].zw = Vogel2D(oNum + i, uv, uSize);
+    }
+}
+
+void vs_filter( in uint id : SV_VERTEXID,
+                inout float4 vpos : SV_POSITION,
+                inout float4 ofs[oNum] : TEXCOORD0)
+{
+    const float2 uSize = rcp(ImageSize);
+    float2 uv;
+    v2f_core(id, uv, vpos);
+
+    for(int i = 0; i < oNum; i++)
+    {
+        ofs[i].xy = Vogel2D(i, uv, uSize);
+        ofs[i].zw = Vogel2D(oNum + i, uv, uSize);
+    }
+}
+
+/* [ Pixel Shaders ] */
+
+float urand(float2 vpos)
 {
     const float3 value = float3(52.9829189, 0.06711056, 0.00583715);
-    return frac(value.x * frac(dot(n.xy, value.yz)));
+    return frac(value.x * frac(dot(vpos.xy, value.yz)));
 }
 
-float2 Vogel2D(int uIndex, int nTaps, float phi)
+float4 ps_source(float4 vpos : SV_POSITION, float4 uv[2] : TEXCOORD0) : SV_Target
 {
-    const float GoldenAngle = pi * (3.0 - sqrt(5.0));
-    const float r = sqrt(uIndex + 0.5f) / sqrt(nTaps);
-    float theta = uIndex * GoldenAngle + phi;
-
-    float2 sc;
-    sincos(theta, sc.x, sc.y);
-    return r * sc.yx;
-}
-
-float mod2D(float x, float y) { return x - y * floor(x / y); }
-
-float4 ps_blur(v2f input) : SV_TARGET
-{
-    const int uTaps = 16;
-    float uBoard = mod2D(dot(input.vpos.xy, 1.0), 2.0);
-    const float2 ps = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT) * kRadius;
-    float urand = nrand(input.vpos.xy * uBoard) * tpi;
     float4 uImage;
+    uImage += tex2D(s_color, uv[0].xy);
+    uImage += tex2D(s_color, uv[0].zw);
+    uImage += tex2D(s_color, uv[1].xy);
+    uImage += tex2D(s_color, uv[1].zw);
+    uImage *= 0.25;
+    return uImage;
+}
 
-    [unroll]
-    for (int i = 0; i < uTaps; i++)
+float4 ps_convert(float4 vpos : SV_POSITION, float4 ofs[7] : TEXCOORD0) : SV_Target
+{
+    float4 uImage;
+    float2 vofs[14];
+
+    for (int i = 0; i < 7; i++)
     {
-        float2 ofs = Vogel2D(i, uTaps, urand);
-        float2 uv = input.uv + ofs * ps;
-        float4 uColor = tex2D(s_color, uv);
-        uImage = lerp(uImage, uColor, rcp(i + 1));
+        vofs[i] = ofs[i].xy;
+        vofs[i + 7] = ofs[i].zw;
+    }
+
+    for (int j = 0; j < uTaps; j++)
+    {
+        float4 uColor = tex2D(s_image, vofs[j]);
+        uImage = lerp(uImage, uColor, rcp(float(j) + 1));
     }
 
     return uImage;
 }
 
-float4 calcweights(float s)
+float4 ps_filter(float4 vpos : SV_POSITION, float4 ofs[7] : TEXCOORD0) : SV_Target
 {
-    const float4 w1 = float4(-0.5, 0.1666, 0.3333, -0.3333);
-    const float4 w2 = float4( 1.0, 0.0, -0.5, 0.5);
-    const float4 w3 = float4(-0.6666, 0.0, 0.8333, 0.1666);
-    float4 t = mad(w1, s, w2);
-    t = mad(t, s, w2.yyzw);
-    t = mad(t, s, w3);
-    t.xy = mad(t.xy, rcp(t.zw), 1.0);
-    t.x += s;
-    t.y -= s;
-    return t;
-}
+    const float uArea = Pi * (uRadius * uRadius) / uTaps;
+    const float uBias = log2(sqrt(uArea));
 
-float4 ps_smooth(v2f input) : SV_TARGET
-{
+    float4 uImage;
+    float2 vofs[14];
 
-    const float kPi = 3.14159265359f;
-    float area   = kPi * (kRadius * kRadius);
-          area   = area / 16; // area per sample
-    float lod    = ceil(log2(sqrt(area))) - 1; // select mip level with similar area to the sample
+    for (int i = 0; i < 7; i++)
+    {
+        vofs[i] = ofs[i].xy;
+        vofs[i + 7] = ofs[i].zw;
+    }
 
-    float2 texsize = tex2Dsize(s_blur, lod);
-    float2 pt = 1.0 / texsize;
-    float2 fcoord = frac(input.uv * texsize + 0.5);
-    float4 parmx = calcweights(fcoord.x);
-    float4 parmy = calcweights(fcoord.y);
-    float4 cdelta;
-    cdelta.xz = parmx.rg * float2(-pt.x, pt.x);
-    cdelta.yw = parmy.rg * float2(-pt.y, pt.y);
-    // first y-interpolation
-    float4 ar = tex2Dlod(s_blur, float4(input.uv + cdelta.xy, 0.0, lod));
-    float4 ag = tex2Dlod(s_blur, float4(input.uv + cdelta.xw, 0.0, lod));
-    float4 ab = lerp(ag, ar, parmy.b);
-    // second y-interpolation
-    float4 br = tex2Dlod(s_blur, float4(input.uv + cdelta.zy, 0.0, lod));
-    float4 bg = tex2Dlod(s_blur, float4(input.uv + cdelta.zw, 0.0, lod));
-    float4 aa = lerp(bg, br, parmy.b);
-    // x-interpolation
-    return lerp(aa, ab, parmx.b);
+    for (int j = 0; j < uTaps; j++)
+    {
+        float4 uColor = tex2Dlod(s_blur, float4(vofs[j], 0.0, uBias));
+        uImage = lerp(uImage, uColor, rcp(float(j) + 1));
+    }
+
+    return uImage + urand(vpos.xy) / 255.0;
 }
 
 technique cBlur
 {
     pass
     {
-        VertexShader = vs_common;
-        PixelShader = ps_blur;
-        RenderTarget = r_blur;
-
+        VertexShader = vs_3x3;
+        PixelShader = ps_source;
+        RenderTarget0 = r_image;
+        SRGBWriteEnable = TRUE;
     }
 
     pass
     {
-        VertexShader = vs_common;
-        PixelShader = ps_smooth;
+        VertexShader = vs_source;
+        PixelShader = ps_convert;
+        RenderTarget0 = r_blur;
+        SRGBWriteEnable = TRUE;
+    }
+
+    pass
+    {
+        VertexShader = vs_filter;
+        PixelShader = ps_filter;
         SRGBWriteEnable = TRUE;
     }
 }

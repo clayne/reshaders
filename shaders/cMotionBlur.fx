@@ -9,12 +9,12 @@
     Notes:  Blurred previous + current frames must be 32Float textures.
             This makes the optical flow not suffer from noise + banding
 
-    Gaussian     - [https://github.com/SleepKiller/shaderpatch] [MIT]
     LOD Compute  - [https://john-chapman.github.io/2019/03/29/convolution.html]
     Noise        - [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
     Optical Flow - [https://dspace.mit.edu/handle/1721.1/6337]
     Pi Constant  - [https://github.com/microsoft/DirectX-Graphics-Samples] [MIT]
     Threshold    - [https://github.com/diwi/PixelFlow] [MIT]
+    Vogel Disk   - [http://blog.marmakoide.org/?p=1]
 */
 
 #define uOption(option, udata, utype, ucategory, ulabel, uvalue, umin, umax)    \
