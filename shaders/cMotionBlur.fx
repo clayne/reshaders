@@ -28,7 +28,7 @@ uOption(uScale,     float, "slider", "Basic", "Scale",     1.000, 0.000, 2.000);
 uOption(uRadius,    float, "slider", "Basic", "Prefilter", 4.000, 0.000, 8.000);
 
 uOption(uSmooth, float, "slider", "Advanced", "Flow Smooth", 0.250, 0.000, 0.500);
-uOption(uDetail, int,   "slider", "Advanced", "Flow Mip",    4, 1, 7);
+uOption(uDetail, float, "slider", "Advanced", "Flow Mip",    16.00, 0.000, 32.00);
 uOption(uDebug,  bool,  "radio",  "Advanced", "Debug",       false, 0, 0);
 
 #define CONST_LOG2(x) (\
@@ -87,6 +87,7 @@ void vs_3x3(in uint id : SV_VERTEXID,
             inout float4 vpos : SV_POSITION,
             inout float4 ofs[2] : TEXCOORD0)
 {
+	// Calculate 3x3 gaussian kernel in 4 fetches
     float2 uv;
     v2f_core(id, uv, vpos);
     const float2 usize = rcp(float2(BUFFER_WIDTH, BUFFER_HEIGHT));
@@ -98,9 +99,8 @@ void vs_3x3(in uint id : SV_VERTEXID,
 
 float2 Vogel2D(int uIndex, float2 uv, float2 pSize)
 {
-    const float2 Size = pSize * uRadius;
     const float  GoldenAngle = Pi * (3.0 - sqrt(5.0));
-    const float2 Radius = (sqrt(uIndex + 0.5f) / sqrt(uTaps)) * Size;
+    const float2 Radius = (sqrt(uIndex + 0.5f) / sqrt(uTaps)) * pSize;
     const float  Theta = uIndex * GoldenAngle;
 
     float2 SineCosine;
@@ -113,8 +113,9 @@ void vs_source( in uint id : SV_VERTEXID,
                 inout float2 uv : TEXCOORD0,
                 inout float4 ofs[7] : TEXCOORD1)
 {
+	// Calculate texel offset of the mipped texture
     const float cLOD = log2(max(DSIZE.x, DSIZE.y)) - log2(ImageSize);
-    const float2 uSize = rcp(DSIZE.xy / exp2(cLOD));
+    const float2 uSize = rcp(DSIZE.xy / exp2(cLOD)) * uRadius;
     v2f_core(id, uv, vpos);
 
     for(int i = 0; i < 7; i++)
@@ -128,7 +129,7 @@ void vs_filter( in uint id : SV_VERTEXID,
                 inout float4 vpos : SV_POSITION,
                 inout float4 ofs[8] : TEXCOORD0)
 {
-    const float2 uSize = rcp(ImageSize);
+    const float2 uSize = rcp(ImageSize) * uRadius;
     float2 uv;
     v2f_core(id, uv, vpos);
 
@@ -136,6 +137,21 @@ void vs_filter( in uint id : SV_VERTEXID,
     {
         ofs[i].xy = Vogel2D(i, uv, uSize);
         ofs[i].zw = Vogel2D(8 + i, uv, uSize);
+    }
+}
+
+void vs_output( in uint id : SV_VERTEXID,
+                inout float4 vpos : SV_POSITION,
+                inout float2 uv : TEXCOORD0,
+                inout float4 ofs[7] : TEXCOORD1)
+{
+    const float2 uSize = rcp(ImageSize) * uDetail;
+    v2f_core(id, uv, vpos);
+
+    for(int i = 0; i < 7; i++)
+    {
+        ofs[i].xy = Vogel2D(i, uv, uSize);
+        ofs[i].zw = Vogel2D(7 + i, uv, uSize);
     }
 }
 
@@ -161,8 +177,11 @@ float4 ps_source(float4 vpos : SV_POSITION, float4 uv[2] : TEXCOORD0) : SV_Targe
 
 float4 ps_convert(float4 vpos : SV_POSITION, float2 uv : TEXCOORD0, float4 ofs[7] : TEXCOORD1) : SV_Target
 {
+	// Manually calculate LOD between texture and rendertarget size
+    const float cLOD = log2(max(DSIZE.x, DSIZE.y)) - log2(ImageSize);
+	const int cTaps = 14;
     float uImage;
-    float2 vofs[14];
+    float2 vofs[cTaps];
 
     for (int i = 0; i < 7; i++)
     {
@@ -170,9 +189,9 @@ float4 ps_convert(float4 vpos : SV_POSITION, float2 uv : TEXCOORD0, float4 ofs[7
         vofs[i + 7] = ofs[i].zw;
     }
 
-    for (int j = 0; j < uTaps; j++)
+    for (int j = 0; j < cTaps; j++)
     {
-        float uColor = tex2D(s_buffer, vofs[j]).r;
+        float uColor = tex2Dlod(s_buffer, float4(vofs[j], 0.0, abs(cLOD))).r;
         uImage = lerp(uImage, uColor, rcp(float(j) + 1));
     }
 
@@ -185,11 +204,12 @@ float4 ps_convert(float4 vpos : SV_POSITION, float2 uv : TEXCOORD0, float4 ofs[7
 
 float4 ps_filter(float4 vpos : SV_POSITION, float4 ofs[8] : TEXCOORD0) : SV_Target
 {
+	const int cTaps = 16;
     const float uArea = Pi * (uRadius * uRadius) / uTaps;
     const float uBias = log2(sqrt(uArea));
 
     float uImage;
-    float2 vofs[16];
+    float2 vofs[cTaps];
 
     for (int i = 0; i < 8; i++)
     {
@@ -197,9 +217,9 @@ float4 ps_filter(float4 vpos : SV_POSITION, float4 ofs[8] : TEXCOORD0) : SV_Targ
         vofs[i + 8] = ofs[i].zw;
     }
 
-    for (int j = 0; j < uTaps; j++)
+    for (int j = 0; j < cTaps; j++)
     {
-        float uColor = tex2Dlod(s_pframe, float4(vofs[j], 0.0, uBias)).w;
+        float uColor = tex2Dlod(s_pframe, float4(vofs[j], 0.0, abs(uBias))).w;
         uImage = lerp(uImage, uColor, rcp(float(j) + 1));
     }
 
@@ -241,25 +261,27 @@ float4 calcweights(float s)
     return t;
 }
 
-float4 ps_output(float4 vpos : SV_POSITION, float2 uv : TEXCOORD0) : SV_Target
+float4 ps_output(float4 vpos : SV_POSITION, float2 uv : TEXCOORD0, float4 ofs[7] : TEXCOORD1) : SV_Target
 {
-    const float2 texsize = ldexp(ImageSize, -uDetail);
-    const float2 pt = 1.0 / texsize;
-    float2 fcoord = frac(uv * texsize + 0.5);
-    float4 parmx = calcweights(fcoord.x);
-    float4 parmy = calcweights(fcoord.y);
-    float4 cdelta;
-    cdelta.xzyw = float4(parmx.rg, parmy.rg) * float4(-pt.x, pt.x, -pt.y, pt.y);
-    // first y-interpolation
-    float2 ar = tex2Dlod(s_cflow, float4(uv + cdelta.xy, 0.0, uDetail)).rg;
-    float2 ag = tex2Dlod(s_cflow, float4(uv + cdelta.xw, 0.0, uDetail)).rg;
-    float2 ab = lerp(ag, ar, parmy.b);
-    // second y-interpolation
-    float2 br = tex2Dlod(s_cflow, float4(uv + cdelta.zy, 0.0, uDetail)).rg;
-    float2 bg = tex2Dlod(s_cflow, float4(uv + cdelta.zw, 0.0, uDetail)).rg;
-    float2 aa = lerp(bg, br, parmy.b);
-    // x-interpolation
-    float2 oFlow = lerp(aa, ab, parmx.b);
+	const int cTaps = 14;
+    const float uArea = Pi * (uDetail * uDetail) / cTaps;
+    const float uBias = log2(sqrt(uArea));
+
+    float2 oFlow;
+    float2 vofs[14];
+
+    for (int i = 0; i < 7; i++)
+    {
+        vofs[i] = ofs[i].xy;
+        vofs[i + 7] = ofs[i].zw;
+    }
+
+    for (int j = 0; j < cTaps; j++)
+    {
+        float2 uColor = tex2Dlod(s_cflow, float4(vofs[j], 0.0, abs(uBias))).rg;
+        oFlow = lerp(oFlow, uColor, rcp(float(j) + 1));
+    }
+
     oFlow /= ImageSize;
     oFlow *= uScale;
 
@@ -267,12 +289,11 @@ float4 ps_output(float4 vpos : SV_POSITION, float2 uv : TEXCOORD0) : SV_Target
     float noise = urand(vpos.xy) * 2.0;
     const float samples = 1.0 / (16.0 - 1.0);
 
-    [unroll]
-    for(int i = 0; i < 9; i++)
+    for(int k = 0; k < 9; k++)
     {
-        float2 calc = (noise + i * 2.0) * samples - 0.5;
+        float2 calc = (noise + k * 2.0) * samples - 0.5;
         float4 uColor = tex2D(s_color, oFlow * calc + uv);
-        oBlur = lerp(oBlur, uColor, rcp(float(i) + 1));
+        oBlur = lerp(oBlur, uColor, rcp(float(k) + 1));
     }
 
     return (uDebug) ? float4(oFlow, 0.0, 0.0) : oBlur;
@@ -310,7 +331,7 @@ technique cMotionBlur
 
     pass cFlowBlur
     {
-        VertexShader = vs_common;
+        VertexShader = vs_output;
         PixelShader = ps_output;
         SRGBWriteEnable = TRUE;
     }
