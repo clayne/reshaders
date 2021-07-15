@@ -96,8 +96,6 @@ void vs_3x3(in uint id : SV_VERTEXID,
     ofs[1].zw = uv + float2( 1.0, -1.0) * usize;
 }
 
-static const int oNum = 7;
-
 float2 Vogel2D(int uIndex, float2 uv, float2 pSize)
 {
     const float2 Size = pSize * uRadius;
@@ -113,31 +111,31 @@ float2 Vogel2D(int uIndex, float2 uv, float2 pSize)
 void vs_source( in uint id : SV_VERTEXID,
                 inout float4 vpos : SV_POSITION,
                 inout float2 uv : TEXCOORD0,
-                inout float4 ofs[oNum] : TEXCOORD1)
+                inout float4 ofs[7] : TEXCOORD1)
 {
     const float cLOD = log2(max(DSIZE.x, DSIZE.y)) - log2(ImageSize);
     const float2 uSize = rcp(DSIZE.xy / exp2(cLOD));
     v2f_core(id, uv, vpos);
 
-    for(int i = 0; i < oNum; i++)
+    for(int i = 0; i < 7; i++)
     {
         ofs[i].xy = Vogel2D(i, uv, uSize);
-        ofs[i].zw = Vogel2D(oNum + i, uv, uSize);
+        ofs[i].zw = Vogel2D(7 + i, uv, uSize);
     }
 }
 
 void vs_filter( in uint id : SV_VERTEXID,
                 inout float4 vpos : SV_POSITION,
-                inout float4 ofs[oNum] : TEXCOORD0)
+                inout float4 ofs[8] : TEXCOORD0)
 {
     const float2 uSize = rcp(ImageSize);
     float2 uv;
     v2f_core(id, uv, vpos);
 
-    for(int i = 0; i < oNum; i++)
+    for(int i = 0; i < 8; i++)
     {
         ofs[i].xy = Vogel2D(i, uv, uSize);
-        ofs[i].zw = Vogel2D(oNum + i, uv, uSize);
+        ofs[i].zw = Vogel2D(8 + i, uv, uSize);
     }
 }
 
@@ -185,18 +183,18 @@ float4 ps_convert(float4 vpos : SV_POSITION, float2 uv : TEXCOORD0, float4 ofs[7
     return output;
 }
 
-float4 ps_filter(float4 vpos : SV_POSITION, float4 ofs[7] : TEXCOORD0) : SV_Target
+float4 ps_filter(float4 vpos : SV_POSITION, float4 ofs[8] : TEXCOORD0) : SV_Target
 {
     const float uArea = Pi * (uRadius * uRadius) / uTaps;
     const float uBias = log2(sqrt(uArea));
 
     float uImage;
-    float2 vofs[14];
+    float2 vofs[16];
 
-    for (int i = 0; i < 7; i++)
+    for (int i = 0; i < 8; i++)
     {
         vofs[i] = ofs[i].xy;
-        vofs[i + 7] = ofs[i].zw;
+        vofs[i + 8] = ofs[i].zw;
     }
 
     for (int j = 0; j < uTaps; j++)

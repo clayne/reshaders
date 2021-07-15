@@ -31,9 +31,8 @@ uOption(uRadius, float, "slider", "Basic", "Blur Radius", 8.000, 0.000, 16.00);
 #define RSIZE LOG2(RMAX(DSIZE.x, DSIZE.y)) + 1
 
 static const float Pi = 3.1415926535897f;
-static const float Epsilon = 1e-7;
 static const float ImageSize = 128.0;
-static const int uTaps = 14;
+static const int uTaps = 16;
 
 texture2D r_color  : COLOR;
 texture2D r_image { Width = DSIZE.x; Height = DSIZE.y; MipLevels = RSIZE; Format = RGBA8; };
@@ -74,7 +73,7 @@ void vs_3x3(in uint id : SV_VERTEXID,
     ofs[1].zw = uv + float2( 1.0, -1.0) * usize;
 }
 
-static const int oNum = 7;
+static const int oNum = 8;
 
 float2 Vogel2D(int uIndex, float2 uv, float2 pSize)
 {
@@ -138,15 +137,15 @@ float4 ps_source(float4 vpos : SV_POSITION, float4 uv[2] : TEXCOORD0) : SV_Targe
     return uImage;
 }
 
-float4 ps_convert(float4 vpos : SV_POSITION, float4 ofs[7] : TEXCOORD0) : SV_Target
+float4 ps_convert(float4 vpos : SV_POSITION, float4 ofs[oNum] : TEXCOORD0) : SV_Target
 {
     float4 uImage;
-    float2 vofs[14];
+    float2 vofs[uTaps];
 
-    for (int i = 0; i < 7; i++)
+    for (int i = 0; i < oNum; i++)
     {
         vofs[i] = ofs[i].xy;
-        vofs[i + 7] = ofs[i].zw;
+        vofs[i + oNum] = ofs[i].zw;
     }
 
     for (int j = 0; j < uTaps; j++)
@@ -158,18 +157,18 @@ float4 ps_convert(float4 vpos : SV_POSITION, float4 ofs[7] : TEXCOORD0) : SV_Tar
     return uImage;
 }
 
-float4 ps_filter(float4 vpos : SV_POSITION, float4 ofs[7] : TEXCOORD0) : SV_Target
+float4 ps_filter(float4 vpos : SV_POSITION, float4 ofs[oNum] : TEXCOORD0) : SV_Target
 {
     const float uArea = Pi * (uRadius * uRadius) / uTaps;
     const float uBias = log2(sqrt(uArea));
 
     float4 uImage;
-    float2 vofs[14];
+    float2 vofs[uTaps];
 
-    for (int i = 0; i < 7; i++)
+    for (int i = 0; i < oNum; i++)
     {
         vofs[i] = ofs[i].xy;
-        vofs[i + 7] = ofs[i].zw;
+        vofs[i + oNum] = ofs[i].zw;
     }
 
     for (int j = 0; j < uTaps; j++)
