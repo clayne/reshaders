@@ -48,16 +48,19 @@ uOption(uDebug,  bool,  "radio",  "Advanced", "Debug",       false, 0, 0);
 #define DSIZE uint2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2)
 #define RSIZE LOG2(RMAX(DSIZE.x, DSIZE.y)) + 1
 
+#ifndef SET_BUFFER_RESOLUTION
+    #define SET_BUFFER_RESOLUTION 128
+#endif
+
 static const float Pi = 3.1415926535897f;
 static const float Epsilon = 1e-7;
-static const float ImageSize = 128.0;
 static const int uTaps = 14;
 
 texture2D r_color  : COLOR;
 texture2D r_buffer { Width = DSIZE.x; Height = DSIZE.y; MipLevels = RSIZE; Format = R8; };
-texture2D r_cflow  { Width = ImageSize; Height = ImageSize; Format = RG32F;   MipLevels = 8; };
-texture2D r_cframe { Width = ImageSize; Height = ImageSize; Format = R32F; };
-texture2D r_pframe { Width = ImageSize; Height = ImageSize; Format = RGBA32F; MipLevels = 8; };
+texture2D r_cflow  { Width = SET_BUFFER_RESOLUTION; Height = SET_BUFFER_RESOLUTION; Format = RG32F;   MipLevels = LOG2(SET_BUFFER_RESOLUTION) + 1; };
+texture2D r_cframe { Width = SET_BUFFER_RESOLUTION; Height = SET_BUFFER_RESOLUTION; Format = R32F; };
+texture2D r_pframe { Width = SET_BUFFER_RESOLUTION; Height = SET_BUFFER_RESOLUTION; Format = RGBA32F; MipLevels = LOG2(SET_BUFFER_RESOLUTION) + 1; };
 
 sampler2D s_color  { Texture = r_color; SRGBTexture = TRUE; };
 sampler2D s_buffer { Texture = r_buffer; AddressU = MIRROR; AddressV = MIRROR; };
@@ -87,7 +90,7 @@ void vs_3x3(in uint id : SV_VERTEXID,
             inout float4 vpos : SV_POSITION,
             inout float4 ofs[2] : TEXCOORD0)
 {
-	// Calculate 3x3 gaussian kernel in 4 fetches
+    // Calculate 3x3 gaussian kernel in 4 fetches
     float2 uv;
     v2f_core(id, uv, vpos);
     const float2 usize = rcp(float2(BUFFER_WIDTH, BUFFER_HEIGHT));
@@ -113,8 +116,8 @@ void vs_source( in uint id : SV_VERTEXID,
                 inout float2 uv : TEXCOORD0,
                 inout float4 ofs[7] : TEXCOORD1)
 {
-	// Calculate texel offset of the mipped texture
-    const float cLOD = log2(max(DSIZE.x, DSIZE.y)) - log2(ImageSize);
+    // Calculate texel offset of the mipped texture
+    const float cLOD = log2(max(DSIZE.x, DSIZE.y)) - log2(SET_BUFFER_RESOLUTION);
     const float2 uSize = rcp(DSIZE.xy / exp2(cLOD)) * uRadius;
     v2f_core(id, uv, vpos);
 
@@ -125,11 +128,24 @@ void vs_source( in uint id : SV_VERTEXID,
     }
 }
 
+void vs_flow(   in uint id : SV_VERTEXID,
+                inout float4 vpos : SV_POSITION,
+                inout float2 uv : TEXCOORD0,
+                inout float4 uddx : TEXCOORD1,
+                inout float4 uddy : TEXCOORD2)
+{
+    v2f_core(id, uv, vpos);
+    uddx.xy = uv + float2(1.0, 0.0) * rcp(SET_BUFFER_RESOLUTION);
+    uddx.zw = uv - float2(1.0, 0.0) * rcp(SET_BUFFER_RESOLUTION);
+    uddy.xy = uv + float2(0.0, 1.0) * rcp(SET_BUFFER_RESOLUTION);
+    uddy.zw = uv - float2(0.0, 1.0) * rcp(SET_BUFFER_RESOLUTION);
+}
+
 void vs_filter( in uint id : SV_VERTEXID,
                 inout float4 vpos : SV_POSITION,
                 inout float4 ofs[8] : TEXCOORD0)
 {
-    const float2 uSize = rcp(ImageSize) * uRadius;
+    const float2 uSize = rcp(SET_BUFFER_RESOLUTION) * uRadius;
     float2 uv;
     v2f_core(id, uv, vpos);
 
@@ -145,7 +161,7 @@ void vs_output( in uint id : SV_VERTEXID,
                 inout float2 uv : TEXCOORD0,
                 inout float4 ofs[7] : TEXCOORD1)
 {
-    const float2 uSize = rcp(ImageSize) * uDetail;
+    const float2 uSize = rcp(SET_BUFFER_RESOLUTION) * uDetail;
     v2f_core(id, uv, vpos);
 
     for(int i = 0; i < 7; i++)
@@ -171,15 +187,16 @@ float4 ps_source(float4 vpos : SV_POSITION, float4 uv[2] : TEXCOORD0) : SV_Targe
     uImage += tex2D(s_color, uv[1].xy);
     uImage += tex2D(s_color, uv[1].zw);
     uImage *= 0.25;
+    uImage = normalize(uImage);
     float uLuma = max(max(uImage.r, uImage.g), uImage.b);
-    return sqrt(uLuma) + urand(vpos.xy) / 255.0;
+    return uLuma + urand(vpos.xy) / 255.0;
 }
 
 float4 ps_convert(float4 vpos : SV_POSITION, float2 uv : TEXCOORD0, float4 ofs[7] : TEXCOORD1) : SV_Target
 {
-	// Manually calculate LOD between texture and rendertarget size
-    const float cLOD = log2(max(DSIZE.x, DSIZE.y)) - log2(ImageSize);
-	const int cTaps = 14;
+    // Manually calculate LOD between texture and rendertarget size
+    const float cLOD = log2(max(DSIZE.x, DSIZE.y)) - log2(SET_BUFFER_RESOLUTION);
+    const int cTaps = 14;
     float uImage;
     float2 vofs[cTaps];
 
@@ -191,7 +208,7 @@ float4 ps_convert(float4 vpos : SV_POSITION, float2 uv : TEXCOORD0, float4 ofs[7
 
     for (int j = 0; j < cTaps; j++)
     {
-        float uColor = tex2Dlod(s_buffer, float4(vofs[j], 0.0, abs(cLOD))).r;
+        float uColor = tex2Dlod(s_buffer, float4(vofs[j], 0.0, cLOD)).r;
         uImage = lerp(uImage, uColor, rcp(float(j) + 1));
     }
 
@@ -204,7 +221,7 @@ float4 ps_convert(float4 vpos : SV_POSITION, float2 uv : TEXCOORD0, float4 ofs[7
 
 float4 ps_filter(float4 vpos : SV_POSITION, float4 ofs[8] : TEXCOORD0) : SV_Target
 {
-	const int cTaps = 16;
+    const int cTaps = 16;
     const float uArea = Pi * (uRadius * uRadius) / uTaps;
     const float uBias = log2(sqrt(uArea));
 
@@ -219,20 +236,31 @@ float4 ps_filter(float4 vpos : SV_POSITION, float4 ofs[8] : TEXCOORD0) : SV_Targ
 
     for (int j = 0; j < cTaps; j++)
     {
-        float uColor = tex2Dlod(s_pframe, float4(vofs[j], 0.0, abs(uBias))).w;
+        float uColor = tex2Dlod(s_pframe, float4(vofs[j], 0.0, uBias)).w;
         uImage = lerp(uImage, uColor, rcp(float(j) + 1));
     }
 
     return max(uImage, Epsilon);
 }
 
-float4 ps_flow(float4 vpos : SV_POSITION, float2 uv : TEXCOORD0) : SV_Target
+float4 ps_flow(float4 vpos : SV_POSITION, float2 uv : TEXCOORD0, float4 uddx : TEXCOORD1, float4 uddy : TEXCOORD2) : SV_Target
 {
     // Calculate optical flow
     float cLuma = tex2D(s_cframe, uv).r;
     float pLuma = tex2D(s_pframe, uv).z;
-    float2 dFdc = float2(ddx(cLuma), ddy(cLuma));
-    float2 dFdp = float2(ddx(pLuma), ddy(pLuma));
+
+    float2 dFdc;
+    dFdc.x  = tex2D(s_cframe, uddx.xy).r;
+    dFdc.x -= tex2D(s_cframe, uddx.zw).r;
+    dFdc.y  = tex2D(s_cframe, uddy.xy).r;
+    dFdc.y -= tex2D(s_cframe, uddy.zw).r;
+
+    float2 dFdp;
+    dFdp.x  = tex2D(s_pframe, uddx.xy).z;
+    dFdp.x -= tex2D(s_pframe, uddx.zw).z;
+    dFdp.y  = tex2D(s_pframe, uddy.xy).z;
+    dFdp.y -= tex2D(s_pframe, uddy.zw).z;
+
     float dt = cLuma - pLuma;
     float dBrightness = dot(dFdp, dFdc) + dt;
     float dSmoothness = dot(dFdp, dFdp) + Epsilon;
@@ -263,7 +291,7 @@ float4 calcweights(float s)
 
 float4 ps_output(float4 vpos : SV_POSITION, float2 uv : TEXCOORD0, float4 ofs[7] : TEXCOORD1) : SV_Target
 {
-	const int cTaps = 14;
+    const int cTaps = 14;
     const float uArea = Pi * (uDetail * uDetail) / cTaps;
     const float uBias = log2(sqrt(uArea));
 
@@ -278,11 +306,11 @@ float4 ps_output(float4 vpos : SV_POSITION, float2 uv : TEXCOORD0, float4 ofs[7]
 
     for (int j = 0; j < cTaps; j++)
     {
-        float2 uColor = tex2Dlod(s_cflow, float4(vofs[j], 0.0, abs(uBias))).rg;
+        float2 uColor = tex2Dlod(s_cflow, float4(vofs[j], 0.0, uBias)).rg;
         oFlow = lerp(oFlow, uColor, rcp(float(j) + 1));
     }
 
-    oFlow /= ImageSize;
+    oFlow /= SET_BUFFER_RESOLUTION;
     oFlow *= uScale;
 
     float4 oBlur;
@@ -324,7 +352,7 @@ technique cMotionBlur
 
     pass cOpticalFlow
     {
-        VertexShader = vs_common;
+        VertexShader = vs_flow;
         PixelShader = ps_flow;
         RenderTarget0 = r_cflow;
     }
