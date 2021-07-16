@@ -75,23 +75,22 @@ void v2f_offset(in float2 coord, in float uFact, out float4 offset)
 struct v2fd
 {
     float4 vpos : SV_Position;
-    float2 uOffset0 : TEXCOORD0;
-    float4 uOffset1 : TEXCOORD1;
+    float2 uv : TEXCOORD0;
+    float4 uOffset : TEXCOORD1;
 };
 
 v2fd downsample2Dvs(uint id, float uFact)
 {
     v2fd output;
-    float2 coord;
-    v2f_core(id, output.uOffset0, output.vpos);
-    v2f_offset(output.uOffset0, uFact, output.uOffset1);
+    v2f_core(id, output.uv, output.vpos);
+    v2f_offset(output.uv, uFact, output.uOffset);
     return output;
 }
 
 struct v2fu
 {
     float4 vpos : SV_Position;
-    float4 uOffset0 : TEXCOORD0;
+    float4 uOffset : TEXCOORD0;
 };
 
 v2fu upsample2Dvs(uint id, float uFact)
@@ -99,7 +98,7 @@ v2fu upsample2Dvs(uint id, float uFact)
     v2fu output;
     float2 coord;
     v2f_core(id, coord, output.vpos);
-    v2f_offset(coord, uFact, output.uOffset0);
+    v2f_offset(coord, uFact, output.uOffset);
     return output;
 }
 
@@ -131,21 +130,21 @@ v2fu vs_upsample1(uint id : SV_VertexID) { return upsample2Dvs(id, 0.0); }
 float4 downsample2Dps(sampler2D src, v2fd input)
 {
     float4 output;
-    output  = tex2D(src, input.uOffset0) * exp2(-1.0);
-    output += tex2D(src, input.uOffset1.xy) * exp2(-3.0); // --
-    output += tex2D(src, input.uOffset1.zw) * exp2(-3.0); // ++
-    output += tex2D(src, input.uOffset1.xw) * exp2(-3.0); // -+
-    output += tex2D(src, input.uOffset1.zy) * exp2(-3.0); // +-
+    output  = tex2D(src, input.uv) * exp2(-1.0);
+    output += tex2D(src, input.uOffset.xy) * exp2(-3.0); // --
+    output += tex2D(src, input.uOffset.zw) * exp2(-3.0); // ++
+    output += tex2D(src, input.uOffset.xw) * exp2(-3.0); // -+
+    output += tex2D(src, input.uOffset.zy) * exp2(-3.0); // +-
     return output;
 }
 
 float4 upsample2Dps(sampler2D src, v2fu input)
 {
     float4 output;
-    output  = tex2D(src, input.uOffset0.xy) * exp2(-2.0); // --
-    output += tex2D(src, input.uOffset0.zw) * exp2(-2.0); // ++
-    output += tex2D(src, input.uOffset0.xw) * exp2(-2.0); // -+
-    output += tex2D(src, input.uOffset0.zy) * exp2(-2.0); // +-
+    output  = tex2D(src, input.uOffset.xy) * exp2(-2.0); // --
+    output += tex2D(src, input.uOffset.zw) * exp2(-2.0); // ++
+    output += tex2D(src, input.uOffset.xw) * exp2(-2.0); // -+
+    output += tex2D(src, input.uOffset.zy) * exp2(-2.0); // +-
     return output;
 }
 
