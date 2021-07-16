@@ -25,7 +25,7 @@
 
 uOption(uThreshold, float, "slider", "Basic", "Threshold", 0.000, 0.000, 1.000);
 uOption(uScale,     float, "slider", "Basic", "Scale",     1.000, 0.000, 2.000);
-uOption(uRadius,    float, "slider", "Basic", "Prefilter", 4.000, 0.000, 8.000);
+uOption(uRadius,    float, "slider", "Basic", "Prefilter", 8.000, 0.000, 16.00);
 
 uOption(uSmooth, float, "slider", "Advanced", "Flow Smooth", 0.250, 0.000, 0.500);
 uOption(uDetail, float, "slider", "Advanced", "Flow Mip",    16.00, 0.000, 32.00);
@@ -49,7 +49,7 @@ uOption(uDebug,  bool,  "radio",  "Advanced", "Debug",       false, 0, 0);
 #define RSIZE LOG2(RMAX(DSIZE.x, DSIZE.y)) + 1
 
 #ifndef SET_BUFFER_RESOLUTION
-    #define SET_BUFFER_RESOLUTION 128
+    #define SET_BUFFER_RESOLUTION 256
 #endif
 
 static const float Pi = 3.1415926535897f;
@@ -187,9 +187,8 @@ float4 ps_source(float4 vpos : SV_POSITION, float4 uv[2] : TEXCOORD0) : SV_Targe
     uImage += tex2D(s_color, uv[1].xy);
     uImage += tex2D(s_color, uv[1].zw);
     uImage *= 0.25;
-    uImage = normalize(uImage);
     float uLuma = max(max(uImage.r, uImage.g), uImage.b);
-    return uLuma + urand(vpos.xy) / 255.0;
+    return sqrt(uLuma) + urand(vpos.xy) / 255.0;
 }
 
 float4 ps_convert(float4 vpos : SV_POSITION, float2 uv : TEXCOORD0, float4 ofs[7] : TEXCOORD1) : SV_Target
