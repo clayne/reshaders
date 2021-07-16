@@ -55,18 +55,27 @@ sampler2D s_bloom8 { Texture = r_bloom8; };
     Dual Filtering Algorithm - [https://github.com/powervr-graphics/Native_SDK] [MIT]
 */
 
+void v2f_core(  in uint id,
+                inout float2 uv,
+                inout float4 vpos)
+{
+    uv.x = (id == 2) ? 2.0 : 0.0;
+    uv.y = (id == 1) ? 2.0 : 0.0;
+    vpos = float4(uv * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+}
+
+void v2f_offset(in float2 coord, in float uFact, out float4 offset)
+{
+    const float2 psize = ldexp(float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT), uFact);
+    const float2 hoffset = psize + (psize / 2.0f);
+    const float4 uoffset = float4(-hoffset.x, -hoffset.y, hoffset.x, hoffset.y);
+    offset = coord.xyxy + uoffset; // --++
+}
+
 struct v2fd
 {
     float4 vpos : SV_Position;
     float2 uOffset0 : TEXCOORD0;
-    float4 uOffset1 : TEXCOORD1;
-    float4 uOffset2 : TEXCOORD2;
-};
-
-struct v2fu
-{
-    float4 vpos : SV_Position;
-    float4 uOffset0 : TEXCOORD0;
     float4 uOffset1 : TEXCOORD1;
 };
 
@@ -74,36 +83,23 @@ v2fd downsample2Dvs(uint id, float uFact)
 {
     v2fd output;
     float2 coord;
-    coord.x = (id == 2) ? 2.0 : 0.0;
-    coord.y = (id == 1) ? 2.0 : 0.0;
-    output.vpos = float4(coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
-
-    const float2 psize = ldexp(float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT), uFact);
-    const float2 hoffset = psize + (psize / 2.0f);
-    const float4 offset = float4(-hoffset.x, -hoffset.y, hoffset.x, hoffset.y);
-    output.uOffset0 = coord;
-    output.uOffset1.xy = coord + offset.xy; // --
-    output.uOffset1.zw = coord + offset.zw; // ++
-    output.uOffset2.xy = coord + offset.xw; // -+
-    output.uOffset2.zw = coord + offset.zy; // +-
+    v2f_core(id, output.uOffset0, output.vpos);
+    v2f_offset(output.uOffset0, uFact, output.uOffset1);
     return output;
 }
+
+struct v2fu
+{
+    float4 vpos : SV_Position;
+    float4 uOffset0 : TEXCOORD0;
+};
 
 v2fu upsample2Dvs(uint id, float uFact)
 {
     v2fu output;
     float2 coord;
-    coord.x = (id == 2) ? 2.0 : 0.0;
-    coord.y = (id == 1) ? 2.0 : 0.0;
-    output.vpos = float4(coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
-
-    const float2 psize = ldexp(float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT), uFact);
-    const float2 hoffset = psize + (psize / 2.0f);
-    const float4 offset = float4(-hoffset.x, -hoffset.y, hoffset.x, hoffset.y);
-    output.uOffset0.xy = coord + offset.xy; // --
-    output.uOffset0.zw = coord + offset.zw; // ++
-    output.uOffset1.xy = coord + offset.xw; // -+
-    output.uOffset1.zw = coord + offset.zy; // +-
+    v2f_core(id, coord, output.vpos);
+    v2f_offset(coord, uFact, output.uOffset0);
     return output;
 }
 
@@ -136,20 +132,20 @@ float4 downsample2Dps(sampler2D src, v2fd input)
 {
     float4 output;
     output  = tex2D(src, input.uOffset0) * exp2(-1.0);
-    output += tex2D(src, input.uOffset1.xy) * exp2(-3.0);
-    output += tex2D(src, input.uOffset1.zw) * exp2(-3.0);
-    output += tex2D(src, input.uOffset2.xy) * exp2(-3.0);
-    output += tex2D(src, input.uOffset2.zw) * exp2(-3.0);
+    output += tex2D(src, input.uOffset1.xy) * exp2(-3.0); // --
+    output += tex2D(src, input.uOffset1.zw) * exp2(-3.0); // ++
+    output += tex2D(src, input.uOffset1.xw) * exp2(-3.0); // -+
+    output += tex2D(src, input.uOffset1.zy) * exp2(-3.0); // +-
     return output;
 }
 
 float4 upsample2Dps(sampler2D src, v2fu input)
 {
     float4 output;
-    output  = tex2D(src, input.uOffset0.xy) * exp2(-2.0);
-    output += tex2D(src, input.uOffset0.zw) * exp2(-2.0);
-    output += tex2D(src, input.uOffset1.xy) * exp2(-2.0);
-    output += tex2D(src, input.uOffset1.zw) * exp2(-2.0);
+    output  = tex2D(src, input.uOffset0.xy) * exp2(-2.0); // --
+    output += tex2D(src, input.uOffset0.zw) * exp2(-2.0); // ++
+    output += tex2D(src, input.uOffset0.xw) * exp2(-2.0); // -+
+    output += tex2D(src, input.uOffset0.zy) * exp2(-2.0); // +-
     return output;
 }
 
