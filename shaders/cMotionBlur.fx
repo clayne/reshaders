@@ -24,11 +24,11 @@
         > = uvalue
 
 uOption(uThreshold, float, "slider", "Basic", "Threshold", 0.000, 0.000, 1.000);
-uOption(uScale,     float, "slider", "Basic", "Scale",     1.000, 0.000, 2.000);
+uOption(uScale,     float, "slider", "Basic", "Scale",     2.000, 0.000, 4.000);
 uOption(uRadius,    float, "slider", "Basic", "Prefilter", 8.000, 0.000, 16.00);
 
 uOption(uSmooth, float, "slider", "Advanced", "Flow Smooth", 0.250, 0.000, 0.500);
-uOption(uDetail, float, "slider", "Advanced", "Flow Mip",    16.00, 0.000, 32.00);
+uOption(uDetail, float, "slider", "Advanced", "Flow Mip",    32.00, 0.000, 64.00);
 uOption(uDebug,  bool,  "radio",  "Advanced", "Debug",       false, 0, 0);
 
 #define CONST_LOG2(x) (\
@@ -181,6 +181,7 @@ float urand(float2 vpos)
 
 float4 ps_source(float4 vpos : SV_POSITION, float4 uv[2] : TEXCOORD0) : SV_Target
 {
+	const float c = 1e+2;
     float4 uImage;
     uImage += tex2D(s_color, uv[0].xy);
     uImage += tex2D(s_color, uv[0].zw);
@@ -188,7 +189,8 @@ float4 ps_source(float4 vpos : SV_POSITION, float4 uv[2] : TEXCOORD0) : SV_Targe
     uImage += tex2D(s_color, uv[1].zw);
     uImage *= 0.25;
     float uLuma = max(max(uImage.r, uImage.g), uImage.b);
-    return sqrt(uLuma) + urand(vpos.xy) / 255.0;
+    uLuma = log2(uLuma * c + 1.0) * (1.0 / log2(c + 1.0));
+    return uLuma + urand(vpos.xy) / 255.0;
 }
 
 float4 ps_convert(float4 vpos : SV_POSITION, float2 uv : TEXCOORD0, float4 ofs[7] : TEXCOORD1) : SV_Target
