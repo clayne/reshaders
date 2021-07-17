@@ -185,20 +185,8 @@ float4 ps_source(   float4 vpos : SV_POSITION,
     uImage += tex2D(s_color, ofs.xw); // -+
     uImage += tex2D(s_color, ofs.zy); // +-
     uImage *= 0.25;
-
-    float mxRGB = max(max(uImage.r, uImage.g), uImage.b);
-    float mnRGB = min(min(uImage.r, uImage.g), uImage.b);
-
-    // Smooth minimum distance to signal limit divided by smooth max.
-    float rcpMRGB = rcp(mxRGB);
-    float ampRGB = saturate(min(mnRGB, 2.0 - mxRGB) * rcpMRGB);
-
-    // Shaping amount of sharpening.
-    ampRGB = rsqrt(ampRGB);
-    float peak = -3.0 * 1.0 + 8.0;
-    float wRGB = -rcp(ampRGB * peak);
-    float rcpWeightRGB = (4.0 * wRGB + 1.0);
-    float output = rcpWeightRGB + urand(vpos.xy) / 255.0;
+    float3 cnorm = normalize(uImage.rgb);
+    float output = max(max(cnorm.r, cnorm.g), cnorm.b);
 
     // Vignette output if called
     const float2 aspectratio = BUFFER_WIDTH * BUFFER_RCP_HEIGHT;
