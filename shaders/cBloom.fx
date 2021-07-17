@@ -130,21 +130,21 @@ v2fu vs_upsample1(uint id : SV_VertexID) { return upsample2Dvs(id, 0.0); }
 float4 downsample2Dps(sampler2D src, v2fd input)
 {
     float4 output;
-    output  = tex2D(src, input.uv) * exp2(-1.0);
-    output += tex2D(src, input.uOffset.xy) * exp2(-3.0); // --
-    output += tex2D(src, input.uOffset.zw) * exp2(-3.0); // ++
-    output += tex2D(src, input.uOffset.xw) * exp2(-3.0); // -+
-    output += tex2D(src, input.uOffset.zy) * exp2(-3.0); // +-
+    output += tex2D(src, input.uv) * 0.5;
+    output += tex2D(src, input.uOffset.xy) * 0.125; // --
+    output += tex2D(src, input.uOffset.zw) * 0.125; // ++
+    output += tex2D(src, input.uOffset.xw) * 0.125; // -+
+    output += tex2D(src, input.uOffset.zy) * 0.125; // +-
     return output;
 }
 
 float4 upsample2Dps(sampler2D src, v2fu input)
 {
     float4 output;
-    output  = tex2D(src, input.uOffset.xy) * exp2(-2.0); // --
-    output += tex2D(src, input.uOffset.zw) * exp2(-2.0); // ++
-    output += tex2D(src, input.uOffset.xw) * exp2(-2.0); // -+
-    output += tex2D(src, input.uOffset.zy) * exp2(-2.0); // +-
+    output  = tex2D(src, input.uOffset.xy) * 0.25; // --
+    output += tex2D(src, input.uOffset.zw) * 0.25; // ++
+    output += tex2D(src, input.uOffset.xw) * 0.25; // -+
+    output += tex2D(src, input.uOffset.zy) * 0.25; // +-
     return output;
 }
 

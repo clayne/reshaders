@@ -88,16 +88,14 @@ void vs_common( in uint id : SV_VERTEXID,
 
 void vs_3x3(in uint id : SV_VERTEXID,
             inout float4 vpos : SV_POSITION,
-            inout float4 ofs[2] : TEXCOORD0)
+            inout float4 ofs : TEXCOORD0)
 {
     // Calculate 3x3 gaussian kernel in 4 fetches
     float2 uv;
     v2f_core(id, uv, vpos);
     const float2 usize = rcp(float2(BUFFER_WIDTH, BUFFER_HEIGHT));
-    ofs[0].xy = uv + float2(-1.0,  1.0) * usize;
-    ofs[0].zw = uv + float2( 1.0,  1.0) * usize;
-    ofs[1].xy = uv + float2(-1.0, -1.0) * usize;
-    ofs[1].zw = uv + float2( 1.0, -1.0) * usize;
+    const float4 uoffset = float4(-usize.x, -usize.y, usize.x, usize.y);
+    ofs = uv.xyxy + uoffset; // --++
 }
 
 float2 Vogel2D(int uIndex, float2 uv, float2 pSize)
@@ -130,15 +128,14 @@ void vs_source( in uint id : SV_VERTEXID,
 
 void vs_flow(   in uint id : SV_VERTEXID,
                 inout float4 vpos : SV_POSITION,
-                inout float2 uv : TEXCOORD0,
-                inout float4 uddx : TEXCOORD1,
-                inout float4 uddy : TEXCOORD2)
+                inout float4 uddx : TEXCOORD0,
+                inout float4 uddy : TEXCOORD1)
 {
+    float2 uv;
+    const float2 psize = rcp(SET_BUFFER_RESOLUTION);
     v2f_core(id, uv, vpos);
-    uddx.xy = uv + float2(1.0, 0.0) * rcp(SET_BUFFER_RESOLUTION);
-    uddx.zw = uv - float2(1.0, 0.0) * rcp(SET_BUFFER_RESOLUTION);
-    uddy.xy = uv + float2(0.0, 1.0) * rcp(SET_BUFFER_RESOLUTION);
-    uddy.zw = uv - float2(0.0, 1.0) * rcp(SET_BUFFER_RESOLUTION);
+    uddx = uv.xxxy + float4(-1.0, 1.0, 0.0, 0.0) * psize.xxxy;
+    uddy = uv.yyxx + float4(-1.0, 1.0, 0.0, 0.0) * psize.yyxx;
 }
 
 void vs_filter( in uint id : SV_VERTEXID,
@@ -179,21 +176,24 @@ float urand(float2 vpos)
     return frac(value.x * frac(dot(vpos.xy, value.yz)));
 }
 
-float4 ps_source(float4 vpos : SV_POSITION, float4 uv[2] : TEXCOORD0) : SV_Target
+float4 ps_source(   float4 vpos : SV_POSITION,
+                    float4 ofs : TEXCOORD0) : SV_Target
 {
-	const float c = 1e+2;
+    const float c = 1e+2;
     float4 uImage;
-    uImage += tex2D(s_color, uv[0].xy);
-    uImage += tex2D(s_color, uv[0].zw);
-    uImage += tex2D(s_color, uv[1].xy);
-    uImage += tex2D(s_color, uv[1].zw);
+    uImage += tex2D(s_color, ofs.xy); // ++
+    uImage += tex2D(s_color, ofs.zw); // --
+    uImage += tex2D(s_color, ofs.xw); // -+
+    uImage += tex2D(s_color, ofs.zy); // +-
     uImage *= 0.25;
     float uLuma = max(max(uImage.r, uImage.g), uImage.b);
     uLuma = log2(uLuma * c + 1.0) * (1.0 / log2(c + 1.0));
     return uLuma + urand(vpos.xy) / 255.0;
 }
 
-float4 ps_convert(float4 vpos : SV_POSITION, float2 uv : TEXCOORD0, float4 ofs[7] : TEXCOORD1) : SV_Target
+float4 ps_convert(  float4 vpos : SV_POSITION,
+                    float2 uv : TEXCOORD0,
+                    float4 ofs[7] : TEXCOORD1) : SV_Target
 {
     // Manually calculate LOD between texture and rendertarget size
     const float cLOD = log2(max(DSIZE.x, DSIZE.y)) - log2(SET_BUFFER_RESOLUTION);
@@ -220,7 +220,8 @@ float4 ps_convert(float4 vpos : SV_POSITION, float2 uv : TEXCOORD0, float4 ofs[7
     return output;
 }
 
-float4 ps_filter(float4 vpos : SV_POSITION, float4 ofs[8] : TEXCOORD0) : SV_Target
+float4 ps_filter(   float4 vpos : SV_POSITION,
+                    float4 ofs[8] : TEXCOORD0) : SV_Target
 {
     const int cTaps = 16;
     const float uArea = Pi * (uRadius * uRadius) / uTaps;
@@ -244,23 +245,25 @@ float4 ps_filter(float4 vpos : SV_POSITION, float4 ofs[8] : TEXCOORD0) : SV_Targ
     return max(uImage, Epsilon);
 }
 
-float4 ps_flow(float4 vpos : SV_POSITION, float2 uv : TEXCOORD0, float4 uddx : TEXCOORD1, float4 uddy : TEXCOORD2) : SV_Target
+float4 ps_flow( float4 vpos : SV_POSITION,
+                float4 uddx : TEXCOORD0,
+                float4 uddy : TEXCOORD1) : SV_Target
 {
     // Calculate optical flow
-    float cLuma = tex2D(s_cframe, uv).r;
-    float pLuma = tex2D(s_pframe, uv).z;
+    float cLuma = tex2D(s_cframe, uddx.zw).r; // [0, 0]
+    float pLuma = tex2D(s_pframe, uddx.zw).z; // [0, 0]
 
     float2 dFdc;
-    dFdc.x  = tex2D(s_cframe, uddx.xy).r;
-    dFdc.x -= tex2D(s_cframe, uddx.zw).r;
-    dFdc.y  = tex2D(s_cframe, uddy.xy).r;
-    dFdc.y -= tex2D(s_cframe, uddy.zw).r;
+    dFdc.x  = tex2D(s_cframe, uddx.yw).r; // [ 1, 0]
+    dFdc.x -= tex2D(s_cframe, uddx.xw).r; // [-1, 0]
+    dFdc.y  = tex2D(s_cframe, uddy.zy).r; // [ 0, 1]
+    dFdc.y -= tex2D(s_cframe, uddy.zx).r; // [ 0,-1]
 
     float2 dFdp;
-    dFdp.x  = tex2D(s_pframe, uddx.xy).z;
-    dFdp.x -= tex2D(s_pframe, uddx.zw).z;
-    dFdp.y  = tex2D(s_pframe, uddy.xy).z;
-    dFdp.y -= tex2D(s_pframe, uddy.zw).z;
+    dFdp.x  = tex2D(s_pframe, uddx.yw).z; // [ 1, 0]
+    dFdp.x -= tex2D(s_pframe, uddx.xw).z; // [-1, 0]
+    dFdp.y  = tex2D(s_pframe, uddy.zy).z; // [ 0, 1]
+    dFdp.y -= tex2D(s_pframe, uddy.zx).z; // [ 0,-1]
 
     float dt = cLuma - pLuma;
     float dBrightness = dot(dFdp, dFdc) + dt;
@@ -273,7 +276,7 @@ float4 ps_flow(float4 vpos : SV_POSITION, float2 uv : TEXCOORD0, float4 uddx : T
     cFlow *= nFlow / pFlow;
 
     // Smooth optical flow
-    float2 sFlow = tex2D(s_pframe, uv).xy;
+    float2 sFlow = tex2D(s_pframe, uddx.zw).xy; // [0, 0]
     return lerp(cFlow, sFlow, uSmooth).xyxy;
 }
 
@@ -290,7 +293,9 @@ float4 calcweights(float s)
     return t;
 }
 
-float4 ps_output(float4 vpos : SV_POSITION, float2 uv : TEXCOORD0, float4 ofs[7] : TEXCOORD1) : SV_Target
+float4 ps_output(   float4 vpos : SV_POSITION,
+                    float2 uv : TEXCOORD0,
+                    float4 ofs[7] : TEXCOORD1) : SV_Target
 {
     const int cTaps = 14;
     const float uArea = Pi * (uDetail * uDetail) / cTaps;
