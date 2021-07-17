@@ -9,7 +9,6 @@
     Notes:  Blurred previous + current frames must be 32Float textures.
             This makes the optical flow not suffer from noise + banding
 
-    Contrast     - [https://github.com/CeeJayDK/SweetFX] [MIT]
     LOD Compute  - [https://john-chapman.github.io/2019/03/29/convolution.html]
     Noise        - [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
     Optical Flow - [https://dspace.mit.edu/handle/1721.1/6337]
@@ -85,7 +84,7 @@ void v2f_core(  in uint id,
     vpos = float4(uv * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
 
-void vs_3x3(in uint id : SV_VERTEXID,
+void vs_source(in uint id : SV_VERTEXID,
             inout float4 vpos : SV_POSITION,
             inout float2 uv : TEXCOORD0,
             inout float4 ofs : TEXCOORD1)
@@ -108,10 +107,10 @@ float2 Vogel2D(int uIndex, float2 uv, float2 pSize)
     return Radius * SineCosine.yx + uv;
 }
 
-void vs_source( in uint id : SV_VERTEXID,
-                inout float4 vpos : SV_POSITION,
-                inout float2 uv : TEXCOORD0,
-                inout float4 ofs[7] : TEXCOORD1)
+void vs_convert(    in uint id : SV_VERTEXID,
+                    inout float4 vpos : SV_POSITION,
+                    inout float2 uv : TEXCOORD0,
+                    inout float4 ofs[7] : TEXCOORD1)
 {
     // Calculate texel offset of the mipped texture
     const float cLOD = log2(max(DSIZE.x, DSIZE.y)) - log2(SET_BUFFER_RESOLUTION);
@@ -347,14 +346,14 @@ technique cMotionBlur
 {
     pass cBlur
     {
-        VertexShader = vs_3x3;
+        VertexShader = vs_source;
         PixelShader = ps_source;
         RenderTarget0 = r_buffer;
     }
 
     pass cCopyPrevious
     {
-        VertexShader = vs_source;
+        VertexShader = vs_convert;
         PixelShader = ps_convert;
         RenderTarget0 = r_pframe;
     }
