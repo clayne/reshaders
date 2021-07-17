@@ -198,7 +198,7 @@ float4 ps_source(   float4 vpos : SV_POSITION,
     vigWeight = (uInvert) ? 1.0 - vigWeight : vigWeight;
 
     float outputvignette = output * vigWeight;
-    return (uVignette) ? sqrt(outputvignette) : sqrt(output);
+    return (uVignette) ? outputvignette : output;
 }
 
 float4 ps_convert(  float4 vpos : SV_POSITION,
