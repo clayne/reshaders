@@ -9,11 +9,13 @@
     Notes:  Blurred previous + current frames must be 32Float textures.
             This makes the optical flow not suffer from noise + banding
 
+    Contrast     - [https://github.com/CeeJayDK/SweetFX] [MIT]
     LOD Compute  - [https://john-chapman.github.io/2019/03/29/convolution.html]
     Noise        - [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
     Optical Flow - [https://dspace.mit.edu/handle/1721.1/6337]
     Pi Constant  - [https://github.com/microsoft/DirectX-Graphics-Samples] [MIT]
     Threshold    - [https://github.com/diwi/PixelFlow] [MIT]
+    Vignette     - [https://github.com/keijiro/KinoVignette] [MIT]
     Vogel Disk   - [http://blog.marmakoide.org/?p=1]
 */
 
@@ -30,6 +32,10 @@ uOption(uRadius,    float, "slider", "Basic", "Prefilter", 8.000, 0.000, 16.00);
 uOption(uSmooth, float, "slider", "Advanced", "Flow Smooth", 0.250, 0.000, 0.500);
 uOption(uDetail, float, "slider", "Advanced", "Flow Mip",    32.00, 0.000, 64.00);
 uOption(uDebug,  bool,  "radio",  "Advanced", "Debug",       false, 0, 0);
+
+uOption(uVignette, bool,  "radio",  "Vignette", "Enable",    false, 0, 0);
+uOption(uInvert,   bool,  "radio",  "Vignette", "Invert",    true,  0, 0);
+uOption(uFalloff,  float, "slider", "Vignette", "Sharpness", 1.000, 0.000, 10.00);
 
 #define CONST_LOG2(x) (\
     (uint((x)  & 0xAAAAAAAA) != 0) | \
@@ -79,19 +85,12 @@ void v2f_core(  in uint id,
     vpos = float4(uv * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
 
-void vs_common( in uint id : SV_VERTEXID,
-                inout float4 vpos : SV_POSITION,
-                inout float2 uv : TEXCOORD0)
-{
-    v2f_core(id, uv, vpos);
-}
-
 void vs_3x3(in uint id : SV_VERTEXID,
             inout float4 vpos : SV_POSITION,
-            inout float4 ofs : TEXCOORD0)
+            inout float2 uv : TEXCOORD0,
+            inout float4 ofs : TEXCOORD1)
 {
     // Calculate 3x3 gaussian kernel in 4 fetches
-    float2 uv;
     v2f_core(id, uv, vpos);
     const float2 usize = rcp(float2(BUFFER_WIDTH, BUFFER_HEIGHT));
     const float4 uoffset = float4(-usize.x, -usize.y, usize.x, usize.y);
@@ -177,18 +176,41 @@ float urand(float2 vpos)
 }
 
 float4 ps_source(   float4 vpos : SV_POSITION,
-                    float4 ofs : TEXCOORD0) : SV_Target
+                    float2 uv : TEXCOORD0,
+                    float4 ofs : TEXCOORD1) : SV_Target
 {
-    const float c = 1e+2;
     float4 uImage;
     uImage += tex2D(s_color, ofs.xy); // ++
     uImage += tex2D(s_color, ofs.zw); // --
     uImage += tex2D(s_color, ofs.xw); // -+
     uImage += tex2D(s_color, ofs.zy); // +-
     uImage *= 0.25;
-    float uLuma = max(max(uImage.r, uImage.g), uImage.b);
-    uLuma = log2(uLuma * c + 1.0) * (1.0 / log2(c + 1.0));
-    return uLuma + urand(vpos.xy) / 255.0;
+
+    float mxRGB = max(max(uImage.r, uImage.g), uImage.b);
+    float mnRGB = min(min(uImage.r, uImage.g), uImage.b);
+
+    // Smooth minimum distance to signal limit divided by smooth max.
+    float rcpMRGB = rcp(mxRGB);
+    float ampRGB = saturate(min(mnRGB, 2.0 - mxRGB) * rcpMRGB);
+
+    // Shaping amount of sharpening.
+    ampRGB = rsqrt(ampRGB);
+    float peak = -3.0 * 1.0 + 8.0;
+    float wRGB = -rcp(ampRGB * peak);
+    float rcpWeightRGB = (4.0 * wRGB + 1.0);
+    float output = rcpWeightRGB + urand(vpos.xy) / 255.0;
+
+    // Vignette output if called
+    const float2 aspectratio = BUFFER_WIDTH * BUFFER_RCP_HEIGHT;
+    float2 coord = (uv - 0.5) * aspectratio * 2.0;
+    float rf = length(coord) * uFalloff;
+    float rf2_1 = mad(rf, rf, 1.0);
+
+    float vigWeight = rcp(rf2_1 * rf2_1);
+    vigWeight = (uInvert) ? 1.0 - vigWeight : vigWeight;
+
+    float outputvignette = output * vigWeight;
+    return (uVignette) ? sqrt(outputvignette) : sqrt(output);
 }
 
 float4 ps_convert(  float4 vpos : SV_POSITION,
