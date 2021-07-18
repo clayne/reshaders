@@ -34,7 +34,7 @@ uOption(uDebug,  bool,  "radio",  "Advanced", "Debug",       false, 0, 0);
 
 uOption(uVignette, bool,  "radio",  "Vignette", "Enable",    false, 0, 0);
 uOption(uInvert,   bool,  "radio",  "Vignette", "Invert",    true,  0, 0);
-uOption(uFalloff,  float, "slider", "Vignette", "Sharpness", 1.000, 0.000, 10.00);
+uOption(uFalloff,  float, "slider", "Vignette", "Sharpness", 1.000, 0.000, 8.000);
 
 #define CONST_LOG2(x) (\
     (uint((x)  & 0xAAAAAAAA) != 0) | \
