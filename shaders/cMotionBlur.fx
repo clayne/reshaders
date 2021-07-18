@@ -184,8 +184,8 @@ float4 ps_source(   float4 vpos : SV_POSITION,
     uImage += tex2D(s_color, ofs.xw); // -+
     uImage += tex2D(s_color, ofs.zy); // +-
     uImage *= 0.25;
-    float3 cnorm = normalize(uImage.rgb);
-    float output = max(max(cnorm.r, cnorm.g), cnorm.b);
+    float cluma = max(max(uImage.r, uImage.g), uImage.b);
+    float output = cluma * rsqrt(dot(uImage.rgb, uImage.rgb));
 
     // Vignette output if called
     const float2 aspectratio = BUFFER_WIDTH * BUFFER_RCP_HEIGHT;
