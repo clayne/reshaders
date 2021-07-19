@@ -70,8 +70,7 @@ sampler s_color
 struct v2f
 {
     float4 vpos : SV_Position;
-    float2 uv0 : TEXCOORD0;
-    float4 uv1[4] : TEXCOORD1;
+    float4 uOffset[3] : TEXCOORD0;
 };
 
 v2f vs_cas(in uint id : SV_VertexID)
@@ -83,17 +82,9 @@ v2f vs_cas(in uint id : SV_VertexID)
     output.vpos = float4(coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 
     const float2 ts = 1.0 / float2(BUFFER_WIDTH, BUFFER_HEIGHT);
-    output.uv1[0].xy = float2(-1.0, 1.0) * ts + coord;
-    output.uv1[0].zw = float2( 0.0, 1.0) * ts + coord;
-    output.uv1[1].xy = float2( 1.0, 1.0) * ts + coord;
-
-    output.uv1[1].zw = float2(-1.0, 0.0) * ts + coord;
-    output.uv0       = float2( 0.0, 0.0) * ts + coord;
-    output.uv1[2].xy = float2( 1.0, 0.0) * ts + coord;
-
-    output.uv1[2].zw = float2(-1.0,-1.0) * ts + coord;
-    output.uv1[3].xy = float2( 0.0,-1.0) * ts + coord;
-    output.uv1[3].zw = float2( 1.0,-1.0) * ts + coord;
+    output.uOffset[0] = coord.xyxy + float4(-1.0,-1.0, 1.0, 1.0) * ts.xyxy;
+    output.uOffset[1] = coord.xxxy + float4(-1.0, 1.0, 0.0, 0.0) * ts.xxxy;
+    output.uOffset[2] = coord.yyxx + float4(-1.0, 1.0, 0.0, 0.0) * ts.yyxx;
     return output;
 }
 
@@ -104,17 +95,17 @@ float3 ps_cas(v2f input) : SV_Target
     //  d(e)f
     //  g h i
 
-    float3 a = tex2D(s_color, input.uv1[0].xy).rgb;
-    float3 b = tex2D(s_color, input.uv1[0].zw).rgb;
-    float3 c = tex2D(s_color, input.uv1[1].xy).rgb;
+    float3 a = tex2D(s_color, input.uOffset[0].xw).rgb; // [-1, 1]
+    float3 b = tex2D(s_color, input.uOffset[2].zy).rgb; // [ 0, 1]
+    float3 c = tex2D(s_color, input.uOffset[0].zw).rgb; // [ 1, 1]
 
-    float3 d = tex2D(s_color, input.uv1[1].zw).rgb;
-    float3 e = tex2D(s_color, input.uv0).rgb;
-    float3 f = tex2D(s_color, input.uv1[2].xy).rgb;
+    float3 d = tex2D(s_color, input.uOffset[1].xw).rgb; // [-1, 0]
+    float3 e = tex2D(s_color, input.uOffset[1].zw).rgb; // [ 0, 0]
+    float3 f = tex2D(s_color, input.uOffset[1].yw).rgb; // [ 1, 0]
 
-    float3 g = tex2D(s_color, input.uv1[2].zw).rgb;
-    float3 h = tex2D(s_color, input.uv1[3].xy).rgb;
-    float3 i = tex2D(s_color, input.uv1[3].zw).rgb;
+    float3 g = tex2D(s_color, input.uOffset[0].xy).rgb; // [-1,-1]
+    float3 h = tex2D(s_color, input.uOffset[2].zx).rgb; // [ 0,-1]
+    float3 i = tex2D(s_color, input.uOffset[0].zy).rgb; // [ 1,-1]
 
     // Soft min and max.
     //  a b c             b
