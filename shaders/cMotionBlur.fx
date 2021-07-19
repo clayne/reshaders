@@ -63,18 +63,18 @@ static const int uTaps = 14;
 
 texture2D r_color  : COLOR;
 texture2D r_buffer { Width = DSIZE.x; Height = DSIZE.y; MipLevels = RSIZE; Format = RGB10A2; };
-texture2D r_cflow  { Width = SET_BUFFER_RESOLUTION; Height = SET_BUFFER_RESOLUTION; Format = RG32F;   MipLevels = LOG2(SET_BUFFER_RESOLUTION) + 1; };
 texture2D r_cImage { Width = SET_BUFFER_RESOLUTION; Height = SET_BUFFER_RESOLUTION; Format = RGB10A2; MipLevels = LOG2(SET_BUFFER_RESOLUTION) + 1; };
 texture2D r_cframe { Width = SET_BUFFER_RESOLUTION; Height = SET_BUFFER_RESOLUTION; Format = RGBA32F; };
 texture2D r_pframe { Width = SET_BUFFER_RESOLUTION; Height = SET_BUFFER_RESOLUTION; Format = RGBA32F; };
+texture2D r_cflow  { Width = SET_BUFFER_RESOLUTION; Height = SET_BUFFER_RESOLUTION; Format = RG32F; MipLevels = LOG2(SET_BUFFER_RESOLUTION) + 1; };
 texture2D r_pflow  { Width = SET_BUFFER_RESOLUTION; Height = SET_BUFFER_RESOLUTION; Format = RG32F; };
 
 sampler2D s_color  { Texture = r_color; SRGBTexture = TRUE; };
 sampler2D s_buffer { Texture = r_buffer; AddressU = MIRROR; AddressV = MIRROR; };
-sampler2D s_cflow  { Texture = r_cflow;  AddressU = MIRROR; AddressV = MIRROR; };
 sampler2D s_cImage { Texture = r_cImage; AddressU = MIRROR; AddressV = MIRROR; };
 sampler2D s_cframe { Texture = r_cframe; AddressU = MIRROR; AddressV = MIRROR; };
 sampler2D s_pframe { Texture = r_pframe; AddressU = MIRROR; AddressV = MIRROR; };
+sampler2D s_cflow  { Texture = r_cflow;  AddressU = MIRROR; AddressV = MIRROR; };
 sampler2D s_pflow  { Texture = r_pflow;  AddressU = MIRROR; AddressV = MIRROR; };
 
 /* [ Vertex Shaders ] */
