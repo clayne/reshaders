@@ -64,7 +64,7 @@ static const int uTaps = 14;
 texture2D r_color  : COLOR;
 texture2D r_buffer { Width = DSIZE.x; Height = DSIZE.y; MipLevels = RSIZE; Format = RGB10A2; };
 texture2D r_cflow  { Width = SET_BUFFER_RESOLUTION; Height = SET_BUFFER_RESOLUTION; Format = RG32F;   MipLevels = LOG2(SET_BUFFER_RESOLUTION) + 1; };
-texture2D r_cImage { Width = SET_BUFFER_RESOLUTION; Height = SET_BUFFER_RESOLUTION; Format = RGBA32F; MipLevels = LOG2(SET_BUFFER_RESOLUTION) + 1; };
+texture2D r_cImage { Width = SET_BUFFER_RESOLUTION; Height = SET_BUFFER_RESOLUTION; Format = RGB10A2; MipLevels = LOG2(SET_BUFFER_RESOLUTION) + 1; };
 texture2D r_cframe { Width = SET_BUFFER_RESOLUTION; Height = SET_BUFFER_RESOLUTION; Format = RGBA32F; };
 texture2D r_pframe { Width = SET_BUFFER_RESOLUTION; Height = SET_BUFFER_RESOLUTION; Format = RGBA32F; };
 texture2D r_pflow  { Width = SET_BUFFER_RESOLUTION; Height = SET_BUFFER_RESOLUTION; Format = RG32F; };
