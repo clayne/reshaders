@@ -25,7 +25,7 @@
         > = uvalue
 
 uOption(uThreshold, float, "slider", "Basic", "Threshold", 0.000, 0.000, 1.000);
-uOption(uScale,     float, "slider", "Basic", "Scale",     2.000, 0.000, 4.000);
+uOption(uScale,     float, "slider", "Basic", "Scale",     1.000, 0.000, 2.000);
 uOption(uRadius,    float, "slider", "Basic", "Prefilter", 8.000, 0.000, 16.00);
 
 uOption(uSmooth, float, "slider", "Advanced", "Flow Smooth", 0.250, 0.000, 0.500);
@@ -283,9 +283,12 @@ float4 ps_flow( float4 vpos : SV_POSITION,
     dFdp.x = dot(dFdpx, 1.0);
     dFdp.y = dot(dFdpy, 1.0);
 
-    float dBrightness = dot(dFdp, dFdc) + dot(dt, 1.0);
-    float dSmoothness = dot(dFdp, dFdp) + Epsilon;
-    float2 cFlow = dFdc - dFdp * (dBrightness / dSmoothness);
+    float3 dBrightness = (dFdpx * dFdcx) + (dFdpy * dFdcy) + dt;
+    float3 dSmoothness = (dFdpx * dFdpx) + (dFdpy * dFdpy);
+    float2 dConstraint;
+    dConstraint.x = dot(dBrightness, 1.0);
+    dConstraint.y = dot(dSmoothness, 1.0);
+    float2 cFlow = dFdc - dFdp * (dConstraint.x / dConstraint.y);
 
     // Threshold and normalize
     float pFlow = sqrt(dot(cFlow, cFlow) + Epsilon);
