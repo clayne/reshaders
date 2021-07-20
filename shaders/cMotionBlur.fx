@@ -29,7 +29,7 @@ uOption(uScale,     float, "slider", "Basic", "Scale",     2.000, 0.000, 4.000);
 uOption(uRadius,    float, "slider", "Basic", "Prefilter", 8.000, 0.000, 16.00);
 
 uOption(uSmooth, float, "slider", "Advanced", "Flow Smooth", 0.250, 0.000, 0.500);
-uOption(uDetail, float, "slider", "Advanced", "Flow Mip",    32.00, 0.000, 64.00);
+uOption(uDetail, float, "slider", "Advanced", "Flow Mip",    4.500, 1.000, 8.000);
 uOption(uDebug,  bool,  "radio",  "Advanced", "Debug",       false, 0, 0);
 
 uOption(uVignette, bool,  "radio",  "Vignette", "Enable",    false, 0, 0);
@@ -62,16 +62,20 @@ static const float Epsilon = 1e-7;
 static const int uTaps = 14;
 
 texture2D r_color  : COLOR;
-texture2D r_buffer { Width = DSIZE.x; Height = DSIZE.y; MipLevels = RSIZE; Format = R8; };
-texture2D r_cflow  { Width = SET_BUFFER_RESOLUTION; Height = SET_BUFFER_RESOLUTION; Format = RG32F;   MipLevels = LOG2(SET_BUFFER_RESOLUTION) + 1; };
-texture2D r_cframe { Width = SET_BUFFER_RESOLUTION; Height = SET_BUFFER_RESOLUTION; Format = R32F; };
-texture2D r_pframe { Width = SET_BUFFER_RESOLUTION; Height = SET_BUFFER_RESOLUTION; Format = RGBA32F; MipLevels = LOG2(SET_BUFFER_RESOLUTION) + 1; };
+texture2D r_buffer { Width = DSIZE.x; Height = DSIZE.y; MipLevels = RSIZE; Format = RGB10A2; };
+texture2D r_cImage { Width = SET_BUFFER_RESOLUTION; Height = SET_BUFFER_RESOLUTION; Format = RGB10A2; MipLevels = LOG2(SET_BUFFER_RESOLUTION) + 1; };
+texture2D r_cframe { Width = SET_BUFFER_RESOLUTION; Height = SET_BUFFER_RESOLUTION; Format = RGBA32F; };
+texture2D r_pframe { Width = SET_BUFFER_RESOLUTION; Height = SET_BUFFER_RESOLUTION; Format = RGBA32F; };
+texture2D r_cflow  { Width = SET_BUFFER_RESOLUTION; Height = SET_BUFFER_RESOLUTION; Format = RG32F; MipLevels = LOG2(SET_BUFFER_RESOLUTION) + 1; };
+texture2D r_pflow  { Width = SET_BUFFER_RESOLUTION; Height = SET_BUFFER_RESOLUTION; Format = RG32F; };
 
 sampler2D s_color  { Texture = r_color; SRGBTexture = TRUE; };
 sampler2D s_buffer { Texture = r_buffer; AddressU = MIRROR; AddressV = MIRROR; };
-sampler2D s_cflow  { Texture = r_cflow;  AddressU = MIRROR; AddressV = MIRROR; };
+sampler2D s_cImage { Texture = r_cImage; AddressU = MIRROR; AddressV = MIRROR; };
 sampler2D s_cframe { Texture = r_cframe; AddressU = MIRROR; AddressV = MIRROR; };
 sampler2D s_pframe { Texture = r_pframe; AddressU = MIRROR; AddressV = MIRROR; };
+sampler2D s_cflow  { Texture = r_cflow;  AddressU = MIRROR; AddressV = MIRROR; };
+sampler2D s_pflow  { Texture = r_pflow;  AddressU = MIRROR; AddressV = MIRROR; };
 
 /* [ Vertex Shaders ] */
 
@@ -92,8 +96,7 @@ void vs_source(in uint id : SV_VERTEXID,
     // Calculate 3x3 gaussian kernel in 4 fetches
     v2f_core(id, uv, vpos);
     const float2 usize = rcp(float2(BUFFER_WIDTH, BUFFER_HEIGHT));
-    const float4 uoffset = float4(-usize.x, -usize.y, usize.x, usize.y);
-    ofs = uv.xyxy + uoffset; // --++
+    ofs = uv.xyxy + float4(-usize.xy, usize.xy); // --++
 }
 
 float2 Vogel2D(int uIndex, float2 uv, float2 pSize)
@@ -153,17 +156,9 @@ void vs_filter( in uint id : SV_VERTEXID,
 
 void vs_output( in uint id : SV_VERTEXID,
                 inout float4 vpos : SV_POSITION,
-                inout float2 uv : TEXCOORD0,
-                inout float4 ofs[7] : TEXCOORD1)
+                inout float2 uv : TEXCOORD0)
 {
-    const float2 uSize = rcp(SET_BUFFER_RESOLUTION) * uDetail;
     v2f_core(id, uv, vpos);
-
-    for(int i = 0; i < 7; i++)
-    {
-        ofs[i].xy = Vogel2D(i, uv, uSize);
-        ofs[i].zw = Vogel2D(7 + i, uv, uSize);
-    }
 }
 
 /* [ Pixel Shaders ] */
@@ -184,8 +179,7 @@ float4 ps_source(   float4 vpos : SV_POSITION,
     uImage += tex2D(s_color, ofs.xw); // -+
     uImage += tex2D(s_color, ofs.zy); // +-
     uImage *= 0.25;
-    float cluma = max(max(uImage.r, uImage.g), uImage.b);
-    float output = cluma * rsqrt(dot(uImage.rgb, uImage.rgb));
+    float3 output = normalize(uImage.rgb);
 
     // Vignette output if called
     const float2 aspectratio = BUFFER_WIDTH * BUFFER_RCP_HEIGHT;
@@ -196,13 +190,16 @@ float4 ps_source(   float4 vpos : SV_POSITION,
     float vigWeight = rcp(rf2_1 * rf2_1);
     vigWeight = (uInvert) ? 1.0 - vigWeight : vigWeight;
 
-    float outputvignette = output * vigWeight;
-    return (uVignette) ? outputvignette : output;
+    float3 outputvignette = output * vigWeight;
+    return (uVignette) ? output.rgbr : float4(output.rgb, 1.0);
 }
 
-float4 ps_convert(  float4 vpos : SV_POSITION,
-                    float2 uv : TEXCOORD0,
-                    float4 ofs[7] : TEXCOORD1) : SV_Target
+void ps_convert(float4 vpos : SV_POSITION,
+                float2 uv : TEXCOORD0,
+                float4 ofs[7] : TEXCOORD1,
+                out float4 render0 : SV_TARGET0,
+                out float4 render1 : SV_TARGET1,
+                out float4 render2 : SV_TARGET2)
 {
     // Manually calculate LOD between texture and rendertarget size
     const float cLOD = log2(max(DSIZE.x, DSIZE.y)) - log2(SET_BUFFER_RESOLUTION);
@@ -222,11 +219,9 @@ float4 ps_convert(  float4 vpos : SV_POSITION,
         uImage = lerp(uImage, uColor, rcp(float(j) + 1));
     }
 
-    float4 output;
-    output.xy = tex2D(s_cflow, uv).rg; // Copy previous rendertarget from ps_flow()
-    output.z  = tex2D(s_cframe, uv).r; // Copy previous rendertarget from ps_filter()
-    output.w  = uImage; // Input downsampled current frame to scale and mip
-    return output;
+    render0 = tex2D(s_cflow, uv).rgrg; // Copy previous rendertarget from ps_flow()
+    render1 = tex2D(s_cframe, uv); // Copy previous rendertarget from ps_filter()
+    render2 = uImage; // Input downsampled current frame to scale and mip
 }
 
 float4 ps_filter(   float4 vpos : SV_POSITION,
@@ -236,7 +231,7 @@ float4 ps_filter(   float4 vpos : SV_POSITION,
     const float uArea = Pi * (uRadius * uRadius) / uTaps;
     const float uBias = log2(sqrt(uArea));
 
-    float uImage;
+    float4 uImage;
     float2 vofs[cTaps];
 
     for (int i = 0; i < 8; i++)
@@ -247,10 +242,11 @@ float4 ps_filter(   float4 vpos : SV_POSITION,
 
     for (int j = 0; j < cTaps; j++)
     {
-        float uColor = tex2Dlod(s_pframe, float4(vofs[j], 0.0, uBias)).w;
+        float4 uColor = tex2Dlod(s_cImage, float4(vofs[j], 0.0, uBias));
         uImage = lerp(uImage, uColor, rcp(float(j) + 1));
     }
 
+    const float ubit = rcp(exp2(10.0) - 1.0); // 10bit
     return max(uImage, Epsilon);
 }
 
@@ -259,23 +255,35 @@ float4 ps_flow( float4 vpos : SV_POSITION,
                 float4 uddy : TEXCOORD1) : SV_Target
 {
     // Calculate optical flow
-    float cLuma = tex2D(s_cframe, uddx.zw).r; // [0, 0]
-    float pLuma = tex2D(s_pframe, uddx.zw).z; // [0, 0]
+    float3 cLuma = tex2D(s_cframe, uddx.zw).rgb; // [0, 0]
+    float3 pLuma = tex2D(s_pframe, uddx.zw).rgb; // [0, 0]
+    float3 dt = cLuma - pLuma;
+
+    float3 dFdcx;
+    dFdcx  = tex2D(s_cframe, uddx.yw).rgb; // [ 1, 0]
+    dFdcx -= tex2D(s_cframe, uddx.xw).rgb; // [-1, 0]
+
+    float3 dFdcy;
+    dFdcy  = tex2D(s_cframe, uddy.zy).rgb; // [ 0, 1]
+    dFdcy -= tex2D(s_cframe, uddy.zx).rgb; // [ 0,-1]
+
+    float3 dFdpx;
+    dFdpx  = tex2D(s_pframe, uddx.yw).rgb; // [ 1, 0]
+    dFdpx -= tex2D(s_pframe, uddx.xw).rgb; // [-1, 0]
+
+    float3 dFdpy;
+    dFdpy  = tex2D(s_pframe, uddy.zy).rgb; // [ 0, 1]
+    dFdpy -= tex2D(s_pframe, uddy.zx).rgb; // [ 0,-1]
 
     float2 dFdc;
-    dFdc.x  = tex2D(s_cframe, uddx.yw).r; // [ 1, 0]
-    dFdc.x -= tex2D(s_cframe, uddx.xw).r; // [-1, 0]
-    dFdc.y  = tex2D(s_cframe, uddy.zy).r; // [ 0, 1]
-    dFdc.y -= tex2D(s_cframe, uddy.zx).r; // [ 0,-1]
+    dFdc.x = dot(dFdcx, 1.0);
+    dFdc.y = dot(dFdcy, 1.0);
 
     float2 dFdp;
-    dFdp.x  = tex2D(s_pframe, uddx.yw).z; // [ 1, 0]
-    dFdp.x -= tex2D(s_pframe, uddx.xw).z; // [-1, 0]
-    dFdp.y  = tex2D(s_pframe, uddy.zy).z; // [ 0, 1]
-    dFdp.y -= tex2D(s_pframe, uddy.zx).z; // [ 0,-1]
+    dFdp.x = dot(dFdpx, 1.0);
+    dFdp.y = dot(dFdpy, 1.0);
 
-    float dt = cLuma - pLuma;
-    float dBrightness = dot(dFdp, dFdc) + dt;
+    float dBrightness = dot(dFdp, dFdc) + dot(dt, 1.0);
     float dSmoothness = dot(dFdp, dFdp) + Epsilon;
     float2 cFlow = dFdc - dFdp * (dBrightness / dSmoothness);
 
@@ -285,7 +293,7 @@ float4 ps_flow( float4 vpos : SV_POSITION,
     cFlow *= nFlow / pFlow;
 
     // Smooth optical flow
-    float2 sFlow = tex2D(s_pframe, uddx.zw).xy; // [0, 0]
+    float2 sFlow = tex2D(s_pflow, uddx.zw).rg; // [0, 0]
     return lerp(cFlow, sFlow, uSmooth).xyxy;
 }
 
@@ -303,28 +311,9 @@ float4 calcweights(float s)
 }
 
 float4 ps_output(   float4 vpos : SV_POSITION,
-                    float2 uv : TEXCOORD0,
-                    float4 ofs[7] : TEXCOORD1) : SV_Target
+                    float2 uv : TEXCOORD0) : SV_Target
 {
-    const int cTaps = 14;
-    const float uArea = Pi * (uDetail * uDetail) / cTaps;
-    const float uBias = log2(sqrt(uArea));
-
-    float2 oFlow;
-    float2 vofs[14];
-
-    for (int i = 0; i < 7; i++)
-    {
-        vofs[i] = ofs[i].xy;
-        vofs[i + 7] = ofs[i].zw;
-    }
-
-    for (int j = 0; j < cTaps; j++)
-    {
-        float2 uColor = tex2Dlod(s_cflow, float4(vofs[j], 0.0, uBias)).rg;
-        oFlow = lerp(oFlow, uColor, rcp(float(j) + 1));
-    }
-
+    float2 oFlow = tex2Dlod(s_cflow, float4(uv, 0.0, uDetail)).rg;
     oFlow /= SET_BUFFER_RESOLUTION;
     oFlow *= uScale;
 
@@ -355,7 +344,9 @@ technique cMotionBlur
     {
         VertexShader = vs_convert;
         PixelShader = ps_convert;
-        RenderTarget0 = r_pframe;
+        RenderTarget0 = r_pflow;
+        RenderTarget1 = r_pframe;
+        RenderTarget2 = r_cImage;
     }
 
     pass cBlurCopyFrame
