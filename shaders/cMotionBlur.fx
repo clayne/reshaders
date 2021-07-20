@@ -272,16 +272,6 @@ float4 ps_flow( float4 vpos : SV_POSITION,
     dFdpy  = tex2D(s_pframe, uddy.zy).rgb; // [ 0, 1]
     dFdpy -= tex2D(s_pframe, uddy.zx).rgb; // [ 0,-1]
 
-    float3 dt = cLuma - pLuma;
-
-    float4 dBrightness;
-    dBrightness.xyz = (dFdpx * dFdcx) + (dFdpy * dFdcy) + dt;
-    dBrightness.w = dot(dBrightness, 1.0);
-
-    float4 dSmoothness;
-    dSmoothness.xyz = (dFdpx * dFdpx) + (dFdpy * dFdpy);
-    dSmoothness.w = dot(dSmoothness, 1.0);
-
     float2 dFdc;
     dFdc.x = dot(dFdcx, 1.0);
     dFdc.y = dot(dFdcy, 1.0);
@@ -290,7 +280,10 @@ float4 ps_flow( float4 vpos : SV_POSITION,
     dFdp.x = dot(dFdpx, 1.0);
     dFdp.y = dot(dFdpy, 1.0);
 
-    float2 cFlow = dFdc - dFdp * (dBrightness.w / dSmoothness.w);
+    float3 dt = cLuma - pLuma;
+    float dBrightness = dot(dFdp, dFdc) + dot(dt, 1.0);
+    float dSmoothness = dot(dFdp, dFdp) + Epsilon;
+    float2 cFlow = dFdc - dFdp * (dBrightness / dSmoothness);
 
     // Threshold and normalize
     float pFlow = sqrt(dot(cFlow, cFlow) + Epsilon);
