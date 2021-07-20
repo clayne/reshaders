@@ -297,19 +297,6 @@ float4 ps_flow( float4 vpos : SV_POSITION,
     return lerp(cFlow, sFlow, uSmooth).xyxy;
 }
 
-float4 calcweights(float s)
-{
-    const float4 w1 = float4(-0.5, 0.1666, 0.3333, -0.3333);
-    const float4 w2 = float4( 1.0, 0.0, -0.5, 0.5);
-    const float4 w3 = float4(-0.6666, 0.0, 0.8333, 0.1666);
-    float4 t = mad(w1, s, w2);
-    t = mad(t, s, w2.yyzw);
-    t = mad(t, s, w3);
-    t.xy = mad(t.xy, rcp(t.zw), 1.0);
-    t.xy += float2(s, -s);
-    return t;
-}
-
 float4 ps_output(   float4 vpos : SV_POSITION,
                     float2 uv : TEXCOORD0) : SV_Target
 {
