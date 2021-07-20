@@ -174,12 +174,12 @@ float4 ps_source(   float4 vpos : SV_POSITION,
                     float4 ofs : TEXCOORD1) : SV_Target
 {
     float4 uImage;
-    uImage += tex2D(s_color, ofs.xy); // ++
-    uImage += tex2D(s_color, ofs.zw); // --
-    uImage += tex2D(s_color, ofs.xw); // -+
-    uImage += tex2D(s_color, ofs.zy); // +-
+    uImage += normalize(tex2D(s_color, ofs.xy)); // ++
+    uImage += normalize(tex2D(s_color, ofs.zw)); // --
+    uImage += normalize(tex2D(s_color, ofs.xw)); // -+
+    uImage += normalize(tex2D(s_color, ofs.zy)); // +-
     uImage *= 0.25;
-    float3 output = normalize(uImage.rgb);
+    float4 output = float4(uImage.rgb, 1.0);
 
     // Vignette output if called
     const float2 aspectratio = BUFFER_WIDTH * BUFFER_RCP_HEIGHT;
@@ -190,8 +190,8 @@ float4 ps_source(   float4 vpos : SV_POSITION,
     float vigWeight = rcp(rf2_1 * rf2_1);
     vigWeight = (uInvert) ? 1.0 - vigWeight : vigWeight;
 
-    float3 outputvignette = output * vigWeight;
-    return (uVignette) ? output.rgbr : float4(output.rgb, 1.0);
+    float4 outputvignette = output * vigWeight;
+    return (uVignette) ? outputvignette : output;
 }
 
 void ps_convert(float4 vpos : SV_POSITION,
