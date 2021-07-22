@@ -248,6 +248,12 @@ float4 ps_filter(   float4 vpos : SV_POSITION,
     return max(uImage, Epsilon);
 }
 
+/*
+    Possible improvements
+    - Coarse to fine refinement (might use ddx/y instead lol)
+    - Better penalty function outside quadratic
+*/
+
 float4 ps_flow( float4 vpos : SV_POSITION,
                 float4 uddx : TEXCOORD0,
                 float4 uddy : TEXCOORD1) : SV_Target
@@ -283,7 +289,7 @@ float4 ps_flow( float4 vpos : SV_POSITION,
     float3 dt = cLuma - pLuma;
     float dBrightness = dot(dFdp, dFdc) + dot(dt, 1.0);
     float dSmoothness = dot(dFdp, dFdp) + Epsilon;
-    float2 cFlow = dFdc - dFdp * (dBrightness / dSmoothness);
+    float2 cFlow = dFdc - (dFdp * dBrightness) / dSmoothness;
 
     // Threshold and normalize
     float pFlow = sqrt(dot(cFlow, cFlow) + Epsilon);
