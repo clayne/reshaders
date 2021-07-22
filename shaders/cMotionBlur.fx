@@ -5,9 +5,12 @@
     - MartinBFFan and Pao on Discord for reporting bugs
     - BSD for bug propaganda and helping to solve my issue
     - Lord of Lunacy, KingEric1992, and Marty McFly for power of 2 function
+
     Notes:  Blurred previous + current frames must be 32Float textures.
             This makes the optical flow not suffer from noise + banding
+
     LOD Compute  - [https://john-chapman.github.io/2019/03/29/convolution.html]
+    Median       - [https://github.com/keijiro/KinoBloom]
     Noise        - [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
     Optical Flow - [https://dspace.mit.edu/handle/1721.1/6337]
     Pi Constant  - [https://github.com/microsoft/DirectX-Graphics-Samples] [MIT]
@@ -22,12 +25,12 @@
         ui_type = utype; ui_min = umin; ui_max = umax;                          \
         > = uvalue
 
-uOption(uThreshold, float, "slider", "Basic", "Threshold", 0.000, 0.000, 1.000);
+uOption(uThreshold, float, "slider", "Basic", "Threshold", 0.500, 0.000, 1.000);
 uOption(uScale,     float, "slider", "Basic", "Scale",     4.000, 0.000, 8.000);
 uOption(uRadius,    float, "slider", "Basic", "Prefilter", 8.000, 0.000, 16.00);
 
 uOption(uSmooth, float, "slider", "Advanced", "Flow Smooth", 0.250, 0.000, 0.500);
-uOption(uDetail, float, "slider", "Advanced", "Flow Mip",    5.900, 0.000, 8.000);
+uOption(uDetail, float, "slider", "Advanced", "Flow Mip",    5.500, 0.000, 8.000);
 uOption(uDebug,  bool,  "radio",  "Advanced", "Debug",       false, 0, 0);
 
 uOption(uVignette, bool,  "radio",  "Vignette", "Enable",    false, 0, 0);
@@ -141,7 +144,7 @@ void vs_filter( in uint id : SV_VERTEXID,
                 inout float4 vpos : SV_POSITION,
                 inout float4 ofs[8] : TEXCOORD0)
 {
-    const float2 uSize = rcp(SET_BUFFER_RESOLUTION) * uRadius;
+    const float2 uSize = rcp(SET_BUFFER_RESOLUTION) * uDetail;
     float2 uv;
     v2f_core(id, uv, vpos);
 
@@ -154,9 +157,14 @@ void vs_filter( in uint id : SV_VERTEXID,
 
 void vs_output( in uint id : SV_VERTEXID,
                 inout float4 vpos : SV_POSITION,
-                inout float2 uv : TEXCOORD0)
+                inout float4 ofs0 : TEXCOORD0,
+                inout float4 ofs1 : TEXCOORD1)
 {
+    float2 uv;
     v2f_core(id, uv, vpos);
+    const float2 uSize = rcp(SET_BUFFER_RESOLUTION / exp2(uDetail));
+    ofs0 = uv.xxxy + float4(-1.0, 1.0, 0.0, 0.0) * uSize.xxxy;
+    ofs1 = uv.yyxx + float4(-1.0, 1.0, 0.0, 0.0) * uSize.yyxx;
 }
 
 /* [ Pixel Shaders ] */
@@ -295,10 +303,22 @@ float4 ps_flow( float4 vpos : SV_POSITION,
     return lerp(cFlow, sFlow, uSmooth).xyxy;
 }
 
-float4 ps_output(   float4 vpos : SV_POSITION,
-                    float2 uv : TEXCOORD0) : SV_Target
+// 3-tap median filter
+float2 Median(float2 a, float2 b, float2 c)
 {
-    float2 oFlow = tex2Dlod(s_cflow, float4(uv, 0.0, uDetail)).rg;
+    return a + b + c - min(min(a, b), c) - max(max(a, b), c);
+}
+
+float4 ps_output(   float4 vpos : SV_POSITION,
+                    float4 ofs0 : TEXCOORD0,
+                    float4 ofs1 : TEXCOORD1) : SV_Target
+{
+    float2 s0 = tex2Dlod(s_cflow, float4(ofs0.zw, 0.0, uDetail)).rg;
+    float2 s1 = tex2Dlod(s_cflow, float4(ofs0.xw, 0.0, uDetail)).rg;
+    float2 s2 = tex2Dlod(s_cflow, float4(ofs0.yw, 0.0, uDetail)).rg;
+    float2 s3 = tex2Dlod(s_cflow, float4(ofs1.zx, 0.0, uDetail)).rg;
+    float2 s4 = tex2Dlod(s_cflow, float4(ofs1.zy, 0.0, uDetail)).rg;
+    float2 oFlow = Median(Median(s0, s1, s2), s3, s4);
     oFlow /= SET_BUFFER_RESOLUTION;
     oFlow *= uScale;
 
@@ -309,7 +329,7 @@ float4 ps_output(   float4 vpos : SV_POSITION,
     for(int k = 0; k < 9; k++)
     {
         float2 calc = (noise + k * 2.0) * samples - 0.5;
-        float4 uColor = tex2D(s_color, oFlow * calc + uv);
+        float4 uColor = tex2D(s_color, oFlow * calc + ofs0.zw);
         oBlur = lerp(oBlur, uColor, rcp(float(k) + 1));
     }
 
