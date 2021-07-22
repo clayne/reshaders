@@ -5,8 +5,10 @@
     - MartinBFFan and Pao on Discord for reporting bugs
     - BSD for bug propaganda and helping to solve my issue
     - Lord of Lunacy, KingEric1992, and Marty McFly for power of 2 function
+
     Notes:  Blurred previous + current frames must be 32Float textures.
             This makes the optical flow not suffer from noise + banding
+
     LOD Compute  - [https://john-chapman.github.io/2019/03/29/convolution.html]
     Noise        - [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
     Optical Flow - [https://dspace.mit.edu/handle/1721.1/6337]
@@ -23,7 +25,7 @@
         > = uvalue
 
 uOption(uThreshold, float, "slider", "Basic", "Threshold", 0.000, 0.000, 1.000);
-uOption(uScale,     float, "slider", "Basic", "Scale",     4.000, 0.000, 8.000);
+uOption(uScale,     float, "slider", "Basic", "Scale",     2.000, 0.000, 8.000);
 uOption(uRadius,    float, "slider", "Basic", "Prefilter", 8.000, 0.000, 16.00);
 
 uOption(uSmooth, float, "slider", "Advanced", "Flow Smooth", 0.250, 0.000, 0.500);
@@ -287,8 +289,9 @@ float4 ps_flow( float4 vpos : SV_POSITION,
     dFdp.y = dot(dFdpy, 1.0);
 
     float3 dt = cLuma - pLuma;
+    const float uEpsilon = Epsilon * Epsilon;
     float dBrightness = dot(dFdp, dFdc) + dot(dt, 1.0);
-    float dSmoothness = dot(dFdp, dFdp) + Epsilon;
+    float dSmoothness = dot(dFdp, dFdp) + uEpsilon;
     float2 cFlow = dFdc - (dFdp * dBrightness) / dSmoothness;
 
     // Threshold and normalize
