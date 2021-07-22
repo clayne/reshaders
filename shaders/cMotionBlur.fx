@@ -25,7 +25,7 @@
         > = uvalue
 
 uOption(uThreshold, float, "slider", "Basic", "Threshold", 0.000, 0.000, 1.000);
-uOption(uScale,     float, "slider", "Basic", "Scale",     2.000, 0.000, 8.000);
+uOption(uScale,     float, "slider", "Basic", "Scale",     2.000, 0.000, 4.000);
 uOption(uRadius,    float, "slider", "Basic", "Prefilter", 8.000, 0.000, 16.00);
 
 uOption(uSmooth, float, "slider", "Advanced", "Flow Smooth", 0.250, 0.000, 0.500);
@@ -246,7 +246,6 @@ float4 ps_filter(   float4 vpos : SV_POSITION,
         uImage = lerp(uImage, uColor, rcp(float(j) + 1));
     }
 
-    const float ubit = rcp(exp2(10.0) - 1.0); // 10bit
     return max(uImage, Epsilon);
 }
 
