@@ -88,7 +88,7 @@ float4 ps_hsflow(   float4 vpos : SV_POSITION,
     float dBrightness = dot(dFdp, dFdc) + dot(dt, 1.0);
     float dSmoothness = dot(dFdp, dFdp) + 1e-7;
     float2 cFlow = dFdc - (dFdp * dBrightness) / dSmoothness;
-    return float4(cFlow, 0.0, 0.0);
+    return float4(abs(cFlow), 1.0, 0.0);
 }
 
 float4 ps_previous(float4 vpos : SV_POSITION, float2 uv: TEXCOORD0) : SV_TARGET
@@ -109,7 +109,6 @@ technique cOpticalFlow
     {
         VertexShader = vs_flow;
         PixelShader = ps_hsflow;
-        SRGBWriteEnable = TRUE;
     }
 
     pass
