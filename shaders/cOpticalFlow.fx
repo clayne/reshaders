@@ -51,7 +51,6 @@ float4 ps_image(float4 vpos : SV_POSITION, float2 uv: TEXCOORD0) : SV_TARGET
     return float4(normalize(tex2D(s_color, uv).rgb), 1.0);
 }
 
-
 float4 ps_hsflow(   float4 vpos : SV_POSITION,
                     float4 uddx : TEXCOORD0,
                     float4 uddy : TEXCOORD1) : SV_TARGET
