@@ -96,7 +96,7 @@ float4 ps_previous(float4 vpos : SV_POSITION, float2 uv: TEXCOORD0) : SV_TARGET
     return tex2D(s_current, uv);
 }
 
-technique cBlending
+technique cOpticalFlow
 {
     pass
     {
