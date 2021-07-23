@@ -1,12 +1,8 @@
 
 /*
-    Frame blending without blendops
+    Horn and Schunck optical flow without iterations
+    http://www.cs.cmu.edu/~16385/s17/Slides/14.3_OF__HornSchunck.pdf
 */
-
-uniform float uBlend <
-    ui_label = "Blend Factor"; ui_type = "slider";
-    ui_min = 0.0; ui_max = 1.0;
-> = 0.5;
 
 #define size float2(BUFFER_WIDTH, BUFFER_HEIGHT)
 
