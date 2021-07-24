@@ -25,7 +25,7 @@
         > = uvalue
 
 uOption(uThreshold, float, "slider", "Basic", "Threshold", 0.000, 0.000, 1.000);
-uOption(uScale,     float, "slider", "Basic", "Scale",     2.000, 0.000, 4.000);
+uOption(uScale,     float, "slider", "Basic", "Scale",     8.000, 0.000, 16.00);
 uOption(uRadius,    float, "slider", "Basic", "Prefilter", 8.000, 0.000, 16.00);
 
 uOption(uSmooth, float, "slider", "Advanced", "Flow Smooth", 0.250, 0.000, 0.500);
@@ -52,10 +52,7 @@ uOption(uFalloff,  float, "slider", "Vignette", "Sharpness", 1.000, 0.000, 8.000
 
 #define DSIZE uint2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2)
 #define RSIZE LOG2(RMAX(DSIZE.x, DSIZE.y)) + 1
-
-#ifndef SET_BUFFER_RESOLUTION
-    #define SET_BUFFER_RESOLUTION 256
-#endif
+#define dSize 256
 
 static const float Pi = 3.1415926535897f;
 static const float Epsilon = 1e-7;
@@ -63,11 +60,11 @@ static const int uTaps = 14;
 
 texture2D r_color  : COLOR;
 texture2D r_buffer { Width = DSIZE.x; Height = DSIZE.y; MipLevels = RSIZE; Format = RGB10A2; };
-texture2D r_cImage { Width = SET_BUFFER_RESOLUTION; Height = SET_BUFFER_RESOLUTION; Format = RGB10A2; MipLevels = LOG2(SET_BUFFER_RESOLUTION) + 1; };
-texture2D r_cframe { Width = SET_BUFFER_RESOLUTION; Height = SET_BUFFER_RESOLUTION; Format = RGBA32F; };
-texture2D r_pframe { Width = SET_BUFFER_RESOLUTION; Height = SET_BUFFER_RESOLUTION; Format = RGBA32F; };
-texture2D r_cflow  { Width = SET_BUFFER_RESOLUTION; Height = SET_BUFFER_RESOLUTION; Format = RG32F; MipLevels = LOG2(SET_BUFFER_RESOLUTION) + 1; };
-texture2D r_pflow  { Width = SET_BUFFER_RESOLUTION; Height = SET_BUFFER_RESOLUTION; Format = RG32F; };
+texture2D r_cImage { Width = dSize; Height = dSize; Format = RGB10A2; MipLevels = 9; };
+texture2D r_cframe { Width = dSize; Height = dSize; Format = RGBA32F; };
+texture2D r_pframe { Width = dSize; Height = dSize; Format = RGBA32F; };
+texture2D r_cflow  { Width = dSize; Height = dSize; Format = RG32F;   MipLevels = 9; };
+texture2D r_pflow  { Width = dSize; Height = dSize; Format = RG32F; };
 
 sampler2D s_color  { Texture = r_color; SRGBTexture = TRUE; };
 sampler2D s_buffer { Texture = r_buffer; AddressU = MIRROR; AddressV = MIRROR; };
@@ -116,7 +113,7 @@ void vs_convert(    in uint id : SV_VERTEXID,
                     inout float4 ofs[7] : TEXCOORD1)
 {
     // Calculate texel offset of the mipped texture
-    const float cLOD = log2(max(DSIZE.x, DSIZE.y)) - log2(SET_BUFFER_RESOLUTION);
+    const float cLOD = log2(max(DSIZE.x, DSIZE.y)) - log2(dSize);
     const float2 uSize = rcp(DSIZE.xy / exp2(cLOD)) * uRadius;
     v2f_core(id, uv, vpos);
 
@@ -133,7 +130,7 @@ void vs_flow(   in uint id : SV_VERTEXID,
                 inout float4 uddy : TEXCOORD1)
 {
     float2 uv;
-    const float2 psize = rcp(SET_BUFFER_RESOLUTION);
+    const float2 psize = rcp(dSize);
     v2f_core(id, uv, vpos);
     uddx = uv.xxxy + float4(-1.0, 1.0, 0.0, 0.0) * psize.xxxy;
     uddy = uv.yyxx + float4(-1.0, 1.0, 0.0, 0.0) * psize.yyxx;
@@ -143,7 +140,7 @@ void vs_filter( in uint id : SV_VERTEXID,
                 inout float4 vpos : SV_POSITION,
                 inout float4 ofs[8] : TEXCOORD0)
 {
-    const float2 uSize = rcp(SET_BUFFER_RESOLUTION) * uRadius;
+    const float2 uSize = rcp(dSize) * uRadius;
     float2 uv;
     v2f_core(id, uv, vpos);
 
@@ -202,7 +199,7 @@ void ps_convert(float4 vpos : SV_POSITION,
                 out float4 render2 : SV_TARGET2)
 {
     // Manually calculate LOD between texture and rendertarget size
-    const float cLOD = log2(max(DSIZE.x, DSIZE.y)) - log2(SET_BUFFER_RESOLUTION);
+    const float cLOD = log2(max(DSIZE.x, DSIZE.y)) - log2(dSize);
     const int cTaps = 14;
     float uImage;
     float2 vofs[cTaps];
@@ -251,8 +248,21 @@ float4 ps_filter(   float4 vpos : SV_POSITION,
 
 /*
     Possible improvements
-    - Coarse to fine refinement (might use ddx/y instead lol)
+    - Coarse to fine refinement (may have to use ddxy instead)
     - Better penalty function outside quadratic
+
+    Idea:
+    - Make derivatives pass with mipchain
+    -- cddxy (RG32F)
+    - Copy previous using ps_convert's 4th MRT (or pack with pflow)
+    -- pddxy (also RG32F)
+    - Use derivatives mipchain on pyramid
+
+    Possible issues I need help on:
+    - Scaling summed previous flow to next "upscaled" level
+    - If previous frame does warp right in the flow pass with tex2Dlod()
+    - If HS can work this way with 1 iteration
+    - Resolution customization will have to go for now until this works
 */
 
 float4 ps_flow( float4 vpos : SV_POSITION,
@@ -307,7 +317,7 @@ float4 ps_output(   float4 vpos : SV_POSITION,
                     float2 uv : TEXCOORD0) : SV_Target
 {
     float2 oFlow = tex2Dlod(s_cflow, float4(uv, 0.0, uDetail)).rg;
-    oFlow /= SET_BUFFER_RESOLUTION;
+    oFlow /= float2(BUFFER_WIDTH, BUFFER_HEIGHT);
     oFlow *= uScale;
 
     float4 oBlur;
@@ -326,7 +336,7 @@ float4 ps_output(   float4 vpos : SV_POSITION,
 
 technique cMotionBlur
 {
-    pass cBlur
+    pass cNormalize
     {
         VertexShader = vs_source;
         PixelShader = ps_source;
