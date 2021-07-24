@@ -298,9 +298,8 @@ float4 ps_flow( float4 vpos : SV_POSITION,
     dFdp.y = dot(dFdpy, 1.0);
 
     float3 dt = cLuma - pLuma;
-    const float uEpsilon = Epsilon * Epsilon;
     float dBrightness = dot(dFdp, dFdc) + dot(dt, 1.0);
-    float dSmoothness = dot(dFdp, dFdp) + uEpsilon;
+    float dSmoothness = dot(dFdp, dFdp) + Epsilon;
     float2 cFlow = dFdc - (dFdp * dBrightness) / dSmoothness;
 
     // Threshold and normalize
