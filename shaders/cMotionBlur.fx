@@ -201,7 +201,7 @@ void ps_convert(float4 vpos : SV_POSITION,
     // Manually calculate LOD between texture and rendertarget size
     const float cLOD = log2(max(DSIZE.x, DSIZE.y)) - log2(dSize);
     const int cTaps = 14;
-    float uImage;
+    float4 uImage;
     float2 vofs[cTaps];
 
     for (int i = 0; i < 7; i++)
@@ -212,7 +212,7 @@ void ps_convert(float4 vpos : SV_POSITION,
 
     for (int j = 0; j < cTaps; j++)
     {
-        float uColor = tex2Dlod(s_buffer, float4(vofs[j], 0.0, cLOD)).r;
+        float4 uColor = tex2Dlod(s_buffer, float4(vofs[j], 0.0, cLOD));
         uImage = lerp(uImage, uColor, rcp(float(j) + 1));
     }
 
