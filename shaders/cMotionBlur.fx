@@ -25,7 +25,7 @@
         > = uvalue
 
 uOption(uThreshold, float, "slider", "Basic", "Threshold", 0.000, 0.000, 1.000);
-uOption(uScale,     float, "slider", "Basic", "Scale",     2.000, 0.000, 4.000);
+uOption(uScale,     float, "slider", "Basic", "Scale",     8.000, 0.000, 16.00);
 uOption(uRadius,    float, "slider", "Basic", "Prefilter", 8.000, 0.000, 16.00);
 
 uOption(uSmooth, float, "slider", "Advanced", "Flow Smooth", 0.250, 0.000, 0.500);
@@ -191,8 +191,6 @@ float4 ps_convert(  float4 vpos : SV_POSITION,
                     float2 uv : TEXCOORD0,
                     float4 ofs[7] : TEXCOORD1) : SV_Target
 {
-    // Manually calculate LOD between texture and rendertarget size
-    const float cLOD = ceil(log2(max(DSIZE.x, DSIZE.y)) - log2(256));
     const int cTaps = 14;
     float uImage;
     float2 vofs[cTaps];
@@ -205,7 +203,7 @@ float4 ps_convert(  float4 vpos : SV_POSITION,
 
     for (int j = 0; j < cTaps; j++)
     {
-        float uColor = tex2Dlod(s_buffer, float4(vofs[j], 0.0, cLOD)).r;
+        float uColor = tex2D(s_buffer, vofs[j]).r;
         uImage = lerp(uImage, uColor, rcp(float(j) + 1));
     }
 
@@ -221,7 +219,7 @@ float4 ps_filter(   float4 vpos : SV_POSITION,
 {
     const int cTaps = 16;
     const float uArea = Pi * (uRadius * uRadius) / uTaps;
-    const float uBias = ceil(log2(sqrt(uArea)));
+    const float uBias = log2(sqrt(uArea));
 
     float uImage;
     float2 vofs[cTaps];
@@ -238,7 +236,7 @@ float4 ps_filter(   float4 vpos : SV_POSITION,
         uImage = lerp(uImage, uColor, rcp(float(j) + 1));
     }
 
-    return max(uImage, Epsilon);
+    return uImage;
 }
 
 /*
