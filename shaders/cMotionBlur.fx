@@ -120,18 +120,6 @@ void vs_convert(    in uint id : SV_VERTEXID,
     }
 }
 
-void vs_flow(   in uint id : SV_VERTEXID,
-                inout float4 vpos : SV_POSITION,
-                inout float4 uddx : TEXCOORD0,
-                inout float4 uddy : TEXCOORD1)
-{
-    float2 uv;
-    const float2 psize = rcp(256);
-    v2f_core(id, uv, vpos);
-    uddx = uv.xxxy + float4(-1.0, 1.0, 0.0, 0.0) * psize.xxxy;
-    uddy = uv.yyxx + float4(-1.0, 1.0, 0.0, 0.0) * psize.yyxx;
-}
-
 void vs_filter( in uint id : SV_VERTEXID,
                 inout float4 vpos : SV_POSITION,
                 inout float4 ofs[8] : TEXCOORD0)
@@ -147,7 +135,7 @@ void vs_filter( in uint id : SV_VERTEXID,
     }
 }
 
-void vs_output( in uint id : SV_VERTEXID,
+void vs_common( in uint id : SV_VERTEXID,
                 inout float4 vpos : SV_POSITION,
                 inout float2 uv : TEXCOORD0)
 {
@@ -259,26 +247,16 @@ float4 ps_filter(   float4 vpos : SV_POSITION,
 */
 
 float4 ps_flow( float4 vpos : SV_POSITION,
-                float4 uddx : TEXCOORD0,
-                float4 uddy : TEXCOORD1) : SV_Target
+                float2 uv : TEXCOORD0) : SV_Target
 {
     // Calculate optical flow
-    float cLuma = tex2D(s_cframe, uddx.zw).r; // [0, 0]
-    float pLuma = tex2D(s_pframe, uddx.zw).z; // [0, 0]
+    float cLuma = tex2D(s_cframe, uv).r; // [0, 0]
+    float pLuma = tex2D(s_pframe, uv).z; // [0, 0]
 
-    float2 dFdc;
-    dFdc.x  = tex2D(s_cframe, uddx.yw).r; // [ 1, 0]
-    dFdc.x -= tex2D(s_cframe, uddx.xw).r; // [-1, 0]
-    dFdc.y  = tex2D(s_cframe, uddy.zy).r; // [ 0, 1]
-    dFdc.y -= tex2D(s_cframe, uddy.zx).r; // [ 0,-1]
-
-    float2 dFdp;
-    dFdp.x  = tex2D(s_pframe, uddx.yw).z; // [ 1, 0]
-    dFdp.x -= tex2D(s_pframe, uddx.xw).z; // [-1, 0]
-    dFdp.y  = tex2D(s_pframe, uddy.zy).z; // [ 0, 1]
-    dFdp.y -= tex2D(s_pframe, uddy.zx).z; // [ 0,-1]
-
+    float2 dFdc = float2(ddx(cLuma), ddy(cLuma));
+    float2 dFdp = float2(ddx(pLuma), ddy(pLuma));
     float dt = cLuma - pLuma;
+
     float dBrightness = dot(dFdp, dFdc) + dt;
     float dSmoothness = dot(dFdp, dFdp) + Epsilon;
     float2 cFlow = dFdc - (dFdp * dBrightness) / dSmoothness;
@@ -289,7 +267,7 @@ float4 ps_flow( float4 vpos : SV_POSITION,
     cFlow *= nFlow / pFlow;
 
     // Smooth optical flow
-    float2 sFlow = tex2D(s_pframe, uddx.zw).xy; // [0, 0]
+    float2 sFlow = tex2D(s_pframe, uv).xy; // [0, 0]
     return lerp(cFlow, sFlow, uSmooth).xyxy;
 }
 
@@ -339,14 +317,14 @@ technique cMotionBlur
 
     pass cOpticalFlow
     {
-        VertexShader = vs_flow;
+        VertexShader = vs_common;
         PixelShader = ps_flow;
         RenderTarget0 = r_cflow;
     }
 
     pass cFlowBlur
     {
-        VertexShader = vs_output;
+        VertexShader = vs_common;
         PixelShader = ps_output;
         SRGBWriteEnable = TRUE;
     }
