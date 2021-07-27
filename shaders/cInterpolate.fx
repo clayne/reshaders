@@ -26,16 +26,12 @@
         > = uvalue
 
 uOption(uThreshold, float, "slider", "Basic", "Threshold", 0.000, 0.000, 1.000);
-uOption(uScale,     float, "slider", "Basic", "Scale",     8.000, 0.000, 16.00);
 uOption(uRadius,    float, "slider", "Basic", "Prefilter", 8.000, 0.000, 16.00);
 
+uOption(uBlend,  float, "slider", "Advanced", "Frame Blend", 0.100, 0.000, 1.000);
 uOption(uSmooth, float, "slider", "Advanced", "Flow Smooth", 0.250, 0.000, 0.500);
 uOption(uDetail, float, "slider", "Advanced", "Flow Mip",    5.500, 0.000, 8.000);
 uOption(uDebug,  bool,  "radio",  "Advanced", "Debug",       false, 0, 0);
-
-uOption(uVignette, bool,  "radio",  "Vignette", "Enable",    false, 0, 0);
-uOption(uInvert,   bool,  "radio",  "Vignette", "Invert",    true,  0, 0);
-uOption(uFalloff,  float, "slider", "Vignette", "Sharpness", 1.000, 0.000, 8.000);
 
 #define CONST_LOG2(x) (\
     (uint((x)  & 0xAAAAAAAA) != 0) | \
@@ -63,12 +59,14 @@ texture2D r_buffer { Width = DSIZE.x; Height = DSIZE.y; MipLevels = RSIZE; Forma
 texture2D r_pframe { Width = 256; Height = 256; Format = RGBA32F; MipLevels = 9; };
 texture2D r_cframe { Width = 256; Height = 256; Format = R32F; };
 texture2D r_cflow  { Width = 256; Height = 256; Format = RG32F; MipLevels = 9; };
+texture2D r_pcolor { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; };
 
 sampler2D s_color  { Texture = r_color; SRGBTexture = TRUE; };
 sampler2D s_buffer { Texture = r_buffer; AddressU = MIRROR; AddressV = MIRROR; };
 sampler2D s_pframe { Texture = r_pframe; AddressU = MIRROR; AddressV = MIRROR; };
 sampler2D s_cframe { Texture = r_cframe; AddressU = MIRROR; AddressV = MIRROR; };
 sampler2D s_cflow  { Texture = r_cflow;  AddressU = MIRROR; AddressV = MIRROR; };
+sampler2D s_pcolor { Texture = r_pcolor; SRGBTexture = TRUE; };
 
 /* [ Vertex Shaders ] */
 
@@ -133,11 +131,6 @@ void vs_common( in uint id : SV_VERTEXID,
 
 /* [ Pixel Shaders ] */
 
-float Median3(float a, float b, float c)
-{
-    return max(min(a, b), min(max(a, b), c));
-}
-
 float urand(float2 vpos)
 {
     const float3 value = float3(52.9829189, 0.06711056, 0.00583715);
@@ -148,20 +141,9 @@ float4 ps_source(   float4 vpos : SV_POSITION,
                     float2 uv : TEXCOORD0) : SV_Target
 {
     float3 uImage = tex2D(s_color, uv.xy).rgb;
-    float luma = Median3(uImage.r, uImage.g, uImage.b);
+    float luma = max(max(uImage.r, uImage.g), uImage.b);
     float output = luma * rsqrt(dot(uImage.rgb, uImage.rgb));
-
-    // Vignette output if called
-    const float2 aspectratio = BUFFER_WIDTH * BUFFER_RCP_HEIGHT;
-    float2 coord = (uv - 0.5) * aspectratio * 2.0;
-    float rf = length(coord) * uFalloff;
-    float rf2_1 = mad(rf, rf, 1.0);
-
-    float vigWeight = rcp(rf2_1 * rf2_1);
-    vigWeight = (uInvert) ? 1.0 - vigWeight : vigWeight;
-
-    float outputvignette = output * vigWeight;
-    return (uVignette) ? outputvignette : output;
+    return output;
 }
 
 float4 ps_convert(  float4 vpos : SV_POSITION,
@@ -260,28 +242,34 @@ float4 ps_flow( float4 vpos : SV_POSITION,
     return lerp(cFlow, sFlow, uSmooth).xyxy;
 }
 
+// Median masking inspired by vs-mvtools
+// https://github.com/dubhater/vapoursynth-mvtools
+
+float4 Median3( float4 a, float4 b, float4 c)
+{
+	return max(min(a, b), min(max(a, b), c));
+}
+
 float4 ps_output(   float4 vpos : SV_POSITION,
                     float2 uv : TEXCOORD0) : SV_Target
 {
-    float2 oFlow = tex2Dlod(s_cflow, float4(uv, 0.0, uDetail)).xy;
-    oFlow /= float2(BUFFER_WIDTH, BUFFER_HEIGHT);
-    oFlow *= uScale;
-
-    float4 oBlur;
-    float noise = urand(vpos.xy) * 2.0;
-    const float samples = 1.0 / (16.0 - 1.0);
-
-    for(int k = 0; k < 9; k++)
-    {
-        float2 calc = (noise + k * 2.0) * samples - 0.5;
-        float4 uColor = tex2D(s_color, oFlow * calc + uv);
-        oBlur = lerp(oBlur, uColor, rcp(float(k) + 1));
-    }
-
-    return (uDebug) ? float4(oFlow, 1.0, 1.0) : oBlur;
+	const float2 pSize = rcp(float2(BUFFER_WIDTH, BUFFER_HEIGHT));
+	float2 pFlow = tex2Dlod(s_cflow, float4(uv, 0.0, uDetail)).xy;
+	float4 pRef = tex2D(s_color, uv);
+	float4 pSrc = tex2D(s_pcolor, uv);
+	float4 pMCB = tex2D(s_color, uv - pFlow * pSize);
+	float4 pMCF = tex2D(s_pcolor, uv + pFlow * pSize);
+	float4 pAvg = lerp(pRef, pSrc, uBlend);
+    return (uDebug) ? float4(pFlow, 1.0, 1.0) : Median3(pMCF, pMCB, pAvg);
 }
 
-technique cMotionBlur
+float4 ps_previous( float4 vpos : SV_POSITION,
+                    float2 uv : TEXCOORD0) : SV_Target
+{
+    return float4(tex2D(s_color, uv).rgb, 1.0);
+}
+
+technique cInterpolate
 {
     pass cBlur
     {
@@ -315,6 +303,14 @@ technique cMotionBlur
     {
         VertexShader = vs_common;
         PixelShader = ps_output;
+        SRGBWriteEnable = TRUE;
+    }
+
+    pass cStorePrevious
+    {
+        VertexShader = vs_common;
+        PixelShader = ps_previous;
+        RenderTarget = r_pcolor;
         SRGBWriteEnable = TRUE;
     }
 }
