@@ -29,7 +29,7 @@ uOption(uScale,     float, "slider", "Basic", "Scale",     8.000, 0.000, 16.00);
 uOption(uRadius,    float, "slider", "Basic", "Prefilter", 8.000, 0.000, 16.00);
 
 uOption(uSmooth, float, "slider", "Advanced", "Flow Smooth", 0.250, 0.000, 0.500);
-uOption(uDetail, float, "slider", "Advanced", "Flow Mip",    5.900, 0.000, 8.000);
+uOption(uDetail, float, "slider", "Advanced", "Flow Mip",    5.500, 0.000, 8.000);
 uOption(uDebug,  bool,  "radio",  "Advanced", "Debug",       false, 0, 0);
 
 uOption(uVignette, bool,  "radio",  "Vignette", "Enable",    false, 0, 0);
@@ -289,7 +289,7 @@ float4 ps_output(   float4 vpos : SV_POSITION,
         oBlur = lerp(oBlur, uColor, rcp(float(k) + 1));
     }
 
-    return (uDebug) ? float4(oFlow, 0.0, 0.0) : oBlur;
+    return (uDebug) ? float4(oFlow, 1.0, 1.0) : oBlur;
 }
 
 technique cMotionBlur
