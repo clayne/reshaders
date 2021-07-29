@@ -26,7 +26,7 @@
         > = uvalue
 
 uOption(uThreshold, float, "slider", "Basic", "Threshold", 0.000, 0.000, 1.000);
-uOption(uScale,     float, "slider", "Basic", "Scale",     8.000, 0.000, 16.00);
+uOption(uScale,     float, "slider", "Basic", "Scale",     2.000, 0.000, 4.000);
 uOption(uRadius,    float, "slider", "Basic", "Prefilter", 8.000, 0.000, 16.00);
 
 uOption(uSmooth, float, "slider", "Advanced", "Flow Smooth", 0.250, 0.000, 0.500);
@@ -264,7 +264,7 @@ float4 ps_output(   float4 vpos : SV_POSITION,
                     float2 uv : TEXCOORD0) : SV_Target
 {
     float2 oFlow = tex2Dlod(s_cflow, float4(uv, 0.0, uDetail)).xy;
-    oFlow /= float2(BUFFER_WIDTH, BUFFER_HEIGHT);
+    oFlow /= 256.0;
     oFlow *= uScale;
 
     float4 oBlur;

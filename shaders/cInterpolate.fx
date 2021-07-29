@@ -247,19 +247,19 @@ float4 ps_flow( float4 vpos : SV_POSITION,
 
 float4 Median3( float4 a, float4 b, float4 c)
 {
-	return max(min(a, b), min(max(a, b), c));
+    return max(min(a, b), min(max(a, b), c));
 }
 
 float4 ps_output(   float4 vpos : SV_POSITION,
                     float2 uv : TEXCOORD0) : SV_Target
 {
-	const float2 pSize = rcp(float2(BUFFER_WIDTH, BUFFER_HEIGHT));
-	float2 pFlow = tex2Dlod(s_cflow, float4(uv, 0.0, uDetail)).xy;
-	float4 pRef = tex2D(s_color, uv);
-	float4 pSrc = tex2D(s_pcolor, uv);
-	float4 pMCB = tex2D(s_color, uv - pFlow * pSize);
-	float4 pMCF = tex2D(s_pcolor, uv + pFlow * pSize);
-	float4 pAvg = lerp(pRef, pSrc, uBlend);
+    const float2 pSize = rcp(256.0);
+    float2 pFlow = tex2Dlod(s_cflow, float4(uv, 0.0, uDetail)).xy;
+    float4 pRef = tex2D(s_color, uv);
+    float4 pSrc = tex2D(s_pcolor, uv);
+    float4 pMCB = tex2D(s_color, uv - pFlow * pSize);
+    float4 pMCF = tex2D(s_pcolor, uv + pFlow * pSize);
+    float4 pAvg = lerp(pRef, pSrc, uBlend);
     return (uDebug) ? float4(pFlow, 1.0, 1.0) : Median3(pMCF, pMCB, pAvg);
 }
 
