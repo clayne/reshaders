@@ -29,8 +29,8 @@ uOption(uThreshold, float, "slider", "Basic", "Threshold", 0.000, 0.000, 1.000);
 uOption(uRadius,    float, "slider", "Basic", "Prefilter", 8.000, 0.000, 16.00);
 
 uOption(uBlend,  float, "slider", "Advanced", "Frame Blend", 0.100, 0.000, 1.000);
-uOption(uSmooth, float, "slider", "Advanced", "Flow Smooth", 0.250, 0.000, 0.500);
-uOption(uDetail, float, "slider", "Advanced", "Flow Mip",    5.500, 0.000, 8.000);
+uOption(uSmooth, float, "slider", "Advanced", "Flow Smooth", 0.100, 0.000, 0.500);
+uOption(uDetail, float, "slider", "Advanced", "Flow Mip",    1.000, 0.000, 8.000);
 uOption(uDebug,  bool,  "radio",  "Advanced", "Debug",       false, 0, 0);
 
 #define CONST_LOG2(x) (\
