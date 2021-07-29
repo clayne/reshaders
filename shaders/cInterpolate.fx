@@ -51,7 +51,7 @@ uOption(uDebug,  bool,  "radio",  "Advanced", "Debug",       false, 0, 0);
 #define RSIZE LOG2(RMAX(DSIZE.x, DSIZE.y)) + 1
 
 static const float Pi = 3.1415926535897f;
-static const float Epsilon = 1e-7;
+static const float Epsilon = 1e-5;
 static const int uTaps = 14;
 
 texture2D r_color  : COLOR;
