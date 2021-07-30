@@ -14,7 +14,6 @@
     Noise        - [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
     Optical Flow - [https://dspace.mit.edu/handle/1721.1/6337]
     Pi Constant  - [https://github.com/microsoft/DirectX-Graphics-Samples] [MIT]
-    Threshold    - [https://github.com/diwi/PixelFlow] [MIT]
     Vignette     - [https://github.com/keijiro/KinoVignette] [MIT]
     Vogel Disk   - [http://blog.marmakoide.org/?p=1]
 */
@@ -25,9 +24,9 @@
         ui_type = utype; ui_min = umin; ui_max = umax;                          \
         > = uvalue
 
-uOption(uThreshold, float, "slider", "Basic", "Threshold", 0.000, 0.000, 1.000);
-uOption(uScale,     float, "slider", "Basic", "Scale",     2.000, 0.000, 4.000);
-uOption(uRadius,    float, "slider", "Basic", "Prefilter", 8.000, 0.000, 16.00);
+uOption(uSigma,  float, "slider", "Basic", "Sensitivity", 0.500, 0.000, 1.000);
+uOption(uScale,  float, "slider", "Basic", "Scale",       2.000, 0.000, 4.000);
+uOption(uRadius, float, "slider", "Basic", "Prefilter",   8.000, 0.000, 16.00);
 
 uOption(uSmooth, float, "slider", "Advanced", "Flow Smooth", 0.250, 0.000, 0.500);
 uOption(uDetail, float, "slider", "Advanced", "Flow Mip",    5.500, 0.000, 8.000);
@@ -133,6 +132,16 @@ void vs_common( in uint id : SV_VERTEXID,
 
 /* [ Pixel Shaders ] */
 
+float Max3(float a, float b, float c)
+{
+    return max(max(a, b), c);
+}
+
+float Median3(float a, float b, float c)
+{
+    return max(min(a, b), min(max(a, b), c));
+}
+
 float urand(float2 vpos)
 {
     const float3 value = float3(52.9829189, 0.06711056, 0.00583715);
@@ -143,7 +152,7 @@ float4 ps_source(   float4 vpos : SV_POSITION,
                     float2 uv : TEXCOORD0) : SV_Target
 {
     float3 uImage = tex2D(s_color, uv.xy).rgb;
-    float luma = max(max(uImage.r, uImage.g), uImage.b);
+    float luma = Max3(uImage.r, uImage.g, uImage.b);
     float output = luma * rsqrt(dot(uImage.rgb, uImage.rgb));
 
     // Vignette output if called
@@ -242,15 +251,12 @@ float4 ps_flow( float4 vpos : SV_POSITION,
     float2 dFdp = float2(ddx(pLuma), ddy(pLuma));
 
     float dBrightness = dot(dFdp, dFdc) + dFdt;
+    const float dConstraint = rcp(2.0 * pow(uSigma, 2.0));
     float3 dSmoothness;
-    dSmoothness.xy = log(dFdp.xy * dFdp.xy + 1.0);
+    dSmoothness.xy = dFdp.xy * dFdp.xy;
+    dSmoothness.xy = log(1.0 + dSmoothness.xy * dConstraint);
     dSmoothness.z = dot(dSmoothness.xy, 1.0) + Epsilon;
     float2 cFlow = dFdc - (dFdp * dBrightness) / dSmoothness.z;
-
-    // Threshold and normalize
-    float pFlow = sqrt(dot(cFlow, cFlow) + Epsilon);
-    float nFlow = max(pFlow - uThreshold, 0.0);
-    cFlow *= nFlow / pFlow;
 
     // Smooth optical flow
     float2 sFlow = tex2D(s_pframe, uv).xy; // [0, 0]

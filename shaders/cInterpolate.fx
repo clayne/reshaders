@@ -14,8 +14,6 @@
     Noise        - [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
     Optical Flow - [https://dspace.mit.edu/handle/1721.1/6337]
     Pi Constant  - [https://github.com/microsoft/DirectX-Graphics-Samples] [MIT]
-    Threshold    - [https://github.com/diwi/PixelFlow] [MIT]
-    Vignette     - [https://github.com/keijiro/KinoVignette] [MIT]
     Vogel Disk   - [http://blog.marmakoide.org/?p=1]
 */
 
@@ -25,12 +23,12 @@
         ui_type = utype; ui_min = umin; ui_max = umax;                          \
         > = uvalue
 
-uOption(uThreshold, float, "slider", "Basic", "Threshold", 0.000, 0.000, 1.000);
-uOption(uRadius,    float, "slider", "Basic", "Prefilter", 8.000, 0.000, 16.00);
+uOption(uSigma,  float, "slider", "Basic", "Sensitivity", 0.500, 0.000, 1.000);
+uOption(uRadius, float, "slider", "Basic", "Prefilter",   8.000, 0.000, 16.00);
 
 uOption(uBlend,  float, "slider", "Advanced", "Frame Blend", 0.100, 0.000, 1.000);
 uOption(uSmooth, float, "slider", "Advanced", "Flow Smooth", 0.100, 0.000, 0.500);
-uOption(uDetail, float, "slider", "Advanced", "Flow Mip",    1.000, 0.000, 8.000);
+uOption(uDetail, float, "slider", "Advanced", "Flow Mip",    4.000, 0.000, 8.000);
 uOption(uDebug,  bool,  "radio",  "Advanced", "Debug",       false, 0, 0);
 
 #define CONST_LOG2(x) (\
@@ -51,7 +49,7 @@ uOption(uDebug,  bool,  "radio",  "Advanced", "Debug",       false, 0, 0);
 #define RSIZE LOG2(RMAX(DSIZE.x, DSIZE.y)) + 1
 
 static const float Pi = 3.1415926535897f;
-static const float Epsilon = 1e-5;
+static const float Epsilon = 1e-7;
 static const int uTaps = 14;
 
 texture2D r_color  : COLOR;
@@ -229,13 +227,12 @@ float4 ps_flow( float4 vpos : SV_POSITION,
     float2 dFdp = float2(ddx(pLuma), ddy(pLuma));
 
     float dBrightness = dot(dFdp, dFdc) + dFdt;
-    float dSmoothness = dot(dFdp, dFdp) + Epsilon;
-    float2 cFlow = dFdc - (dFdp * dBrightness) / dSmoothness;
-
-    // Threshold and normalize
-    float pFlow = sqrt(dot(cFlow, cFlow) + Epsilon);
-    float nFlow = max(pFlow - uThreshold, 0.0);
-    cFlow *= nFlow / pFlow;
+    const float dConstraint = rcp(2.0 * pow(uSigma, 2.0));
+    float3 dSmoothness;
+    dSmoothness.xy = dFdp.xy * dFdp.xy;
+    dSmoothness.xy = log(1.0 + dSmoothness.xy * dConstraint);
+    dSmoothness.z = dot(dSmoothness.xy, 1.0) + Epsilon;
+    float2 cFlow = dFdc - (dFdp * dBrightness) / dSmoothness.z;
 
     // Smooth optical flow
     float2 sFlow = tex2D(s_pframe, uv).xy; // [0, 0]
