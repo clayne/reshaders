@@ -25,7 +25,7 @@
         > = uvalue
 
 uOption(uSigma,  float, "slider", "Basic", "Sensitivity", 0.500, 0.000, 1.000);
-uOption(uScale,  float, "slider", "Basic", "Scale",       2.000, 0.000, 4.000);
+uOption(uScale,  float, "slider", "Basic", "Scale",       4.000, 0.000, 8.000);
 uOption(uRadius, float, "slider", "Basic", "Prefilter",   8.000, 0.000, 16.00);
 
 uOption(uSmooth, float, "slider", "Advanced", "Flow Smooth", 0.250, 0.000, 0.500);
