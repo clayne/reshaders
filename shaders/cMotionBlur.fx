@@ -250,8 +250,8 @@ float4 ps_flow(float4 vpos : SV_POSITION,
                float2 uv : TEXCOORD0) : SV_Target
 {
     // Calculate optical flow
-    float3 cLuma = tex2D(s_cframe, uv).rgb; // [0, 0]
-    float3 pLuma = tex2D(s_pframe, uv).rgb; // [0, 0]
+    float3 cLuma = tex2D(s_cframe, uv).rgb;
+    float3 pLuma = tex2D(s_pframe, uv).rgb;
 
     float2 dFdc;
     dFdc.x = dot(ddx(cLuma), 1.0);
@@ -270,8 +270,8 @@ float4 ps_flow(float4 vpos : SV_POSITION,
     cFlow *= nFlow / oFlow;
 
     // Smooth optical flow
-    float2 sFlow = tex2D(s_pflow, uv).xy; // [0, 0]
-    return lerp(cFlow, sFlow, uSmooth).xyxy;
+    float2 sFlow = tex2D(s_pflow, uv).xy;
+    return float4(lerp(cFlow, sFlow, uSmooth).xy, 1.0, 1.0);
 }
 
 float4 ps_output(float4 vpos : SV_POSITION,
