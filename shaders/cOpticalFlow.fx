@@ -6,13 +6,17 @@
 
 #define size float2(BUFFER_WIDTH, BUFFER_HEIGHT)
 
-texture2D r_color  : COLOR;
-texture2D r_current  { Width = size.x; Height = size.y; Format = RGB10A2; };
-texture2D r_previous { Width = size.x; Height = size.y; Format = RGB10A2; };
+texture2D r_color : COLOR;
+texture2D r_current_  	  { Width = size.x / 2.0; Height = size.y / 2.0; Format = R8; };
+texture2D r_previous_ 	  { Width = size.x / 2.0; Height = size.y / 2.0; Format = R8; };
+texture2D r_currentflow_  { Width = size.x / 2.0; Height = size.y / 2.0; Format = RG32F; };
+texture2D r_previousflow_ { Width = size.x / 2.0; Height = size.y / 2.0; Format = RG32F; };
 
-sampler2D s_color    { Texture = r_color; SRGBTexture = TRUE; };
-sampler2D s_current  { Texture = r_current; };
-sampler2D s_previous { Texture = r_previous; };
+sampler2D s_color    	  { Texture = r_color; SRGBTexture = TRUE; };
+sampler2D s_current_  	  { Texture = r_current_; };
+sampler2D s_previous_ 	  { Texture = r_previous_; };
+sampler2D s_currentflow_  { Texture = r_currentflow_; };
+sampler2D s_previousflow_ { Texture = r_previousflow_; };
 
 /* [Vertex Shaders] */
 
@@ -32,67 +36,53 @@ void vs_common( in uint id : SV_VERTEXID,
     v2f_core(id, uv, vpos);
 }
 
-void vs_flow(   in uint id : SV_VERTEXID,
-                inout float4 vpos : SV_POSITION,
-                inout float4 uddx : TEXCOORD0,
-                inout float4 uddy : TEXCOORD1)
-{
-    float2 uv;
-    const float2 psize = rcp(size);
-    v2f_core(id, uv, vpos);
-    uddx = uv.xxxy + float4(-1.0, 1.0, 0.0, 0.0) * psize.xxxy;
-    uddy = uv.yyxx + float4(-1.0, 1.0, 0.0, 0.0) * psize.yyxx;
-}
-
 /* [Pixel Shaders] */
+
+float Max3(float a, float b, float c)
+{
+    return max(max(a, b), c);
+}
 
 float4 ps_image(float4 vpos : SV_POSITION, float2 uv: TEXCOORD0) : SV_TARGET
 {
-    return float4(normalize(tex2D(s_color, uv).rgb), 1.0);
+	float3 uImage = tex2D(s_color, uv).rgb;
+	float luma = Max3(uImage.r, uImage.g, uImage.b);
+    return luma / dot(uImage, 1.0);
 }
 
 float4 ps_hsflow(   float4 vpos : SV_POSITION,
-                    float4 uddx : TEXCOORD0,
-                    float4 uddy : TEXCOORD1) : SV_TARGET
+                    float2 uv : TEXCOORD0) : SV_TARGET
 {
-    // Calculate optical flow
-    float3 cframe = tex2D(s_current, uddx.zw).rgb; // [0, 0]
-    float3 pframe = tex2D(s_previous, uddx.zw).rgb; // [0, 0]
+    float pframe = tex2D(s_previous_, uv).r;
+    float cframe = tex2D(s_current_, uv).r;
 
-    float3 dFdcx;
-    dFdcx  = tex2D(s_current, uddx.yw).rgb; // [ 1, 0]
-    dFdcx -= tex2D(s_current, uddx.xw).rgb; // [-1, 0]
+	float dFdt = cframe - pframe;
+    float2 dFdp = float2(ddx(pframe), ddy(pframe));
+    float2 dFdc = float2(ddx(cframe), ddy(cframe));
 
-    float3 dFdcy;
-    dFdcy  = tex2D(s_current, uddy.zy).rgb; // [ 0, 1]
-    dFdcy -= tex2D(s_current, uddy.zx).rgb; // [ 0,-1]
-
-    float3 dFdpx;
-    dFdpx  = tex2D(s_previous, uddx.yw).rgb; // [ 1, 0]
-    dFdpx -= tex2D(s_previous, uddx.xw).rgb; // [-1, 0]
-
-    float3 dFdpy;
-    dFdpy  = tex2D(s_previous, uddy.zy).rgb; // [ 0, 1]
-    dFdpy -= tex2D(s_previous, uddy.zx).rgb; // [ 0,-1]
-
-    float2 dFdc;
-    dFdc.x = dot(dFdcx, 1.0);
-    dFdc.y = dot(dFdcy, 1.0);
-
-    float2 dFdp;
-    dFdp.x = dot(dFdpx, 1.0);
-    dFdp.y = dot(dFdpy, 1.0);
-
-    float3 dt = cframe - pframe;
-    float dBrightness = dot(dFdp, dFdc) + dot(dt, 1.0);
+    float dBrightness = dot(dFdp, dFdc) + dFdt;
     float dSmoothness = dot(dFdp, dFdp) + 1e-7;
     float2 cFlow = dFdc - (dFdp * dBrightness) / dSmoothness;
-    return float4(abs(cFlow), 1.0, 0.0);
+
+    return float4(cFlow, 1.0, 1.0);
 }
 
-float4 ps_previous(float4 vpos : SV_POSITION, float2 uv: TEXCOORD0) : SV_TARGET
+float4 ps_hsblend(  float4 vpos : SV_POSITION,
+                    float2 uv : TEXCOORD0) : SV_TARGET
 {
-    return tex2D(s_current, uv);
+	float2 cflow = tex2D(s_currentflow_, uv).xy;
+	float2 pflow = tex2D(s_previousflow_, uv).xy;
+	float2 blend = lerp(cflow, pflow, 0.25);
+    return float4(blend, 1.0, 1.0);
+}
+
+void ps_previous(   float4 vpos : SV_POSITION,
+					float2 uv: TEXCOORD0,
+					out float4 render0 : SV_TARGET0,
+					out float4 render1 : SV_TARGET1)
+{
+    render0 = tex2D(s_current_, uv);
+    render1 = tex2D(s_currentflow_, uv);
 }
 
 technique cOpticalFlow
@@ -101,19 +91,27 @@ technique cOpticalFlow
     {
         VertexShader = vs_common;
         PixelShader = ps_image;
-        RenderTarget = r_current;
+        RenderTarget = r_current_;
     }
 
     pass
     {
-        VertexShader = vs_flow;
+        VertexShader = vs_common;
         PixelShader = ps_hsflow;
+        RenderTarget = r_currentflow_;
+    }
+
+    pass
+    {
+        VertexShader = vs_common;
+        PixelShader = ps_hsblend;
     }
 
     pass
     {
         VertexShader = vs_common;
         PixelShader = ps_previous;
-        RenderTarget = r_previous;
+        RenderTarget0 = r_previous_;
+        RenderTarget1 = r_previousflow_;
     }
 }

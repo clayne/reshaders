@@ -14,6 +14,7 @@
     Noise        - [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
     Optical Flow - [https://dspace.mit.edu/handle/1721.1/6337]
     Pi Constant  - [https://github.com/microsoft/DirectX-Graphics-Samples] [MIT]
+    Vignette     - [https://github.com/keijiro/KinoVignette] [MIT]
     Vogel Disk   - [http://blog.marmakoide.org/?p=1]
 */
 
@@ -23,13 +24,11 @@
         ui_type = utype; ui_min = umin; ui_max = umax;                          \
         > = uvalue
 
-uOption(uSigma,  float, "slider", "Basic", "Sensitivity", 0.500, 0.000, 1.000);
 uOption(uRadius, float, "slider", "Basic", "Prefilter",   8.000, 0.000, 16.00);
-
-uOption(uBlend,  float, "slider", "Advanced", "Frame Blend", 0.100, 0.000, 1.000);
-uOption(uSmooth, float, "slider", "Advanced", "Flow Smooth", 0.100, 0.000, 0.500);
-uOption(uDetail, float, "slider", "Advanced", "Flow Mip",    4.000, 0.000, 8.000);
-uOption(uDebug,  bool,  "radio",  "Advanced", "Debug",       false, 0, 0);
+uOption(uBlend,  float, "slider", "Basic", "Frame Blend", 0.100, 0.000, 1.000);
+uOption(uSmooth, float, "slider", "Basic", "Flow Smooth", 0.100, 0.000, 0.500);
+uOption(uDetail, float, "slider", "Basic", "Flow Mip",    5.500, 0.000, 8.000);
+uOption(uDebug,  bool,  "radio",  "Basic", "Debug",       false, 0, 0);
 
 #define CONST_LOG2(x) (\
     (uint((x)  & 0xAAAAAAAA) != 0) | \
@@ -47,23 +46,29 @@ uOption(uDebug,  bool,  "radio",  "Advanced", "Debug",       false, 0, 0);
 
 #define DSIZE uint2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2)
 #define RSIZE LOG2(RMAX(DSIZE.x, DSIZE.y)) + 1
+#define ISIZE 256.0
 
+static const float aRatio = BUFFER_WIDTH / BUFFER_HEIGHT;
 static const float Pi = 3.1415926535897f;
 static const float Epsilon = 1e-7;
 static const int uTaps = 14;
 
 texture2D r_color  : COLOR;
-texture2D r_buffer { Width = DSIZE.x; Height = DSIZE.y; MipLevels = RSIZE; Format = R8; };
-texture2D r_pframe { Width = 256; Height = 256; Format = RGBA32F; MipLevels = 9; };
-texture2D r_cframe { Width = 256; Height = 256; Format = R32F; };
-texture2D r_cflow  { Width = 256; Height = 256; Format = RG32F; MipLevels = 9; };
+texture2D r_buffer { Width = DSIZE.x; Height = DSIZE.y; MipLevels = RSIZE; Format = RGB10A2; };
+texture2D r_cimage { Width = ISIZE; Height = ISIZE; Format = RGBA32F; MipLevels = 9; };
+texture2D r_pframe { Width = ISIZE; Height = ISIZE; Format = RGBA32F; };
+texture2D r_cframe { Width = ISIZE; Height = ISIZE; Format = RGBA32F; };
+texture2D r_cflow  { Width = ISIZE; Height = ISIZE; Format = RG32F; MipLevels = 9; };
+texture2D r_pflow  { Width = ISIZE; Height = ISIZE; Format = RG32F; };
 texture2D r_pcolor { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; };
 
-sampler2D s_color  { Texture = r_color; SRGBTexture = TRUE; };
+sampler2D s_color  { Texture = r_color;  SRGBTexture = TRUE; };
 sampler2D s_buffer { Texture = r_buffer; AddressU = MIRROR; AddressV = MIRROR; };
+sampler2D s_cimage { Texture = r_cimage; AddressU = MIRROR; AddressV = MIRROR; };
 sampler2D s_pframe { Texture = r_pframe; AddressU = MIRROR; AddressV = MIRROR; };
 sampler2D s_cframe { Texture = r_cframe; AddressU = MIRROR; AddressV = MIRROR; };
 sampler2D s_cflow  { Texture = r_cflow;  AddressU = MIRROR; AddressV = MIRROR; };
+sampler2D s_pflow  { Texture = r_pflow;  AddressU = MIRROR; AddressV = MIRROR; };
 sampler2D s_pcolor { Texture = r_pcolor; SRGBTexture = TRUE; };
 
 /* [ Vertex Shaders ] */
@@ -94,7 +99,7 @@ void vs_convert(    in uint id : SV_VERTEXID,
                     inout float4 ofs[7] : TEXCOORD1)
 {
     // Calculate texel offset of the mipped texture
-    const float cLOD = log2(max(DSIZE.x, DSIZE.y)) - log2(256);
+    const float cLOD = log2(max(DSIZE.x, DSIZE.y)) - log2(ISIZE);
     const float2 uSize = rcp(DSIZE.xy / exp2(cLOD)) * uRadius;
     v2f_core(id, uv, vpos);
 
@@ -109,7 +114,7 @@ void vs_filter( in uint id : SV_VERTEXID,
                 inout float4 vpos : SV_POSITION,
                 inout float4 ofs[8] : TEXCOORD0)
 {
-    const float2 uSize = rcp(256) * uRadius;
+    const float2 uSize = rcp(ISIZE) * uRadius;
     float2 uv;
     v2f_core(id, uv, vpos);
 
@@ -135,21 +140,23 @@ float urand(float2 vpos)
     return frac(value.x * frac(dot(vpos.xy, value.yz)));
 }
 
-float4 ps_source(   float4 vpos : SV_POSITION,
-                    float2 uv : TEXCOORD0) : SV_Target
+float4 ps_source(float4 vpos : SV_POSITION,
+                 float2 uv : TEXCOORD0) : SV_Target
 {
     float3 uImage = tex2D(s_color, uv.xy).rgb;
-    float luma = max(max(uImage.r, uImage.g), uImage.b);
-    float output = luma * rsqrt(dot(uImage.rgb, uImage.rgb));
-    return output;
+    float3 output = normalize(uImage);
+    return float4(output, 1.0);
 }
 
-float4 ps_convert(  float4 vpos : SV_POSITION,
-                    float2 uv : TEXCOORD0,
-                    float4 ofs[7] : TEXCOORD1) : SV_Target
+void ps_convert(float4 vpos : SV_POSITION,
+                float2 uv : TEXCOORD0,
+                float4 ofs[7] : TEXCOORD1,
+                out float4 r0 : SV_TARGET0,
+                out float4 r1 : SV_TARGET1,
+                out float4 r2 : SV_TARGET2)
 {
     const int cTaps = 14;
-    float uImage;
+    float4 uImage;
     float2 vofs[cTaps];
 
     for (int i = 0; i < 7; i++)
@@ -160,15 +167,13 @@ float4 ps_convert(  float4 vpos : SV_POSITION,
 
     for (int j = 0; j < cTaps; j++)
     {
-        float uColor = tex2D(s_buffer, vofs[j]).r;
+        float4 uColor = tex2D(s_buffer, vofs[j]);
         uImage = lerp(uImage, uColor, rcp(float(j) + 1));
     }
 
-    float4 output;
-    output.xy = tex2D(s_cflow, uv).rg; // Copy previous rendertarget from ps_flow()
-    output.z  = tex2D(s_cframe, uv).r; // Copy previous rendertarget from ps_filter()
-    output.w  = uImage; // Input downsampled current frame to scale and mip
-    return output;
+    r0 = tex2D(s_cflow, uv).rg; // Copy previous rendertarget from ps_flow()
+    r1 = tex2D(s_cframe, uv); // Copy previous rendertarget from ps_filter()
+    r2 = uImage; // Input downsampled current frame to scale and mip
 }
 
 float4 ps_filter(   float4 vpos : SV_POSITION,
@@ -178,7 +183,7 @@ float4 ps_filter(   float4 vpos : SV_POSITION,
     const float uArea = Pi * (uRadius * uRadius) / uTaps;
     const float uBias = log2(sqrt(uArea));
 
-    float uImage;
+    float4 uImage;
     float2 vofs[cTaps];
 
     for (int i = 0; i < 8; i++)
@@ -189,7 +194,7 @@ float4 ps_filter(   float4 vpos : SV_POSITION,
 
     for (int j = 0; j < cTaps; j++)
     {
-        float uColor = tex2Dlod(s_pframe, float4(vofs[j], 0.0, uBias)).w;
+        float4 uColor = tex2Dlod(s_cimage, float4(vofs[j], 0.0, uBias));
         uImage = lerp(uImage, uColor, rcp(float(j) + 1));
     }
 
@@ -215,27 +220,27 @@ float4 ps_filter(   float4 vpos : SV_POSITION,
     - Resolution customization will have to go for now until this works
 */
 
-float4 ps_flow( float4 vpos : SV_POSITION,
-                float2 uv : TEXCOORD0) : SV_Target
+float4 ps_flow(float4 vpos : SV_POSITION,
+               float2 uv : TEXCOORD0) : SV_Target
 {
     // Calculate optical flow
-    float cLuma = tex2D(s_cframe, uv).r; // [0, 0]
-    float pLuma = tex2D(s_pframe, uv).z; // [0, 0]
+    float3 cLuma = tex2D(s_cframe, uv).rgb; // [0, 0]
+    float3 pLuma = tex2D(s_pframe, uv).rgb; // [0, 0]
 
-    float dFdt = cLuma - pLuma;
-    float2 dFdc = float2(ddx(cLuma), ddy(cLuma));
-    float2 dFdp = float2(ddx(pLuma), ddy(pLuma));
+    float2 dFdc;
+    dFdc.x = dot(ddx(cLuma), 1.0);
+    dFdc.y = dot(ddy(cLuma), 1.0);
+    float2 dFdp;
+    dFdp.x = dot(ddx(pLuma), 1.0);
+    dFdp.y = dot(ddy(pLuma), 1.0);
 
+    float dFdt = dot(cLuma - pLuma, 1.0);
     float dBrightness = dot(dFdp, dFdc) + dFdt;
-    const float dConstraint = rcp(2.0 * pow(uSigma, 2.0));
-    float3 dSmoothness;
-    dSmoothness.xy = dFdp.xy * dFdp.xy;
-    dSmoothness.xy = log(1.0 + dSmoothness.xy * dConstraint);
-    dSmoothness.z = dot(dSmoothness.xy, 1.0) + Epsilon;
-    float2 cFlow = dFdc - (dFdp * dBrightness) / dSmoothness.z;
+    float dSmoothness = dot(dFdp, dFdp) + Epsilon;
+    float2 cFlow = dFdc - (dFdp * dBrightness) / dSmoothness;
 
     // Smooth optical flow
-    float2 sFlow = tex2D(s_pframe, uv).xy; // [0, 0]
+    float2 sFlow = tex2D(s_pflow, uv).xy; // [0, 0]
     return lerp(cFlow, sFlow, uSmooth).xyxy;
 }
 
@@ -250,7 +255,7 @@ float4 Median3( float4 a, float4 b, float4 c)
 float4 ps_output(   float4 vpos : SV_POSITION,
                     float2 uv : TEXCOORD0) : SV_Target
 {
-    const float2 pSize = rcp(256.0);
+    const float2 pSize = rcp(ISIZE) * aRatio;
     float2 pFlow = tex2Dlod(s_cflow, float4(uv, 0.0, uDetail)).xy;
     float4 pRef = tex2D(s_color, uv);
     float4 pSrc = tex2D(s_pcolor, uv);
@@ -279,7 +284,9 @@ technique cInterpolate
     {
         VertexShader = vs_convert;
         PixelShader = ps_convert;
-        RenderTarget0 = r_pframe;
+        RenderTarget0 = r_pflow;
+        RenderTarget1 = r_pframe;
+        RenderTarget2 = r_cimage;
     }
 
     pass cBlurCopyFrame
