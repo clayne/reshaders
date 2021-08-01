@@ -36,12 +36,16 @@ void vs_common( in uint id : SV_VERTEXID,
 
 /* [Pixel Shaders] */
 
+// Execute the blending first (the pframe will initially be 0)
+
 float4 ps_blend(float4 vpos : SV_POSITION, float2 uv: TEXCOORD0) : SV_TARGET
 {
     float4 cframe = tex2D(s_color, uv);
     float4 pframe = tex2D(s_previous, uv);
     return lerp(cframe, pframe, uBlend);
 }
+
+// Save the results generated from ps_blend() into a texture to use later
 
 float4 ps_previous(float4 vpos : SV_POSITION, float2 uv: TEXCOORD0) : SV_TARGET
 {
