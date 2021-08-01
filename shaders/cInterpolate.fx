@@ -241,7 +241,7 @@ float4 ps_flow(float4 vpos : SV_POSITION,
 
     // Smooth optical flow
     float2 sFlow = tex2D(s_pflow, uv).xy; // [0, 0]
-    return lerp(cFlow, sFlow, uSmooth).xyxy;
+    return float4(lerp(cFlow, sFlow, uSmooth).xy, 1.0, 1.0);
 }
 
 // Median masking inspired by vs-mvtools
