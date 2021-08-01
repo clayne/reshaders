@@ -33,23 +33,26 @@ v2f vs_common(const uint id : SV_VertexID)
     return output;
 }
 
+// Get the average luminance for "every" pixel on the screen
+// We lose a lot of information due to directly downscaling from native to 256x256
+
 float4 ps_core(v2f input) : SV_TARGET
 {
     float4 oColor = tex2D(s_color, input.uv);
     return max(max(oColor.r, oColor.g), oColor.b);
 }
 
+// Calculate exposure
+
 float4 ps_expose(v2f input) : SV_TARGET
 {
-    float uLod = log2(256.0) - log2(1.0);
-    float aLuma = tex2Dlod(s_aluma, float4(input.uv, 0.0, uLod)).r;
+    // Fetch 1x1 LOD from previous pass
+    float avgLuma = tex2Dlod(s_aluma, float4(input.uv, 0.0, 99.0)).r;
     float4 oColor = tex2D(s_color, input.uv);
 
-    float aExposure = log2(0.18) - log2(aLuma);
+    float aExposure = log2(0.18) - log2(avgLuma);
     aExposure = exp2(aExposure);
-    float4 uExpose = oColor * aExposure;
-    float4 oLuma = max(max(uExpose.r, uExpose.g), uExpose.b);
-    return uExpose * rcp(oLuma + 1.0);
+    return oColor * aExposure;
 }
 
 technique cExposure
