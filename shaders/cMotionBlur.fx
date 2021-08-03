@@ -256,14 +256,10 @@ float4 ps_flow(float4 vpos : SV_POSITION,
     float2 dFdc;
     dFdc.x = dot(ddx(cLuma), 1.0);
     dFdc.y = dot(ddy(cLuma), 1.0);
-    float2 dFdp;
-    dFdp.x = dot(ddx(pLuma), 1.0);
-    dFdp.y = dot(ddy(pLuma), 1.0);
 
     float dFdt = dot(cLuma - pLuma, 1.0);
-    float dBrightness = dot(dFdp, dFdc) + dFdt;
-    float dSmoothness = dot(dFdp, dFdp) + Epsilon;
-    float2 cFlow = dFdc - (dFdp * dBrightness) / dSmoothness;
+    float dSmoothness = dot(dFdc, dFdc) + Epsilon;
+    float2 cFlow = -(dFdc * dFdt) / dSmoothness;
 
     float oFlow = length(cFlow);
     float nFlow = max(oFlow - uThreshold, 0.0);
