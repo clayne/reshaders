@@ -224,20 +224,16 @@ float4 ps_flow(float4 vpos : SV_POSITION,
                float2 uv : TEXCOORD0) : SV_Target
 {
     // Calculate optical flow
-    float3 cLuma = tex2D(s_cframe, uv).rgb;
-    float3 pLuma = tex2D(s_pframe, uv).rgb;
+    float3 cFrame = tex2D(s_cframe, uv).rgb;
+    float3 pFrame = tex2D(s_pframe, uv).rgb;
 
-    float2 dFdc;
-    dFdc.x = dot(ddx(cLuma), 1.0);
-    dFdc.y = dot(ddy(cLuma), 1.0);
-    float2 dFdp;
-    dFdp.x = dot(ddx(pLuma), 1.0);
-    dFdp.y = dot(ddy(pLuma), 1.0);
+    float3 dFd;
+    dFd.x = dot(ddx(cFrame), 1.0);
+    dFd.y = dot(ddy(cFrame), 1.0);
+    dFd.z = dot(cFrame - pFrame, 1.0);
 
-    float dFdt = dot(cLuma - pLuma, 1.0);
-    float dBrightness = dot(dFdp, dFdc) + dFdt;
-    float dSmoothness = dot(dFdp, dFdp) + Epsilon;
-    float2 cFlow = dFdc - (dFdp * dBrightness) / dSmoothness;
+    float dConst = dot(dFd.xy, dFd.xy) + Epsilon;
+    float2 cFlow = -(dFd.zz * dFd.xy) / dConst;
 
     // Smooth optical flow
     float2 sFlow = tex2D(s_pflow, uv).xy;

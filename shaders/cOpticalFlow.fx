@@ -56,13 +56,13 @@ float4 ps_hsflow(   float4 vpos : SV_POSITION,
     float pframe = tex2D(s_previous_, uv).r;
     float cframe = tex2D(s_current_, uv).r;
 
-	float dFdt = cframe - pframe;
-    float2 dFdp = float2(ddx(pframe), ddy(pframe));
-    float2 dFdc = float2(ddx(cframe), ddy(cframe));
+    float3 dFd;
+    dFd.x = ddx(cframe);
+    dFd.y = ddy(cframe);
+    dFd.z = cframe - pframe;
 
-    float dBrightness = dot(dFdp, dFdc) + dFdt;
-    float dSmoothness = dot(dFdp, dFdp) + 1e-7;
-    float2 cFlow = dFdc - (dFdp * dBrightness) / dSmoothness;
+    float dConst = dot(dFd.xy, dFd.xy) + 1e-7;
+    float2 cFlow = -(dFd.zz * dFd.xy) / dConst;
 
     return float4(cFlow, 1.0, 1.0);
 }
