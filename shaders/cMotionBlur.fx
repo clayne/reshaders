@@ -250,6 +250,7 @@ float4 ps_flow(float4 vpos : SV_POSITION,
                float2 uv : TEXCOORD0) : SV_Target
 {
     // Calculate optical flow
+    // 1 iteration Horn Schunck
     float3 cLuma = tex2D(s_cframe, uv).rgb;
     float3 pLuma = tex2D(s_pframe, uv).rgb;
 
