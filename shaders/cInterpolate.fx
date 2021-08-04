@@ -1,5 +1,9 @@
 
 /*
+    This shader will NOT insert frames, just something I played around with
+    It's practically useless in games and media players
+    However, putting frame blending to 1 does do a weird paint effect LUL
+
     Optical flow motion blur using color by Brimson
     Special Thanks to
     - MartinBFFan and Pao on Discord for reporting bugs
