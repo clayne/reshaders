@@ -253,13 +253,13 @@ float4 ps_flow(float4 vpos : SV_POSITION,
     float3 cLuma = tex2D(s_cframe, uv).rgb;
     float3 pLuma = tex2D(s_pframe, uv).rgb;
 
-    float2 dFdc;
-    dFdc.x = dot(ddx(cLuma), 1.0);
-    dFdc.y = dot(ddy(cLuma), 1.0);
+    float3 dFd;
+    dFd.x = dot(ddx(cLuma), 1.0);
+    dFd.y = dot(ddy(cLuma), 1.0);
+    dFd.z = dot(cLuma - pLuma, 1.0);
 
-    float dFdt = dot(cLuma - pLuma, 1.0);
-    float dSmoothness = dot(dFdc, dFdc) + Epsilon;
-    float2 cFlow = -(dFdc * dFdt) / dSmoothness;
+    float dConst = dot(dFd.xy, dFd.xy) + Epsilon;
+    float2 cFlow = -(dFd.zz * dFd.xy) / dConst;
 
     float oFlow = length(cFlow);
     float nFlow = max(oFlow - uThreshold, 0.0);
