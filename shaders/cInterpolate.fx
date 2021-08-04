@@ -224,9 +224,13 @@ float4 ps_flow(float4 vpos : SV_POSITION,
                float2 uv : TEXCOORD0) : SV_Target
 {
     // Calculate optical flow
+    // 1 iteration Horn Schunck
     float3 cFrame = tex2D(s_cframe, uv).rgb;
     float3 pFrame = tex2D(s_pframe, uv).rgb;
 
+    // Thinking about more iterations without adding draw calls
+    // What's throwing me off is how to do weighted average at the end
+    // Idea: Use Lucas Kanade pyramid + iterative flow without using windowsize :P
     float3 dFd;
     dFd.x = dot(ddx(cFrame), 1.0);
     dFd.y = dot(ddy(cFrame), 1.0);
@@ -299,7 +303,7 @@ technique cInterpolate
         RenderTarget0 = r_cflow;
     }
 
-    pass cFlowBlur
+    pass cInterpolate
     {
         VertexShader = vs_common;
         PixelShader = ps_output;
