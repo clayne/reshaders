@@ -6,6 +6,15 @@
 
 #define size float2(BUFFER_WIDTH, BUFFER_HEIGHT)
 
+#define uOption(option, udata, utype, ucategory, ulabel, uvalue, umin, umax)    \
+        uniform udata option <                                                  \
+        ui_category = ucategory; ui_label = ulabel;                             \
+        ui_type = utype; ui_min = umin; ui_max = umax;                          \
+        > = uvalue
+
+uOption(uConst, float, "slider", "Basic", "Smoothness", 0.000, 0.000, 1.000);
+uOption(uBlend, float, "slider", "Basic", "Flow Blend", 0.500, 0.000, 1.000);
+
 texture2D r_color : COLOR;
 texture2D r_current_  	  { Width = size.x / 2.0; Height = size.y / 2.0; Format = R8; };
 texture2D r_previous_ 	  { Width = size.x / 2.0; Height = size.y / 2.0; Format = R8; };
@@ -45,8 +54,8 @@ float Max3(float a, float b, float c)
 
 float4 ps_image(float4 vpos : SV_POSITION, float2 uv: TEXCOORD0) : SV_TARGET
 {
-	float3 uImage = tex2D(s_color, uv).rgb;
-	float luma = Max3(uImage.r, uImage.g, uImage.b);
+    float3 uImage = tex2D(s_color, uv).rgb;
+    float luma = Max3(uImage.r, uImage.g, uImage.b);
     return luma / dot(uImage, 1.0);
 }
 
@@ -61,8 +70,9 @@ float4 ps_hsflow(   float4 vpos : SV_POSITION,
     dFd.y = ddy(cframe);
     dFd.z = cframe - pframe;
 
-    float dConst = dot(dFd.xy, dFd.xy) + 1e-7;
-    float2 cFlow = -(dFd.zz * dFd.xy) / dConst;
+    const float uRegularize = 4.0 * pow(uConst * 1e-3, 2.0) + 1e-10;
+    float uConstraint = dot(dFd.xy, dFd.xy) + uRegularize;
+    float2 cFlow = -(dFd.zz * dFd.xy) / uConstraint;
 
     return float4(cFlow, 1.0, 1.0);
 }
@@ -70,16 +80,16 @@ float4 ps_hsflow(   float4 vpos : SV_POSITION,
 float4 ps_hsblend(  float4 vpos : SV_POSITION,
                     float2 uv : TEXCOORD0) : SV_TARGET
 {
-	float2 cflow = tex2D(s_currentflow_, uv).xy;
-	float2 pflow = tex2D(s_previousflow_, uv).xy;
-	float2 blend = lerp(cflow, pflow, 0.25);
+    float2 cflow = tex2D(s_currentflow_, uv).xy;
+    float2 pflow = tex2D(s_previousflow_, uv).xy;
+    float2 blend = lerp(cflow, pflow, uBlend);
     return float4(blend, 1.0, 1.0);
 }
 
 void ps_previous(   float4 vpos : SV_POSITION,
-					float2 uv: TEXCOORD0,
-					out float4 render0 : SV_TARGET0,
-					out float4 render1 : SV_TARGET1)
+                    float2 uv: TEXCOORD0,
+                    out float4 render0 : SV_TARGET0,
+                    out float4 render1 : SV_TARGET1)
 {
     render0 = tex2D(s_current_, uv);
     render1 = tex2D(s_currentflow_, uv);
