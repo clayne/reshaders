@@ -63,8 +63,8 @@ static const int uTaps = 14;
 texture2D r_color  : COLOR;
 texture2D r_buffer { Width = DSIZE.x; Height = DSIZE.y; MipLevels = RSIZE; Format = RGB10A2; };
 texture2D r_cimage { Width = ISIZE; Height = ISIZE; Format = RGBA32F; MipLevels = 9; };
-texture2D r_pframe { Width = ISIZE; Height = ISIZE; Format = RGBA32F; };
-texture2D r_cframe { Width = ISIZE; Height = ISIZE; Format = RGBA32F; };
+texture2D r_pframe { Width = ISIZE; Height = ISIZE; Format = RGBA32F; MipLevels = 9; };
+texture2D r_cframe { Width = ISIZE; Height = ISIZE; Format = RGBA32F; MipLevels = 9; };
 texture2D r_cflow  { Width = ISIZE; Height = ISIZE; Format = RG32F; MipLevels = 9; };
 texture2D r_pflow  { Width = ISIZE; Height = ISIZE; Format = RG32F; };
 
@@ -246,25 +246,35 @@ float4 ps_filter(float4 vpos : SV_POSITION,
     - Resolution customization will have to go for now until this works
 */
 
+float2 pyHS(float2 uv, float2 pguess, int lod, bool fine)
+{
+    const float fact = rcp(256.0 / exp2(lod));
+    float2 uvwarp = uv + pguess * fact;
+    float3 pframe = tex2Dlod(s_pframe, float4(uvwarp, 0.0, lod)).rgb;
+    float3 cframe = tex2Dlod(s_cframe, float4(uv, 0.0, lod)).rgb;
+
+    float3 ddxy;
+    ddxy.x = dot(ddx(pframe), 1.0);
+    ddxy.y = dot(ddy(pframe), 1.0);
+    ddxy.z = dot(cframe - pframe, 1.0);
+
+    float sVal = sqrt(dot(ddxy.xy, ddxy.xy));
+    float2 cFlow = -(ddxy.xy * ddxy.zz) / sVal;
+    return (fine) ? cFlow : (cFlow + pguess);
+}
+
 float4 ps_flow(float4 vpos : SV_POSITION,
                float2 uv : TEXCOORD0) : SV_Target
 {
-    // Calculate optical flow
-    // 1 iteration Horn Schunck
-    float3 cLuma = tex2D(s_cframe, uv).rgb;
-    float3 pLuma = tex2D(s_pframe, uv).rgb;
-
-    float3 dFd;
-    dFd.x = dot(ddx(cLuma), 1.0);
-    dFd.y = dot(ddy(cLuma), 1.0);
-    dFd.z = dot(cLuma - pLuma, 1.0);
-
-    float dConst = dot(dFd.xy, dFd.xy) + Epsilon;
-    float2 cFlow = -(dFd.zz * dFd.xy) / dConst;
-
-    float oFlow = length(cFlow);
-    float nFlow = max(oFlow - uThreshold, 0.0);
-    cFlow *= nFlow / oFlow;
+    float2 cFlow;
+    cFlow = pyHS(uv, cFlow, 7.0, false);
+    cFlow = pyHS(uv, cFlow, 6.0, false);
+    cFlow = pyHS(uv, cFlow, 5.0, false);
+    cFlow = pyHS(uv, cFlow, 4.0, false);
+    cFlow = pyHS(uv, cFlow, 3.0, false);
+    cFlow = pyHS(uv, cFlow, 2.0, false);
+    cFlow = pyHS(uv, cFlow, 1.0, false);
+    cFlow = pyHS(uv, cFlow, 0.0, true);
 
     // Smooth optical flow
     float2 sFlow = tex2D(s_pflow, uv).xy;
@@ -275,7 +285,6 @@ float4 ps_output(float4 vpos : SV_POSITION,
                  float2 uv : TEXCOORD0) : SV_Target
 {
     float2 oFlow = tex2Dlod(s_cflow, float4(uv, 0.0, uDetail)).xy;
-    oFlow = oFlow * rcp(ISIZE) * aRatio;
     oFlow *= uScale;
 
     float4 oBlur;
