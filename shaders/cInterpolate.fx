@@ -28,6 +28,7 @@
         ui_type = utype; ui_min = umin; ui_max = umax;                          \
         > = uvalue
 
+uOption(uConst,  float, "slider", "Basic", "Prefilter",   0.000, 0.000, 1.000);
 uOption(uRadius, float, "slider", "Basic", "Prefilter",   8.000, 0.000, 16.00);
 uOption(uBlend,  float, "slider", "Basic", "Frame Blend", 0.100, 0.000, 1.000);
 uOption(uSmooth, float, "slider", "Basic", "Flow Smooth", 0.100, 0.000, 0.500);
@@ -240,7 +241,8 @@ float4 ps_flow(float4 vpos : SV_POSITION,
     dFd.y = dot(ddy(cFrame), 1.0);
     dFd.z = dot(cFrame - pFrame, 1.0);
 
-    float dConst = dot(dFd.xy, dFd.xy) + Epsilon;
+    const float uRegularize = 4.0 * pow(uConst * 1e-3, 2.0) + 1e-10;
+    float dConst = dot(dFd.xy, dFd.xy) + uRegularize;
     float2 cFlow = -(dFd.zz * dFd.xy) / dConst;
 
     // Smooth optical flow
