@@ -24,12 +24,13 @@
         ui_type = utype; ui_min = umin; ui_max = umax;                          \
         > = uvalue
 
-uOption(uConst,  float, "slider", "Basic", "Threshold", 0.100, 0.000, 1.000);
-uOption(uScale,  float, "slider", "Basic", "Scale",     2.000, 0.000, 4.000);
-uOption(uRadius, float, "slider", "Basic", "Prefilter", 8.000, 0.000, 16.00);
+uOption(uConst,  float, "slider", "Basic", "Constraint", 0.000, 0.000, 1.000);
+uOption(uScale,  float, "slider", "Basic", "Scale",      2.000, 0.000, 4.000);
+uOption(uRadius, float, "slider", "Basic", "Prefilter",  8.000, 0.000, 16.00);
 
-uOption(uSmooth, float, "slider", "Advanced", "Flow Smooth", 0.250, 0.000, 0.500);
-uOption(uDetail, float, "slider", "Advanced", "Flow Mip",    5.500, 0.000, 8.000);
+uOption(uIter,   int,   "slider", "Advanced", "Iterations",  1, 1, 64);
+uOption(uSmooth, float, "slider", "Advanced", "Flow Blend",  0.250, 0.000, 0.500);
+uOption(uDetail, float, "slider", "Advanced", "Flow MipMap", 5.500, 0.000, 8.000);
 uOption(uDebug,  bool,  "radio",  "Advanced", "Debug",       false, 0, 0);
 
 uOption(uVignette, bool,  "radio",  "Vignette", "Enable",    false, 0, 0);
@@ -247,8 +248,7 @@ float4 ps_filter(float4 vpos : SV_POSITION,
 float4 ps_flow(float4 vpos : SV_POSITION,
                float2 uv : TEXCOORD0) : SV_Target
 {
-    // Calculate optical flow
-    // 1 iteration Horn Schunck
+    // Calculate optical flow without post neighborhood average
     float3 cLuma = tex2D(s_cframe, uv).rgb;
     float3 pLuma = tex2D(s_pframe, uv).rgb;
 
@@ -256,10 +256,15 @@ float4 ps_flow(float4 vpos : SV_POSITION,
     dFd.x = dot(ddx(cLuma), 1.0);
     dFd.y = dot(ddy(cLuma), 1.0);
     dFd.z = dot(cLuma - pLuma, 1.0);
-
     const float uRegularize = 4.0 * pow(uConst * 1e-3, 2.0) + 1e-10;
-    float dConst = dot(dFd.xy, dFd.xy) + uRegularize;
-    float2 cFlow = -(dFd.zz * dFd.xy) / dConst;
+    float2 cFlow = 0.0;
+
+    for(int i = 0; i < uIter; i++)
+    {
+        float dCalc = dot(dFd.xy, cFlow) + dFd.z;
+        float dConst = dot(dFd.xy, dFd.xy) + uRegularize;
+        cFlow = cFlow - (dFd.xy * dCalc) / dConst;
+    }
 
     // Smooth optical flow
     float2 sFlow = tex2D(s_pflow, uv).xy;
@@ -269,13 +274,12 @@ float4 ps_flow(float4 vpos : SV_POSITION,
 float4 ps_output(float4 vpos : SV_POSITION,
                  float2 uv : TEXCOORD0) : SV_Target
 {
-    float2 oFlow = tex2Dlod(s_cflow, float4(uv, 0.0, uDetail)).xy;
-    oFlow = oFlow * rcp(ISIZE) * aRatio;
-    oFlow *= uScale;
-
     float4 oBlur;
     float noise = urand(vpos.xy) * 2.0;
     const float samples = 1.0 / (16.0 - 1.0);
+    float2 oFlow = tex2Dlod(s_cflow, float4(uv, 0.0, uDetail)).xy;
+    oFlow = oFlow * rcp(ISIZE) * aRatio;
+    oFlow *= uScale;
 
     for(int k = 0; k < 9; k++)
     {
