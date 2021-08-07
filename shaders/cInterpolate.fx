@@ -28,7 +28,7 @@
         ui_type = utype; ui_min = umin; ui_max = umax;                          \
         > = uvalue
 
-uOption(uIter,   int,   "slider", "Basic", "Iterations",  1, 1, 64);
+uOption(uIter,   int,   "slider", "Basic", "Iterations",  1, 1, 16);
 uOption(uConst,  float, "slider", "Basic", "Constraint",  0.000, 0.000, 1.000);
 uOption(uRadius, float, "slider", "Basic", "Prefilter",   8.000, 0.000, 16.00);
 uOption(uBlend,  float, "slider", "Basic", "Frame Blend", 0.100, 0.000, 1.000);
