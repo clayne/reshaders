@@ -70,7 +70,7 @@ float4 ps_hsflow(   float4 vpos : SV_POSITION,
     dFd.x = ddx(cframe);
     dFd.y = ddy(cframe);
     dFd.z = cframe - pframe;
-    const float uRegularize = 4.0 * pow(uConst * 1e-3, 2.0) + 1e-10;
+    const float uRegularize = max(4.0 * pow(uConst * 1e-3, 2.0), 1e-10);
     float2 cFlow = 0.0;
 
     for(int i = 0; i < uIter; i++)
