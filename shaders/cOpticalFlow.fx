@@ -12,7 +12,7 @@
         ui_type = utype; ui_min = umin; ui_max = umax;                          \
         > = uvalue
 
-uOption(uIter,  int,   "slider", "Advanced", "Iterations", 1, 1, 64);
+uOption(uIter,  int,   "slider", "Advanced", "Iterations", 1, 1, 16);
 uOption(uConst, float, "slider", "Basic",    "Constraint", 0.000, 0.000, 1.000);
 uOption(uBlend, float, "slider", "Basic",    "Flow Blend", 0.500, 0.000, 1.000);
 
