@@ -28,7 +28,7 @@ uOption(uConst,  float, "slider", "Basic", "Constraint", 0.000, 0.000, 1.000);
 uOption(uScale,  float, "slider", "Basic", "Scale",      2.000, 0.000, 4.000);
 uOption(uRadius, float, "slider", "Basic", "Prefilter",  8.000, 0.000, 16.00);
 
-uOption(uIter,   int,   "slider", "Advanced", "Iterations",  1, 1, 64);
+uOption(uIter,   int,   "slider", "Advanced", "Iterations",  1, 1, 16);
 uOption(uSmooth, float, "slider", "Advanced", "Flow Blend",  0.250, 0.000, 0.500);
 uOption(uDetail, float, "slider", "Advanced", "Flow MipMap", 5.500, 0.000, 8.000);
 uOption(uDebug,  bool,  "radio",  "Advanced", "Debug",       false, 0, 0);
