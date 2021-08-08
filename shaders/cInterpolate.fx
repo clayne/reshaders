@@ -28,14 +28,14 @@
         ui_type = utype; ui_min = umin; ui_max = umax; ui_tooltip = utooltip;   		\
         > = uvalue
 
-uOption(uIter, int, "slider", "Advanced", "Iterations", 1, 1, 16,
-"Iterations: Higher = More detected flow, slightly lower performance");
-
 uOption(uConst, float, "slider", "Basic", "Constraint", 0.000, 0.000, 1.000,
 "Regularization: Higher = Smoother flow");
 
 uOption(uRadius, float, "slider", "Basic", "Prefilter", 8.000, 0.000, 16.00,
 "Preprocess Blur: Higher = Less noise");
+
+uOption(uIter, int, "slider", "Advanced", "Iterations", 1, 1, 16,
+"Iterations: Higher = More detected flow, slightly lower performance");
 
 uOption(uBlend, float, "slider", "Advanced", "Flow Blend", 0.250, 0.000, 0.500,
 "Temporal Smoothing: Higher = Less noise between strong movements");
