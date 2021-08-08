@@ -12,6 +12,7 @@
         ui_type = utype; ui_min = umin; ui_max = umax;                          \
         > = uvalue
 
+uOption(uIter,  int,   "slider", "Advanced", "Iterations",  1, 1, 64);
 uOption(uConst, float, "slider", "Basic", "Constraint", 0.000, 0.000, 1.000);
 uOption(uBlend, float, "slider", "Basic", "Flow Blend", 0.500, 0.000, 1.000);
 
@@ -81,10 +82,15 @@ float4 ps_hsflow(float4 vpos : SV_POSITION,
     dFd.x = dot(ddx(cframe), 1.0);
     dFd.y = dot(ddy(cframe), 1.0);
     dFd.z = dot(cframe - pframe, 1.0);
+    const float uRegularize = max(4.0 * pow(uConst * 1e-2, 2.0), 1e-10);
+    float2 cFlow = 0.0;
 
-    const float uRegularize = max(4.0 * pow(uConst * 1e-3, 2.0), 1e-10);
-    float dConst = dot(dFd.xy, dFd.xy) + uRegularize;
-    float2 cFlow = -(dFd.xy * dFd.zz) / dConst;
+    for(int i = 0; i < uIter; i++)
+    {
+        float dCalc = dot(dFd.xy, cFlow) + dFd.z;
+        float dConst = dot(dFd.xy, dFd.xy) + uRegularize;
+        cFlow = cFlow - (dFd.xy * dCalc) / dConst;
+    }
 
     return cFlow.xyxy;
 }

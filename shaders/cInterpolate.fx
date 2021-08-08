@@ -28,6 +28,7 @@
         ui_type = utype; ui_min = umin; ui_max = umax;                          \
         > = uvalue
 
+uOption(uIter,   int,   "slider", "Basic", "Iterations",  1, 1, 64);
 uOption(uConst,  float, "slider", "Basic", "Constraint",  0.000, 0.000, 1.000);
 uOption(uRadius, float, "slider", "Basic", "Prefilter",   8.000, 0.000, 16.00);
 uOption(uBlend,  float, "slider", "Basic", "Frame Blend", 0.100, 0.000, 1.000);
@@ -256,10 +257,15 @@ float4 ps_flow(float4 vpos : SV_POSITION,
     dFd.x = dot(ddx(cFrame), 1.0);
     dFd.y = dot(ddy(cFrame), 1.0);
     dFd.z = dot(cFrame - pFrame, 1.0);
+    const float uRegularize = max(4.0 * pow(uConst * 1e-2, 2.0), 1e-10);
+    float2 cFlow = 0.0;
 
-    const float uRegularize = max(4.0 * pow(uConst * 1e-3, 2.0), 1e-10);
-    float dConst = dot(dFd.xy, dFd.xy) + uRegularize;
-    float2 cFlow = -(dFd.xy * dFd.zz) / dConst;
+    for(int i = 0; i < uIter; i++)
+    {
+        float dCalc = dot(dFd.xy, cFlow) + dFd.z;
+        float dConst = dot(dFd.xy, dFd.xy) + uRegularize;
+        cFlow = cFlow - (dFd.xy * dCalc) / dConst;
+    }
 
     // Smooth optical flow
     float2 sFlow = tex2D(s_pflow, uv).xy;
