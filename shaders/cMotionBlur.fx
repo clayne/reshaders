@@ -63,18 +63,16 @@ static const int uTaps = 14;
 texture2D r_color  : COLOR;
 texture2D r_buffer { Width = DSIZE.x; Height = DSIZE.y; MipLevels = RSIZE; Format = RG8; };
 texture2D r_cimage { Width = ISIZE; Height = ISIZE; Format = RG32F; MipLevels = 9; };
-texture2D r_pframe { Width = ISIZE; Height = ISIZE; Format = RG32F; };
 texture2D r_cframe { Width = ISIZE; Height = ISIZE; Format = RG32F; };
 texture2D r_cflow  { Width = ISIZE; Height = ISIZE; Format = RG32F; MipLevels = 9; };
-texture2D r_pflow  { Width = ISIZE; Height = ISIZE; Format = RG32F; };
+texture2D r_pframe { Width = ISIZE; Height = ISIZE; Format = RGBA32F; };
 
 sampler2D s_color  { Texture = r_color; SRGBTexture = TRUE; };
 sampler2D s_buffer { Texture = r_buffer; AddressU = MIRROR; AddressV = MIRROR; };
 sampler2D s_cimage { Texture = r_cimage; AddressU = MIRROR; AddressV = MIRROR; };
-sampler2D s_pframe { Texture = r_pframe; AddressU = MIRROR; AddressV = MIRROR; };
 sampler2D s_cframe { Texture = r_cframe; AddressU = MIRROR; AddressV = MIRROR; };
 sampler2D s_cflow  { Texture = r_cflow;  AddressU = MIRROR; AddressV = MIRROR; };
-sampler2D s_pflow  { Texture = r_pflow;  AddressU = MIRROR; AddressV = MIRROR; };
+sampler2D s_pframe { Texture = r_pframe; AddressU = MIRROR; AddressV = MIRROR; };
 
 /* [ Vertex Shaders ] */
 
@@ -185,8 +183,7 @@ void ps_convert(float4 vpos : SV_POSITION,
                 float2 uv : TEXCOORD0,
                 float4 ofs[7] : TEXCOORD1,
                 out float4 r0 : SV_TARGET0,
-                out float4 r1 : SV_TARGET1,
-                out float4 r2 : SV_TARGET2)
+                out float4 r1 : SV_TARGET1)
 {
     const int cTaps = 14;
     float4 uImage;
@@ -204,9 +201,9 @@ void ps_convert(float4 vpos : SV_POSITION,
         uImage = lerp(uImage, uColor, rcp(float(j) + 1));
     }
 
-    r0 = tex2D(s_cflow, uv).rg; // Copy previous rendertarget from ps_flow()
-    r1 = tex2D(s_cframe, uv); // Copy previous rendertarget from ps_filter()
-    r2 = uImage; // Input downsampled current frame to scale and mip
+    r0.xy = tex2D(s_cflow, uv).xy; // Copy previous rendertarget from ps_flow()
+    r0.zw = tex2D(s_cframe, uv).xy; // Copy previous rendertarget from ps_filter()
+    r1 = uImage; // Input downsampled current frame to scale and mip
 }
 
 float4 ps_filter(float4 vpos : SV_POSITION,
@@ -256,14 +253,17 @@ float4 ps_filter(float4 vpos : SV_POSITION,
 float4 ps_flow(float4 vpos : SV_POSITION,
                float2 uv : TEXCOORD0) : SV_Target
 {
+    float4 cFrameBuffer = tex2D(s_cframe, uv);
+    float4 pFrameBuffer = tex2D(s_pframe, uv);
+
     // Calculate optical flow without post neighborhood average
-    float3 cLuma = decode(tex2D(s_cframe, uv).rg);
-    float3 pLuma = decode(tex2D(s_pframe, uv).rg);
+    float3 cFrame = decode(cFrameBuffer.xy);
+    float3 pFrame = decode(pFrameBuffer.zw);
 
     float3 dFd;
-    dFd.x = dot(ddx(cLuma), 1.0);
-    dFd.y = dot(ddy(cLuma), 1.0);
-    dFd.z = dot(cLuma - pLuma, 1.0);
+    dFd.x = dot(ddx(cFrame), 1.0);
+    dFd.y = dot(ddy(cFrame), 1.0);
+    dFd.z = dot(cFrame - pFrame, 1.0);
     const float uRegularize = max(4.0 * pow(uConst * 1e-2, 2.0), 1e-10);
     float2 cFlow = 0.0;
 
@@ -275,8 +275,7 @@ float4 ps_flow(float4 vpos : SV_POSITION,
     }
 
     // Smooth optical flow
-    float2 sFlow = tex2D(s_pflow, uv).xy;
-    return lerp(cFlow, sFlow, uSmooth).xyxy;
+    return lerp(cFlow, pFrameBuffer.xy, uSmooth).xyxy;
 }
 
 float4 ps_output(float4 vpos : SV_POSITION,
@@ -312,9 +311,8 @@ technique cMotionBlur
     {
         VertexShader = vs_convert;
         PixelShader = ps_convert;
-        RenderTarget0 = r_pflow;
-        RenderTarget1 = r_pframe;
-        RenderTarget2 = r_cimage;
+        RenderTarget0 = r_pframe;
+        RenderTarget1 = r_cimage;
     }
 
     pass cBlurCopyFrame
