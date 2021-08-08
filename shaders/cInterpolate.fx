@@ -40,11 +40,11 @@ uOption(uIter, int, "slider", "Advanced", "Iterations", 1, 1, 16,
 uOption(uBlend, float, "slider", "Advanced", "Flow Blend", 0.250, 0.000, 0.500,
 "Temporal Smoothing: Higher = Less noise between strong movements");
 
-uOption(uAverage, float, "slider", "Advanced", "Flow Blend", 0.250, 0.000, 0.500,
-"Frame Average: Higher = More past frame blend influence");
-
 uOption(uDetail, float, "slider", "Advanced", "Flow MipMap", 5.500, 0.000, 8.000,
 "Postprocess Blur: Higher = Less noise");
+
+uOption(uAverage, float, "slider", "Advanced", "Frame Average", 0.000, 0.000, 1.000,
+"Frame Average: Higher = More past frame blend influence");
 
 uOption(uDebug, bool, "radio", "Advanced", "Debug", false, 0, 0,
 "Show optical flow result");
