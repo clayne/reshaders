@@ -28,7 +28,7 @@
         ui_type = utype; ui_min = umin; ui_max = umax; ui_tooltip = utooltip;   		\
         > = uvalue
 
-uOption(uIter, int, "slider", "Advanced", "Iterations", 1, 1, 64,
+uOption(uIter, int, "slider", "Advanced", "Iterations", 1, 1, 16,
 "Iterations: Higher = More detected flow, slightly lower performance");
 
 uOption(uConst, float, "slider", "Basic", "Constraint", 0.000, 0.000, 1.000,

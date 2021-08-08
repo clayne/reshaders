@@ -34,7 +34,7 @@ uOption(uScale, float, "slider", "Basic", "Scale", 2.000, 0.000, 4.000,
 uOption(uRadius, float, "slider", "Basic", "Prefilter", 8.000, 0.000, 16.00,
 "Preprocess Blur: Higher = Less noise");
 
-uOption(uIter, int, "slider", "Advanced", "Iterations", 1, 1, 64,
+uOption(uIter, int, "slider", "Advanced", "Iterations", 1, 1, 16,
 "Iterations: Higher = More detected flow, slightly lower performance");
 
 uOption(uBlend, float, "slider", "Advanced", "Flow Blend", 0.250, 0.000, 0.500,
