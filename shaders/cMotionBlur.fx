@@ -290,7 +290,7 @@ float4 ps_flow(float4 vpos : SV_POSITION,
     for(int i = 0; i < uIter; i++)
     {
         float dCalc = dot(dFd.xy, cFlow) + dFd.z;
-        cFlow = cFlow - (dFd.xy * dCalc) / dConst;
+        cFlow = cFlow - ((dFd.xy * dCalc) / dConst);
     }
 
     // Smooth optical flow
