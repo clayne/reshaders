@@ -29,7 +29,6 @@ uOption(uConst,  float, "slider", "Basic", "Constraint", 0.000, 0.000, 1.000);
 uOption(uScale,  float, "slider", "Basic", "Scale",      2.000, 0.000, 4.000);
 uOption(uRadius, float, "slider", "Basic", "Prefilter",  8.000, 0.000, 16.00);
 
-uOption(uIter,   int,   "slider", "Advanced", "Iterations",  1, 1, 64);
 uOption(uSmooth, float, "slider", "Advanced", "Flow Blend",  0.250, 0.000, 0.500);
 uOption(uDetail, float, "slider", "Advanced", "Flow MipMap", 5.500, 0.000, 8.000);
 uOption(uDebug,  bool,  "radio",  "Advanced", "Debug",       false, 0, 0);
@@ -264,15 +263,10 @@ float4 ps_flow(float4 vpos : SV_POSITION,
     dFd.x = dot(ddx(cLuma), 1.0);
     dFd.y = dot(ddy(cLuma), 1.0);
     dFd.z = dot(cLuma - pLuma, 1.0);
-    const float uRegularize = max(4.0 * pow(uConst * 1e-3, 2.0), 1e-10);
-    float2 cFlow = 0.0;
 
-    [unroll] for(int i = 0; i < uIter; i++)
-    {
-        float dCalc = dot(dFd.xy, cFlow) + dFd.z;
-        float dConst = dot(dFd.xy, dFd.xy) + uRegularize;
-        cFlow = cFlow - (dFd.xy * dCalc) / dConst;
-    }
+    const float uRegularize = max(4.0 * pow(uConst * 1e-3, 2.0), 1e-10);
+    float dConst = dot(dFd.xy, dFd.xy) + uRegularize;
+    float2 cFlow = -(dFd.xy * dFd.zz) / dConst;
 
     // Smooth optical flow
     float2 sFlow = tex2D(s_pflow, uv).xy;
