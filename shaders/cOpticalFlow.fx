@@ -88,12 +88,12 @@ float4 ps_hsflow(float4 vpos : SV_POSITION,
     dFd.y = dot(ddy(cframe), 1.0);
     dFd.z = dot(cframe - pframe, 1.0);
     const float uRegularize = max(4.0 * pow(uConst * 1e-2, 2.0), 1e-10);
+    float dConst = dot(dFd.xy, dFd.xy) + uRegularize;
     float2 cFlow = 0.0;
 
     for(int i = 0; i < uIter; i++)
     {
         float dCalc = dot(dFd.xy, cFlow) + dFd.z;
-        float dConst = dot(dFd.xy, dFd.xy) + uRegularize;
         cFlow = cFlow - (dFd.xy * dCalc) / dConst;
     }
 

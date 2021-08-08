@@ -284,12 +284,12 @@ float4 ps_flow(float4 vpos : SV_POSITION,
     dFd.y = dot(ddy(cFrame), 1.0);
     dFd.z = dot(cFrame - pFrame, 1.0);
     const float uRegularize = max(4.0 * pow(uConst * 1e-3, 2.0), 1e-10);
+    float dConst = dot(dFd.xy, dFd.xy) + uRegularize;
     float2 cFlow = 0.0;
 
     for(int i = 0; i < uIter; i++)
     {
         float dCalc = dot(dFd.xy, cFlow) + dFd.z;
-        float dConst = dot(dFd.xy, dFd.xy) + uRegularize;
         cFlow = cFlow - (dFd.xy * dCalc) / dConst;
     }
 
