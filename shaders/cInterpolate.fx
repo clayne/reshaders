@@ -28,7 +28,6 @@
         ui_type = utype; ui_min = umin; ui_max = umax;                          \
         > = uvalue
 
-uOption(uIter,   int,   "slider", "Basic", "Iterations",  1, 1, 16);
 uOption(uConst,  float, "slider", "Basic", "Constraint",  0.000, 0.000, 1.000);
 uOption(uRadius, float, "slider", "Basic", "Prefilter",   8.000, 0.000, 16.00);
 uOption(uBlend,  float, "slider", "Basic", "Frame Blend", 0.100, 0.000, 1.000);
@@ -60,10 +59,10 @@ static const float Epsilon = 1e-7;
 static const int uTaps = 14;
 
 texture2D r_color  : COLOR;
-texture2D r_buffer { Width = DSIZE.x; Height = DSIZE.y; MipLevels = RSIZE; Format = RGB10A2; };
-texture2D r_cimage { Width = ISIZE; Height = ISIZE; Format = RGBA32F; MipLevels = 9; };
-texture2D r_pframe { Width = ISIZE; Height = ISIZE; Format = RGBA32F; };
-texture2D r_cframe { Width = ISIZE; Height = ISIZE; Format = RGBA32F; };
+texture2D r_buffer { Width = DSIZE.x; Height = DSIZE.y; MipLevels = RSIZE; Format = RG8; };
+texture2D r_cimage { Width = ISIZE; Height = ISIZE; Format = RG32F; MipLevels = 9; };
+texture2D r_pframe { Width = ISIZE; Height = ISIZE; Format = RG32F; };
+texture2D r_cframe { Width = ISIZE; Height = ISIZE; Format = RG32F; };
 texture2D r_cflow  { Width = ISIZE; Height = ISIZE; Format = RG32F; MipLevels = 9; };
 texture2D r_pflow  { Width = ISIZE; Height = ISIZE; Format = RG32F; };
 texture2D r_pcolor { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; };
@@ -140,6 +139,23 @@ void vs_common( in uint id : SV_VERTEXID,
 
 /* [ Pixel Shaders ] */
 
+float2 encode(float3 n)
+{
+    float f = rsqrt(8.0 * n.z + 8.0);
+    return n.xy * f + 0.5;
+}
+
+float3 decode(float2 enc)
+{
+    float2 fenc = enc * 4.0 - 2.0;
+    float f = dot(fenc, fenc);
+    float g = sqrt(1.0 - f / 4.0);
+    float3 n;
+    n.xy = fenc * g;
+    n.z = 1.0 - f / 2.0;
+    return n;
+}
+
 float urand(float2 vpos)
 {
     const float3 value = float3(52.9829189, 0.06711056, 0.00583715);
@@ -150,8 +166,7 @@ float4 ps_source(float4 vpos : SV_POSITION,
                  float2 uv : TEXCOORD0) : SV_Target
 {
     float3 uImage = tex2D(s_color, uv.xy).rgb;
-    float3 output = normalize(uImage);
-    return float4(output, 1.0);
+    return encode(normalize(uImage)).xyxy;
 }
 
 void ps_convert(float4 vpos : SV_POSITION,
@@ -231,8 +246,8 @@ float4 ps_flow(float4 vpos : SV_POSITION,
 {
     // Calculate optical flow
     // 1 iteration Horn Schunck
-    float3 cFrame = tex2D(s_cframe, uv).rgb;
-    float3 pFrame = tex2D(s_pframe, uv).rgb;
+    float3 cFrame = decode(tex2D(s_cframe, uv).rg);
+    float3 pFrame = decode(tex2D(s_pframe, uv).rg);
 
     // Thinking about more iterations without adding draw calls
     // What's throwing me off is how to do weighted average at the end
@@ -244,7 +259,7 @@ float4 ps_flow(float4 vpos : SV_POSITION,
     const float uRegularize = max(4.0 * pow(uConst * 1e-3, 2.0), 1e-10);
     float2 cFlow = 0.0;
 
-    for(int i = 0; i < uIter; i++)
+    [unroll] for(int i = 0; i < uIter; i++)
     {
         float dCalc = dot(dFd.xy, cFlow) + dFd.z;
         float dConst = dot(dFd.xy, dFd.xy) + uRegularize;

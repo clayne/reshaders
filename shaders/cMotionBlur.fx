@@ -12,6 +12,7 @@
     LOD Compute  - [https://john-chapman.github.io/2019/03/29/convolution.html]
     Median3      - [https://github.com/GPUOpen-Effects/FidelityFX-CAS] [MIT]
     Noise        - [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
+    Normals Pack - [https://aras-p.info/texts/CompactNormalStorage.html]
     Optical Flow - [https://dspace.mit.edu/handle/1721.1/6337]
     Pi Constant  - [https://github.com/microsoft/DirectX-Graphics-Samples] [MIT]
     Vignette     - [https://github.com/keijiro/KinoVignette] [MIT]
@@ -28,7 +29,7 @@ uOption(uConst,  float, "slider", "Basic", "Constraint", 0.000, 0.000, 1.000);
 uOption(uScale,  float, "slider", "Basic", "Scale",      2.000, 0.000, 4.000);
 uOption(uRadius, float, "slider", "Basic", "Prefilter",  8.000, 0.000, 16.00);
 
-uOption(uIter,   int,   "slider", "Advanced", "Iterations",  1, 1, 16);
+uOption(uIter,   int,   "slider", "Advanced", "Iterations",  1, 1, 64);
 uOption(uSmooth, float, "slider", "Advanced", "Flow Blend",  0.250, 0.000, 0.500);
 uOption(uDetail, float, "slider", "Advanced", "Flow MipMap", 5.500, 0.000, 8.000);
 uOption(uDebug,  bool,  "radio",  "Advanced", "Debug",       false, 0, 0);
@@ -60,10 +61,10 @@ static const float Pi = 3.1415926535897f;
 static const int uTaps = 14;
 
 texture2D r_color  : COLOR;
-texture2D r_buffer { Width = DSIZE.x; Height = DSIZE.y; MipLevels = RSIZE; Format = RGB10A2; };
-texture2D r_cimage { Width = ISIZE; Height = ISIZE; Format = RGBA32F; MipLevels = 9; };
-texture2D r_pframe { Width = ISIZE; Height = ISIZE; Format = RGBA32F; };
-texture2D r_cframe { Width = ISIZE; Height = ISIZE; Format = RGBA32F; };
+texture2D r_buffer { Width = DSIZE.x; Height = DSIZE.y; MipLevels = RSIZE; Format = RG8; };
+texture2D r_cimage { Width = ISIZE; Height = ISIZE; Format = RG32F; MipLevels = 9; };
+texture2D r_pframe { Width = ISIZE; Height = ISIZE; Format = RG32F; };
+texture2D r_cframe { Width = ISIZE; Height = ISIZE; Format = RG32F; };
 texture2D r_cflow  { Width = ISIZE; Height = ISIZE; Format = RG32F; MipLevels = 9; };
 texture2D r_pflow  { Width = ISIZE; Height = ISIZE; Format = RG32F; };
 
@@ -138,27 +139,34 @@ void vs_common(in uint id : SV_VERTEXID,
 
 /* [ Pixel Shaders ] */
 
-float Max3(float a, float b, float c)
-{
-    return max(max(a, b), c);
-}
-
-float Median3(float a, float b, float c)
-{
-    return max(min(a, b), min(max(a, b), c));
-}
-
 float urand(float2 vpos)
 {
     const float3 value = float3(52.9829189, 0.06711056, 0.00583715);
     return frac(value.x * frac(dot(vpos.xy, value.yz)));
 }
 
+float2 encode(float3 n)
+{
+    float f = rsqrt(8.0 * n.z + 8.0);
+    return n.xy * f + 0.5;
+}
+
+float3 decode(float2 enc)
+{
+    float2 fenc = enc * 4.0 - 2.0;
+    float f = dot(fenc, fenc);
+    float g = sqrt(1.0 - f / 4.0);
+    float3 n;
+    n.xy = fenc * g;
+    n.z = 1.0 - f / 2.0;
+    return n;
+}
+
 float4 ps_source(float4 vpos : SV_POSITION,
                  float2 uv : TEXCOORD0) : SV_Target
 {
     float3 uImage = tex2D(s_color, uv.xy).rgb;
-    float3 output = normalize(uImage);
+    float2 output = encode(normalize(uImage));
 
     // Vignette output if called
     const float2 aspectratio = BUFFER_WIDTH * BUFFER_RCP_HEIGHT;
@@ -169,8 +177,8 @@ float4 ps_source(float4 vpos : SV_POSITION,
     float vigWeight = rcp(rf2_1 * rf2_1);
     vigWeight = (uInvert) ? 1.0 - vigWeight : vigWeight;
 
-    float3 outputvignette = output * vigWeight;
-    return (uVignette) ? float4(outputvignette, 1.0) : float4(output, 1.0);
+    float2 outputvignette = output * vigWeight;
+    return (uVignette) ? float4(outputvignette, 0.0, 0.0) : float4(output, 0.0, 0.0);
 }
 
 void ps_convert(float4 vpos : SV_POSITION,
@@ -249,8 +257,8 @@ float4 ps_flow(float4 vpos : SV_POSITION,
                float2 uv : TEXCOORD0) : SV_Target
 {
     // Calculate optical flow without post neighborhood average
-    float3 cLuma = tex2D(s_cframe, uv).rgb;
-    float3 pLuma = tex2D(s_pframe, uv).rgb;
+    float3 cLuma = decode(tex2D(s_cframe, uv).rg);
+    float3 pLuma = decode(tex2D(s_pframe, uv).rg);
 
     float3 dFd;
     dFd.x = dot(ddx(cLuma), 1.0);
@@ -259,7 +267,7 @@ float4 ps_flow(float4 vpos : SV_POSITION,
     const float uRegularize = max(4.0 * pow(uConst * 1e-3, 2.0), 1e-10);
     float2 cFlow = 0.0;
 
-    for(int i = 0; i < uIter; i++)
+    [unroll] for(int i = 0; i < uIter; i++)
     {
         float dCalc = dot(dFd.xy, cFlow) + dFd.z;
         float dConst = dot(dFd.xy, dFd.xy) + uRegularize;
@@ -268,7 +276,7 @@ float4 ps_flow(float4 vpos : SV_POSITION,
 
     // Smooth optical flow
     float2 sFlow = tex2D(s_pflow, uv).xy;
-    return float4(lerp(cFlow, sFlow, uSmooth).xy, 1.0, 1.0);
+    return lerp(cFlow, sFlow, uSmooth).xyxy;
 }
 
 float4 ps_output(float4 vpos : SV_POSITION,

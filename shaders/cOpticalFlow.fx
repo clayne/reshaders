@@ -12,19 +12,19 @@
         ui_type = utype; ui_min = umin; ui_max = umax;                          \
         > = uvalue
 
-uOption(uIter,  int,   "slider", "Advanced", "Iterations", 1, 1, 16);
+uOption(uIter,  int,   "slider", "Advanced", "Iterations", 1, 1, 64);
 uOption(uConst, float, "slider", "Basic",    "Constraint", 0.000, 0.000, 1.000);
 uOption(uBlend, float, "slider", "Basic",    "Flow Blend", 0.500, 0.000, 1.000);
 
 texture2D r_color : COLOR;
-texture2D r_current_  	  { Width = size.x / 2.0; Height = size.y / 2.0; Format = R8; };
-texture2D r_previous_ 	  { Width = size.x / 2.0; Height = size.y / 2.0; Format = R8; };
+texture2D r_current_      { Width = size.x / 2.0; Height = size.y / 2.0; Format = RG8; };
+texture2D r_previous_     { Width = size.x / 2.0; Height = size.y / 2.0; Format = RG8; };
 texture2D r_currentflow_  { Width = size.x / 2.0; Height = size.y / 2.0; Format = RG32F; };
 texture2D r_previousflow_ { Width = size.x / 2.0; Height = size.y / 2.0; Format = RG32F; };
 
-sampler2D s_color    	  { Texture = r_color; SRGBTexture = TRUE; };
-sampler2D s_current_  	  { Texture = r_current_; };
-sampler2D s_previous_ 	  { Texture = r_previous_; };
+sampler2D s_color    	 { Texture = r_color; SRGBTexture = TRUE; };
+sampler2D s_current_      { Texture = r_current_; };
+sampler2D s_previous_     { Texture = r_previous_; };
 sampler2D s_currentflow_  { Texture = r_currentflow_; };
 sampler2D s_previousflow_ { Texture = r_previousflow_; };
 
@@ -48,39 +48,50 @@ void vs_common( in uint id : SV_VERTEXID,
 
 /* [Pixel Shaders] */
 
-float Max3(float a, float b, float c)
+float2 encode(float3 n)
 {
-    return max(max(a, b), c);
+    float f = rsqrt(8.0 * n.z + 8.0);
+    return n.xy * f + 0.5;
+}
+
+float3 decode(float2 enc)
+{
+    float2 fenc = enc * 4.0 - 2.0;
+    float f = dot(fenc, fenc);
+    float g = sqrt(1.0 - f / 4.0);
+    float3 n;
+    n.xy = fenc * g;
+    n.z = 1.0 - f / 2.0;
+    return n;
 }
 
 float4 ps_image(float4 vpos : SV_POSITION, float2 uv: TEXCOORD0) : SV_TARGET
 {
     float3 uImage = tex2D(s_color, uv).rgb;
-    float luma = Max3(uImage.r, uImage.g, uImage.b);
-    return luma / dot(uImage, 1.0);
+    return encode(normalize(uImage.rgb)).xyxy;
 }
 
 float4 ps_hsflow(   float4 vpos : SV_POSITION,
                     float2 uv : TEXCOORD0) : SV_TARGET
 {
-    float pframe = tex2D(s_previous_, uv).r;
-    float cframe = tex2D(s_current_, uv).r;
+    float3 pframe = decode(tex2D(s_previous_, uv).xy);
+    float3 cframe = decode(tex2D(s_current_, uv).xy);
 
     float3 dFd;
-    dFd.x = ddx(cframe);
-    dFd.y = ddy(cframe);
-    dFd.z = cframe - pframe;
-    const float uRegularize = max(4.0 * pow(uConst * 1e-3, 2.0), 1e-10);
+    dFd.x = dot(ddx(cframe), 1.0);
+    dFd.y = dot(ddy(cframe), 1.0);
+    dFd.z = dot(cframe - pframe, 1.0);
+    const float uRegularize = max(4.0 * pow(uConst * 1e-2, 2.0), 1e-10);
     float2 cFlow = 0.0;
 
-    for(int i = 0; i < uIter; i++)
+    [unroll] for(int i = 0; i < uIter; i++)
     {
         float dCalc = dot(dFd.xy, cFlow) + dFd.z;
         float dConst = dot(dFd.xy, dFd.xy) + uRegularize;
         cFlow = cFlow - (dFd.xy * dCalc) / dConst;
     }
 
-    return float4(cFlow, 1.0, 1.0);
+    return cFlow.xyxy;
 }
 
 float4 ps_hsblend(  float4 vpos : SV_POSITION,
