@@ -22,19 +22,32 @@
     Vogel Disk   - [http://blog.marmakoide.org/?p=1]
 */
 
-#define uOption(option, udata, utype, ucategory, ulabel, uvalue, umin, umax)    \
-        uniform udata option <                                                  \
-        ui_category = ucategory; ui_label = ulabel;                             \
-        ui_type = utype; ui_min = umin; ui_max = umax;                          \
+#define uOption(option, udata, utype, ucategory, ulabel, uvalue, umin, umax, utooltip)  \
+        uniform udata option <                                                  		\
+        ui_category = ucategory; ui_label = ulabel;                             		\
+        ui_type = utype; ui_min = umin; ui_max = umax; ui_tooltip = utooltip;   		\
         > = uvalue
 
-uOption(uIter,   int,   "slider", "Basic", "Iterations",  1, 1, 64);
-uOption(uConst,  float, "slider", "Basic", "Constraint",  0.000, 0.000, 1.000);
-uOption(uRadius, float, "slider", "Basic", "Prefilter",   8.000, 0.000, 16.00);
-uOption(uBlend,  float, "slider", "Basic", "Frame Blend", 0.100, 0.000, 1.000);
-uOption(uSmooth, float, "slider", "Basic", "Flow Smooth", 0.100, 0.000, 0.500);
-uOption(uDetail, float, "slider", "Basic", "Flow Mip",    5.500, 0.000, 8.000);
-uOption(uDebug,  bool,  "radio",  "Basic", "Debug",       false, 0, 0);
+uOption(uIter, int, "slider", "Advanced", "Iterations", 1, 1, 64,
+"Iterations: Higher = More detected flow, slightly lower performance");
+
+uOption(uConst, float, "slider", "Basic", "Constraint", 0.000, 0.000, 1.000,
+"Regularization: Higher = Smoother flow");
+
+uOption(uRadius, float, "slider", "Basic", "Prefilter", 8.000, 0.000, 16.00,
+"Preprocess Blur: Higher = Less noise");
+
+uOption(uBlend, float, "slider", "Advanced", "Flow Blend", 0.250, 0.000, 0.500,
+"Temporal Smoothing: Higher = Less noise between strong movements");
+
+uOption(uAverage, float, "slider", "Advanced", "Flow Blend", 0.250, 0.000, 0.500,
+"Frame Average: Higher = More past frame blend influence");
+
+uOption(uDetail, float, "slider", "Advanced", "Flow MipMap", 5.500, 0.000, 8.000,
+"Postprocess Blur: Higher = Less noise");
+
+uOption(uDebug, bool, "radio", "Advanced", "Debug", false, 0, 0,
+"Show optical flow result");
 
 #define CONST_LOG2(x) (\
     (uint((x)  & 0xAAAAAAAA) != 0) | \
@@ -253,7 +266,7 @@ float4 ps_flow(float4 vpos : SV_POSITION,
     dFd.x = dot(ddx(cFrame), 1.0);
     dFd.y = dot(ddy(cFrame), 1.0);
     dFd.z = dot(cFrame - pFrame, 1.0);
-    const float uRegularize = max(4.0 * pow(uConst * 1e-3, 2.0), 1e-10);
+    const float uRegularize = max(4.0 * pow(uConst * 1e-2, 2.0), 1e-10);
     float2 cFlow = 0.0;
 
     for(int i = 0; i < uIter; i++)
@@ -264,7 +277,7 @@ float4 ps_flow(float4 vpos : SV_POSITION,
     }
 
     // Smooth optical flow
-    return lerp(cFlow, pFrameBuffer.xy, uSmooth).xyxy;
+    return lerp(cFlow, pFrameBuffer.xy, uBlend).xyxy;
 }
 
 // Median masking inspired by vs-mvtools
@@ -284,7 +297,7 @@ float4 ps_output(float4 vpos : SV_POSITION,
     float4 pSrc = tex2D(s_pcolor, uv);
     float4 pMCB = tex2D(s_color, uv - pFlow * pSize);
     float4 pMCF = tex2D(s_pcolor, uv + pFlow * pSize);
-    float4 pAvg = lerp(pRef, pSrc, uBlend);
+    float4 pAvg = lerp(pRef, pSrc, uAverage);
     return (uDebug) ? float4(pFlow, 1.0, 1.0) : Median3(pMCF, pMCB, pAvg);
 }
 

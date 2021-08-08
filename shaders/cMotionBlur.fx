@@ -19,24 +19,41 @@
     Vogel Disk   - [http://blog.marmakoide.org/?p=1]
 */
 
-#define uOption(option, udata, utype, ucategory, ulabel, uvalue, umin, umax)    \
-        uniform udata option <                                                  \
-        ui_category = ucategory; ui_label = ulabel;                             \
-        ui_type = utype; ui_min = umin; ui_max = umax;                          \
+#define uOption(option, udata, utype, ucategory, ulabel, uvalue, umin, umax, utooltip)  \
+        uniform udata option <                                                  		\
+        ui_category = ucategory; ui_label = ulabel;                             		\
+        ui_type = utype; ui_min = umin; ui_max = umax; ui_tooltip = utooltip;   		\
         > = uvalue
 
-uOption(uConst,  float, "slider", "Basic", "Constraint", 0.000, 0.000, 1.000);
-uOption(uScale,  float, "slider", "Basic", "Scale",      2.000, 0.000, 4.000);
-uOption(uRadius, float, "slider", "Basic", "Prefilter",  8.000, 0.000, 16.00);
+uOption(uConst, float, "slider", "Basic", "Constraint", 0.000, 0.000, 1.000,
+"Regularization: Higher = Smoother flow");
 
-uOption(uIter,   int,   "slider", "Advanced", "Iterations",  1, 1, 64);
-uOption(uSmooth, float, "slider", "Advanced", "Flow Blend",  0.250, 0.000, 0.500);
-uOption(uDetail, float, "slider", "Advanced", "Flow MipMap", 5.500, 0.000, 8.000);
-uOption(uDebug,  bool,  "radio",  "Advanced", "Debug",       false, 0, 0);
+uOption(uScale, float, "slider", "Basic", "Scale", 2.000, 0.000, 4.000,
+"Scale: Higher = More motion blur");
 
-uOption(uVignette, bool,  "radio",  "Vignette", "Enable",    false, 0, 0);
-uOption(uInvert,   bool,  "radio",  "Vignette", "Invert",    true,  0, 0);
-uOption(uFalloff,  float, "slider", "Vignette", "Sharpness", 1.000, 0.000, 8.000);
+uOption(uRadius, float, "slider", "Basic", "Prefilter", 8.000, 0.000, 16.00,
+"Preprocess Blur: Higher = Less noise");
+
+uOption(uIter, int, "slider", "Advanced", "Iterations", 1, 1, 64,
+"Iterations: Higher = More detected flow, slightly lower performance");
+
+uOption(uBlend, float, "slider", "Advanced", "Flow Blend", 0.250, 0.000, 0.500,
+"Temporal Smoothing: Higher = Less noise between strong movements");
+
+uOption(uDetail, float, "slider", "Advanced", "Flow MipMap", 5.500, 0.000, 8.000,
+"Postprocess Blur: Higher = Less noise");
+
+uOption(uDebug, bool, "radio", "Advanced", "Debug", false, 0, 0,
+"Show optical flow result");
+
+uOption(uVignette, bool,  "radio",  "Vignette", "Enable", false, 0, 0,
+"Enable to change optical flow influence to or from center");
+
+uOption(uInvert, bool,  "radio",  "Vignette", "Invert", true, 0, 0,
+"");
+
+uOption(uFalloff, float, "slider", "Vignette", "Sharpness", 1.000, 0.000, 8.000,
+"Vignette Strength");
 
 #define CONST_LOG2(x) (\
     (uint((x)  & 0xAAAAAAAA) != 0) | \
@@ -201,9 +218,11 @@ void ps_convert(float4 vpos : SV_POSITION,
         uImage = lerp(uImage, uColor, rcp(float(j) + 1));
     }
 
-    r0.xy = tex2D(s_cflow, uv).xy; // Copy previous rendertarget from ps_flow()
-    r0.zw = tex2D(s_cframe, uv).xy; // Copy previous rendertarget from ps_filter()
-    r1 = uImage; // Input downsampled current frame to scale and mip
+    // r0 = copy previous flow (.xy) and blurred frame (.zw) from last run
+    // r1 = blur current frame, than blur + copy at ps_filter
+    r0.xy = tex2D(s_cflow, uv).xy;
+    r0.zw = tex2D(s_cframe, uv).xy;
+    r1 = uImage;
 }
 
 float4 ps_filter(float4 vpos : SV_POSITION,
@@ -275,7 +294,7 @@ float4 ps_flow(float4 vpos : SV_POSITION,
     }
 
     // Smooth optical flow
-    return lerp(cFlow, pFrameBuffer.xy, uSmooth).xyxy;
+    return lerp(cFlow, pFrameBuffer.xy, uBlend).xyxy;
 }
 
 float4 ps_output(float4 vpos : SV_POSITION,

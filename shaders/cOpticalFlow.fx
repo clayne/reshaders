@@ -6,15 +6,20 @@
 
 #define size float2(BUFFER_WIDTH, BUFFER_HEIGHT)
 
-#define uOption(option, udata, utype, ucategory, ulabel, uvalue, umin, umax)    \
-        uniform udata option <                                                  \
-        ui_category = ucategory; ui_label = ulabel;                             \
-        ui_type = utype; ui_min = umin; ui_max = umax;                          \
+#define uOption(option, udata, utype, ucategory, ulabel, uvalue, umin, umax, utooltip)  \
+        uniform udata option <                                                  		\
+        ui_category = ucategory; ui_label = ulabel;                             		\
+        ui_type = utype; ui_min = umin; ui_max = umax; ui_tooltip = utooltip;   		\
         > = uvalue
 
-uOption(uIter,  int,   "slider", "Advanced", "Iterations",  1, 1, 64);
-uOption(uConst, float, "slider", "Basic", "Constraint", 0.000, 0.000, 1.000);
-uOption(uBlend, float, "slider", "Basic", "Flow Blend", 0.500, 0.000, 1.000);
+uOption(uIter, int, "slider", "Advanced", "Iterations", 1, 1, 64,
+"Iterations: Higher = More detected flow, slightly lower performance");
+
+uOption(uConst, float, "slider", "Basic", "Constraint", 0.000, 0.000, 1.000,
+"Regularization: Higher = Smoother flow");
+
+uOption(uBlend, float, "slider", "Advanced", "Flow Blend", 0.250, 0.000, 0.500,
+"Temporal Smoothing: Higher = Less noise between strong movements");
 
 texture2D r_color : COLOR;
 texture2D r_current_      { Width = size.x / 2.0; Height = size.y / 2.0; Format = RG8; };
@@ -82,7 +87,7 @@ float4 ps_hsflow(float4 vpos : SV_POSITION,
     dFd.x = dot(ddx(cframe), 1.0);
     dFd.y = dot(ddy(cframe), 1.0);
     dFd.z = dot(cframe - pframe, 1.0);
-    const float uRegularize = max(4.0 * pow(uConst * 1e-3, 2.0), 1e-10);
+    const float uRegularize = max(4.0 * pow(uConst * 1e-2, 2.0), 1e-10);
     float2 cFlow = 0.0;
 
     for(int i = 0; i < uIter; i++)
