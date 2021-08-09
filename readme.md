@@ -27,7 +27,7 @@ Original|cInterpolate|Optical flow frame blending
 Original|cMotionBlur |Optical flow motion blur
 Original|cOpticalFlow|Horn-Schunck optical flow without weighted average
 Learning|cAbberation   |Chromatic abberation using vertex shader offset
-Learning|cAutoExposure |2 passe automatic exposure
+Learning|cAutoExposure |2-pass automatic exposure
 Learning|cColorBlendOp |Blend to backbuffer without copying textures
 Learning|cFilmGrain    |Film grain without copying texture
 Learning|cFrameBlending|Frame blending using the previous result
