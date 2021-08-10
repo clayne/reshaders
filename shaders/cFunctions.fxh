@@ -120,6 +120,10 @@ namespace math
     }
 }
 
+/*
+    Encode and decode normal - [https://aras-p.info/texts/CompactNormalStorage.html]
+*/
+
 namespace cv
 {
     float2 encodenorm(float3 n)
