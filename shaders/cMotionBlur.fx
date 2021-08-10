@@ -5,18 +5,6 @@
     - MartinBFFan and Pao on Discord for reporting bugs
     - BSD for bug propaganda and helping to solve my issue
     - Lord of Lunacy, KingEric1992, and Marty McFly for power of 2 function
-
-    Notes:  Blurred previous + current frames must be 32Float textures.
-            This makes the optical flow not suffer from noise + banding
-
-    LOD Compute  - [https://john-chapman.github.io/2019/03/29/convolution.html]
-    Median3      - [https://github.com/GPUOpen-Effects/FidelityFX-CAS] [MIT]
-    Noise        - [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
-    Normals Pack - [https://aras-p.info/texts/CompactNormalStorage.html]
-    Optical Flow - [https://dspace.mit.edu/handle/1721.1/6337]
-    Pi Constant  - [https://github.com/microsoft/DirectX-Graphics-Samples] [MIT]
-    Vignette     - [https://github.com/keijiro/KinoVignette] [MIT]
-    Vogel Disk   - [http://blog.marmakoide.org/?p=1]
 */
 
 #include "cFunctions.fxh"
@@ -136,7 +124,7 @@ void ps_convert(float4 vpos : SV_POSITION,
                 float4 ofs[7] : TEXCOORD1,
                 out float4 r0 : SV_TARGET0,
                 out float4 r1 : SV_TARGET1,
-				out float4 r2 : SV_TARGET2)
+                out float4 r2 : SV_TARGET2)
 {
     const int cTaps = 14;
     float4 uImage;
@@ -155,7 +143,7 @@ void ps_convert(float4 vpos : SV_POSITION,
     }
 
     // r0 = copy previous flow
-	// r1 = copy blurred frame from last run
+    // r1 = copy blurred frame from last run
     // r2 = blur current frame, than blur + copy at ps_filter
     r0 = tex2D(s_cflow, uv).xy;
     r1 = tex2D(s_cframe, uv).xy;
