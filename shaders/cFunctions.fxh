@@ -138,8 +138,8 @@ namespace cv
         float f = dot(fenc, fenc);
         float g = sqrt(1.0 - f / 4.0);
         float3 n;
-        n.xy = fenc * g;
-        n.z = 1.0 - f / 2.0;
+        n.xy = saturate(fenc * g);
+        n.z = saturate(1.0 - f / 2.0);
         return n;
     }
 }
