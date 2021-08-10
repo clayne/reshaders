@@ -5,7 +5,7 @@ uniform int uSelect <
 	ui_type = "combo";
 	ui_items = "Average\0Sum\0Max3\0Filmic\0None\0";
 	ui_label = "Method";
-	ui_tooltip = "Select Gretscale";
+	ui_tooltip = "Select Luminance";
 > = 0;
 
 float4 ps_greyscale(float4 vpos : SV_POSITION, float2 uv : TEXCOORD0) : SV_Target0
