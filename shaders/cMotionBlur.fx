@@ -180,6 +180,11 @@ void ps_filter(float4 vpos : SV_POSITION,
 
 /*
     https://www.cs.auckland.ac.nz/~rklette/CCV-CIMAT/pdfs/B08-HornSchunck.pdf
+    - Use a regular image pyramid for input frames I(., .,t)
+    - Processing starts at a selected level (of lower resolution)
+    - Obtained results are used for initializing optic flow values at a
+      lower level (of higher resolution)
+    - Repeat until full resolution level of original frames is reached
 */
 
 float4 ps_flow(float4 vpos : SV_POSITION,
@@ -192,8 +197,6 @@ float4 ps_flow(float4 vpos : SV_POSITION,
     	float4 ucalc = float4(uv, 0.0, i);
         float2 cFrameBuffer = tex2Dlod(s_cframe, ucalc).xy;
         float2 pFrameBuffer = tex2Dlod(s_pframe, ucalc).xy;
-
-        // Calculate optical flow without post neighborhood average
         float3 cFrame = cv::decodenorm(cFrameBuffer);
         float3 pFrame = cv::decodenorm(pFrameBuffer);
 
