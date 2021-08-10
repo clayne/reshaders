@@ -6,12 +6,9 @@
 - New developers can learn
 - Coping mechanism
 - **Goals**
-  - Pyramid optical flow
-  - General greyscale
   - Datamoshing
   - Particles (maybe)
   - Fluid simulation (maybe)
-  - cFunctions.fxh with namespaces
 
 ## Shader Descriptions
 - Original: Shaders I made
