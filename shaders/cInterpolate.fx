@@ -18,7 +18,7 @@
         ui_type = utype; ui_min = umin; ui_max = umax; ui_tooltip = utooltip;   		\
         > = uvalue
 
-uOption(uConst, float, "slider", "Basic", "Constraint", 0.500, 0.000, 1.000,
+uOption(uConst, float, "slider", "Basic", "Constraint", 0.100, 0.000, 1.000,
 "Regularization: Higher = Smoother flow");
 
 uOption(uRadius, float, "slider", "Basic", "Prefilter", 8.000, 0.000, 16.00,
