@@ -108,7 +108,7 @@ void ps_convert(float4 vpos : SV_POSITION,
                 float4 ofs[7] : TEXCOORD1,
                 out float4 r0 : SV_TARGET0,
                 out float4 r1 : SV_TARGET1,
-				out float4 r2 : SV_TARGET2)
+                out float4 r2 : SV_TARGET2)
 {
     const int cTaps = 14;
     float4 uImage;
@@ -127,7 +127,7 @@ void ps_convert(float4 vpos : SV_POSITION,
     }
 
     // r0 = copy previous flow
-	// r1 = copy blurred frame from last run
+    // r1 = copy blurred frame from last run
     // r2 = blur current frame, than blur + copy at ps_filter
     r0 = tex2D(s_cflow, uv).xy;
     r1 = tex2D(s_cframe, uv).xy;
@@ -160,7 +160,7 @@ void ps_filter(float4 vpos : SV_POSITION,
 
     r0 = uImage;
     float3 oImage = cv::decodenorm(uImage);
-    r1 = float2(dot(ddx(uImage), 1.0), dot(ddy(uImage), 1.0));
+    r1 = float2(dot(ddx(oImage), 1.0), dot(ddy(oImage), 1.0));
 }
 
 /*
@@ -174,7 +174,7 @@ float4 ps_flow(float4 vpos : SV_POSITION,
     float2 cFlow = 0.0;
     for(int i = 8; i >= 0; i--)
     {
-    	float4 ucalc = float4(uv, 0.0, i);
+        float4 ucalc = float4(uv, 0.0, i);
         float2 cFrameBuffer = tex2Dlod(s_cframe, ucalc).xy;
         float2 pFrameBuffer = tex2Dlod(s_pframe, ucalc).xy;
 
@@ -245,6 +245,7 @@ technique cInterpolate
         VertexShader = vs_filter;
         PixelShader = ps_filter;
         RenderTarget0 = r_cframe;
+        RenderTarget1 = r_cddxy;
     }
 
     pass cOpticalFlow

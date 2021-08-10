@@ -15,10 +15,10 @@
         ui_type = utype; ui_min = umin; ui_max = umax; ui_tooltip = utooltip;   		\
         > = uvalue
 
-uOption(uConst, float, "slider", "Basic", "Constraint", 0.250, 0.000, 1.000,
+uOption(uConst, float, "slider", "Basic", "Constraint", 0.500, 0.000, 1.000,
 "Regularization: Higher = Smoother flow");
 
-uOption(uScale, float, "slider", "Basic", "Scale", 2.000, 0.000, 4.000,
+uOption(uScale, float, "slider", "Basic", "Scale", 4.000, 0.000, 8.000,
 "Scale: Higher = More motion blur");
 
 uOption(uRadius, float, "slider", "Basic", "Prefilter", 8.000, 0.000, 16.00,
@@ -175,7 +175,7 @@ void ps_filter(float4 vpos : SV_POSITION,
 
     r0 = uImage;
     float3 oImage = cv::decodenorm(uImage);
-    r1 = float2(dot(ddx(uImage), 1.0), dot(ddy(uImage), 1.0));
+    r1 = float2(dot(ddx(oImage), 1.0), dot(ddy(oImage), 1.0));
 }
 
 /*
