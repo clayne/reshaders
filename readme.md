@@ -31,7 +31,7 @@ Original+|cAutoExposure |2-pass automatic exposure
 Original+|cColorBlendOp |Blend to backbuffer without copying textures
 Original+|cFilmGrain    |Film grain without copying texture
 Original+|cFrameBlending|Frame blending using the previous result
-Original+|cGreyScale    |Simple greyscale comparison
+Original+|cLuminance    |Simple greyscale comparison
 Original+|cLetterBox    |LetterBox without copying textures
 Original+|cScale        |Buffer scaling using vertex shaders
 keijiro|kContour |Contour line effect
