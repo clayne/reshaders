@@ -22,7 +22,7 @@
     CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#include "ReShade.fxh"
+#include "cFunctions.fxh"
 
 uniform float kDivisor <
     ui_label = "Divisor";
@@ -43,14 +43,6 @@ uniform bool kSymmetry <
     ui_label = "Symmetry?";
 > = true;
 
-sampler2D s_color
-{
-    Texture = ReShade::BackBufferTex;
-    #if BUFFER_COLOR_BIT_DEPTH != 10
-        SRGBTexture = true;
-    #endif
-};
-
 void ps_mirror(in float4 vpos : SV_Position, in float2 uv : TEXCOORD, out float4 c : SV_Target)
 {
     // Convert to the polar coordinate.
@@ -63,23 +55,23 @@ void ps_mirror(in float4 vpos : SV_Position, in float2 uv : TEXCOORD, out float4
     phi = phi - kDivisor * floor(phi / kDivisor);
 
     if(kSymmetry) { phi = min(phi, kDivisor - phi); }
-
     phi += kRoll - kOffset;
 
     // Convert back to the texture coordinate.
-    uv = float2(cos(phi), sin(phi)) * r + 0.5;
+    float2 scphi; sincos(phi, scphi.x, scphi.y);
+    uv = scphi.yx * r + 0.5;
 
     // Reflection at the border of the screen.
     uv = max(min(uv, 2.0 - uv), -uv);
 
-    c = tex2D(s_color, uv);
+    c = tex2D(core::samplers::srgb, uv);
 }
 
 technique KinoMirror
 {
     pass
     {
-        VertexShader = PostProcessVS;
+        VertexShader = vs_generic;
         PixelShader = ps_mirror;
         #if BUFFER_COLOR_BIT_DEPTH != 10
             SRGBWriteEnable = true;

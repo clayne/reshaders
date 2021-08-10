@@ -43,6 +43,8 @@
         Included a label and tooltip description. I followed AMDs official naming guidelines for FidelityFX.
 */
 
+#include "cFunctions.fxh"
+
 uniform float kContrast <
     ui_type = "drag";
     ui_label = "Contrast Adaptation";
@@ -57,16 +59,6 @@ uniform float kSharpening <
     ui_min = 0.0; ui_max = 1.0;
 > = 1.0;
 
-texture2D r_color : COLOR;
-
-sampler s_color
-{
-    Texture = r_color;
-    #if BUFFER_COLOR_BIT_DEPTH != 10
-        SRGBTexture = true;
-    #endif
-};
-
 struct v2f
 {
     float4 vpos : SV_Position;
@@ -77,11 +69,9 @@ v2f vs_cas(in uint id : SV_VertexID)
 {
     v2f output;
     float2 coord;
-    coord.x = (id == 2) ? 2.0 : 0.0;
-    coord.y = (id == 1) ? 2.0 : 0.0;
-    output.vpos = float4(coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    core::vsinit(id, coord, output.vpos);
 
-    const float2 ts = 1.0 / float2(BUFFER_WIDTH, BUFFER_HEIGHT);
+    const float2 ts = core::getpixelsize();
     output.uOffset[0] = coord.xyxy + float4(-1.0,-1.0, 1.0, 1.0) * ts.xyxy;
     output.uOffset[1] = coord.xxxy + float4(-1.0, 1.0, 0.0, 0.0) * ts.xxxy;
     output.uOffset[2] = coord.yyxx + float4(-1.0, 1.0, 0.0, 0.0) * ts.yyxx;
@@ -95,17 +85,17 @@ float3 ps_cas(v2f input) : SV_Target
     //  d(e)f
     //  g h i
 
-    float3 a = tex2D(s_color, input.uOffset[0].xw).rgb; // [-1, 1]
-    float3 b = tex2D(s_color, input.uOffset[2].zy).rgb; // [ 0, 1]
-    float3 c = tex2D(s_color, input.uOffset[0].zw).rgb; // [ 1, 1]
+    float3 a = tex2D(core::samplers::srgb, input.uOffset[0].xw).rgb; // [-1, 1]
+    float3 b = tex2D(core::samplers::srgb, input.uOffset[2].zy).rgb; // [ 0, 1]
+    float3 c = tex2D(core::samplers::srgb, input.uOffset[0].zw).rgb; // [ 1, 1]
 
-    float3 d = tex2D(s_color, input.uOffset[1].xw).rgb; // [-1, 0]
-    float3 e = tex2D(s_color, input.uOffset[1].zw).rgb; // [ 0, 0]
-    float3 f = tex2D(s_color, input.uOffset[1].yw).rgb; // [ 1, 0]
+    float3 d = tex2D(core::samplers::srgb, input.uOffset[1].xw).rgb; // [-1, 0]
+    float3 e = tex2D(core::samplers::srgb, input.uOffset[1].zw).rgb; // [ 0, 0]
+    float3 f = tex2D(core::samplers::srgb, input.uOffset[1].yw).rgb; // [ 1, 0]
 
-    float3 g = tex2D(s_color, input.uOffset[0].xy).rgb; // [-1,-1]
-    float3 h = tex2D(s_color, input.uOffset[2].zx).rgb; // [ 0,-1]
-    float3 i = tex2D(s_color, input.uOffset[0].zy).rgb; // [ 1,-1]
+    float3 g = tex2D(core::samplers::srgb, input.uOffset[0].xy).rgb; // [-1,-1]
+    float3 h = tex2D(core::samplers::srgb, input.uOffset[2].zx).rgb; // [ 0,-1]
+    float3 i = tex2D(core::samplers::srgb, input.uOffset[0].zy).rgb; // [ 1,-1]
 
     // Soft min and max.
     //  a b c             b

@@ -19,6 +19,8 @@
     Vogel Disk   - [http://blog.marmakoide.org/?p=1]
 */
 
+#include "cFunctions.fxh"
+
 #define uOption(option, udata, utype, ucategory, ulabel, uvalue, umin, umax, utooltip)  \
         uniform udata option <                                                  		\
         ui_category = ucategory; ui_label = ulabel;                             		\
@@ -55,34 +57,18 @@ uOption(uInvert, bool,  "radio",  "Vignette", "Invert", true, 0, 0,
 uOption(uFalloff, float, "slider", "Vignette", "Sharpness", 1.000, 0.000, 8.000,
 "Vignette Strength");
 
-#define CONST_LOG2(x) (\
-    (uint((x)  & 0xAAAAAAAA) != 0) | \
-    (uint(((x) & 0xFFFF0000) != 0) << 4) | \
-    (uint(((x) & 0xFF00FF00) != 0) << 3) | \
-    (uint(((x) & 0xF0F0F0F0) != 0) << 2) | \
-    (uint(((x) & 0xCCCCCCCC) != 0) << 1))
-
-#define BIT2_LOG2(x)  ((x) | (x) >> 1)
-#define BIT4_LOG2(x)  (BIT2_LOG2(x) | BIT2_LOG2(x) >> 2)
-#define BIT8_LOG2(x)  (BIT4_LOG2(x) | BIT4_LOG2(x) >> 4)
-#define BIT16_LOG2(x) (BIT8_LOG2(x) | BIT8_LOG2(x) >> 8)
-#define LOG2(x)       (CONST_LOG2((BIT16_LOG2(x) >> 1) + 1))
-#define RMAX(x, y)     x ^ ((x ^ y) & -(x < y)) // max(x, y)
-
 #define DSIZE uint2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2)
 #define RSIZE LOG2(RMAX(DSIZE.x, DSIZE.y)) + 1
 #define ISIZE 256.0
-
-static const float aRatio = BUFFER_WIDTH / BUFFER_HEIGHT;
-static const float Pi = 3.1415926535897f;
 static const int uTaps = 14;
 
 texture2D r_color  : COLOR;
 texture2D r_buffer { Width = DSIZE.x; Height = DSIZE.y; MipLevels = RSIZE; Format = RG8; };
-texture2D r_cimage { Width = ISIZE; Height = ISIZE; Format = RG32F; MipLevels = 9; };
-texture2D r_cframe { Width = ISIZE; Height = ISIZE; Format = RG32F; };
-texture2D r_cflow  { Width = ISIZE; Height = ISIZE; Format = RG32F; MipLevels = 9; };
-texture2D r_pframe { Width = ISIZE; Height = ISIZE; Format = RGBA32F; };
+texture2D r_cimage { Width = ISIZE; Height = ISIZE; Format = RG16; MipLevels = 9; };
+texture2D r_cframe { Width = ISIZE; Height = ISIZE; Format = RG16; };
+texture2D r_cflow  { Width = ISIZE; Height = ISIZE; Format = RG16F; MipLevels = 9; };
+texture2D r_pframe { Width = ISIZE; Height = ISIZE; Format = RG16; };
+texture2D r_pflow  { Width = ISIZE; Height = ISIZE; Format = RG16F; };
 
 sampler2D s_color  { Texture = r_color; SRGBTexture = TRUE; };
 sampler2D s_buffer { Texture = r_buffer; AddressU = MIRROR; AddressV = MIRROR; };
@@ -90,28 +76,9 @@ sampler2D s_cimage { Texture = r_cimage; AddressU = MIRROR; AddressV = MIRROR; }
 sampler2D s_cframe { Texture = r_cframe; AddressU = MIRROR; AddressV = MIRROR; };
 sampler2D s_cflow  { Texture = r_cflow;  AddressU = MIRROR; AddressV = MIRROR; };
 sampler2D s_pframe { Texture = r_pframe; AddressU = MIRROR; AddressV = MIRROR; };
+sampler2D s_pflow  { Texture = r_pflow;  AddressU = MIRROR; AddressV = MIRROR; };
 
 /* [ Vertex Shaders ] */
-
-void v2f_core(  in uint id,
-                inout float2 uv,
-                inout float4 vpos)
-{
-    uv.x = (id == 2) ? 2.0 : 0.0;
-    uv.y = (id == 1) ? 2.0 : 0.0;
-    vpos = float4(uv * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
-}
-
-float2 Vogel2D(int uIndex, float2 uv, float2 pSize)
-{
-    const float  GoldenAngle = Pi * (3.0 - sqrt(5.0));
-    const float2 Radius = (sqrt(uIndex + 0.5f) / sqrt(uTaps)) * pSize;
-    const float  Theta = uIndex * GoldenAngle;
-
-    float2 SineCosine;
-    sincos(Theta, SineCosine.x, SineCosine.y);
-    return Radius * SineCosine.yx + uv;
-}
 
 void vs_convert(in uint id : SV_VERTEXID,
                 inout float4 vpos : SV_POSITION,
@@ -119,14 +86,13 @@ void vs_convert(in uint id : SV_VERTEXID,
                 inout float4 ofs[7] : TEXCOORD1)
 {
     // Calculate texel offset of the mipped texture
-    const float cLOD = log2(max(DSIZE.x, DSIZE.y)) - log2(ISIZE);
-    const float2 uSize = rcp(DSIZE.xy / exp2(cLOD)) * uRadius;
-    v2f_core(id, uv, vpos);
+    const float2 uSize = math::computelodtexel(DSIZE.xy, ISIZE) * uRadius;
+    core::vsinit(id, uv, vpos);
 
     for(int i = 0; i < 7; i++)
     {
-        ofs[i].xy = Vogel2D(i, uv, uSize);
-        ofs[i].zw = Vogel2D(7 + i, uv, uSize);
+        ofs[i].xy = math::vogel(i, uv, uSize, uTaps);
+        ofs[i].zw = math::vogel(7 + i, uv, uSize, uTaps);
     }
 }
 
@@ -136,56 +102,25 @@ void vs_filter(in uint id : SV_VERTEXID,
 {
     const float2 uSize = rcp(ISIZE) * uRadius;
     float2 uv;
-    v2f_core(id, uv, vpos);
+    core::vsinit(id, uv, vpos);
 
     for(int i = 0; i < 8; i++)
     {
-        ofs[i].xy = Vogel2D(i, uv, uSize);
-        ofs[i].zw = Vogel2D(8 + i, uv, uSize);
+        ofs[i].xy = math::vogel(i, uv, uSize, uTaps);
+        ofs[i].zw = math::vogel(8 + i, uv, uSize, uTaps);
     }
 }
 
-void vs_common(in uint id : SV_VERTEXID,
-               inout float4 vpos : SV_POSITION,
-               inout float2 uv : TEXCOORD0)
-{
-    v2f_core(id, uv, vpos);
-}
-
 /* [ Pixel Shaders ] */
-
-float urand(float2 vpos)
-{
-    const float3 value = float3(52.9829189, 0.06711056, 0.00583715);
-    return frac(value.x * frac(dot(vpos.xy, value.yz)));
-}
-
-float2 encode(float3 n)
-{
-    float f = rsqrt(8.0 * n.z + 8.0);
-    return n.xy * f + 0.5;
-}
-
-float3 decode(float2 enc)
-{
-    float2 fenc = enc * 4.0 - 2.0;
-    float f = dot(fenc, fenc);
-    float g = sqrt(1.0 - f / 4.0);
-    float3 n;
-    n.xy = fenc * g;
-    n.z = 1.0 - f / 2.0;
-    return n;
-}
 
 float4 ps_source(float4 vpos : SV_POSITION,
                  float2 uv : TEXCOORD0) : SV_Target
 {
     float3 uImage = tex2D(s_color, uv.xy).rgb;
-    float2 output = encode(normalize(uImage));
+    float2 output = cv::encodenorm(normalize(uImage));
 
     // Vignette output if called
-    const float2 aspectratio = BUFFER_WIDTH * BUFFER_RCP_HEIGHT;
-    float2 coord = (uv - 0.5) * aspectratio * 2.0;
+    float2 coord = (uv - 0.5) * core::getaspectratio() * 2.0;
     float rf = length(coord) * uFalloff;
     float rf2_1 = mad(rf, rf, 1.0);
 
@@ -200,7 +135,8 @@ void ps_convert(float4 vpos : SV_POSITION,
                 float2 uv : TEXCOORD0,
                 float4 ofs[7] : TEXCOORD1,
                 out float4 r0 : SV_TARGET0,
-                out float4 r1 : SV_TARGET1)
+                out float4 r1 : SV_TARGET1,
+				out float4 r2 : SV_TARGET2)
 {
     const int cTaps = 14;
     float4 uImage;
@@ -218,18 +154,19 @@ void ps_convert(float4 vpos : SV_POSITION,
         uImage = lerp(uImage, uColor, rcp(float(j) + 1));
     }
 
-    // r0 = copy previous flow (.xy) and blurred frame (.zw) from last run
-    // r1 = blur current frame, than blur + copy at ps_filter
-    r0.xy = tex2D(s_cflow, uv).xy;
-    r0.zw = tex2D(s_cframe, uv).xy;
-    r1 = uImage;
+    // r0 = copy previous flow
+	// r1 = copy blurred frame from last run
+    // r2 = blur current frame, than blur + copy at ps_filter
+    r0 = tex2D(s_cflow, uv).xy;
+    r1 = tex2D(s_cframe, uv).xy;
+    r2 = uImage;
 }
 
 float4 ps_filter(float4 vpos : SV_POSITION,
                  float4 ofs[8] : TEXCOORD0) : SV_Target
 {
     const int cTaps = 16;
-    const float uArea = Pi * (uRadius * uRadius) / uTaps;
+    const float uArea = math::pi() * (uRadius * uRadius) / uTaps;
     const float uBias = log2(sqrt(uArea));
 
     float4 uImage;
@@ -272,39 +209,40 @@ float4 ps_filter(float4 vpos : SV_POSITION,
 float4 ps_flow(float4 vpos : SV_POSITION,
                float2 uv : TEXCOORD0) : SV_Target
 {
-    float4 cFrameBuffer = tex2D(s_cframe, uv);
-    float4 pFrameBuffer = tex2D(s_pframe, uv);
+    float2 cFrameBuffer = tex2D(s_cframe, uv).xy;
+    float2 pFrameBuffer = tex2D(s_pframe, uv).xy;
 
     // Calculate optical flow without post neighborhood average
-    float3 cFrame = decode(cFrameBuffer.xy);
-    float3 pFrame = decode(pFrameBuffer.zw);
+    float3 cFrame = cv::decodenorm(cFrameBuffer);
+    float3 pFrame = cv::decodenorm(pFrameBuffer);
 
     float3 dFd;
     dFd.x = dot(ddx(cFrame), 1.0);
     dFd.y = dot(ddy(cFrame), 1.0);
     dFd.z = dot(cFrame - pFrame, 1.0);
     const float uRegularize = max(4.0 * pow(uConst * 1e-3, 2.0), 1e-10);
-    float dConst = dot(dFd.xy, dFd.xy) + uRegularize;
+    float dConst = rcp(dot(dFd.xy, dFd.xy) + uRegularize);
     float2 cFlow = 0.0;
 
     for(int i = 0; i < uIter; i++)
     {
         float dCalc = dot(dFd.xy, cFlow) + dFd.z;
-        cFlow = cFlow - ((dFd.xy * dCalc) / dConst);
+        cFlow = cFlow - ((dFd.xy * dCalc) * dConst);
     }
 
     // Smooth optical flow
-    return lerp(cFlow, pFrameBuffer.xy, uBlend).xyxy;
+    float2 pFlow = tex2D(s_pflow, uv).xy;
+    return lerp(cFlow, pFlow, uBlend).xyxy;
 }
 
 float4 ps_output(float4 vpos : SV_POSITION,
                  float2 uv : TEXCOORD0) : SV_Target
 {
     float4 oBlur;
-    float noise = urand(vpos.xy) * 2.0;
+    float noise = core::noise(vpos.xy) * 2.0;
     const float samples = 1.0 / (16.0 - 1.0);
     float2 oFlow = tex2Dlod(s_cflow, float4(uv, 0.0, uDetail)).xy;
-    oFlow = oFlow * rcp(ISIZE) * aRatio;
+    oFlow = oFlow * rcp(ISIZE) * core::getaspectratio();
     oFlow *= uScale;
 
     for(int k = 0; k < 9; k++)
@@ -321,7 +259,7 @@ technique cMotionBlur
 {
     pass cBlur
     {
-        VertexShader = vs_common;
+        VertexShader = vs_generic;
         PixelShader = ps_source;
         RenderTarget0 = r_buffer;
     }
@@ -330,8 +268,9 @@ technique cMotionBlur
     {
         VertexShader = vs_convert;
         PixelShader = ps_convert;
-        RenderTarget0 = r_pframe;
-        RenderTarget1 = r_cimage;
+        RenderTarget0 = r_pflow;
+        RenderTarget1 = r_pframe;
+        RenderTarget2 = r_cimage;
     }
 
     pass cBlurCopyFrame
@@ -343,14 +282,14 @@ technique cMotionBlur
 
     pass cOpticalFlow
     {
-        VertexShader = vs_common;
+        VertexShader = vs_generic;
         PixelShader = ps_flow;
         RenderTarget0 = r_cflow;
     }
 
     pass cFlowBlur
     {
-        VertexShader = vs_common;
+        VertexShader = vs_generic;
         PixelShader = ps_output;
         SRGBWriteEnable = TRUE;
     }

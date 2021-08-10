@@ -1,4 +1,6 @@
 
+#include "cFunctions.fxh"
+
 uniform float kScale <
     ui_label = "Scale";
     ui_type = "drag";
@@ -27,18 +29,14 @@ struct v2f { float4 vpos : SV_POSITION; float2 uv : TEXCOORD0; };
 
 v2f vs_tile(in uint id : SV_VertexID)
 {
-    const float2 size = float2(BUFFER_WIDTH, BUFFER_HEIGHT);
-
     v2f output;
     float2 coord;
-    coord.x = (id == 2) ? 2.0 : 0.0;
-    coord.y = (id == 1) ? 2.0 : 0.0;
-    output.vpos = float4(coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    core::vsinit(id, coord, output.vpos);
 
     output.uv -= 0.5;
     output.uv += coord + float2(kCenter.x, -kCenter.y);
-    float2 s = output.uv * size * (kScale * 0.01);
-    output.uv = floor(s) / size;
+    float2 s = output.uv * core::getscreensize() * (kScale * 0.01);
+    output.uv = floor(s) / core::getscreensize();
     output.uv += 0.5;
     return output;
 }

@@ -4,7 +4,7 @@
     https://www.youtube.com/watch?v=wQkElpJ5DYo
 */
 
-#include "ReShade.fxh"
+#include "cFunctions.fxh"
 
 uniform float2 kScale <
     ui_min = 0.0;
@@ -26,7 +26,7 @@ technique cLetterBox
 {
     pass
     {
-        VertexShader = PostProcessVS;
+        VertexShader = vs_generic;
         PixelShader = ps_letterbox;
         BlendEnable = true;
         BlendOp = ADD;

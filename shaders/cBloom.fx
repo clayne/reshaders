@@ -1,4 +1,6 @@
 
+#include "cFunctions.fxh"
+
 uniform float uThreshold <
     ui_type = "drag";
     ui_min = 0.0;
@@ -55,18 +57,9 @@ sampler2D s_bloom8 { Texture = r_bloom8; };
     Dual Filtering Algorithm - [https://github.com/powervr-graphics/Native_SDK] [MIT]
 */
 
-void v2f_core(  in uint id,
-                inout float2 uv,
-                inout float4 vpos)
-{
-    uv.x = (id == 2) ? 2.0 : 0.0;
-    uv.y = (id == 1) ? 2.0 : 0.0;
-    vpos = float4(uv * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
-}
-
 void v2f_offset(in float2 coord, in float uFact, out float4 offset)
 {
-    const float2 psize = ldexp(float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT), uFact);
+    const float2 psize = ldexp(core::getpixelsize(), uFact);
     const float2 hoffset = psize + (psize / 2.0f);
     const float4 uoffset = float4(-hoffset.x, -hoffset.y, hoffset.x, hoffset.y);
     offset = coord.xyxy + uoffset; // --++
@@ -82,7 +75,7 @@ struct v2fd
 v2fd downsample2Dvs(uint id, float uFact)
 {
     v2fd output;
-    v2f_core(id, output.uv, output.vpos);
+    core::vsinit(id, output.uv, output.vpos);
     v2f_offset(output.uv, uFact, output.uOffset);
     return output;
 }
@@ -97,7 +90,7 @@ v2fu upsample2Dvs(uint id, float uFact)
 {
     v2fu output;
     float2 coord;
-    v2f_core(id, coord, output.vpos);
+    core::vsinit(id, coord, output.vpos);
     v2f_offset(coord, uFact, output.uOffset);
     return output;
 }
@@ -182,11 +175,10 @@ float4 ps_upsample3(v2fu input) : SV_Target { return upsample2Dps(s_bloom3, inpu
 float4 ps_upsample2(v2fu input) : SV_Target { return upsample2Dps(s_bloom2, input); }
 float4 ps_upsample1(v2fu input) : SV_Target
 {
-    const float4 n = float4(0.06711056, 0.00583715, 52.9829189, 0.5 / 255);
-    float f = frac(n.z * frac(dot(input.vpos.xy, n.xy))) * n.w;
     float4 o = upsample2Dps(s_bloom1, input) * uIntensity;
     o = saturate(o * mad(2.51, o, 0.03) / mad(o, mad(2.43, o, 0.59), 0.14));
-    return o + f;
+    const float bit = 1.0 / 255;
+    return o + core::noise(input.vpos.xy) * bit;
 }
 
 /* [ TECHNIQUE ] */

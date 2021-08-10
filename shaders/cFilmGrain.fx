@@ -4,6 +4,8 @@
     Yoinked code by Luluco250 (RIP) [https://www.shadertoy.com/view/4t2fRz] [MIT]
 */
 
+#include "cFunctions.fxh"
+
 uniform float uSpeed <
     ui_label = "Speed";
     ui_type = "drag";
@@ -27,15 +29,6 @@ struct v2f
 	float2 uv   : TEXCOORD0;
 };
 
-v2f vs_common(const uint id : SV_VertexID)
-{
-    v2f output;
-    output.uv.x = (id == 2) ? 2.0 : 0.0;
-    output.uv.y = (id == 1) ? 2.0 : 0.0;
-    output.vpos = float4(output.uv * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
-    return output;
-}
-
 float gaussian(float x, float sigma)
 {
     const float pi = 3.14159265359;
@@ -45,7 +38,7 @@ float gaussian(float x, float sigma)
 
 float4 ps_vignette(v2f input) : SV_Target
 {
-    const float2 psize = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
+    const float2 psize = core::getpixelsize();
     float cTime = rcp(1e+3 / uTimer) * uSpeed;
     float cSeed = dot(input.vpos.xy, float2(12.9898, 78.233));
     float noise = frac(sin(cSeed) * 43758.5453 + cTime);
@@ -56,7 +49,7 @@ technique cGrain
 {
     pass
     {
-        VertexShader = vs_common;
+        VertexShader = vs_generic;
         PixelShader = ps_vignette;
         SRGBWriteEnable = TRUE;
         // (Shader[Src] * SrcBlend) + (Buffer[Dest] * DestBlend)

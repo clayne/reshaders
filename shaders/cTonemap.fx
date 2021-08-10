@@ -1,33 +1,11 @@
+
 /*
     Enables one of Watch Dogs' tonemapping algorithms. No tweaking values.
     Full credits to the ReShade team. Ported by Insomnia
     Change: use gamma conversion before and after processing
 */
 
-texture2D r_color : COLOR;
-
-sampler s_color
-{
-    Texture = r_color;
-    #if BUFFER_COLOR_BIT_DEPTH != 10
-        SRGBTexture = true;
-    #endif
-};
-
-struct v2f
-{
-    float4 vpos : SV_Position;
-    float2 uv : TEXCOORD0;
-};
-
-v2f vs_tonemap(const uint id : SV_VERTEXID)
-{
-    v2f output;
-    output.uv.x = (id == 2) ? 2.0 : 0.0;
-    output.uv.y = (id == 1) ? 2.0 : 0.0;
-    output.vpos = float4(output.uv * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
-    return output;
-}
+#include "cFunctions.fxh"
 
 float3 p_tone(float3 n)
 {
@@ -40,9 +18,9 @@ float3 p_tone(float3 n)
     return mad(n,mad(a,n,c*b),d*e) / mad(n,mad(a,n,b),d*f) - (e/f);
 }
 
-float3 ps_tonemap(v2f input) : SV_Target
+float3 ps_tonemap(float4 vpos : SV_POSITION, float2 uv : TEXCOORD0) : SV_Target
 {
-    float3 kLinear = tex2D(s_color, input.uv).rgb;
+    float3 kLinear = tex2D(core::samplers::srgb, uv).rgb;
     const float3 kWhitePoint = 1.0 / p_tone(float3(2.80f, 2.90f, 3.10f));
     kLinear = p_tone(kLinear) * 1.25 * kWhitePoint;
     return pow(abs(kLinear), 1.25);
@@ -52,7 +30,7 @@ technique cTonemap
 {
     pass
     {
-        VertexShader = vs_tonemap;
+        VertexShader = vs_generic;
         PixelShader = ps_tonemap;
         #if BUFFER_COLOR_BIT_DEPTH != 10
             SRGBWriteEnable = true;

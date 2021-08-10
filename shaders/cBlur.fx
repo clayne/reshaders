@@ -1,9 +1,5 @@
 
-/*
-    Vogel Disk  - [http://blog.marmakoide.org/?p=1s]
-    LOD Compute - [https://john-chapman.github.io/2019/03/29/convolution.html]
-    Pi Constant - [https://github.com/microsoft/DirectX-Graphics-Samples] [MIT]
-*/
+#include "cFunctions.fxh"
 
 #define uOption(option, udata, utype, ucategory, ulabel, uvalue, umin, umax)    \
         uniform udata option <                                                  \
@@ -13,24 +9,9 @@
 
 uOption(uRadius, float, "slider", "Basic", "Blur Radius", 8.000, 0.000, 16.00);
 
-#define CONST_LOG2(x) (\
-    (uint((x)  & 0xAAAAAAAA) != 0) | \
-    (uint(((x) & 0xFFFF0000) != 0) << 4) | \
-    (uint(((x) & 0xFF00FF00) != 0) << 3) | \
-    (uint(((x) & 0xF0F0F0F0) != 0) << 2) | \
-    (uint(((x) & 0xCCCCCCCC) != 0) << 1))
-
-#define BIT2_LOG2(x)  ((x) | (x) >> 1)
-#define BIT4_LOG2(x)  (BIT2_LOG2(x) | BIT2_LOG2(x) >> 2)
-#define BIT8_LOG2(x)  (BIT4_LOG2(x) | BIT4_LOG2(x) >> 4)
-#define BIT16_LOG2(x) (BIT8_LOG2(x) | BIT8_LOG2(x) >> 8)
-#define LOG2(x)       (CONST_LOG2((BIT16_LOG2(x) >> 1) + 1))
-#define RMAX(x, y)     x ^ ((x ^ y) & -(x < y)) // max(x, y)
-
 #define DSIZE uint2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2)
 #define RSIZE LOG2(RMAX(DSIZE.x, DSIZE.y)) + 1
 
-static const float Pi = 3.1415926535897f;
 static const float ImageSize = 128.0;
 static const int uTaps = 16;
 
@@ -44,62 +25,32 @@ sampler2D s_blur  { Texture = r_blur;  SRGBTexture = TRUE; };
 
 /* [ Vertex Shaders ] */
 
-void v2f_core(  in uint id,
-                inout float2 uv,
-                inout float4 vpos)
-{
-    uv.x = (id == 2) ? 2.0 : 0.0;
-    uv.y = (id == 1) ? 2.0 : 0.0;
-    vpos = float4(uv * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
-}
-
-void vs_common( in uint id : SV_VERTEXID,
-                inout float4 vpos : SV_POSITION,
-                inout float2 uv : TEXCOORD0)
-{
-    v2f_core(id, uv, vpos);
-}
-
 void vs_3x3(in uint id : SV_VERTEXID,
             inout float4 vpos : SV_POSITION,
             inout float4 ofs[2] : TEXCOORD0)
 {
     float2 uv;
-    v2f_core(id, uv, vpos);
-    const float2 usize = rcp(float2(BUFFER_WIDTH, BUFFER_HEIGHT));
-    ofs[0].xy = uv + float2(-1.0,  1.0) * usize;
-    ofs[0].zw = uv + float2( 1.0,  1.0) * usize;
-    ofs[1].xy = uv + float2(-1.0, -1.0) * usize;
-    ofs[1].zw = uv + float2( 1.0, -1.0) * usize;
+    core::vsinit(id, uv, vpos);
+    ofs[0].xy = uv + float2(-1.0,  1.0) * core::getpixelsize();
+    ofs[0].zw = uv + float2( 1.0,  1.0) * core::getpixelsize();
+    ofs[1].xy = uv + float2(-1.0, -1.0) * core::getpixelsize();
+    ofs[1].zw = uv + float2( 1.0, -1.0) * core::getpixelsize();
 }
 
 static const int oNum = 8;
-
-float2 Vogel2D(int uIndex, float2 uv, float2 pSize)
-{
-    const float2 Size = pSize * uRadius;
-    const float  GoldenAngle = Pi * (3.0 - sqrt(5.0));
-    const float2 Radius = (sqrt(uIndex + 0.5f) / sqrt(uTaps)) * Size;
-    const float  Theta = uIndex * GoldenAngle;
-
-    float2 SineCosine;
-    sincos(Theta, SineCosine.x, SineCosine.y);
-    return Radius * SineCosine.yx + uv;
-}
 
 void vs_source( in uint id : SV_VERTEXID,
                 inout float4 vpos : SV_POSITION,
                 inout float4 ofs[oNum] : TEXCOORD0)
 {
-    const float cLOD = log2(max(DSIZE.x, DSIZE.y)) - log2(ImageSize);
-    const float2 uSize = rcp(DSIZE.xy / exp2(cLOD));
     float2 uv;
-    v2f_core(id, uv, vpos);
+    core::vsinit(id, uv, vpos);
+    const float2 uSize = math::computelodtexel(DSIZE, ImageSize) * uRadius;
 
     for(int i = 0; i < oNum; i++)
     {
-        ofs[i].xy = Vogel2D(i, uv, uSize);
-        ofs[i].zw = Vogel2D(oNum + i, uv, uSize);
+        ofs[i].xy = math::vogel(i, uv, uSize, uTaps);
+        ofs[i].zw = math::vogel(oNum + i, uv, uSize, uTaps);
     }
 }
 
@@ -107,14 +58,14 @@ void vs_filter( in uint id : SV_VERTEXID,
                 inout float4 vpos : SV_POSITION,
                 inout float4 ofs[oNum] : TEXCOORD0)
 {
-    const float2 uSize = rcp(ImageSize);
     float2 uv;
-    v2f_core(id, uv, vpos);
+    core::vsinit(id, uv, vpos);
+    const float2 uSize = rcp(ImageSize) * uRadius;
 
     for(int i = 0; i < oNum; i++)
     {
-        ofs[i].xy = Vogel2D(i, uv, uSize);
-        ofs[i].zw = Vogel2D(oNum + i, uv, uSize);
+        ofs[i].xy = math::vogel(i, uv, uSize, uTaps);
+        ofs[i].zw = math::vogel(oNum + i, uv, uSize, uTaps);
     }
 }
 
@@ -159,7 +110,7 @@ float4 ps_convert(float4 vpos : SV_POSITION, float4 ofs[oNum] : TEXCOORD0) : SV_
 
 float4 ps_filter(float4 vpos : SV_POSITION, float4 ofs[oNum] : TEXCOORD0) : SV_Target
 {
-    const float uArea = Pi * (uRadius * uRadius) / uTaps;
+    const float uArea = math::pi() * (uRadius * uRadius) / uTaps;
     const float uBias = log2(sqrt(uArea));
 
     float4 uImage;

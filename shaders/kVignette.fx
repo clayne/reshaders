@@ -24,30 +24,17 @@
     CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+#include "cFunctions.fxh"
+
 uniform float uFalloff <
     ui_label = "Falloff";
     ui_type = "drag";
 > = 0.5f;
 
-struct v2f
+float4 ps_vignette(float4 vpos : SV_POSITION,
+                   float2 uv : TEXCOORD0) : SV_Target
 {
-	float4 vpos : SV_Position;
-	float2 uv   : TEXCOORD0;
-};
-
-v2f vs_common(const uint id : SV_VertexID)
-{
-    v2f output;
-    output.uv.x = (id == 2) ? 2.0 : 0.0;
-    output.uv.y = (id == 1) ? 2.0 : 0.0;
-    output.vpos = float4(output.uv * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
-    return output;
-}
-
-float4 ps_vignette(v2f input) : SV_Target
-{
-    const float2 aspectratio = BUFFER_WIDTH * BUFFER_RCP_HEIGHT;
-    float2 coord = (input.uv - 0.5) * aspectratio * 2.0;
+    float2 coord = (uv - 0.5) * core::getaspectratio() * 2.0;
     float rf = length(coord) * uFalloff;
     float rf2_1 = mad(rf, rf, 1.0);
     return rcp(rf2_1 * rf2_1);
@@ -57,11 +44,9 @@ technique KinoVignette
 {
     pass
     {
-        VertexShader = vs_common;
+        VertexShader = vs_generic;
         PixelShader = ps_vignette;
-        #if BUFFER_COLOR_BIT_DEPTH != 10
-            SRGBWriteEnable = true;
-        #endif
+        SRGBWriteEnable = true;
         // Multiplication blend mode
         BlendEnable = TRUE;
         BlendOp = ADD;
