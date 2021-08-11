@@ -15,10 +15,10 @@
         ui_type = utype; ui_min = umin; ui_max = umax; ui_tooltip = utooltip;   		\
         > = uvalue
 
-uOption(uConst, float, "slider", "Basic", "Constraint", 0.500, 0.000, 1.000,
+uOption(uConst, float, "slider", "Basic", "Constraint", 0.250, 0.000, 1.000,
 "Regularization: Higher = Smoother flow");
 
-uOption(uScale, float, "slider", "Basic", "Scale", 8.000, 0.000, 16.00,
+uOption(uScale, float, "slider", "Basic", "Scale", 4.000, 0.000, 16.00,
 "Scale: Higher = More motion blur");
 
 uOption(uRadius, float, "slider", "Basic", "Prefilter", 8.000, 0.000, 16.00,
