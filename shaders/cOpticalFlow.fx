@@ -17,53 +17,59 @@
 uOption(uConst, float, "slider", "Basic", "Constraint", 0.000, 0.000, 1.000,
 "Regularization: Higher = Smoother flow");
 
-uOption(uIter, int, "slider", "Advanced", "Iterations", 1, 1, 16,
-"Iterations: Higher = More detected flow, slightly lower performance");
-
 uOption(uBlend, float, "slider", "Advanced", "Flow Blend", 0.250, 0.000, 0.500,
 "Temporal Smoothing: Higher = Less noise between strong movements");
 
+#define DSIZE uint2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2)
+#define RSIZE LOG2(RMAX(DSIZE.x, DSIZE.y)) + 1
+
 texture2D r_color : COLOR;
-texture2D r_current_      { Width = size.x / 2.0; Height = size.y / 2.0; Format = RG8; };
-texture2D r_previous_     { Width = size.x / 2.0; Height = size.y / 2.0; Format = RG8; };
+texture2D r_current_      { Width = size.x / 2.0; Height = size.y / 2.0; Format = RG8; MipLevels = RSIZE; };
+texture2D r_cderivative_  { Width = size.x / 2.0; Height = size.y / 2.0; Format = RG16F; MipLevels = RSIZE; };
+texture2D r_previous_     { Width = size.x / 2.0; Height = size.y / 2.0; Format = RG8; MipLevels = RSIZE; };
 texture2D r_currentflow_  { Width = size.x / 2.0; Height = size.y / 2.0; Format = RG16F; };
 texture2D r_previousflow_ { Width = size.x / 2.0; Height = size.y / 2.0; Format = RG16F; };
 
-sampler2D s_color    	 { Texture = r_color; SRGBTexture = TRUE; };
+sampler2D s_color    	  { Texture = r_color; SRGBTexture = TRUE; };
 sampler2D s_current_      { Texture = r_current_; };
+sampler2D s_cderivative_  { Texture = r_cderivative_; };
 sampler2D s_previous_     { Texture = r_previous_; };
 sampler2D s_currentflow_  { Texture = r_currentflow_; };
 sampler2D s_previousflow_ { Texture = r_previousflow_; };
 
 /* [Pixel Shaders] */
 
-float4 ps_image(float4 vpos : SV_POSITION,
-                float2 uv: TEXCOORD0) : SV_TARGET
+void ps_image(float4 vpos : SV_POSITION,
+              float2 uv : TEXCOORD0,
+              out float4 r0 : SV_TARGET0,
+              out float4 r1 : SV_TARGET1)
 {
     float3 uImage = tex2D(s_color, uv).rgb;
-    return cv::encodenorm(normalize(uImage.rgb)).xyxy;
+    r0 = cv::encodenorm(normalize(uImage.rgb)).xyxy;
+    r1 = float2(dot(ddx(uImage), 1.0), dot(ddy(uImage), 1.0)).xyxy;
 }
 
 float4 ps_hsflow(float4 vpos : SV_POSITION,
                  float2 uv : TEXCOORD0) : SV_TARGET
 {
-    float3 pframe = cv::decodenorm(tex2D(s_previous_, uv).xy);
-    float3 cframe = cv::decodenorm(tex2D(s_current_, uv).xy);
-
-    float3 dFd;
-    dFd.x = dot(ddx(cframe), 1.0);
-    dFd.y = dot(ddy(cframe), 1.0);
-    dFd.z = dot(cframe - pframe, 1.0);
     const float uRegularize = max(4.0 * pow(uConst * 1e-2, 2.0), 1e-10);
-    float dConst = dot(dFd.xy, dFd.xy) + uRegularize;
+    const int uLod = ceil(log2(max(size.x / 2.0, size.y / 2.0)));
     float2 cFlow = 0.0;
-
-    for(int i = 0; i < uIter; i++)
+    for(int i = uLod; i >= 0; i--)
     {
-        float dCalc = dot(dFd.xy, cFlow) + dFd.z;
-        cFlow = cFlow - ((dFd.xy * dCalc) / dConst);
-    }
+        float4 ucalc = float4(uv, 0.0, i);
+        float2 cFrameBuffer = tex2Dlod(s_current_, ucalc).xy;
+        float2 pFrameBuffer = tex2Dlod(s_previous_, ucalc).xy;
+        float3 cFrame = cv::decodenorm(cFrameBuffer);
+        float3 pFrame = cv::decodenorm(pFrameBuffer);
 
+        float2 ddxy = tex2Dlod(s_cderivative_, ucalc).xy;
+        float dt = dot(cFrame - pFrame, 1.0);
+
+        float dCalc = dot(ddxy.xy, cFlow) + dt;
+        float dSmooth = rcp(dot(ddxy.xy, ddxy.xy) + uRegularize);
+        cFlow = cFlow - ((ddxy.xy * dCalc) * dSmooth);
+    }
     return cFlow.xyxy;
 }
 
@@ -91,7 +97,8 @@ technique cOpticalFlow
     {
         VertexShader = vs_generic;
         PixelShader = ps_image;
-        RenderTarget = r_current_;
+        RenderTarget0 = r_current_;
+        RenderTarget1 = r_cderivative_;
     }
 
     pass
