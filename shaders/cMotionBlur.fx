@@ -15,20 +15,20 @@
         ui_type = utype; ui_min = umin; ui_max = umax; ui_tooltip = utooltip;   		\
         > = uvalue
 
-uOption(uConst, float, "slider", "Basic", "Constraint", 0.100, 0.000, 1.000,
+uOption(uConst, float, "slider", "Basic", "Constraint", 0.500, 0.000, 1.000,
 "Regularization: Higher = Smoother flow");
 
-uOption(uScale, float, "slider", "Basic", "Scale", 4.000, 0.000, 16.00,
+uOption(uScale, float, "slider", "Basic", "Scale", 1.000, 0.000, 2.000,
 "Scale: Higher = More motion blur");
 
 uOption(uRadius, float, "slider", "Basic", "Prefilter", 8.000, 0.000, 16.00,
 "Preprocess Blur: Higher = Less noise");
 
 uOption(uBlend, float, "slider", "Advanced", "Flow Blend", 0.250, 0.000, 0.500,
-"Temporal Smoothing: Higher = Less noise between strong movements");
+"Temporal Smoothing: Higher = Less temporal noise");
 
 uOption(uDetail, float, "slider", "Advanced", "Flow MipMap", 5.500, 0.000, 8.000,
-"Postprocess Blur: Higher = Less noise");
+"Postprocess Blur: Higher = Less spatial noise");
 
 uOption(uDebug, bool, "radio", "Advanced", "Debug", false, 0, 0,
 "Show optical flow result");
@@ -202,7 +202,6 @@ float4 ps_flow(float4 vpos : SV_POSITION,
 
         float2 ddxy = tex2Dlod(s_cddxy, ucalc).xy;
         float dt = dot(cFrame - pFrame, 1.0);
-
         float dCalc = dot(ddxy.xy, cFlow) + dt;
         float dSmooth = rcp(dot(ddxy.xy, ddxy.xy) + uRegularize);
         cFlow = cFlow - ((ddxy.xy * dCalc) * dSmooth);
@@ -220,7 +219,7 @@ float4 ps_output(float4 vpos : SV_POSITION,
     float noise = core::noise(vpos.xy) * 2.0;
     const float samples = 1.0 / (16.0 - 1.0);
     float2 oFlow = tex2Dlod(s_cflow, float4(uv, 0.0, uDetail)).xy;
-    oFlow = oFlow * core::getpixelsize();
+    oFlow = oFlow * rcp(ISIZE) * core::getaspectratio();
     oFlow *= uScale;
 
     for(int k = 0; k < 9; k++)

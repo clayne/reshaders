@@ -18,17 +18,17 @@
         ui_type = utype; ui_min = umin; ui_max = umax; ui_tooltip = utooltip;   		\
         > = uvalue
 
-uOption(uConst, float, "slider", "Basic", "Constraint", 0.100, 0.000, 1.000,
+uOption(uConst, float, "slider", "Basic", "Constraint", 0.500, 0.000, 1.000,
 "Regularization: Higher = Smoother flow");
 
 uOption(uRadius, float, "slider", "Basic", "Prefilter", 8.000, 0.000, 16.00,
 "Preprocess Blur: Higher = Less noise");
 
 uOption(uBlend, float, "slider", "Advanced", "Flow Blend", 0.250, 0.000, 0.500,
-"Temporal Smoothing: Higher = Less noise between strong movements");
+"Temporal Smoothing: Higher = Less temporal noise");
 
 uOption(uDetail, float, "slider", "Advanced", "Flow MipMap", 5.500, 0.000, 8.000,
-"Postprocess Blur: Higher = Less noise");
+"Postprocess Blur: Higher = Less spatial noise");
 
 uOption(uAverage, float, "slider", "Advanced", "Frame Average", 0.000, 0.000, 1.000,
 "Frame Average: Higher = More past frame blend influence");
@@ -211,7 +211,7 @@ float4 Median3( float4 a, float4 b, float4 c)
 float4 ps_output(float4 vpos : SV_POSITION,
                  float2 uv : TEXCOORD0) : SV_Target
 {
-    const float2 pSize = core::getpixelsize();
+    const float2 pSize = rcp(ISIZE) * core::getaspectratio();
     float2 pFlow = tex2Dlod(s_cflow, float4(uv, 0.0, uDetail)).xy;
     float4 pRef = tex2D(s_color, uv);
     float4 pSrc = tex2D(s_pcolor, uv);
@@ -224,7 +224,7 @@ float4 ps_output(float4 vpos : SV_POSITION,
 float4 ps_previous( float4 vpos : SV_POSITION,
                     float2 uv : TEXCOORD0) : SV_Target
 {
-    return float4(tex2D(s_color, uv).rgb, 1.0);
+    return tex2D(s_color, uv);
 }
 
 technique cInterpolate

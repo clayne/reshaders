@@ -18,22 +18,25 @@ uOption(uConst, float, "slider", "Basic", "Constraint", 0.000, 0.000, 1.000,
 "Regularization: Higher = Smoother flow");
 
 uOption(uBlend, float, "slider", "Advanced", "Flow Blend", 0.250, 0.000, 0.500,
-"Temporal Smoothing: Higher = Less noise between strong movements");
+"Temporal Smoothing: Higher = Less temporal noise");
+
+uOption(uMip, float, "slider", "Advanced", "Flow Blend", 0.250, 0.000, 0.500,
+"Temporal Smoothing: Higher = Less spatial noise");
 
 #define DSIZE uint2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2)
-#define RSIZE LOG2(RMAX(DSIZE.x, DSIZE.y)) + 1
+#define RMIPS LOG2(RMAX(DSIZE.x, DSIZE.y)) + 1
 
 texture2D r_color : COLOR;
-texture2D r_current_      { Width = size.x / 2.0; Height = size.y / 2.0; Format = RG8; MipLevels = RSIZE; };
-texture2D r_cderivative_  { Width = size.x / 2.0; Height = size.y / 2.0; Format = RG16F; MipLevels = RSIZE; };
-texture2D r_previous_     { Width = size.x / 2.0; Height = size.y / 2.0; Format = RG8; MipLevels = RSIZE; };
-texture2D r_currentflow_  { Width = size.x / 2.0; Height = size.y / 2.0; Format = RG16F; };
+texture2D r_current_      { Width = size.x / 2.0; Height = size.y / 2.0; Format = RG8; MipLevels = RMIPS; };
+texture2D r_previous_     { Width = size.x / 2.0; Height = size.y / 2.0; Format = RG8; MipLevels = RMIPS; };
+texture2D r_cderivative_  { Width = size.x / 2.0; Height = size.y / 2.0; Format = RG16F; MipLevels = RMIPS; };
+texture2D r_currentflow_  { Width = size.x / 2.0; Height = size.y / 2.0; Format = RG16F; MipLevels = RMIPS; };
 texture2D r_previousflow_ { Width = size.x / 2.0; Height = size.y / 2.0; Format = RG16F; };
 
 sampler2D s_color    	  { Texture = r_color; SRGBTexture = TRUE; };
 sampler2D s_current_      { Texture = r_current_; };
-sampler2D s_cderivative_  { Texture = r_cderivative_; };
 sampler2D s_previous_     { Texture = r_previous_; };
+sampler2D s_cderivative_  { Texture = r_cderivative_; };
 sampler2D s_currentflow_  { Texture = r_currentflow_; };
 sampler2D s_previousflow_ { Texture = r_previousflow_; };
 
@@ -70,16 +73,15 @@ float4 ps_hsflow(float4 vpos : SV_POSITION,
         float dSmooth = rcp(dot(ddxy.xy, ddxy.xy) + uRegularize);
         cFlow = cFlow - ((ddxy.xy * dCalc) * dSmooth);
     }
-    return cFlow.xyxy;
+
+    float2 pFlow = tex2D(s_previousflow_, uv).xy;
+    return lerp(cFlow, pFlow, uBlend).xyxy;
 }
 
 float4 ps_hsblend(float4 vpos : SV_POSITION,
                   float2 uv : TEXCOORD0) : SV_TARGET
 {
-    float2 cflow = tex2D(s_currentflow_, uv).xy;
-    float2 pflow = tex2D(s_previousflow_, uv).xy;
-    float2 blend = lerp(cflow, pflow, uBlend);
-    return float4(blend, 1.0, 1.0);
+    return tex2Dlod(s_currentflow_, float4(uv, 0.0, uMip));
 }
 
 void ps_previous(float4 vpos : SV_POSITION,
