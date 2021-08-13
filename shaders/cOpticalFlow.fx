@@ -28,7 +28,7 @@ uOption(uDetail, float, "slider", "Advanced", "Flow MipMap", 5.500, 0.000, 8.000
 #define RSIZE LOG2(RMAX(DSIZE.x, DSIZE.y)) + 1
 
 texture2D r_color  : COLOR;
-texture2D r_pbuffer { Width = DSIZE.x; Height = DSIZE.y; Format = RGBA16; MipLevels = RSIZE; };
+texture2D r_pbuffer { Width = DSIZE.x; Height = DSIZE.y; Format = RGBA8; MipLevels = RSIZE; };
 texture2D r_cbuffer { Width = DSIZE.x; Height = DSIZE.y; Format = RG16; MipLevels = RSIZE; };
 texture2D r_cuinfo  { Width = DSIZE.x; Height = DSIZE.y; Format = RG16F; MipLevels = RSIZE; };
 texture2D r_cuddxy  { Width = DSIZE.x; Height = DSIZE.y; Format = RG16F; MipLevels = RSIZE; };
