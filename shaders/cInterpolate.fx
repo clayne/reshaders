@@ -43,12 +43,11 @@ static const int uTaps = 14;
 
 texture2D r_color  : COLOR;
 texture2D r_buffer { Width = DSIZE.x; Height = DSIZE.y; MipLevels = RSIZE; Format = RG8; };
-texture2D r_cimage { Width = ISIZE; Height = ISIZE; Format = RG16; MipLevels = 9; };
+texture2D r_cimage { Width = ISIZE; Height = ISIZE; Format = RGBA16; MipLevels = 9; };
 texture2D r_cframe { Width = ISIZE; Height = ISIZE; Format = RG16; MipLevels = 9; };
 texture2D r_cflow  { Width = ISIZE; Height = ISIZE; Format = RG16F; MipLevels = 9; };
 texture2D r_cddxy  { Width = ISIZE; Height = ISIZE; Format = RG16F; MipLevels = 9; };
-texture2D r_pframe { Width = ISIZE; Height = ISIZE; Format = RG16; MipLevels = 9; };
-texture2D r_pflow  { Width = ISIZE; Height = ISIZE; Format = RG16F; };
+texture2D r_pinfo  { Width = ISIZE; Height = ISIZE; Format = RG16F; };
 texture2D r_pcolor { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; };
 
 sampler2D s_color  { Texture = r_color; SRGBTexture = TRUE; };
@@ -57,8 +56,7 @@ sampler2D s_cimage { Texture = r_cimage; };
 sampler2D s_cframe { Texture = r_cframe; };
 sampler2D s_cflow  { Texture = r_cflow; };
 sampler2D s_cddxy  { Texture = r_cddxy; };
-sampler2D s_pframe { Texture = r_pframe; };
-sampler2D s_pflow  { Texture = r_pflow; };
+sampler2D s_pinfo  { Texture = r_pinfo; };
 sampler2D s_pcolor { Texture = r_pcolor; SRGBTexture = TRUE; };
 
 /* [ Vertex Shaders ] */
@@ -107,11 +105,10 @@ void ps_convert(float4 vpos : SV_POSITION,
                 float2 uv : TEXCOORD0,
                 float4 ofs[7] : TEXCOORD1,
                 out float4 r0 : SV_TARGET0,
-                out float4 r1 : SV_TARGET1,
-                out float4 r2 : SV_TARGET2)
+                out float4 r1 : SV_TARGET1)
 {
     const int cTaps = 14;
-    float4 uImage;
+    float2 uImage;
     float2 vofs[cTaps];
 
     for (int i = 0; i < 7; i++)
@@ -122,16 +119,16 @@ void ps_convert(float4 vpos : SV_POSITION,
 
     for (int j = 0; j < cTaps; j++)
     {
-        float4 uColor = tex2D(s_buffer, vofs[j]);
+        float2 uColor = tex2D(s_buffer, vofs[j]).xy;
         uImage = lerp(uImage, uColor, rcp(float(j) + 1));
     }
 
     // r0 = copy previous flow
-    // r1 = copy blurred frame from last run
-    // r2 = blur current frame, than blur + copy at ps_filter
+    // r1.xy = copy blurred frame from last run
+    // r1.zw = blur current frame, than blur + copy at ps_filter
     r0 = tex2D(s_cflow, uv).xy;
-    r1 = tex2D(s_cframe, uv).xy;
-    r2 = uImage;
+    r1.xy = tex2D(s_cframe, uv).xy;
+    r1.zw = uImage;
 }
 
 void ps_filter(float4 vpos : SV_POSITION,
@@ -154,7 +151,7 @@ void ps_filter(float4 vpos : SV_POSITION,
 
     for (int j = 0; j < cTaps; j++)
     {
-        float2 uColor = tex2Dlod(s_cimage, float4(vofs[j], 0.0, uBias)).xy;
+        float2 uColor = tex2Dlod(s_cimage, float4(vofs[j], 0.0, uBias)).zw;
         uImage = lerp(uImage, uColor, rcp(float(j) + 1));
     }
 
@@ -181,23 +178,20 @@ float4 ps_flow(float4 vpos : SV_POSITION,
     {
         float4 ucalc = float4(uv, 0.0, i);
         float2 cFrameBuffer = tex2Dlod(s_cframe, ucalc).xy;
-        float2 pFrameBuffer = tex2Dlod(s_pframe, ucalc).xy;
-
-        // Calculate optical flow without post neighborhood average
+        float2 pFrameBuffer = tex2Dlod(s_cimage, ucalc).xy;
         float3 cFrame = cv::decodenorm(cFrameBuffer);
         float3 pFrame = cv::decodenorm(pFrameBuffer);
 
         float2 ddxy = tex2Dlod(s_cddxy, ucalc).xy;
         float dt = dot(cFrame - pFrame, 1.0);
-
         float dCalc = dot(ddxy.xy, cFlow) + dt;
         float dSmooth = rcp(dot(ddxy.xy, ddxy.xy) + uRegularize);
         cFlow = cFlow - ((ddxy.xy * dCalc) * dSmooth);
     }
 
     // Smooth optical flow
-    float2 pFlow = tex2D(s_pflow, uv).xy;
-    return lerp(cFlow, pFlow, uBlend).xyxy;
+    float2 pinfo = tex2D(s_pinfo, uv).xy;
+    return lerp(cFlow, pinfo, uBlend).xyxy;
 }
 
 // Median masking inspired by vs-mvtools
@@ -240,9 +234,8 @@ technique cInterpolate
     {
         VertexShader = vs_convert;
         PixelShader = ps_convert;
-        RenderTarget0 = r_pflow;
-        RenderTarget1 = r_pframe;
-        RenderTarget2 = r_cimage;
+        RenderTarget0 = r_pinfo;
+        RenderTarget1 = r_cimage;
     }
 
     pass cBlurCopyFrame

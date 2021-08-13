@@ -22,8 +22,8 @@
 namespace core
 {
     float getaspectratio() { return BUFFER_WIDTH * BUFFER_RCP_HEIGHT; }
-	float2 getpixelsize()  { return float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT); }
-	float2 getscreensize() { return float2(BUFFER_WIDTH, BUFFER_HEIGHT); }
+    float2 getpixelsize()  { return float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT); }
+    float2 getscreensize() { return float2(BUFFER_WIDTH, BUFFER_HEIGHT); }
 
     texture2D r_color : COLOR;
 
