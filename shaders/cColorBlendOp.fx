@@ -7,7 +7,10 @@ uniform float4 uColor <
     ui_type = "color";
 > = 1.0;
 
-float4 ps_color(float4 vpos : SV_Position) : SV_Target { return uColor; }
+float4 ps_color(float4 vpos : SV_Position) : SV_Target
+{
+    return uColor;
+}
 
 technique cColor
 {
