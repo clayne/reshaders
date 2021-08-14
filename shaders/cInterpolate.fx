@@ -45,18 +45,18 @@ texture2D r_color  : COLOR;
 texture2D r_buffer { Width = DSIZE.x; Height = DSIZE.y; Format = RG16; MipLevels = RSIZE; };
 texture2D r_cimage { Width = ISIZE; Height = ISIZE; Format = RGBA16; MipLevels = 9; };
 texture2D r_cframe { Width = ISIZE; Height = ISIZE; Format = RG16; MipLevels = 9; };
-texture2D r_cinfo  { Width = ISIZE; Height = ISIZE; Format = RG16F; MipLevels = 9; };
+texture2D r_cflow  { Width = ISIZE; Height = ISIZE; Format = RG16F; MipLevels = 9; };
 texture2D r_cddxy  { Width = ISIZE; Height = ISIZE; Format = RG16F; MipLevels = 9; };
-texture2D r_pinfo  { Width = ISIZE; Height = ISIZE; Format = RG16F; };
+texture2D r_pflow  { Width = ISIZE; Height = ISIZE; Format = RG16F; };
 texture2D r_pcolor { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; };
 
 sampler2D s_color  { Texture = r_color; SRGBTexture = TRUE; };
 sampler2D s_buffer { Texture = r_buffer; };
 sampler2D s_cimage { Texture = r_cimage; };
 sampler2D s_cframe { Texture = r_cframe; };
-sampler2D s_cinfo  { Texture = r_cinfo; };
+sampler2D s_cflow  { Texture = r_cflow; };
 sampler2D s_cddxy  { Texture = r_cddxy; };
-sampler2D s_pinfo  { Texture = r_pinfo; };
+sampler2D s_pflow  { Texture = r_pflow; };
 sampler2D s_pcolor { Texture = r_pcolor; SRGBTexture = TRUE; };
 
 /* [ Vertex Shaders ] */
@@ -105,8 +105,7 @@ void ps_convert(float4 vpos : SV_POSITION,
                 float2 uv : TEXCOORD0,
                 float4 ofs[7] : TEXCOORD1,
                 out float4 r0 : SV_TARGET0,
-                out float4 r1 : SV_TARGET1,
-                out float4 r2 : SV_TARGET2)
+                out float4 r1 : SV_TARGET1)
 {
     float2 uImage;
     float2 vofs[uTaps];
@@ -126,12 +125,9 @@ void ps_convert(float4 vpos : SV_POSITION,
     // r0 = copy previous flow
     // r1.xy = copy blurred frame from last run
     // r1.zw = blur current frame, than blur + copy at ps_filter
-    // r2 = get derivatives from previous frame
-    r0 = tex2D(s_cinfo, uv).xy;
+    r0 = tex2D(s_cflow, uv).xy;
     r1.xy = tex2D(s_cframe, uv).xy;
     r1.zw = uImage;
-    float3 rEnc = cv::decodenorm(r1.xy);
-    r2 = float2(dot(ddx(rEnc), 1.0), dot(ddy(rEnc), 1.0));
 }
 
 void ps_filter(float4 vpos : SV_POSITION,
@@ -141,7 +137,7 @@ void ps_filter(float4 vpos : SV_POSITION,
                out float4 r1 : SV_TARGET1)
 {
     const float uArea = math::pi() * (uRadius * uRadius) / uTaps;
-    const float uBias = log2(sqrt(uArea));
+    const float uBias = log2(sqrt(uArea)) + 1.0;
 
     float2 uImage;
     float2 vofs[uTaps];
@@ -160,8 +156,7 @@ void ps_filter(float4 vpos : SV_POSITION,
 
     r0 = uImage;
     float3 oImage = cv::decodenorm(uImage);
-    r1  = tex2D(s_cinfo, uv).xy;
-    r1 += float2(dot(ddx(oImage), 1.0), dot(ddy(oImage), 1.0));
+    r1 = float2(dot(ddx(oImage), 1.0), dot(ddy(oImage), 1.0));
 }
 
 /*
@@ -194,7 +189,7 @@ float4 ps_flow(float4 vpos : SV_POSITION,
     }
 
     // Smooth optical flow
-    float2 pinfo = tex2D(s_pinfo, uv).xy;
+    float2 pinfo = tex2D(s_pflow, uv).xy;
     return lerp(cFlow, pinfo, uBlend).xyxy;
 }
 
@@ -210,7 +205,7 @@ float4 ps_output(float4 vpos : SV_POSITION,
                  float2 uv : TEXCOORD0) : SV_Target
 {
     const float2 pSize = rcp(ISIZE) * core::getaspectratio();
-    float2 pFlow = tex2Dlod(s_cinfo, float4(uv, 0.0, uDetail)).xy;
+    float2 pFlow = tex2Dlod(s_cflow, float4(uv, 0.0, uDetail)).xy;
     float4 pRef = tex2D(s_color, uv);
     float4 pSrc = tex2D(s_pcolor, uv);
     float4 pMCB = tex2D(s_color, uv - pFlow * pSize);
@@ -238,9 +233,8 @@ technique cInterpolate
     {
         VertexShader = vs_convert;
         PixelShader = ps_convert;
-        RenderTarget0 = r_pinfo;
+        RenderTarget0 = r_pflow;
         RenderTarget1 = r_cimage;
-        RenderTarget2 = r_cinfo;
     }
 
     pass cBlurCopyFrame
@@ -255,7 +249,7 @@ technique cInterpolate
     {
         VertexShader = vs_generic;
         PixelShader = ps_flow;
-        RenderTarget0 = r_cinfo;
+        RenderTarget0 = r_cflow;
     }
 
     pass cInterpolate

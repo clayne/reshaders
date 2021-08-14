@@ -24,13 +24,11 @@ uOption(uConst, float, "slider", "Basic", "Constraint", 0.250, 0.000, 1.000,
 texture2D r_color  : COLOR;
 texture2D r_pbuffer { Width = DSIZE.x; Height = DSIZE.y; Format = RGBA16; MipLevels = RSIZE; };
 texture2D r_cbuffer { Width = DSIZE.x; Height = DSIZE.y; Format = RG16; MipLevels = RSIZE; };
-texture2D r_cdata   { Width = DSIZE.x; Height = DSIZE.y; Format = RG16F; MipLevels = RSIZE; };
 texture2D r_cuddxy  { Width = DSIZE.x; Height = DSIZE.y; Format = RG16F; MipLevels = RSIZE; };
 
 sampler2D s_color   { Texture = r_color; SRGBTexture = TRUE; };
 sampler2D s_pbuffer { Texture = r_pbuffer; };
 sampler2D s_cbuffer { Texture = r_cbuffer; };
-sampler2D s_cdata   { Texture = r_cdata; };
 sampler2D s_cuddxy  { Texture = r_cuddxy; };
 
 /* [ Pixel Shaders ] */
@@ -45,8 +43,7 @@ float4 ps_source(float4 vpos : SV_POSITION,
 
 void ps_convert(float4 vpos : SV_POSITION,
                 float2 uv : TEXCOORD0,
-                out float4 r0 : SV_TARGET0,
-                out float4 r1 : SV_TARGET1)
+                out float4 r0 : SV_TARGET0)
 {
     // r0.xy = copy blurred frame from last run
     // r0.zw = blur current frame, than blur + copy at ps_filter
@@ -54,9 +51,6 @@ void ps_convert(float4 vpos : SV_POSITION,
     float3 uImage = tex2D(s_color, uv.xy).rgb;
     r0.xy = tex2D(s_cbuffer, uv).xy;
     r0.zw = cv::encodenorm(normalize(uImage));
-    r1 = cv::decodenorm(r0.xy);
-    r1.x = dot(ddx(r1.rgb), 1.0);
-    r1.y = dot(ddy(r1.rgb), 1.0);
 }
 
 void ps_filter(float4 vpos : SV_POSITION,
@@ -66,7 +60,7 @@ void ps_filter(float4 vpos : SV_POSITION,
 {
     r0 = tex2D(s_pbuffer, uv.xy).zw;
     float3 oImage = cv::decodenorm(r0.xy);
-    r1 = tex2D(s_cdata, uv).xy;
+    r1 = 0.0;
     r1.x += dot(ddx(oImage), 1.0);
     r1.y += dot(ddy(oImage), 1.0);
 }
@@ -110,7 +104,6 @@ technique cOpticalFlow
         VertexShader = vs_generic;
         PixelShader = ps_convert;
         RenderTarget0 = r_pbuffer;
-        RenderTarget1 = r_cdata;
     }
 
     pass ProcessFrame

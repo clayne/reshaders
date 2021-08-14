@@ -36,7 +36,7 @@ uOption(uDebug, bool, "radio", "Advanced", "Debug", false, 0, 0,
 uOption(uVignette, bool,  "radio",  "Vignette", "Enable", false, 0, 0,
 "Enable to change optical flow influence to or from center");
 
-uOption(uInvert, bool, "radio",  "Vignette", "Invert", true, 0, 0,
+uOption(uInvert, bool,  "radio",  "Vignette", "Invert", true, 0, 0,
 "");
 
 uOption(uFalloff, float, "slider", "Vignette", "Sharpness", 1.000, 0.000, 8.000,
@@ -48,10 +48,10 @@ uOption(uFalloff, float, "slider", "Vignette", "Sharpness", 1.000, 0.000, 8.000,
 static const int uTaps = 14;
 
 texture2D r_color  : COLOR;
-texture2D r_buffer { Width = DSIZE.x; Height = DSIZE.y; MipLevels = RSIZE; Format = RG16; };
-texture2D r_cimage { Width = ISIZE; Height = ISIZE; Format = RGBA16;  MipLevels = 9; };
-texture2D r_cframe { Width = ISIZE; Height = ISIZE; Format = RG16;  MipLevels = 9; };
-texture2D r_cinfo  { Width = ISIZE; Height = ISIZE; Format = RG16F; MipLevels = 9; };
+texture2D r_buffer { Width = DSIZE.x; Height = DSIZE.y; Format = RG16; MipLevels = RSIZE; };
+texture2D r_cimage { Width = ISIZE; Height = ISIZE; Format = RGBA16; MipLevels = 9; };
+texture2D r_cframe { Width = ISIZE; Height = ISIZE; Format = RG16; MipLevels = 9; };
+texture2D r_cflow  { Width = ISIZE; Height = ISIZE; Format = RG16F; MipLevels = 9; };
 texture2D r_cddxy  { Width = ISIZE; Height = ISIZE; Format = RG16F; MipLevels = 9; };
 texture2D r_pinfo  { Width = ISIZE; Height = ISIZE; Format = RG16F; };
 
@@ -59,7 +59,7 @@ sampler2D s_color  { Texture = r_color; SRGBTexture = TRUE; };
 sampler2D s_buffer { Texture = r_buffer; };
 sampler2D s_cimage { Texture = r_cimage; };
 sampler2D s_cframe { Texture = r_cframe; };
-sampler2D s_cinfo  { Texture = r_cinfo; };
+sampler2D s_cflow  { Texture = r_cflow; };
 sampler2D s_cddxy  { Texture = r_cddxy; };
 sampler2D s_pinfo  { Texture = r_pinfo; };
 
@@ -83,16 +83,16 @@ void vs_convert(in uint id : SV_VERTEXID,
 
 void vs_filter(in uint id : SV_VERTEXID,
                inout float4 vpos : SV_POSITION,
-               inout float2 uv : TEXCOORD0,
-               inout float4 ofs[7] : TEXCOORD1)
+               inout float4 ofs[8] : TEXCOORD0)
 {
     const float2 uSize = rcp(ISIZE) * uRadius;
+    float2 uv;
     core::vsinit(id, uv, vpos);
 
-    for(int i = 0; i < 7; i++)
+    for(int i = 0; i < 8; i++)
     {
         ofs[i].xy = math::vogel(i, uv, uSize, uTaps);
-        ofs[i].zw = math::vogel(7 + i, uv, uSize, uTaps);
+        ofs[i].zw = math::vogel(8 + i, uv, uSize, uTaps);
     }
 }
 
@@ -120,11 +120,11 @@ void ps_convert(float4 vpos : SV_POSITION,
                 float2 uv : TEXCOORD0,
                 float4 ofs[7] : TEXCOORD1,
                 out float4 r0 : SV_TARGET0,
-                out float4 r1 : SV_TARGET1,
-                out float4 r2 : SV_TARGET2)
+                out float4 r1 : SV_TARGET1)
 {
+    const int cTaps = 14;
     float2 uImage;
-    float2 vofs[uTaps];
+    float2 vofs[cTaps];
 
     for (int i = 0; i < 7; i++)
     {
@@ -132,7 +132,7 @@ void ps_convert(float4 vpos : SV_POSITION,
         vofs[i + 7] = ofs[i].zw;
     }
 
-    for (int j = 0; j < uTaps; j++)
+    for (int j = 0; j < cTaps; j++)
     {
         float2 uColor = tex2D(s_buffer, vofs[j]).xy;
         uImage = lerp(uImage, uColor, rcp(float(j) + 1));
@@ -141,44 +141,38 @@ void ps_convert(float4 vpos : SV_POSITION,
     // r0 = copy previous flow
     // r1.xy = copy blurred frame from last run
     // r1.zw = blur current frame, than blur + copy at ps_filter
-    // r2 = get derivatives from previous frame
-    r0 = tex2D(s_cinfo, uv).xy;
+    r0 = tex2D(s_cflow, uv).xy;
     r1.xy = tex2D(s_cframe, uv).xy;
     r1.zw = uImage;
-    r2 = cv::decodenorm(r1.xy);
-    r2.x = dot(ddx(r2.rgb), 1.0);
-    r2.y = dot(ddy(r2.rgb), 1.0);
 }
 
 void ps_filter(float4 vpos : SV_POSITION,
-               float2 uv : TEXCOORD0,
-               float4 ofs[7] : TEXCOORD1,
+               float4 ofs[8] : TEXCOORD0,
                out float4 r0 : SV_TARGET0,
                out float4 r1 : SV_TARGET1)
 {
+    const int cTaps = 16;
     const float uArea = math::pi() * (uRadius * uRadius) / uTaps;
     const float uBias = log2(sqrt(uArea)) + 1.0;
 
     float2 uImage;
-    float2 vofs[uTaps];
+    float2 vofs[cTaps];
 
-    for (int i = 0; i < 7; i++)
+    for (int i = 0; i < 8; i++)
     {
         vofs[i] = ofs[i].xy;
-        vofs[i + 7] = ofs[i].zw;
+        vofs[i + 8] = ofs[i].zw;
     }
 
-    for (int j = 0; j < uTaps; j++)
+    for (int j = 0; j < cTaps; j++)
     {
         float2 uColor = tex2Dlod(s_cimage, float4(vofs[j], 0.0, uBias)).zw;
         uImage = lerp(uImage, uColor, rcp(float(j) + 1));
     }
 
     r0 = uImage;
-    float3 oImage = cv::decodenorm(r0.xy);
-    r1 = tex2D(s_cddxy, uv).xy;
-    r1.x += dot(ddx(oImage), 1.0);
-    r1.y += dot(ddy(oImage), 1.0);
+    float3 oImage = cv::decodenorm(uImage);
+    r1 = float2(dot(ddx(oImage), 1.0), dot(ddy(oImage), 1.0));
 }
 
 /*
@@ -198,10 +192,10 @@ float4 ps_flow(float4 vpos : SV_POSITION,
     for(int i = 8; i >= 0; i--)
     {
         float4 ucalc = float4(uv, 0.0, i);
-        float4 cFrameBuffer = tex2Dlod(s_cframe, ucalc);
-        float4 pFrameBuffer = tex2Dlod(s_cimage, ucalc);
-        float3 cFrame = cv::decodenorm(cFrameBuffer.xy);
-        float3 pFrame = cv::decodenorm(pFrameBuffer.xy);
+        float2 cFrameBuffer = tex2Dlod(s_cframe, ucalc).xy;
+        float2 pFrameBuffer = tex2Dlod(s_cimage, ucalc).xy;
+        float3 cFrame = cv::decodenorm(cFrameBuffer);
+        float3 pFrame = cv::decodenorm(pFrameBuffer);
 
         float2 ddxy = tex2Dlod(s_cddxy, ucalc).xy;
         float dt = dot(cFrame - pFrame, 1.0);
@@ -221,7 +215,7 @@ float4 ps_output(float4 vpos : SV_POSITION,
     float4 oBlur;
     float noise = core::noise(vpos.xy) * 2.0;
     const float samples = 1.0 / (16.0 - 1.0);
-    float2 oFlow = tex2Dlod(s_cinfo, float4(uv, 0.0, uDetail)).xy;
+    float2 oFlow = tex2Dlod(s_cflow, float4(uv, 0.0, uDetail)).xy;
     oFlow = oFlow * rcp(ISIZE) * core::getaspectratio();
     oFlow *= uScale;
 
@@ -250,12 +244,11 @@ technique cMotionBlur
         PixelShader = ps_convert;
         RenderTarget0 = r_pinfo;
         RenderTarget1 = r_cimage;
-        RenderTarget2 = r_cinfo;
     }
 
     pass cBlurCopyFrame
     {
-        VertexShader = vs_convert;
+        VertexShader = vs_filter;
         PixelShader = ps_filter;
         RenderTarget0 = r_cframe;
         RenderTarget1 = r_cddxy;
@@ -265,7 +258,7 @@ technique cMotionBlur
     {
         VertexShader = vs_generic;
         PixelShader = ps_flow;
-        RenderTarget0 = r_cinfo;
+        RenderTarget0 = r_cflow;
     }
 
     pass cFlowBlur
