@@ -155,8 +155,15 @@ void ps_filter(float4 vpos : SV_POSITION,
     }
 
     r0 = uImage;
-    float3 oImage = cv::decodenorm(uImage);
-    r1 = float2(dot(ddx(oImage), 1.0), dot(ddy(oImage), 1.0));
+    float3 cImage = cv::decodenorm(uImage);
+    float3 pImage = cv::decodenorm(tex2D(s_cimage, uv).xy);
+    float2 cGrad;
+    float2 pGrad;
+    cGrad.x = dot(ddx(cImage), 1.0);
+    cGrad.y = dot(ddy(cImage), 1.0);
+    pGrad.x = dot(ddx(pImage), 1.0);
+    pGrad.y = dot(ddy(pImage), 1.0);
+    r1 = cGrad + pGrad;
 }
 
 /*
@@ -222,7 +229,7 @@ float4 ps_previous( float4 vpos : SV_POSITION,
 
 technique cInterpolate
 {
-    pass cBlur
+    pass cNormalize
     {
         VertexShader = vs_generic;
         PixelShader = ps_source;

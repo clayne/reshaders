@@ -58,11 +58,17 @@ void ps_filter(float4 vpos : SV_POSITION,
                out float4 r0 : SV_TARGET0,
                out float4 r1 : SV_TARGET1)
 {
-    r0 = tex2D(s_pbuffer, uv.xy).zw;
-    float3 oImage = cv::decodenorm(r0.xy);
-    r1 = 0.0;
-    r1.x += dot(ddx(oImage), 1.0);
-    r1.y += dot(ddy(oImage), 1.0);
+    float4 uImage = tex2D(s_pbuffer, uv);
+    r0 = uImage.zw;
+    float3 cImage = cv::decodenorm(r0.xy);
+    float3 pImage = cv::decodenorm(uImage.xy);
+    float2 cGrad;
+    float2 pGrad;
+    cGrad.x = dot(ddx(cImage), 1.0);
+    cGrad.y = dot(ddy(cImage), 1.0);
+    pGrad.x = dot(ddx(pImage), 1.0);
+    pGrad.y = dot(ddy(pImage), 1.0);
+    r1 = cGrad + pGrad;
 }
 
 /*
@@ -99,14 +105,14 @@ float4 ps_flow(float4 vpos : SV_POSITION,
 
 technique cOpticalFlow
 {
-    pass Normalize
+    pass cNormalize
     {
         VertexShader = vs_generic;
         PixelShader = ps_convert;
         RenderTarget0 = r_pbuffer;
     }
 
-    pass ProcessFrame
+    pass cProcessFrame
     {
         VertexShader = vs_generic;
         PixelShader = ps_filter;
@@ -114,7 +120,7 @@ technique cOpticalFlow
         RenderTarget1 = r_cuddxy;
     }
 
-    pass HSOpticalFlow
+    pass cOpticalFlow
     {
         VertexShader = vs_generic;
         PixelShader = ps_flow;

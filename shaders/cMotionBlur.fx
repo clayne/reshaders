@@ -53,7 +53,7 @@ texture2D r_cimage { Width = ISIZE; Height = ISIZE; Format = RGBA16; MipLevels =
 texture2D r_cframe { Width = ISIZE; Height = ISIZE; Format = RG16; MipLevels = 9; };
 texture2D r_cflow  { Width = ISIZE; Height = ISIZE; Format = RG16F; MipLevels = 9; };
 texture2D r_cddxy  { Width = ISIZE; Height = ISIZE; Format = RG16F; MipLevels = 9; };
-texture2D r_pinfo  { Width = ISIZE; Height = ISIZE; Format = RG16F; };
+texture2D r_pflow  { Width = ISIZE; Height = ISIZE; Format = RG16F; };
 
 sampler2D s_color  { Texture = r_color; SRGBTexture = TRUE; };
 sampler2D s_buffer { Texture = r_buffer; };
@@ -61,7 +61,7 @@ sampler2D s_cimage { Texture = r_cimage; };
 sampler2D s_cframe { Texture = r_cframe; };
 sampler2D s_cflow  { Texture = r_cflow; };
 sampler2D s_cddxy  { Texture = r_cddxy; };
-sampler2D s_pinfo  { Texture = r_pinfo; };
+sampler2D s_pflow  { Texture = r_pflow; };
 
 /* [ Vertex Shaders ] */
 
@@ -83,16 +83,16 @@ void vs_convert(in uint id : SV_VERTEXID,
 
 void vs_filter(in uint id : SV_VERTEXID,
                inout float4 vpos : SV_POSITION,
-               inout float4 ofs[8] : TEXCOORD0)
+               inout float2 uv : TEXCOORD0,
+               inout float4 ofs[7] : TEXCOORD1)
 {
     const float2 uSize = rcp(ISIZE) * uRadius;
-    float2 uv;
     core::vsinit(id, uv, vpos);
 
-    for(int i = 0; i < 8; i++)
+    for(int i = 0; i < 7; i++)
     {
         ofs[i].xy = math::vogel(i, uv, uSize, uTaps);
-        ofs[i].zw = math::vogel(8 + i, uv, uSize, uTaps);
+        ofs[i].zw = math::vogel(7 + i, uv, uSize, uTaps);
     }
 }
 
@@ -122,9 +122,8 @@ void ps_convert(float4 vpos : SV_POSITION,
                 out float4 r0 : SV_TARGET0,
                 out float4 r1 : SV_TARGET1)
 {
-    const int cTaps = 14;
     float2 uImage;
-    float2 vofs[cTaps];
+    float2 vofs[uTaps];
 
     for (int i = 0; i < 7; i++)
     {
@@ -132,7 +131,7 @@ void ps_convert(float4 vpos : SV_POSITION,
         vofs[i + 7] = ofs[i].zw;
     }
 
-    for (int j = 0; j < cTaps; j++)
+    for (int j = 0; j < uTaps; j++)
     {
         float2 uColor = tex2D(s_buffer, vofs[j]).xy;
         uImage = lerp(uImage, uColor, rcp(float(j) + 1));
@@ -147,32 +146,39 @@ void ps_convert(float4 vpos : SV_POSITION,
 }
 
 void ps_filter(float4 vpos : SV_POSITION,
-               float4 ofs[8] : TEXCOORD0,
+               float2 uv : TEXCOORD0,
+               float4 ofs[7] : TEXCOORD1,
                out float4 r0 : SV_TARGET0,
                out float4 r1 : SV_TARGET1)
 {
-    const int cTaps = 16;
     const float uArea = math::pi() * (uRadius * uRadius) / uTaps;
     const float uBias = log2(sqrt(uArea)) + 1.0;
 
     float2 uImage;
-    float2 vofs[cTaps];
+    float2 vofs[uTaps];
 
-    for (int i = 0; i < 8; i++)
+    for (int i = 0; i < 7; i++)
     {
         vofs[i] = ofs[i].xy;
-        vofs[i + 8] = ofs[i].zw;
+        vofs[i + 7] = ofs[i].zw;
     }
 
-    for (int j = 0; j < cTaps; j++)
+    for (int j = 0; j < uTaps; j++)
     {
         float2 uColor = tex2Dlod(s_cimage, float4(vofs[j], 0.0, uBias)).zw;
         uImage = lerp(uImage, uColor, rcp(float(j) + 1));
     }
 
     r0 = uImage;
-    float3 oImage = cv::decodenorm(uImage);
-    r1 = float2(dot(ddx(oImage), 1.0), dot(ddy(oImage), 1.0));
+    float3 cImage = cv::decodenorm(uImage);
+    float3 pImage = cv::decodenorm(tex2D(s_cimage, uv).xy);
+    float2 cGrad;
+    float2 pGrad;
+    cGrad.x = dot(ddx(cImage), 1.0);
+    cGrad.y = dot(ddy(cImage), 1.0);
+    pGrad.x = dot(ddx(pImage), 1.0);
+    pGrad.y = dot(ddy(pImage), 1.0);
+    r1 = cGrad + pGrad;
 }
 
 /*
@@ -205,7 +211,7 @@ float4 ps_flow(float4 vpos : SV_POSITION,
     }
 
     // Smooth optical flow
-    float2 pinfo = tex2D(s_pinfo, uv).xy;
+    float2 pinfo = tex2D(s_pflow, uv).xy;
     return lerp(cFlow, pinfo, uBlend).xyxy;
 }
 
@@ -231,7 +237,7 @@ float4 ps_output(float4 vpos : SV_POSITION,
 
 technique cMotionBlur
 {
-    pass cBlur
+    pass cNormalize
     {
         VertexShader = vs_generic;
         PixelShader = ps_source;
@@ -242,7 +248,7 @@ technique cMotionBlur
     {
         VertexShader = vs_convert;
         PixelShader = ps_convert;
-        RenderTarget0 = r_pinfo;
+        RenderTarget0 = r_pflow;
         RenderTarget1 = r_cimage;
     }
 
