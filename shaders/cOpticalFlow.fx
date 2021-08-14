@@ -33,14 +33,6 @@ sampler2D s_cuddxy  { Texture = r_cuddxy; };
 
 /* [ Pixel Shaders ] */
 
-float4 ps_source(float4 vpos : SV_POSITION,
-                 float2 uv : TEXCOORD0) : SV_Target
-{
-    float3 uImage = tex2D(s_color, uv.xy).rgb;
-    float2 output = cv::encodenorm(normalize(uImage));
-    return output.xyxy;
-}
-
 void ps_convert(float4 vpos : SV_POSITION,
                 float2 uv : TEXCOORD0,
                 out float4 r0 : SV_TARGET0)
