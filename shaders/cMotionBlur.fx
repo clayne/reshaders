@@ -18,7 +18,7 @@
 uOption(uConst, float, "slider", "Basic", "Constraint", 0.250, 0.000, 1.000,
 "Regularization: Higher = Smoother flow");
 
-uOption(uScale, float, "slider", "Basic", "Scale", 2.000, 0.000, 4.000,
+uOption(uScale, float, "slider", "Basic", "Scale", 1.500, 0.000, 2.000,
 "Scale: Higher = More motion blur");
 
 uOption(uRadius, float, "slider", "Basic", "Prefilter", 8.000, 0.000, 16.00,
@@ -48,9 +48,9 @@ uOption(uFalloff, float, "slider", "Vignette", "Sharpness", 1.000, 0.000, 8.000,
 static const int uTaps = 14;
 
 texture2D r_color  : COLOR;
-texture2D r_buffer { Width = DSIZE.x; Height = DSIZE.y; MipLevels = RSIZE; Format = RG8; };
-texture2D r_cimage { Width = ISIZE; Height = ISIZE; Format = RGBA16; MipLevels = 9; };
-texture2D r_cframe { Width = ISIZE; Height = ISIZE; Format = RG16; MipLevels = 9; };
+texture2D r_buffer { Width = DSIZE.x; Height = DSIZE.y; MipLevels = RSIZE; Format = RG16; };
+texture2D r_cimage { Width = ISIZE; Height = ISIZE; Format = RGBA16;  MipLevels = 9; };
+texture2D r_cframe { Width = ISIZE; Height = ISIZE; Format = RG16;  MipLevels = 9; };
 texture2D r_cinfo  { Width = ISIZE; Height = ISIZE; Format = RG16F; MipLevels = 9; };
 texture2D r_cddxy  { Width = ISIZE; Height = ISIZE; Format = RG16F; MipLevels = 9; };
 texture2D r_pinfo  { Width = ISIZE; Height = ISIZE; Format = RG16F; };
@@ -145,8 +145,9 @@ void ps_convert(float4 vpos : SV_POSITION,
     r0 = tex2D(s_cinfo, uv).xy;
     r1.xy = tex2D(s_cframe, uv).xy;
     r1.zw = uImage;
-    float3 rEnc = cv::decodenorm(r1.xy);
-    r2 = float2(dot(ddx(rEnc), 1.0), dot(ddy(rEnc), 1.0));
+    r2 = cv::decodenorm(r1.xy);
+    r2.x = dot(ddx(r2.rgb), 1.0);
+    r2.y = dot(ddy(r2.rgb), 1.0);
 }
 
 void ps_filter(float4 vpos : SV_POSITION,
@@ -156,7 +157,7 @@ void ps_filter(float4 vpos : SV_POSITION,
                out float4 r1 : SV_TARGET1)
 {
     const float uArea = math::pi() * (uRadius * uRadius) / uTaps;
-    const float uBias = log2(sqrt(uArea));
+    const float uBias = log2(sqrt(uArea)) + 1.0;
 
     float2 uImage;
     float2 vofs[uTaps];
@@ -174,9 +175,10 @@ void ps_filter(float4 vpos : SV_POSITION,
     }
 
     r0 = uImage;
-    float3 oImage = cv::decodenorm(uImage);
-    r1  = tex2D(s_cinfo, uv).xy;
-    r1 += float2(dot(ddx(oImage), 1.0), dot(ddy(oImage), 1.0));
+    float3 oImage = cv::decodenorm(r0.xy);
+    r1 = tex2D(s_cddxy, uv).xy;
+    r1.x += dot(ddx(oImage), 1.0);
+    r1.y += dot(ddy(oImage), 1.0);
 }
 
 /*
@@ -196,10 +198,10 @@ float4 ps_flow(float4 vpos : SV_POSITION,
     for(int i = 8; i >= 0; i--)
     {
         float4 ucalc = float4(uv, 0.0, i);
-        float2 cFrameBuffer = tex2Dlod(s_cframe, ucalc).xy;
-        float2 pFrameBuffer = tex2Dlod(s_cimage, ucalc).xy;
-        float3 cFrame = cv::decodenorm(cFrameBuffer);
-        float3 pFrame = cv::decodenorm(pFrameBuffer);
+        float4 cFrameBuffer = tex2Dlod(s_cframe, ucalc);
+        float4 pFrameBuffer = tex2Dlod(s_cimage, ucalc);
+        float3 cFrame = cv::decodenorm(cFrameBuffer.xy);
+        float3 pFrame = cv::decodenorm(pFrameBuffer.xy);
 
         float2 ddxy = tex2Dlod(s_cddxy, ucalc).xy;
         float dt = dot(cFrame - pFrame, 1.0);

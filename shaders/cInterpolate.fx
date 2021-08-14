@@ -42,7 +42,7 @@ uOption(uDebug, bool, "radio", "Advanced", "Debug", false, 0, 0,
 static const int uTaps = 14;
 
 texture2D r_color  : COLOR;
-texture2D r_buffer { Width = DSIZE.x; Height = DSIZE.y; MipLevels = RSIZE; Format = RG8; };
+texture2D r_buffer { Width = DSIZE.x; Height = DSIZE.y; Format = RG16; MipLevels = RSIZE; };
 texture2D r_cimage { Width = ISIZE; Height = ISIZE; Format = RGBA16; MipLevels = 9; };
 texture2D r_cframe { Width = ISIZE; Height = ISIZE; Format = RG16; MipLevels = 9; };
 texture2D r_cinfo  { Width = ISIZE; Height = ISIZE; Format = RG16F; MipLevels = 9; };
