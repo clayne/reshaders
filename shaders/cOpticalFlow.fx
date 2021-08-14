@@ -30,16 +30,16 @@ uOption(uDetail, float, "slider", "Advanced", "Flow MipMap", 5.500, 0.000, 8.000
 texture2D r_color  : COLOR;
 texture2D r_pbuffer { Width = DSIZE.x; Height = DSIZE.y; Format = RGBA16; MipLevels = RSIZE; };
 texture2D r_cbuffer { Width = DSIZE.x; Height = DSIZE.y; Format = RG16; MipLevels = RSIZE; };
-texture2D r_cuinfo  { Width = DSIZE.x; Height = DSIZE.y; Format = RG16F; MipLevels = RSIZE; };
+texture2D r_cdata   { Width = DSIZE.x; Height = DSIZE.y; Format = RG16F; MipLevels = RSIZE; };
 texture2D r_cuddxy  { Width = DSIZE.x; Height = DSIZE.y; Format = RG16F; MipLevels = RSIZE; };
-texture2D r_pvinfo  { Width = DSIZE.x; Height = DSIZE.y; Format = RG16F; };
+texture2D r_pdata   { Width = DSIZE.x; Height = DSIZE.y; Format = RG16F; };
 
 sampler2D s_color   { Texture = r_color; SRGBTexture = TRUE; };
 sampler2D s_pbuffer { Texture = r_pbuffer; };
 sampler2D s_cbuffer { Texture = r_cbuffer; };
-sampler2D s_cuinfo  { Texture = r_cuinfo; };
+sampler2D s_cdata   { Texture = r_cdata; };
 sampler2D s_cuddxy  { Texture = r_cuddxy; };
-sampler2D s_pvinfo  { Texture = r_pvinfo; };
+sampler2D s_pdata   { Texture = r_pdata; };
 
 /* [ Pixel Shaders ] */
 
@@ -62,12 +62,12 @@ void ps_convert(float4 vpos : SV_POSITION,
     // r1.zw = blur current frame, than blur + copy at ps_filter
     // r2 = get derivatives from previous frame
     float3 uImage = tex2D(s_color, uv.xy).rgb;
-    float2 output = cv::encodenorm(normalize(uImage));
-    r0 = tex2D(s_cuinfo, uv).xy;
+    r0 = tex2D(s_cdata, uv).xy;
     r1.xy = tex2D(s_cbuffer, uv).xy;
-    r1.zw = output;
-    float3 rEnc = cv::decodenorm(r1.xy);
-    r2 = float2(dot(ddx(rEnc), 1.0), dot(ddy(rEnc), 1.0));
+    r1.zw = cv::encodenorm(normalize(uImage));
+    r2 = cv::decodenorm(r1.xy);
+    r2.x = dot(ddx(r2.rgb), 1.0);
+    r2.y = dot(ddy(r2.rgb), 1.0);
 }
 
 void ps_filter(float4 vpos : SV_POSITION,
@@ -77,8 +77,9 @@ void ps_filter(float4 vpos : SV_POSITION,
 {
     r0 = tex2D(s_pbuffer, uv.xy).zw;
     float3 oImage = cv::decodenorm(r0.xy);
-    r1  = tex2D(s_cuinfo, uv).xy;
-    r1 += float2(dot(ddx(oImage), 1.0), dot(ddy(oImage), 1.0));
+    r1 = tex2D(s_cdata, uv).xy;
+    r1.x += dot(ddx(oImage), 1.0);
+    r1.y += dot(ddy(oImage), 1.0);
 }
 
 /*
@@ -111,28 +112,28 @@ float4 ps_flow(float4 vpos : SV_POSITION,
     }
 
     // Smooth optical flow
-    float2 pinfo = tex2D(s_pvinfo, uv).xy;
+    float2 pinfo = tex2D(s_pdata, uv).xy;
     return lerp(cFlow, pinfo, uBlend).xyxy;
 }
 
 float4 ps_output(float4 vpos : SV_POSITION,
                  float2 uv : TEXCOORD0) : SV_Target
 {
-    return tex2Dlod(s_cuinfo, float4(uv, 0.0, uDetail));
+    return tex2Dlod(s_cdata, float4(uv, 0.0, uDetail));
 }
 
-technique cMotionBlur
+technique cOpticalFlow
 {
-    pass cCopyPrevious
+    pass Normalize
     {
         VertexShader = vs_generic;
         PixelShader = ps_convert;
-        RenderTarget0 = r_pvinfo;
+        RenderTarget0 = r_pdata;
         RenderTarget1 = r_pbuffer;
-        RenderTarget2 = r_cuinfo;
+        RenderTarget2 = r_cdata;
     }
 
-    pass cBlurCopyFrame
+    pass Blur_CopyFrame
     {
         VertexShader = vs_generic;
         PixelShader = ps_filter;
@@ -140,14 +141,14 @@ technique cMotionBlur
         RenderTarget1 = r_cuddxy;
     }
 
-    pass cOpticalFlow
+    pass HSOpticalFlow
     {
         VertexShader = vs_generic;
         PixelShader = ps_flow;
-        RenderTarget0 = r_cuinfo;
+        RenderTarget0 = r_cdata;
     }
 
-    pass cFlowBlur
+    pass FlowBlend
     {
         VertexShader = vs_generic;
         PixelShader = ps_output;
