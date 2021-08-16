@@ -96,7 +96,7 @@ float4 ps_source(float4 vpos : SV_POSITION,
                  float2 uv : TEXCOORD0) : SV_Target
 {
     float3 uImage = tex2D(s_color, uv.xy).rgb;
-    return cv::encodenorm(normalize(uImage)).xyxy;
+    return normalize(uImage).xyxy;
 }
 
 void ps_convert(float4 vpos : SV_POSITION,

@@ -100,7 +100,7 @@ float4 ps_source(float4 vpos : SV_POSITION,
                  float2 uv : TEXCOORD0) : SV_Target
 {
     float3 uImage = tex2D(s_color, uv.xy).rgb;
-    float2 output = cv::encodenorm(normalize(uImage));
+    float2 output = normalize(uImage).xy;
 
     // Vignette output if called
     float2 coord = (uv - 0.5) * core::getaspectratio() * 2.0;
