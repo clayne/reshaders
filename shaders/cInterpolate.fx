@@ -44,10 +44,9 @@ static const int uTaps = 14;
 texture2D r_color  : COLOR;
 texture2D r_buffer { Width = DSIZE.x; Height = DSIZE.y; Format = RG16; MipLevels = RSIZE; };
 texture2D r_cimage { Width = ISIZE; Height = ISIZE; Format = RGBA16; MipLevels = 9; };
-texture2D r_cframe { Width = ISIZE; Height = ISIZE; Format = RG16; MipLevels = 9; };
+texture2D r_cframe { Width = ISIZE; Height = ISIZE; Format = RG16; };
 texture2D r_cflow  { Width = ISIZE; Height = ISIZE; Format = RG16F; MipLevels = 9; };
-texture2D r_cddxy  { Width = ISIZE; Height = ISIZE; Format = RG16F; MipLevels = 9; };
-texture2D r_pflow  { Width = ISIZE; Height = ISIZE; Format = RG16F; };
+texture2D r_cddxy  { Width = ISIZE; Height = ISIZE; Format = RGBA16F; MipLevels = 9; };
 texture2D r_pcolor { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; };
 
 sampler2D s_color  { Texture = r_color; SRGBTexture = TRUE; };
@@ -56,7 +55,6 @@ sampler2D s_cimage { Texture = r_cimage; };
 sampler2D s_cframe { Texture = r_cframe; };
 sampler2D s_cflow  { Texture = r_cflow; };
 sampler2D s_cddxy  { Texture = r_cddxy; };
-sampler2D s_pflow  { Texture = r_pflow; };
 sampler2D s_pcolor { Texture = r_pcolor; SRGBTexture = TRUE; };
 
 /* [ Vertex Shaders ] */
@@ -104,8 +102,7 @@ float4 ps_source(float4 vpos : SV_POSITION,
 void ps_convert(float4 vpos : SV_POSITION,
                 float2 uv : TEXCOORD0,
                 float4 ofs[7] : TEXCOORD1,
-                out float4 r0 : SV_TARGET0,
-                out float4 r1 : SV_TARGET1)
+                out float4 r0 : SV_TARGET0)
 {
     float2 uImage;
     float2 vofs[uTaps];
@@ -122,12 +119,10 @@ void ps_convert(float4 vpos : SV_POSITION,
         uImage = lerp(uImage, uColor, rcp(float(j) + 1));
     }
 
-    // r0 = copy previous flow
-    // r1.xy = copy blurred frame from last run
-    // r1.zw = blur current frame, than blur + copy at ps_filter
-    r0 = tex2D(s_cflow, uv).xy;
-    r1.xy = tex2D(s_cframe, uv).xy;
-    r1.zw = uImage;
+    // r0.xy = copy blurred frame from last run
+    // r0.zw = blur current frame, than blur + copy at ps_filter
+    r0.xy = tex2D(s_cframe, uv).xy;
+    r0.zw = uImage;
 }
 
 void ps_filter(float4 vpos : SV_POSITION,
@@ -136,6 +131,7 @@ void ps_filter(float4 vpos : SV_POSITION,
                out float4 r0 : SV_TARGET0,
                out float4 r1 : SV_TARGET1)
 {
+    const float uRegularize = max(4.0 * pow(uConst * 1e-3, 2.0), 1e-10);
     const float uArea = math::pi() * (uRadius * uRadius) / uTaps;
     const float uBias = log2(sqrt(uArea)) + 1.0;
 
@@ -163,41 +159,24 @@ void ps_filter(float4 vpos : SV_POSITION,
     cGrad.y = dot(ddy(cImage), 1.0);
     pGrad.x = dot(ddx(pImage), 1.0);
     pGrad.y = dot(ddy(pImage), 1.0);
-    r1 = cGrad + pGrad;
+    r1.xy = cGrad + pGrad;
+    r1.z = dot(cImage - pImage, 1.0);
+    r1.w = rcp(dot(r1.xy, r1.xy) + uRegularize);
 }
-
-/*
-    https://www.cs.auckland.ac.nz/~rklette/CCV-CIMAT/pdfs/B08-HornSchunck.pdf
-    - Use a regular image pyramid for input frames I(., .,t)
-    - Processing starts at a selected level (of lower resolution)
-    - Obtained results are used for initializing optic flow values at a
-      lower level (of higher resolution)
-    - Repeat until full resolution level of original frames is reached
-*/
 
 float4 ps_flow(float4 vpos : SV_POSITION,
                float2 uv : TEXCOORD0) : SV_Target
 {
-    const float uRegularize = max(4.0 * pow(uConst * 1e-3, 2.0), 1e-10);
     float2 cFlow = 0.0;
     for(int i = 8; i >= 0; i--)
     {
         float4 ucalc = float4(uv, 0.0, i);
-        float2 cFrameBuffer = tex2Dlod(s_cframe, ucalc).xy;
-        float2 pFrameBuffer = tex2Dlod(s_cimage, ucalc).xy;
-        float3 cFrame = cv::decodenorm(cFrameBuffer);
-        float3 pFrame = cv::decodenorm(pFrameBuffer);
-
-        float2 ddxy = tex2Dlod(s_cddxy, ucalc).xy;
-        float dt = dot(cFrame - pFrame, 1.0);
-        float dCalc = dot(ddxy.xy, cFlow) + dt;
-        float dSmooth = rcp(dot(ddxy.xy, ddxy.xy) + uRegularize);
-        cFlow = cFlow - ((ddxy.xy * dCalc) * dSmooth);
+        float4 ddxy = tex2Dlod(s_cddxy, ucalc);
+        float dCalc = dot(ddxy.xy, cFlow) + ddxy.z;
+        cFlow = cFlow - ((ddxy.xy * dCalc) * ddxy.ww);
     }
 
-    // Smooth optical flow
-    float2 pinfo = tex2D(s_pflow, uv).xy;
-    return lerp(cFlow, pinfo, uBlend).xyxy;
+    return float4(cFlow.xy, 0.0, uBlend);
 }
 
 // Median masking inspired by vs-mvtools
@@ -240,8 +219,7 @@ technique cInterpolate
     {
         VertexShader = vs_convert;
         PixelShader = ps_convert;
-        RenderTarget0 = r_pflow;
-        RenderTarget1 = r_cimage;
+        RenderTarget0 = r_cimage;
     }
 
     pass cBlurCopyFrame
@@ -254,9 +232,14 @@ technique cInterpolate
 
     pass cOpticalFlow
     {
+        // Smooth optical flow with BlendOps
         VertexShader = vs_generic;
         PixelShader = ps_flow;
         RenderTarget0 = r_cflow;
+        BlendEnable = TRUE;
+        BlendOp = ADD;
+        SrcBlend = INVSRCALPHA;
+        DestBlend = SRCALPHA;
     }
 
     pass cInterpolate
