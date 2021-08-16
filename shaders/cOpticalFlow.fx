@@ -52,14 +52,12 @@ void ps_filter(float4 vpos : SV_POSITION,
 {
     float4 uImage = tex2D(s_pbuffer, uv);
     r0 = uImage.zw;
-    float3 cImage = cv::decodenorm(r0.xy);
-    float3 pImage = cv::decodenorm(uImage.xy);
     float2 cGrad;
     float2 pGrad;
-    cGrad.x = dot(ddx(cImage), 1.0);
-    cGrad.y = dot(ddy(cImage), 1.0);
-    pGrad.x = dot(ddx(pImage), 1.0);
-    pGrad.y = dot(ddy(pImage), 1.0);
+    cGrad.x = dot(ddx(uImage.zw), 1.0);
+    cGrad.y = dot(ddy(uImage.zw), 1.0);
+    pGrad.x = dot(ddx(uImage.xy), 1.0);
+    pGrad.y = dot(ddy(uImage.xy), 1.0);
     r1 = cGrad + pGrad;
 }
 
@@ -80,10 +78,8 @@ float4 ps_flow(float4 vpos : SV_POSITION,
     for(int i = 8; i >= 0; i--)
     {
         float4 ucalc = float4(uv, 0.0, i);
-        float2 cFrameBuffer = tex2Dlod(s_cbuffer, ucalc).xy;
-        float2 pFrameBuffer = tex2Dlod(s_pbuffer, ucalc).xy;
-        float3 cFrame = cv::decodenorm(cFrameBuffer);
-        float3 pFrame = cv::decodenorm(pFrameBuffer);
+        float2 cFrame = tex2Dlod(s_cbuffer, ucalc).xy;
+        float2 pFrame = tex2Dlod(s_pbuffer, ucalc).xy;
 
         float2 ddxy = tex2Dlod(s_cuddxy, ucalc).xy;
         float dt = dot(cFrame - pFrame, 1.0);

@@ -15,10 +15,10 @@
         ui_type = utype; ui_min = umin; ui_max = umax; ui_tooltip = utooltip;   		\
         > = uvalue
 
-uOption(uConst, float, "slider", "Basic", "Constraint", 0.250, 0.000, 1.000,
+uOption(uConst, float, "slider", "Basic", "Constraint", 0.000, 0.000, 1.000,
 "Regularization: Higher = Smoother flow");
 
-uOption(uScale, float, "slider", "Basic", "Scale", 1.500, 0.000, 2.000,
+uOption(uScale, float, "slider", "Basic", "Scale", 2.000, 0.000, 4.000,
 "Scale: Higher = More motion blur");
 
 uOption(uRadius, float, "slider", "Basic", "Prefilter", 8.000, 0.000, 16.00,
@@ -33,10 +33,10 @@ uOption(uDetail, float, "slider", "Advanced", "Flow MipMap", 5.500, 0.000, 8.000
 uOption(uDebug, bool, "radio", "Advanced", "Debug", false, 0, 0,
 "Show optical flow result");
 
-uOption(uVignette, bool,  "radio",  "Vignette", "Enable", false, 0, 0,
+uOption(uVignette, bool, "radio", "Vignette", "Enable", false, 0, 0,
 "Enable to change optical flow influence to or from center");
 
-uOption(uInvert, bool,  "radio",  "Vignette", "Invert", true, 0, 0,
+uOption(uInvert, bool, "radio", "Vignette", "Invert", true, 0, 0,
 "");
 
 uOption(uFalloff, float, "slider", "Vignette", "Sharpness", 1.000, 0.000, 8.000,
@@ -50,8 +50,8 @@ static const int uTaps = 14;
 texture2D r_color  : COLOR;
 texture2D r_buffer { Width = DSIZE.x; Height = DSIZE.y; Format = RG16; MipLevels = RSIZE; };
 texture2D r_cimage { Width = ISIZE; Height = ISIZE; Format = RGBA16; MipLevels = 9; };
-texture2D r_cframe { Width = ISIZE; Height = ISIZE; Format = RG16; };
-texture2D r_cddxy  { Width = ISIZE; Height = ISIZE; Format = RGBA16F; MipLevels = 9; };
+texture2D r_cframe { Width = ISIZE; Height = ISIZE; Format = RG16;  MipLevels = 9; };
+texture2D r_cddxy  { Width = ISIZE; Height = ISIZE; Format = RG16F; MipLevels = 9; };
 texture2D r_cflow  { Width = ISIZE; Height = ISIZE; Format = RG16F; MipLevels = 9; };
 
 sampler2D s_color  { Texture = r_color; SRGBTexture = TRUE; };
@@ -146,11 +146,10 @@ void ps_filter(float4 vpos : SV_POSITION,
                out float4 r0 : SV_TARGET0,
                out float4 r1 : SV_TARGET1)
 {
-    const float uRegularize = max(4.0 * pow(uConst * 1e-3, 2.0), 1e-10);
     const float uArea = math::pi() * (uRadius * uRadius) / uTaps;
     const float uBias = log2(sqrt(uArea)) + 1.0;
 
-    float2 uImage;
+    float2 cImage;
     float2 vofs[uTaps];
 
     for (int i = 0; i < 7; i++)
@@ -162,21 +161,18 @@ void ps_filter(float4 vpos : SV_POSITION,
     for (int j = 0; j < uTaps; j++)
     {
         float2 uColor = tex2Dlod(s_cimage, float4(vofs[j], 0.0, uBias)).zw;
-        uImage = lerp(uImage, uColor, rcp(float(j) + 1));
+        cImage = lerp(cImage, uColor, rcp(float(j) + 1));
     }
 
-    r0 = uImage;
-    float3 cImage = cv::decodenorm(uImage);
-    float3 pImage = cv::decodenorm(tex2D(s_cimage, uv).xy);
+    r0 = cImage;
+    float2 pImage = tex2D(s_cimage, uv).xy;
     float2 cGrad;
     float2 pGrad;
     cGrad.x = dot(ddx(cImage), 1.0);
     cGrad.y = dot(ddy(cImage), 1.0);
     pGrad.x = dot(ddx(pImage), 1.0);
     pGrad.y = dot(ddy(pImage), 1.0);
-    r1.xy = cGrad + pGrad;
-    r1.z = dot(cImage - pImage, 1.0);
-    r1.w = rcp(dot(r1.xy, r1.xy) + uRegularize);
+    r1 = cGrad + pGrad;
 }
 
 /*
@@ -191,13 +187,19 @@ void ps_filter(float4 vpos : SV_POSITION,
 float4 ps_flow(float4 vpos : SV_POSITION,
                float2 uv : TEXCOORD0) : SV_Target
 {
+    const float uRegularize = max(4.0 * pow(uConst * 1e-3, 2.0), 1e-10);
     float2 cFlow = 0.0;
     for(int i = 8; i >= 0; i--)
     {
         float4 ucalc = float4(uv, 0.0, i);
-        float4 ddxy = tex2Dlod(s_cddxy, ucalc);
-        float dCalc = dot(ddxy.xy, cFlow) + ddxy.z;
-        cFlow = cFlow - ((ddxy.xy * dCalc) * ddxy.ww);
+        float2 cFrame = tex2Dlod(s_cframe, ucalc).xy;
+        float2 pFrame = tex2Dlod(s_cimage, ucalc).xy;
+        float2 ddxy = tex2Dlod(s_cddxy, ucalc).xy;
+
+        float dt = dot(cFrame - pFrame, 1.0);
+        float dCalc = dot(ddxy.xy, cFlow) + dt;
+        float dSmooth = rcp(dot(ddxy.xy, ddxy.xy) + uRegularize);
+        cFlow = cFlow - ((ddxy.xy * dCalc) * dSmooth);
     }
 
     return float4(cFlow.xy, 0.0, uBlend);
@@ -248,9 +250,19 @@ technique cMotionBlur
         RenderTarget1 = r_cddxy;
     }
 
+    /*
+        Smooth optical flow with BlendOps
+        How it works:
+            Src = Current optical flow
+            Dest = Previous optical flow
+            SRCALPHA = Blending weight between Src and Dest
+            If SRCALPHA = 0.25, the blending would be
+            Src * (1.0 - 0.25) + Dest * 0.25
+            The previous flow's output gets quartered every frame
+    */
+
     pass cOpticalFlow
     {
-        // Smooth optical flow with BlendOps
         VertexShader = vs_generic;
         PixelShader = ps_flow;
         RenderTarget0 = r_cflow;
