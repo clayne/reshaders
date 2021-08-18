@@ -22,11 +22,17 @@ sampler2D s_pimage { Texture = r_pimage; SRGBTexture = TRUE; };
 
 float4 ps_blend(float4 vpos : SV_POSITION, float2 uv: TEXCOORD0) : SV_TARGET
 {
-    return float4(tex2D(s_color, uv).rgb, uBlend);
+    float4 cframe = tex2D(s_color, uv);
+    float4 pframe = tex2D(s_pimage, uv);
+    return lerp(cframe, pframe, uBlend);
 }
 
 // Save the results generated from ps_blend() into a texture to use later
 
+float4 ps_pimage(float4 vpos : SV_POSITION, float2 uv: TEXCOORD0) : SV_TARGET
+{
+    return tex2D(s_color, uv);
+}
 
 technique cBlending
 {
@@ -34,10 +40,14 @@ technique cBlending
     {
         VertexShader = vs_generic;
         PixelShader = ps_blend;
-        BlendEnable = TRUE;
-        BlendOp = ADD;
-        SrcBlend = INVSRCALPHA;
-        DestBlend = SRCALPHA;
+        SRGBWriteEnable = TRUE;
+    }
+
+    pass
+    {
+        VertexShader = vs_generic;
+        PixelShader = ps_pimage;
+        RenderTarget = r_pimage;
         SRGBWriteEnable = TRUE;
     }
 }
