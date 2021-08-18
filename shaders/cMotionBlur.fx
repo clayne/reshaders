@@ -27,7 +27,7 @@ uOption(uRadius, float, "slider", "Basic", "Prefilter", 8.000, 0.000, 16.00,
 uOption(uBlend, float, "slider", "Advanced", "Flow Blend", 0.250, 0.000, 0.500,
 "Temporal Smoothing: Higher = Less temporal noise");
 
-uOption(uDetail, float, "slider", "Advanced", "Flow MipMap", 5.500, 0.000, 8.000,
+uOption(uDetail, float, "slider", "Advanced", "Flow MipMap", 4.500, 0.000, 7.000,
 "Postprocess Blur: Higher = Less spatial noise");
 
 uOption(uDebug, bool, "radio", "Advanced", "Debug", false, 0, 0,
@@ -52,7 +52,7 @@ texture2D r_buffer { Width = DSIZE.x; Height = DSIZE.y; Format = RG16; MipLevels
 texture2D r_cimage { Width = ISIZE; Height = ISIZE; Format = RGBA16; MipLevels = 9; };
 texture2D r_cframe { Width = ISIZE; Height = ISIZE; Format = RG16;  MipLevels = 9; };
 texture2D r_cddxy  { Width = ISIZE; Height = ISIZE; Format = RG16F; MipLevels = 9; };
-texture2D r_cflow  { Width = ISIZE; Height = ISIZE; Format = RG16F; MipLevels = 9; };
+texture2D r_cflow  { Width = ISIZE / 2; Height = ISIZE / 2; Format = RG16F; MipLevels = 8; };
 
 sampler2D s_color  { Texture = r_color; SRGBTexture = TRUE; };
 sampler2D s_buffer { Texture = r_buffer; };
