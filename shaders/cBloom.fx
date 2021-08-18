@@ -154,7 +154,7 @@ float4 ps_downsample0(v2fd input): SV_TARGET
 
     // Combine and apply the brightness response curve
     s *= max(rq, s.a - uThreshold) / max(s.a, 1e-4);
-    s = saturate(lerp(s.a, s, uSaturation));
+    s = saturate(lerp(s.a, s, uSaturation) * uIntensity);
     return s;
 }
 
@@ -175,7 +175,7 @@ float4 ps_upsample3(v2fu input) : SV_Target { return upsample2Dps(s_bloom3, inpu
 float4 ps_upsample2(v2fu input) : SV_Target { return upsample2Dps(s_bloom2, input); }
 float4 ps_upsample1(v2fu input) : SV_Target
 {
-    float4 o = upsample2Dps(s_bloom1, input) * uIntensity;
+    float4 o = upsample2Dps(s_bloom1, input);
     o = saturate(o * mad(2.51, o, 0.03) / mad(o, mad(2.43, o, 0.59), 0.14));
     const float bit = 1.0 / 255;
     return o + core::noise(input.vpos.xy) * bit;
