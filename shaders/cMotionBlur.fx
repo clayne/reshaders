@@ -259,6 +259,9 @@ technique cMotionBlur
             If SRCALPHA = 0.25, the blending would be
             Src * (1.0 - 0.25) + Dest * 0.25
             The previous flow's output gets quartered every frame
+        Note:
+            Disable ClearRenderTargets to blend with existing
+            data in r_cflow before rendering
     */
 
     pass cOpticalFlow
@@ -266,6 +269,7 @@ technique cMotionBlur
         VertexShader = vs_generic;
         PixelShader = ps_flow;
         RenderTarget0 = r_cflow;
+        ClearRenderTargets = FALSE;
         BlendEnable = TRUE;
         BlendOp = ADD;
         SrcBlend = INVSRCALPHA;
