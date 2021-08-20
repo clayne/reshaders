@@ -18,7 +18,7 @@
         ui_type = utype; ui_min = umin; ui_max = umax; ui_tooltip = utooltip;   		\
         > = uvalue
 
-uOption(uConst, float, "slider", "Basic", "Constraint", 0.500, 0.000, 1.000,
+uOption(uConst, float, "slider", "Basic", "Constraint", 1.000, 0.000, 2.000,
 "Regularization: Higher = Smoother flow");
 
 uOption(uRadius, float, "slider", "Basic", "Prefilter", 8.000, 0.000, 16.00,
@@ -96,7 +96,8 @@ float4 ps_source(float4 vpos : SV_POSITION,
                  float2 uv : TEXCOORD0) : SV_Target
 {
     float3 uImage = tex2D(s_color, uv.xy).rgb;
-    return normalize(uImage).xyxy;
+    uImage /= dot(uImage.rgb , 1.0);
+    return uImage.xyxy;
 }
 
 void ps_convert(float4 vpos : SV_POSITION,
@@ -132,7 +133,7 @@ void ps_filter(float4 vpos : SV_POSITION,
                out float4 r1 : SV_TARGET1)
 {
     const float uArea = math::pi() * (uRadius * uRadius) / uTaps;
-    const float uBias = log2(sqrt(uArea)) + 1.0;
+    const float uBias = log2(sqrt(uArea));
 
     float2 cImage;
     float2 vofs[uTaps];
@@ -208,7 +209,7 @@ float4 ps_output(float4 vpos : SV_POSITION,
     float4 pMCB = tex2D(s_color, uv - pFlow * pSize);
     float4 pMCF = tex2D(s_pcolor, uv + pFlow * pSize);
     float4 pAvg = lerp(pRef, pSrc, uAverage);
-    return (uDebug) ? float4(pFlow, 1.0, 1.0) : Median3(pMCF, pMCB, pAvg);
+    return (uDebug) ? float4(pFlow, 1.0, 1.0) : float4(Median3(pMCF, pMCB, pAvg).rgb, 1e-3);
 }
 
 float4 ps_previous( float4 vpos : SV_POSITION,

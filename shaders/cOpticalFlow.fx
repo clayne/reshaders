@@ -9,6 +9,9 @@
 
 #include "cFunctions.fxh"
 
+#define DSIZE uint2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2)
+#define RSIZE LOG2(RMAX(DSIZE.x, DSIZE.y)) + 1
+
 #define uOption(option, udata, utype, ucategory, ulabel, uvalue, umin, umax, utooltip)  \
         uniform udata option <                                                  		\
         ui_category = ucategory; ui_label = ulabel;                             		\
@@ -18,18 +21,23 @@
 uOption(uConst, float, "slider", "Basic", "Constraint", 0.500, 0.000, 1.000,
 "Regularization: Higher = Smoother flow");
 
-#define DSIZE uint2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2)
-#define RSIZE LOG2(RMAX(DSIZE.x, DSIZE.y)) + 1
+uOption(uBlend, float, "slider", "Basic", "Flow Blend", 0.250, 0.000, 0.500,
+"Temporal Smoothing: Higher = Less temporal noise");
+
+uOption(uLod, float, "slider", "Basic", "Flow MipMap", 0.000, 0.000, RSIZE - 1,
+"Postprocess Blur: Higher = Less spatial noise");
 
 texture2D r_color  : COLOR;
 texture2D r_pbuffer { Width = DSIZE.x; Height = DSIZE.y; Format = RGBA16; MipLevels = RSIZE; };
 texture2D r_cbuffer { Width = DSIZE.x; Height = DSIZE.y; Format = RG16; MipLevels = RSIZE; };
 texture2D r_cuddxy  { Width = DSIZE.x; Height = DSIZE.y; Format = RG16F; MipLevels = RSIZE; };
+texture2D r_coflow  { Width = DSIZE.x / 2; Height = DSIZE.y / 2; Format = RG16F; MipLevels = RSIZE - 1; };
 
 sampler2D s_color   { Texture = r_color; SRGBTexture = TRUE; };
 sampler2D s_pbuffer { Texture = r_pbuffer; };
 sampler2D s_cbuffer { Texture = r_cbuffer; };
 sampler2D s_cuddxy  { Texture = r_cuddxy; };
+sampler2D s_coflow  { Texture = r_coflow; };
 
 /* [ Pixel Shaders ] */
 
@@ -41,8 +49,9 @@ void ps_convert(float4 vpos : SV_POSITION,
     // r0.zw = blur current frame, than blur + copy at ps_filter
     // r1 = get derivatives from previous frame
     float3 uImage = tex2D(s_color, uv.xy).rgb;
+    //uImage /= dot(uImage, 1.0);
     r0.xy = tex2D(s_cbuffer, uv).xy;
-    r0.zw = normalize(uImage).xy;
+    r0.zw = fwidth(normalize(uImage).xy);
 }
 
 void ps_filter(float4 vpos : SV_POSITION,
@@ -88,7 +97,13 @@ float4 ps_flow(float4 vpos : SV_POSITION,
         cFlow = cFlow - ((ddxy.xy * dCalc) * dSmooth);
     }
 
-    return float4(cFlow.xy * 0.5 + 0.5, 1.0, 1.0);
+    return float4(cFlow.xy * 0.5 + 0.5, 0.0, uBlend);
+}
+
+float4 ps_output(float4 vpos : SV_POSITION,
+                 float2 uv : TEXCOORD0) : SV_Target
+{
+	return tex2Dlod(s_coflow, float4(uv, 0.0, uLod));
 }
 
 technique cOpticalFlow
@@ -112,5 +127,17 @@ technique cOpticalFlow
     {
         VertexShader = vs_generic;
         PixelShader = ps_flow;
+        RenderTarget0 = r_coflow;
+        ClearRenderTargets = FALSE;
+        BlendEnable = TRUE;
+        BlendOp = ADD;
+        SrcBlend = INVSRCALPHA;
+        DestBlend = SRCALPHA;
+    }
+    
+    pass cOutput
+    {
+        VertexShader = vs_generic;
+        PixelShader = ps_output;
     }
 }

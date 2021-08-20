@@ -15,7 +15,7 @@
         ui_type = utype; ui_min = umin; ui_max = umax; ui_tooltip = utooltip;   		\
         > = uvalue
 
-uOption(uConst, float, "slider", "Basic", "Constraint", 0.500, 0.000, 1.000,
+uOption(uConst, float, "slider", "Basic", "Constraint", 1.000, 0.000, 2.000,
 "Regularization: Higher = Smoother flow");
 
 uOption(uScale, float, "slider", "Basic", "Scale", 2.000, 0.000, 4.000,
@@ -30,9 +30,6 @@ uOption(uBlend, float, "slider", "Advanced", "Flow Blend", 0.250, 0.000, 0.500,
 uOption(uDetail, float, "slider", "Advanced", "Flow MipMap", 4.500, 0.000, 7.000,
 "Postprocess Blur: Higher = Less spatial noise");
 
-uOption(uDebug, bool, "radio", "Advanced", "Debug", false, 0, 0,
-"Show optical flow result");
-
 uOption(uVignette, bool, "radio", "Vignette", "Enable", false, 0, 0,
 "Enable to change optical flow influence to or from center");
 
@@ -41,6 +38,12 @@ uOption(uInvert, bool, "radio", "Vignette", "Invert", true, 0, 0,
 
 uOption(uFalloff, float, "slider", "Vignette", "Sharpness", 1.000, 0.000, 8.000,
 "Vignette Strength");
+
+uOption(uDebug, bool, "radio", "Advanced", "Debug", false, 0, 0,
+"Show optical flow result");
+
+uOption(uQuintic, bool, "radio", "Advanced", "Quintic Pyramid", false, 0, 0,
+"Apply quintic curve to optical flow pyramid");
 
 #define DSIZE uint2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2)
 #define RSIZE LOG2(RMAX(DSIZE.x, DSIZE.y)) + 1
@@ -54,12 +57,12 @@ texture2D r_cframe { Width = ISIZE; Height = ISIZE; Format = RG16;  MipLevels = 
 texture2D r_cddxy  { Width = ISIZE; Height = ISIZE; Format = RG16F; MipLevels = 9; };
 texture2D r_cflow  { Width = ISIZE / 2; Height = ISIZE / 2; Format = RG16F; MipLevels = 8; };
 
-sampler2D s_color  { Texture = r_color; SRGBTexture = TRUE; };
-sampler2D s_buffer { Texture = r_buffer; };
-sampler2D s_cimage { Texture = r_cimage; };
-sampler2D s_cframe { Texture = r_cframe; };
-sampler2D s_cddxy  { Texture = r_cddxy; };
-sampler2D s_cflow  { Texture = r_cflow; };
+sampler2D s_color  { Texture = r_color;  AddressU = MIRROR; AddressV = MIRROR; SRGBTexture = TRUE; };
+sampler2D s_buffer { Texture = r_buffer; AddressU = MIRROR; AddressV = MIRROR; };
+sampler2D s_cimage { Texture = r_cimage; AddressU = MIRROR; AddressV = MIRROR; };
+sampler2D s_cframe { Texture = r_cframe; AddressU = MIRROR; AddressV = MIRROR; };
+sampler2D s_cddxy  { Texture = r_cddxy;  AddressU = MIRROR; AddressV = MIRROR; };
+sampler2D s_cflow  { Texture = r_cflow;  AddressU = MIRROR; AddressV = MIRROR; };
 
 /* [ Vertex Shaders ] */
 
@@ -100,7 +103,9 @@ float4 ps_source(float4 vpos : SV_POSITION,
                  float2 uv : TEXCOORD0) : SV_Target
 {
     float3 uImage = tex2D(s_color, uv.xy).rgb;
-    float2 output = normalize(uImage).xy;
+    float3 output = uImage.rgb / dot(uImage.rgb , 1.0);
+    float obright = max(max(output.r, output.g), output.b);
+    output = output.rg / obright;
 
     // Vignette output if called
     float2 coord = (uv - 0.5) * core::getaspectratio() * 2.0;
@@ -110,8 +115,8 @@ float4 ps_source(float4 vpos : SV_POSITION,
     float vigWeight = rcp(rf2_1 * rf2_1);
     vigWeight = (uInvert) ? 1.0 - vigWeight : vigWeight;
 
-    float2 outputvignette = output * vigWeight;
-    return (uVignette) ? float4(outputvignette, 0.0, 0.0) : float4(output, 0.0, 0.0);
+    float2 outputvignette = output.rg * vigWeight;
+    return (uVignette) ? float4(outputvignette, 0.0, 0.0) : float4(output.rg, 0.0, 0.0);
 }
 
 void ps_convert(float4 vpos : SV_POSITION,
@@ -147,7 +152,7 @@ void ps_filter(float4 vpos : SV_POSITION,
                out float4 r1 : SV_TARGET1)
 {
     const float uArea = math::pi() * (uRadius * uRadius) / uTaps;
-    const float uBias = log2(sqrt(uArea)) + 1.0;
+    const float uBias = log2(sqrt(uArea));
 
     float2 cImage;
     float2 vofs[uTaps];
@@ -182,7 +187,21 @@ void ps_filter(float4 vpos : SV_POSITION,
     - Obtained results are used for initializing optic flow values at a
       lower level (of higher resolution)
     - Repeat until full resolution level of original frames is reached
+
+    Quintic : https://www.iquilezles.org/www/articles/texture/texture.htm
 */
+
+float4 calcuv(float2 uv, float lod)
+{
+    float2 kResolution = tex2Dsize(s_cddxy, lod);
+    float2 kP = uv * kResolution + 0.5;
+    float2 kI = floor(kP);
+    float2 kF = kP - kI;
+    kF = kF * kF * kF * (kF * (kF * 6.0 - 15.0) + 10.0);
+    kP = kI + kF;
+    kP = (kP - 0.5) / kResolution;
+    return float4(kP, 0.0, lod);
+}
 
 float4 ps_flow(float4 vpos : SV_POSITION,
                float2 uv : TEXCOORD0) : SV_Target
@@ -191,7 +210,7 @@ float4 ps_flow(float4 vpos : SV_POSITION,
     float2 cFlow = 0.0;
     for(int i = 8; i >= 0; i--)
     {
-        float4 ucalc = float4(uv, 0.0, i);
+        float4 ucalc = (uQuintic) ? calcuv(uv, i) : float4(uv, 0.0, i);
         float2 cFrame = tex2Dlod(s_cframe, ucalc).xy;
         float2 pFrame = tex2Dlod(s_cimage, ucalc).xy;
         float2 ddxy = tex2Dlod(s_cddxy, ucalc).xy;
