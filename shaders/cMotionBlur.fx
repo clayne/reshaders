@@ -34,7 +34,7 @@ uOption(uVignette, bool, "radio", "Vignette", "Enable", false, 0, 0,
 "Enable to change optical flow influence to or from center");
 
 uOption(uInvert, bool, "radio", "Vignette", "Invert", true, 0, 0,
-"");
+"Apply vignette from center if enabled");
 
 uOption(uFalloff, float, "slider", "Vignette", "Sharpness", 1.000, 0.000, 8.000,
 "Vignette Strength");
@@ -106,17 +106,7 @@ float4 ps_source(float4 vpos : SV_POSITION,
     float3 output = uImage.rgb / dot(uImage.rgb , 1.0);
     float obright = max(max(output.r, output.g), output.b);
     output = output.rg / obright;
-
-    // Vignette output if called
-    float2 coord = (uv - 0.5) * core::getaspectratio() * 2.0;
-    float rf = length(coord) * uFalloff;
-    float rf2_1 = mad(rf, rf, 1.0);
-
-    float vigWeight = rcp(rf2_1 * rf2_1);
-    vigWeight = (uInvert) ? 1.0 - vigWeight : vigWeight;
-
-    float2 outputvignette = output.rg * vigWeight;
-    return (uVignette) ? float4(outputvignette, 0.0, 0.0) : float4(output.rg, 0.0, 0.0);
+    return float4(output.rg, 0.0, 0.0);
 }
 
 void ps_convert(float4 vpos : SV_POSITION,
@@ -233,6 +223,15 @@ float4 ps_output(float4 vpos : SV_POSITION,
     float2 oFlow = tex2Dlod(s_cflow, float4(uv, 0.0, uDetail)).xy;
     oFlow = oFlow * rcp(ISIZE) * core::getaspectratio();
     oFlow *= uScale;
+    
+    // Vignette output if called
+    float2 coord = (uv - 0.5) * core::getaspectratio() * 2.0;
+    float rf = length(coord) * uFalloff;
+    float rf2_1 = mad(rf, rf, 1.0);
+
+    float vigWeight = rcp(rf2_1 * rf2_1);
+    vigWeight = (uInvert) ? 1.0 - vigWeight : vigWeight;
+    oFlow = (uVignette) ? oFlow * vigWeight : oFlow;
 
     [unroll]
     for(int k = 0; k < 9; k++)
