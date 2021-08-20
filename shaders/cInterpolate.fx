@@ -96,8 +96,9 @@ float4 ps_source(float4 vpos : SV_POSITION,
                  float2 uv : TEXCOORD0) : SV_Target
 {
     float3 uImage = tex2D(s_color, uv.xy).rgb;
-    uImage /= dot(uImage.rgb , 1.0);
-    return uImage.xyxy;
+    float3 output = uImage.rgb / dot(uImage.rgb , 1.0);
+    float obright = max(max(output.r, output.g), output.b);
+    return output.rgrg / obright;
 }
 
 void ps_convert(float4 vpos : SV_POSITION,
