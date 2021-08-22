@@ -1,54 +1,101 @@
 
-// From https://knarkowicz.wordpress.com/2016/01/09/automatic-exposure/
+/*
+    Adaptive, temporal exposure by Brimson
+    Based on https://john-chapman.github.io/2017/08/23/dynamic-local-exposure.html
+    THIS EFFECT IS DEDICATED TO THE BRAVE SHADER DEVELOPERS OF RESHADE
+*/
 
 #include "cFunctions.fxh"
 
-uniform float uIntensity <
+uniform float uRate <
+    ui_label = "Smoothing";
     ui_type = "drag";
+    ui_tooltip = "Exposure time smoothing";
     ui_min = 0.0;
-> = 1.0;
+    ui_max = 1.0;
+> = 0.95;
 
-texture2D r_aluma
+uniform float uBias <
+    ui_label = "Exposure";
+    ui_type = "drag";
+    ui_tooltip = "Optional manual bias ";
+    ui_min = 0.0;
+> = 0.0;
+
+texture2D r_color : COLOR;
+
+texture2D r_mips
 {
-    Width = 256;
-    Height = 256;
-    Format = R32F;
-    MipLevels = 9;
+    Width = BUFFER_WIDTH / 2;
+    Height = BUFFER_HEIGHT / 2;
+    MipLevels = LOG2(RMAX(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2)) + 1;
+    Format = R16F;
 };
 
-sampler2D s_aluma { Texture = r_aluma; };
-
-// Get the average luminance for "every" pixel on the screen
-// We lose a lot of information due to directly downscaling from native to 256x256
-
-float4 ps_core(float4 vpos : SV_POSITION,
-               float2 uv : TEXCOORD0) : SV_TARGET
+texture2D r_factor
 {
-    float4 oColor = tex2D(core::samplers::srgb, uv);
-    return max(max(oColor.r, oColor.g), oColor.b);
+    Width = 1;
+    Height = 1;
+    Format = R16F;
+};
+
+sampler2D s_color
+{
+    Texture = r_color;
+    SRGBTexture = TRUE;
+};
+
+sampler2D s_mips
+{
+    Texture = r_mips;
+};
+
+sampler2D s_factor
+{
+    Texture = r_factor;
+};
+
+float4 ps_init(float4 vpos : SV_POSITION, float2 uv : TEXCOORD0) : SV_Target0
+{
+    float4 color = tex2D(s_color, uv);
+    return max(color.r, max(color.g, color.b));
 }
 
-// Calculate exposure
-
-float4 ps_expose(float4 vpos : SV_POSITION,
-                 float2 uv : TEXCOORD0) : SV_TARGET
+float4 ps_blit(float4 vpos : SV_POSITION, float2 uv : TEXCOORD0) : SV_Target0
 {
-    // Fetch 1x1 LOD from previous pass
-    float avgLuma = tex2Dlod(s_aluma, float4(uv, 0.0, 99.0)).r;
-    float4 oColor = tex2D(core::samplers::srgb, uv);
-
-    float aExposure = log2(0.18) - log2(avgLuma);
-    aExposure = exp2(aExposure);
-    return oColor * aExposure;
+    return float4(tex2D(s_mips, uv).rgb, uRate);
 }
 
-technique cExposure
+float4 ps_expose(float4 vpos : SV_POSITION, float2 uv : TEXCOORD0) : SV_TARGET0
+{
+    float aLuma = tex2D(s_factor, uv).r;
+    float4 oColor = tex2D(s_color, uv);
+
+    float ev100 = log2(aLuma * 100.0) - log2(12.5);
+    ev100 -= uBias;
+    ev100 = 1.0 / (1.2 * exp2(ev100));
+    return oColor * ev100;
+}
+
+technique cAutoExposure
 {
     pass
     {
         VertexShader = vs_generic;
-        PixelShader = ps_core;
-        RenderTarget = r_aluma;
+        PixelShader = ps_init;
+        RenderTarget = r_mips;
+    }
+
+    pass
+    {
+        VertexShader = vs_generic;
+        PixelShader = ps_blit;
+        RenderTarget = r_factor;
+        ClearRenderTargets = FALSE;
+        BlendEnable = TRUE;
+        BlendOp = ADD;
+        SrcBlend = INVSRCALPHA;
+        DestBlend = SRCALPHA;
     }
 
     pass
