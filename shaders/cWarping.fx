@@ -201,7 +201,7 @@ float4 ps_previous( float4 vpos : SV_POSITION,
     return tex2D(s_color, uv);
 }
 
-technique cInterpolate
+technique cWarping
 {
     pass cNormalize
     {

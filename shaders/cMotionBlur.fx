@@ -218,9 +218,10 @@ float4 ps_output(float4 vpos : SV_POSITION,
                  float2 uv : TEXCOORD0) : SV_Target
 {
     float4 oBlur;
-    float noise = core::noise(vpos.xy) * 2.0;
+    
     const float samples = 1.0 / (16.0 - 1.0);
     float2 oFlow = tex2Dlod(s_cflow, float4(uv, 0.0, uDetail)).xy;
+    float noise = core::noise(vpos.xy);
     oFlow = oFlow * rcp(ISIZE) * core::getaspectratio();
     oFlow *= uScale;
     
@@ -236,7 +237,7 @@ float4 ps_output(float4 vpos : SV_POSITION,
     [unroll]
     for(int k = 0; k < 9; k++)
     {
-        float2 calc = (noise + k * 2.0) * samples - 0.5;
+        float2 calc = (noise * 2.0 + k) * samples - 0.5;
         float4 uColor = tex2D(s_color, oFlow * calc + uv);
         oBlur = lerp(oBlur, uColor, rcp(float(k) + 1));
     }
