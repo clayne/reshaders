@@ -98,13 +98,13 @@ float4 ps_flow(float4 vpos : SV_POSITION,
         cFlow = cFlow - ((ddxy.xy * dCalc) * dSmooth);
     }
 
-    return float4(cFlow.xy * 0.5 + 0.5, 0.0, uBlend);
+    return float4(cFlow.xy, 0.0, uBlend);
 }
 
 float4 ps_output(float4 vpos : SV_POSITION,
                  float2 uv : TEXCOORD0) : SV_Target
 {
-	return tex2Dlod(s_coflow, float4(uv, 0.0, uLod));
+	return tex2Dlod(s_coflow, float4(uv, 0.0, uLod)) * 0.5 + 0.5;
 }
 
 technique cOpticalFlow
@@ -135,7 +135,7 @@ technique cOpticalFlow
         SrcBlend = INVSRCALPHA;
         DestBlend = SRCALPHA;
     }
-    
+
     pass cOutput
     {
         VertexShader = vs_generic;

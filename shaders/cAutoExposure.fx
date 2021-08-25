@@ -43,7 +43,7 @@ sampler2D s_luma
     Texture = r_luma;
 };
 
-float4 ps_blit(float4 vpos : SV_POSITION, float2 uv : TEXCOORD0) : SV_Target0
+float4 ps_luma(float4 vpos : SV_POSITION, float2 uv : TEXCOORD0) : SV_Target0
 {
     float4 color = tex2D(s_color, uv);
     return float4(max(color.r, max(color.g, color.b)).rrr, uRate);
