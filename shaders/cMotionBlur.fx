@@ -18,7 +18,7 @@
 uOption(uConst, float, "slider", "Basic", "Constraint", 1.000, 0.000, 2.000,
 "Regularization: Higher = Smoother flow");
 
-uOption(uScale, float, "slider", "Basic", "Scale", 2.000, 0.000, 4.000,
+uOption(uScale, float, "slider", "Basic", "Scale", 4.000, 0.000, 8.000,
 "Scale: Higher = More motion blur");
 
 uOption(uRadius, float, "slider", "Basic", "Prefilter", 8.000, 0.000, 16.00,
