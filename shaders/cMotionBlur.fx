@@ -15,19 +15,19 @@
         ui_type = utype; ui_min = umin; ui_max = umax; ui_tooltip = utooltip;   		\
         > = uvalue
 
-uOption(uConst, float, "slider", "Basic", "Constraint", 1.000, 0.000, 2.000,
-"Regularization: Higher = Smoother flow");
-
-uOption(uScale, float, "slider", "Basic", "Scale", 4.000, 0.000, 8.000,
+uOption(uScale, float, "slider", "Basic", "Scale", 2.000, 0.000, 4.000,
 "Scale: Higher = More motion blur");
 
 uOption(uRadius, float, "slider", "Basic", "Prefilter", 8.000, 0.000, 16.00,
 "Preprocess Blur: Higher = Less noise");
 
-uOption(uBlend, float, "slider", "Advanced", "Flow Blend", 0.250, 0.000, 0.500,
+uOption(uConst, float, "slider", "Optical Flow", "Constraint", 0.500, 0.000, 1.000,
+"Regularization: Higher = Smoother flow");
+
+uOption(uBlend, float, "slider", "Post Process", "Temporal Smoothing", 0.250, 0.000, 0.500,
 "Temporal Smoothing: Higher = Less temporal noise");
 
-uOption(uDetail, float, "slider", "Advanced", "Flow MipMap", 4.500, 0.000, 7.000,
+uOption(uDetail, float, "slider", "Post Process", "Flow Mipmap Bias", 4.500, 0.000, 7.000,
 "Postprocess Blur: Higher = Less spatial noise");
 
 uOption(uVignette, bool, "radio", "Vignette", "Enable", false, 0, 0,
@@ -177,30 +177,18 @@ void ps_filter(float4 vpos : SV_POSITION,
     - Obtained results are used for initializing optic flow values at a
       lower level (of higher resolution)
     - Repeat until full resolution level of original frames is reached
-
-    Quintic : https://www.iquilezles.org/www/articles/texture/texture.htm
 */
-
-float4 calcuv(float2 uv, float lod)
-{
-    float2 kResolution = tex2Dsize(s_cddxy, lod);
-    float2 kP = uv * kResolution + 0.5;
-    float2 kI = floor(kP);
-    float2 kF = kP - kI;
-    kF = kF * kF * kF * (kF * (kF * 6.0 - 15.0) + 10.0);
-    kP = kI + kF;
-    kP = (kP - 0.5) / kResolution;
-    return float4(kP, 0.0, lod);
-}
 
 float4 ps_flow(float4 vpos : SV_POSITION,
                float2 uv : TEXCOORD0) : SV_Target
 {
     const float uRegularize = max(4.0 * pow(uConst * 1e-3, 2.0), 1e-10);
+    const float pyramids = ceil(log2(ISIZE / 2)) - 0.5;
     float2 cFlow = 0.0;
-    for(int i = 8; i >= 0; i--)
+
+    for(float i = pyramids; i >= 0; i--)
     {
-        float4 ucalc = (uQuintic) ? calcuv(uv, i) : float4(uv, 0.0, i);
+        float4 ucalc = float4(uv, 0.0, i);
         float2 cFrame = tex2Dlod(s_cframe, ucalc).xy;
         float2 pFrame = tex2Dlod(s_cimage, ucalc).xy;
         float2 ddxy = tex2Dlod(s_cddxy, ucalc).xy;
@@ -218,13 +206,12 @@ float4 ps_output(float4 vpos : SV_POSITION,
                  float2 uv : TEXCOORD0) : SV_Target
 {
     float4 oBlur;
-    
-    const float samples = 1.0 / (16.0 - 1.0);
+    const float samples = 1.0 / (8.0 - 1.0);
     float2 oFlow = tex2Dlod(s_cflow, float4(uv, 0.0, uDetail)).xy;
-    float noise = core::noise(vpos.xy);
     oFlow = oFlow * rcp(ISIZE) * core::getaspectratio();
     oFlow *= uScale;
-    
+    float noise = core::noise(vpos.xy + oFlow);
+
     // Vignette output if called
     float2 coord = (uv - 0.5) * core::getaspectratio() * 2.0;
     float rf = length(coord) * uFalloff;
@@ -237,7 +224,7 @@ float4 ps_output(float4 vpos : SV_POSITION,
     [unroll]
     for(int k = 0; k < 9; k++)
     {
-        float2 calc = (noise * 2.0 + k) * samples - 0.5;
+        float2 calc = (noise + k) * samples - 0.5;
         float4 uColor = tex2D(s_color, oFlow * calc + uv);
         oBlur = lerp(oBlur, uColor, rcp(float(k) + 1));
     }

@@ -175,8 +175,10 @@ float4 ps_flow(float4 vpos : SV_POSITION,
                float2 uv : TEXCOORD0) : SV_Target
 {
     const float uRegularize = max(4.0 * pow(uConst * 1e-3, 2.0), 1e-10);
+    const float pyramids = ceil(log2(ISIZE / 2)) - 0.5;
     float2 cFlow = 0.0;
-    for(int i = 8; i >= 0; i--)
+
+    for(float i = pyramids; i >= 0; i--)
     {
         float4 ucalc = float4(uv, 0.0, i);
         float2 cFrame = tex2Dlod(s_cframe, ucalc).xy;

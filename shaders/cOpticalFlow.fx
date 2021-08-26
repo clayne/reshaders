@@ -11,6 +11,7 @@
 
 #define DSIZE uint2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2)
 #define RSIZE LOG2(RMAX(DSIZE.x, DSIZE.y)) + 1
+#define FSIZE LOG2(RMAX(DSIZE.x / 2, DSIZE.y / 2)) + 1
 
 #define uOption(option, udata, utype, ucategory, ulabel, uvalue, umin, umax, utooltip)  \
         uniform udata option <                                                  		\
@@ -18,20 +19,20 @@
         ui_type = utype; ui_min = umin; ui_max = umax; ui_tooltip = utooltip;   		\
         > = uvalue
 
-uOption(uConst, float, "slider", "Basic", "Constraint", 0.500, 0.000, 1.000,
+uOption(uConst, float, "slider", "Optical Flow", "Constraint", 0.500, 0.000, 1.000,
 "Regularization: Higher = Smoother flow");
 
-uOption(uBlend, float, "slider", "Basic", "Flow Blend", 0.250, 0.000, 0.500,
+uOption(uBlend, float, "slider", "Post Process", "Temporal Smoothing", 0.250, 0.000, 0.500,
 "Temporal Smoothing: Higher = Less temporal noise");
 
-uOption(uLod, float, "slider", "Basic", "Flow MipMap", 0.000, 0.000, RSIZE - 1,
+uOption(uDetail, float, "slider", "Post Process", "Flow Mipmap Bias", 0.000, 0.000, FSIZE - 1,
 "Postprocess Blur: Higher = Less spatial noise");
 
 texture2D r_color  : COLOR;
 texture2D r_pbuffer { Width = DSIZE.x; Height = DSIZE.y; Format = RGBA16; MipLevels = RSIZE; };
 texture2D r_cbuffer { Width = DSIZE.x; Height = DSIZE.y; Format = RG16; MipLevels = RSIZE; };
 texture2D r_cuddxy  { Width = DSIZE.x; Height = DSIZE.y; Format = RG16F; MipLevels = RSIZE; };
-texture2D r_coflow  { Width = DSIZE.x / 2; Height = DSIZE.y / 2; Format = RG16F; MipLevels = RSIZE - 1; };
+texture2D r_coflow  { Width = DSIZE.x / 2; Height = DSIZE.y / 2; Format = RG16F; MipLevels = FSIZE; };
 
 sampler2D s_color   { Texture = r_color; SRGBTexture = TRUE; };
 sampler2D s_pbuffer { Texture = r_pbuffer; };
@@ -84,8 +85,10 @@ float4 ps_flow(float4 vpos : SV_POSITION,
                float2 uv : TEXCOORD0) : SV_Target
 {
     const float uRegularize = max(4.0 * pow(uConst * 1e-2, 2.0), 1e-10);
+    const float pyramids = (FSIZE - 1) - 0.5;
     float2 cFlow = 0.0;
-    for(int i = 8; i >= 0; i--)
+
+    for(float i = pyramids; i >= 0; i--)
     {
         float4 ucalc = float4(uv, 0.0, i);
         float2 cFrame = tex2Dlod(s_cbuffer, ucalc).xy;
@@ -104,7 +107,7 @@ float4 ps_flow(float4 vpos : SV_POSITION,
 float4 ps_output(float4 vpos : SV_POSITION,
                  float2 uv : TEXCOORD0) : SV_Target
 {
-	return tex2Dlod(s_coflow, float4(uv, 0.0, uLod)) * 0.5 + 0.5;
+    return tex2Dlod(s_coflow, float4(uv, 0.0, uDetail)) * 0.5 + 0.5;
 }
 
 technique cOpticalFlow
