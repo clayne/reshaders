@@ -42,9 +42,6 @@ uOption(uFalloff, float, "slider", "Vignette", "Sharpness", 1.000, 0.000, 8.000,
 uOption(uDebug, bool, "radio", "Advanced", "Debug", false, 0, 0,
 "Show optical flow result");
 
-uOption(uQuintic, bool, "radio", "Advanced", "Quintic Pyramid", false, 0, 0,
-"Apply quintic curve to optical flow pyramid");
-
 #define DSIZE uint2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2)
 #define RSIZE LOG2(RMAX(DSIZE.x, DSIZE.y)) + 1
 #define ISIZE 256.0
