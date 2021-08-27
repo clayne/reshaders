@@ -7,7 +7,10 @@
         ui_type = utype; ui_min = umin; ui_max = umax; ui_tooltip = utooltip;   		\
         > = uvalue
 
-uOption(uConst, float, "slider", "Basic", "Constraint", 4.000, 0.000, 8.000,
+uOption(uScale, float, "slider", "Basic", "Scale",  2.000, 0.000, 4.000,
+"Velocity Scale: Higher = More warping");
+
+uOption(uConst, float, "slider", "Basic", "Constraint", 0.500, 0.000, 2.000,
 "Regularization: Higher = Smoother flow");
 
 uOption(uRadius, float, "slider", "Basic", "Prefilter", 8.000, 0.000, 16.00,
@@ -16,10 +19,10 @@ uOption(uRadius, float, "slider", "Basic", "Prefilter", 8.000, 0.000, 16.00,
 uOption(uNoise, bool, "radio", "Basic", "Noise", false, 0, 0,
 "Noise warping");
 
-uOption(uBlend, float, "slider", "Advanced", "Flow Blend", 0.750, 0.000, 1.000,
+uOption(uBlend, float, "slider", "Advanced", "Flow Blend", 0.950, 0.000, 1.000,
 "Temporal Smoothing: Higher = Less temporal noise");
 
-uOption(uDetail, float, "slider", "Advanced", "Flow MipMap", 1.000, 0.000, 7.000,
+uOption(uDetail, float, "slider", "Advanced", "Flow MipMap", 0.000, 0.000, 7.000,
 "Postprocess Blur: Higher = Less spatial noise");
 
 uOption(uAvg, float, "slider", "Advanced", "Warp Factor", 0.950, 0.000, 1.000,
@@ -186,12 +189,18 @@ float4 ps_flow(float4 vpos : SV_POSITION,
     return float4(cFlow.xy, 0.0, uBlend);
 }
 
+float urand(float2 uv)
+{
+    float f = dot(float2(12.9898, 78.233), uv);
+    return frac(43758.5453 * sin(f));
+}
+
 float4 ps_output(float4 vpos : SV_POSITION,
                  float2 uv : TEXCOORD0) : SV_Target
 {
     const float2 pSize = rcp(ISIZE) * core::getaspectratio();
-    float2 pFlow = tex2Dlod(s_cflow, float4(uv, 0.0, uDetail)).xy;
-    pFlow = (uNoise) ? pFlow * core::noise(vpos.xy + pFlow) : pFlow;
+    float2 pFlow = tex2Dlod(s_cflow, float4(uv, 0.0, uDetail)).xy * uScale;
+    pFlow = (uNoise) ? pFlow * urand(vpos.xy + pFlow / uScale) : pFlow;
     float4 pMCF = tex2D(s_color, uv + pFlow * pSize);
     float4 pMCB = tex2D(s_pcolor, uv - pFlow * pSize);
     return lerp(pMCF, pMCB, uAvg);
