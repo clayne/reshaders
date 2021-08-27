@@ -11,29 +11,34 @@
   - Fluid simulation (maybe)
 
 ## Shader Descriptions
-- Original: Shaders I made
-- Original+: Shaders I also made, also for people who want to learn shaders
-- keijiro: [keijiro](https://github.com/keijiro) ports
-- Misc: Shaders I modified as what-ifs
+- (!) : Original shader
+- (+) : Shaders I made for people who want to learn shaders
+- (k) : [keijiro](https://github.com/keijiro) ports
+- (~) : Shaders I modified as what-ifs
 
-Type|Name|Description
-----|----|-----------
-Original|cBloom      |Dual-filtering bloom
-Original|cBlur       |Blur approximation using vogel disks
-Original|cInterpolate|Optical flow frame blending
-Original|cMotionBlur |Optical flow motion blur
-Original|cOpticalFlow|Horn-Schunck optical flow without weighted average
-Original+|cAbberation   |Chromatic abberation using vertex shader offset
-Original+|cAutoExposure |2-pass automatic exposure
-Original+|cColorBlendOp |Blend to backbuffer without copying textures
-Original+|cFilmGrain    |Film grain without copying texture
-Original+|cFrameBlending|Frame blending using the previous result
-Original+|cLuminance    |Simple greyscale comparison
-Original+|cLetterBox    |LetterBox without copying textures
-Original+|cScale        |Buffer scaling using vertex shaders
-keijiro|kContour |Contour line effect
-keijiro|kMirror  |Mirroring and kaleidoscope effect
-keijiro|kVignette|Natural vignetting effect
-Misc|cCAS    |SweetFX's CAS but using vertex shader as offset
-Misc|cSMAA   |Minimalist version of SMAA, medium setting
-Misc|cTonemap|Watch Dog's tonemapping with gamma correction
+Name|Description
+----|-----------
+(+) cAbberation     | Chromatic abberation using vertex shader offset
+(+) cAutoExposure   | 2-pass automatic exposure
+(!) cBloom          | Dual-filtering bloom
+(!) cBlur           | Blur approximation using vogel disks
+(~) cCAS            | SweetFX's CAS but using vertex shader as offset
+(+) cColorBlendOp   | Blend to backbuffer without copying textures
+(!) cDatamosh       | Simulates video compression artifacts
+(+) cDMipmap        | Dumb difference of gaussians using mipmaps
+(+) cFilmGrain      | Film grain without copying texture
+(+) cFrameBlending  | Frame blending using the previous result
+(!) cInterpolate    | Optical flow frame blending
+(+) cLetterBox      | LetterBox without copying textures
+(+) cLuminance      | Simple greyscale comparison
+(!) cMotionBlur     | Optical flow motion blur
+(!) cOpticalFlow    | Horn-Schunck optical flow without weighted average
+(+) cScale          | Buffer scaling using vertex shaders
+(+) cShard          | Simple unmask sharpening filter
+(~) cSMAA           | Minimalist version of SMAA, medium setting
+(~) cTonemap        | Watch Dog's tonemapping with gamma correction
+(!) cWarping        | Optical flow distortion
+(k) kContour        | Contour line effect
+(k) kDatamosh       | Simulates video compression artifacts
+(k) kMirror         | Mirroring and kaleidoscope effect
+(k) kVignette       | Natural vignetting effect
