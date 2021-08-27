@@ -7,16 +7,16 @@
         ui_type = utype; ui_min = umin; ui_max = umax; ui_tooltip = utooltip;   		\
         > = uvalue
 
-uOption(uScale, float, "slider", "Basic", "Scale",  2.000, 0.000, 4.000,
-"Velocity Scale: Higher = More warping");
-
-uOption(uConst, float, "slider", "Basic", "Constraint", 0.500, 0.000, 2.000,
-"Regularization: Higher = Smoother flow");
-
-uOption(uRadius, float, "slider", "Basic", "Prefilter", 8.000, 0.000, 16.00,
+uOption(uRadius, float, "slider", "Basic", "Prefilter", 16.00, 0.000, 32.00,
 "Preprocess Blur: Higher = Less noise");
 
-uOption(uNoise, bool, "radio", "Basic", "Noise", false, 0, 0,
+uOption(uScale, float, "slider", "Basic", "Scale",  4.000, 0.000, 8.000,
+"Velocity Scale: Higher = More warping");
+
+uOption(uConst, float, "slider", "Basic", "Constraint", 1.000, 0.000, 2.000,
+"Regularization: Higher = Smoother flow");
+
+uOption(uNoise, bool, "radio", "Basic", "Noise", true, 0, 0,
 "Noise warping");
 
 uOption(uBlend, float, "slider", "Advanced", "Flow Blend", 0.950, 0.000, 1.000,
