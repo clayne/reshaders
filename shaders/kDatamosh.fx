@@ -1,6 +1,6 @@
 
 /*
-    Color version port of KinoDatamosh https://github.com/keijiro/KinoDatamosh
+    Color + BlendOp version of KinoDatamosh https://github.com/keijiro/KinoDatamosh
 
     Copyright (C) 2016 Keijiro Takahashi
 
@@ -33,6 +33,7 @@
         ui_category = ucategory; ui_label = ulabel;                             		\
         ui_type = utype; ui_min = umin; ui_max = umax; ui_tooltip = utooltip;   		\
         > = uvalue
+
 
 uOption(uBlockSize, int, "slider", "Datamosh", "Block Size", 16, 4, 32,
 "Size of compression macroblock.");
@@ -177,17 +178,18 @@ float4 ps_accum(float4 vpos : SV_POSITION,
     float mv_len = length(mv);
     // - Simple update
     float acc_update = min(mv_len, uBlockSize) * 0.005;
-    acc_update = saturate(acc_update + (rand.z * lerp(-0.02, 0.02, uQuality)));
+    acc_update += rand.z * lerp(-0.02, 0.02, uQuality);
     // - Reset to random level
-    float acc_reset = saturate(rand.z * 0.5 + uQuality);
+    float acc_reset = rand.z * 0.5 + uQuality;
 
     // - Reset if the amount of motion is larger than the block size.
     if(mv_len > uBlockSize)
     {
-        acc.rgb = acc_reset;
+        acc.rgb = saturate(acc_reset);
         acc.a = 0.0;
     } else {
-        acc.rgb = acc_update;
+        // This should work given law of addition
+        acc.rgb = saturate(acc_update);
         acc.a = 1.0;
     }
 
@@ -232,7 +234,7 @@ float4 ps_copy(float4 vpos : SV_POSITION,
     return float4(tex2D(s_color, uv).rgb, 1.0);
 }
 
-technique cDatamosh
+technique KDatamosh
 {
     pass cNormalize
     {
