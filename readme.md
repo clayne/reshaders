@@ -6,9 +6,7 @@
 - New developers can learn
 - Coping mechanism
 - **Goals**
-  - Datamoshing
-  - Particles (maybe)
-  - Fluid simulation (maybe)
+  - Flow vectors
 
 ## Shader Descriptions
 - (!) : Original shader
