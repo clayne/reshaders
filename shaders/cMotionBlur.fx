@@ -21,7 +21,7 @@ uOption(uScale, float, "slider", "Basic", "Scale", 2.000, 0.000, 4.000,
 uOption(uRadius, float, "slider", "Basic", "Prefilter", 8.000, 0.000, 16.00,
 "Preprocess Blur: Higher = Less noise");
 
-uOption(uConst, float, "slider", "Optical Flow", "Constraint", 0.500, 0.000, 1.000,
+uOption(uConst, float, "slider", "Optical Flow", "Constraint", 1.000, 0.000, 2.000,
 "Regularization: Higher = Smoother flow");
 
 uOption(uBlend, float, "slider", "Post Process", "Temporal Smoothing", 0.250, 0.000, 0.500,
