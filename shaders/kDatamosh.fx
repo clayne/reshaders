@@ -39,7 +39,7 @@ uOption(uBlockSize, int, "slider", "Datamosh", "Block Size", 16, 4, 32,
 "Size of compression macroblock.");
 
 uOption(uEntropy, float, "slider", "Datamosh", "Entropy", 0.5, 0.0, 1.0,
-"Entropy coefficient. The larger value makes the stronger noise.");
+"The larger value stronger noise and makes mosh last longer.");
 
 uOption(uContrast, float, "slider", "Datamosh", "Contrast", 1.0, 0.5, 4.0,
 "Contrast of stripe-shaped noise.");
@@ -50,7 +50,7 @@ uOption(uScale, float, "slider", "Datamosh", "Scale", 0.8, 0.0, 2.0,
 uOption(uDiffusion, float, "slider", "Datamosh", "Diffusion", 0.4, 0.0, 2.0,
 "Amount of random displacement.");
 
-uOption(uDetail, float, "slider", "Datamosh", "Blockiness", 1.0, 0.0, FSIZE - 1,
+uOption(uDetail, float, "slider", "Datamosh", "Blockiness", 2.0, 0.0, FSIZE - 1,
 "How blocky the motion vectors should be.");
 
 uOption(uConst, float, "slider", "Optical Flow", "Constraint", 0.5, 0.0, 1.0,
