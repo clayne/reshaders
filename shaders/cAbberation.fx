@@ -14,7 +14,7 @@ sampler2D s_color { Texture = r_color; SRGBTexture = TRUE; };
 
 /*
     NOTE: pixelsize = 1.0 / screensize
-    uv + kShiftR * core::getpixelsize() == uv + kShiftR / screensize
+    uv + kShiftR * pixelsize == uv + kShiftR / screensize
 
     QUESTION: "Why do we have to divide our shifting value with screensize?"
     ANSWER: Texture coordinates in window-space is between 0.0 - 1.0.
@@ -23,10 +23,11 @@ sampler2D s_color { Texture = r_color; SRGBTexture = TRUE; };
 
 float4 ps_abberation(float4 vpos : SV_POSITION, float2 uv : TEXCOORD0) : SV_Target0
 {
+    const float2 pixelsize = 1.0 / float2(BUFFER_WIDTH, BUFFER_HEIGHT);
     float4 color;
-    color.r = tex2D(s_color, uv + kShiftR * core::getpixelsize()).r; // shifted red channel
+    color.r = tex2D(s_color, uv + kShiftR * pixelsize).r; // shifted red channel
     color.g = tex2D(s_color, uv).g; // center green channel
-    color.b = tex2D(s_color, uv + kShiftB * core::getpixelsize()).b; // shifted blue channel
+    color.b = tex2D(s_color, uv + kShiftB * pixelsize).b; // shifted blue channel
     color.a = 1.0;
     return color;
 }
