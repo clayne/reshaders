@@ -50,7 +50,7 @@ uOption(uScale, float, "slider", "Datamosh", "Scale", 0.8, 0.0, 2.0,
 uOption(uDiffusion, float, "slider", "Datamosh", "Diffusion", 0.4, 0.0, 2.0,
 "Amount of random displacement.");
 
-uOption(uDetail, float, "slider", "Datamosh", "Blockiness", 2.0, 0.0, FSIZE - 1,
+uOption(uDetail, float, "slider", "Datamosh", "Blockiness", 0.0, 0.0, FSIZE - 1,
 "How blocky the motion vectors should be.");
 
 uOption(uConst, float, "slider", "Optical Flow", "Constraint", 1.000, 0.000, 2.000,

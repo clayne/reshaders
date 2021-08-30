@@ -20,7 +20,7 @@ uniform float uBias <
     ui_type = "drag";
     ui_tooltip = "Optional manual bias ";
     ui_min = 0.0;
-> = 0.0;
+> = 2.0;
 
 texture2D r_color : COLOR;
 
