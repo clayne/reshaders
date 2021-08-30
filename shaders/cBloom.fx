@@ -1,6 +1,4 @@
 
-#include "cFunctions.fxh"
-
 uniform float uThreshold <
     ui_type = "drag";
     ui_min = 0.0;
@@ -39,7 +37,7 @@ sampler2D s_color
 {
     Texture = r_color;
     #if BUFFER_COLOR_BIT_DEPTH != 10
-        SRGBTexture = true;
+        SRGBTexture = TRUE;
     #endif
 };
 
@@ -54,90 +52,132 @@ sampler2D s_bloom8 { Texture = r_bloom8; };
 
 /*
     [ Vertex Shaders ]
-    Dual Filtering Algorithm - [https://github.com/powervr-graphics/Native_SDK] [MIT]
+    Dual Filtering Algorithm
+    [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare] [MIT]
 */
 
-void v2f_offset(in float2 coord, in float uFact, out float4 offset)
+void v2f_core(in uint id,
+              inout float2 uv,
+              inout float4 vpos)
 {
-    const float2 psize = ldexp(core::getpixelsize(), uFact);
-    const float2 hoffset = psize + (psize / 2.0f);
-    const float4 uoffset = float4(-hoffset.x, -hoffset.y, hoffset.x, hoffset.y);
-    offset = coord.xyxy + uoffset; // --++
+    uv.x = (id == 2) ? 2.0 : 0.0;
+    uv.y = (id == 1) ? 2.0 : 0.0;
+    vpos = float4(uv * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
 
 struct v2fd
 {
     float4 vpos : SV_Position;
-    float2 uv : TEXCOORD0;
-    float4 uOffset : TEXCOORD1;
+    float4 uOffset0 : TEXCOORD0; // Inner quad
+    float4 uOffset1 : TEXCOORD1; // Outer quad
+    float4 uOffset2 : TEXCOORD2; // Horiz quad
+    float4 uOffset3 : TEXCOORD3; // Verti quad
 };
 
 v2fd downsample2Dvs(uint id, float uFact)
 {
     v2fd output;
-    core::vsinit(id, output.uv, output.vpos);
-    v2f_offset(output.uv, uFact, output.uOffset);
+    float2 coord;
+    v2f_core(id, coord, output.vpos);
+    const float2 psize = rcp(float2(BUFFER_WIDTH, BUFFER_HEIGHT) / exp2(uFact));
+    output.uOffset0 = coord.xyxy + float4(-1.0, -1.0, 1.0, 1.0) * psize.xyxy;
+    output.uOffset1 = coord.xyxy + float4(-2.0, -2.0, 2.0, 2.0) * psize.xyxy;
+    output.uOffset2 = coord.xxxy + float4(-2.0,  0.0, 2.0, 0.0) * psize.xxxy;
+    output.uOffset3 = coord.yyyx + float4(-2.0,  0.0, 2.0, 0.0) * psize.yyyx;
     return output;
 }
 
 struct v2fu
 {
     float4 vpos : SV_Position;
-    float4 uOffset : TEXCOORD0;
+    float4 uOffset0 : TEXCOORD0; // Center taps
+    float4 uOffset1 : TEXCOORD1; // Verizontal Taps
+    float4 uOffset2 : TEXCOORD2; // Hortical Taps
 };
 
 v2fu upsample2Dvs(uint id, float uFact)
 {
     v2fu output;
     float2 coord;
-    core::vsinit(id, coord, output.vpos);
-    v2f_offset(coord, uFact, output.uOffset);
+    v2f_core(id, coord, output.vpos);
+    const float2 psize = rcp(float2(BUFFER_WIDTH, BUFFER_HEIGHT) / exp2(uFact));
+    output.uOffset0 = coord.xyxy + float4(-1.0, -1.0, 1.0, 1.0) * psize.xyxy;
+    output.uOffset1 = coord.xxxy + float4(-1.0,  0.0, 1.0, 0.0) * psize.xxxy;
+    output.uOffset2 = coord.yyyx + float4(-1.0,  0.0, 1.0, 0.0) * psize.yyyx;
     return output;
 }
 
-v2fd vs_downsample0(uint id : SV_VertexID) { return downsample2Dvs(id, 1.0); }
-v2fd vs_downsample1(uint id : SV_VertexID) { return downsample2Dvs(id, 2.0); }
-v2fd vs_downsample2(uint id : SV_VertexID) { return downsample2Dvs(id, 3.0); }
-v2fd vs_downsample3(uint id : SV_VertexID) { return downsample2Dvs(id, 4.0); }
-v2fd vs_downsample4(uint id : SV_VertexID) { return downsample2Dvs(id, 5.0); }
-v2fd vs_downsample5(uint id : SV_VertexID) { return downsample2Dvs(id, 6.0); }
-v2fd vs_downsample6(uint id : SV_VertexID) { return downsample2Dvs(id, 7.0); }
-v2fd vs_downsample7(uint id : SV_VertexID) { return downsample2Dvs(id, 8.0); }
+v2fd vs_downsample0(uint id : SV_VertexID) { return downsample2Dvs(id, 0.0); }
+v2fd vs_downsample1(uint id : SV_VertexID) { return downsample2Dvs(id, 1.0); }
+v2fd vs_downsample2(uint id : SV_VertexID) { return downsample2Dvs(id, 2.0); }
+v2fd vs_downsample3(uint id : SV_VertexID) { return downsample2Dvs(id, 3.0); }
+v2fd vs_downsample4(uint id : SV_VertexID) { return downsample2Dvs(id, 4.0); }
+v2fd vs_downsample5(uint id : SV_VertexID) { return downsample2Dvs(id, 5.0); }
+v2fd vs_downsample6(uint id : SV_VertexID) { return downsample2Dvs(id, 6.0); }
+v2fd vs_downsample7(uint id : SV_VertexID) { return downsample2Dvs(id, 7.0); }
 
-v2fu vs_upsample8(uint id : SV_VertexID) { return upsample2Dvs(id, 7.0); }
-v2fu vs_upsample7(uint id : SV_VertexID) { return upsample2Dvs(id, 6.0); }
-v2fu vs_upsample6(uint id : SV_VertexID) { return upsample2Dvs(id, 5.0); }
-v2fu vs_upsample5(uint id : SV_VertexID) { return upsample2Dvs(id, 4.0); }
-v2fu vs_upsample4(uint id : SV_VertexID) { return upsample2Dvs(id, 3.0); }
-v2fu vs_upsample3(uint id : SV_VertexID) { return upsample2Dvs(id, 2.0); }
-v2fu vs_upsample2(uint id : SV_VertexID) { return upsample2Dvs(id, 1.0); }
-v2fu vs_upsample1(uint id : SV_VertexID) { return upsample2Dvs(id, 0.0); }
+v2fu vs_upsample8(uint id : SV_VertexID) { return upsample2Dvs(id, 8.0); }
+v2fu vs_upsample7(uint id : SV_VertexID) { return upsample2Dvs(id, 7.0); }
+v2fu vs_upsample6(uint id : SV_VertexID) { return upsample2Dvs(id, 6.0); }
+v2fu vs_upsample5(uint id : SV_VertexID) { return upsample2Dvs(id, 5.0); }
+v2fu vs_upsample4(uint id : SV_VertexID) { return upsample2Dvs(id, 4.0); }
+v2fu vs_upsample3(uint id : SV_VertexID) { return upsample2Dvs(id, 3.0); }
+v2fu vs_upsample2(uint id : SV_VertexID) { return upsample2Dvs(id, 2.0); }
+v2fu vs_upsample1(uint id : SV_VertexID) { return upsample2Dvs(id, 1.0); }
 
 /*
     [ Pixel Shaders ]
     Thresholding - [https://github.com/keijiro/KinoBloom] [MIT]
-    Tonemap - [https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/]
-    Noise - [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
+    Tonemap      - [https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/]
+    Noise        - [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
 */
 
 float4 downsample2Dps(sampler2D src, v2fd input)
 {
+    float4 a0 = tex2D(src, input.uOffset0.xy); // (-1.0, -1.0)
+    float4 a1 = tex2D(src, input.uOffset0.zw); // ( 1.0,  1.0)
+    float4 a2 = tex2D(src, input.uOffset0.xw); // (-1.0,  1.0)
+    float4 a3 = tex2D(src, input.uOffset0.zy); // ( 1.0, -1.0)
+
+    float4 b0 = tex2D(src, input.uOffset1.xy); // (-2.0, -2.0)
+    float4 b1 = tex2D(src, input.uOffset1.zw); // ( 2.0,  2.0)
+    float4 b2 = tex2D(src, input.uOffset1.xw); // (-2.0,  2.0)
+    float4 b3 = tex2D(src, input.uOffset1.zy); // ( 2.0, -2.0)
+
+    float4 c0 = tex2D(src, input.uOffset2.xw); // (-2.0, 0.0)
+    float4 c1 = tex2D(src, input.uOffset2.yw); // ( 0.0, 0.0)
+    float4 c2 = tex2D(src, input.uOffset2.zw); // ( 2.0, 0.0)
+
+    float4 d0 = tex2D(src, input.uOffset3.wx); // (0.0, -2.0)
+    float4 d1 = tex2D(src, input.uOffset3.wz); // (0.0,  2.0)
+
     float4 output;
-    output += tex2D(src, input.uv) * 0.5;
-    output += tex2D(src, input.uOffset.xy) * 0.125; // --
-    output += tex2D(src, input.uOffset.zw) * 0.125; // ++
-    output += tex2D(src, input.uOffset.xw) * 0.125; // -+
-    output += tex2D(src, input.uOffset.zy) * 0.125; // +-
+    const float2 weight = float2(0.5, 0.125) / 4.0;
+    output  = (a0 + a1 + a2 + a3) * weight.x; // Center quad
+    output += (b2 + d1 + c0 + c1) * weight.y; // Top - left quad
+    output += (d1 + b1 + c1 + c2) * weight.y; // Top - right quad
+    output += (c1 + c2 + d0 + b0) * weight.y; // Bottom - right quad
+    output += (c0 + c1 + b0 + d0) * weight.y; // Bottom - left quad
     return output;
 }
 
 float4 upsample2Dps(sampler2D src, v2fu input)
 {
+    float4 a0 = tex2D(src, input.uOffset0.xy);
+    float4 a1 = tex2D(src, input.uOffset0.zw);
+    float4 a2 = tex2D(src, input.uOffset0.xw);
+    float4 a3 = tex2D(src, input.uOffset0.zy);
+    float4 c0 = tex2D(src, input.uOffset1.yw);
+    float4 b0 = tex2D(src, input.uOffset1.xw);
+    float4 b1 = tex2D(src, input.uOffset1.zw);
+    float4 b2 = tex2D(src, input.uOffset2.wx);
+    float4 b3 = tex2D(src, input.uOffset2.wz);
+
     float4 output;
-    output  = tex2D(src, input.uOffset.xy) * 0.25; // --
-    output += tex2D(src, input.uOffset.zw) * 0.25; // ++
-    output += tex2D(src, input.uOffset.xw) * 0.25; // -+
-    output += tex2D(src, input.uOffset.zy) * 0.25; // +-
+    const float3 weights = float3(1.0, 2.0, 4.0) / 16.0;
+    output  = (a0 + a1 + a2 + a3) * weights.x;
+    output += (b0 + b1 + b2 + b3) * weights.y;
+    output += c0 * weights.z;
     return output;
 }
 
@@ -175,10 +215,11 @@ float4 ps_upsample3(v2fu input) : SV_Target { return upsample2Dps(s_bloom3, inpu
 float4 ps_upsample2(v2fu input) : SV_Target { return upsample2Dps(s_bloom2, input); }
 float4 ps_upsample1(v2fu input) : SV_Target
 {
+    const float4 n = float4(0.06711056, 0.00583715, 52.9829189, 0.5 / 255);
+    float f = frac(n.z * frac(dot(input.vpos.xy, n.xy))) * n.w;
     float4 o = upsample2Dps(s_bloom1, input);
-    o = saturate(o * mad(2.51, o, 0.03) / mad(o, mad(2.43, o, 0.59), 0.14));
-    const float bit = 1.0 / 255;
-    return o + core::noise(input.vpos.xy) * bit;
+    o = o * mad(2.51, o, 0.03) / mad(o, mad(2.43, o, 0.59), 0.14);
+    return saturate(o + f);
 }
 
 /* [ TECHNIQUE ] */
