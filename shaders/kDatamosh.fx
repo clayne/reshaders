@@ -50,7 +50,7 @@ uOption(uScale, float, "slider", "Datamosh", "Scale", 0.8, 0.0, 2.0,
 uOption(uDiffusion, float, "slider", "Datamosh", "Diffusion", 0.4, 0.0, 2.0,
 "Amount of random displacement.");
 
-uOption(uDetail, float, "slider", "Datamosh", "Blockiness", 0.0, 0.0, FSIZE - 1,
+uOption(uDetail, float, "slider", "Datamosh", "Blockiness", 2.0, 0.0, FSIZE - 1,
 "How blocky the motion vectors should be.");
 
 uOption(uConst, float, "slider", "Optical Flow", "Constraint", 1.000, 0.000, 2.000,
@@ -58,6 +58,16 @@ uOption(uConst, float, "slider", "Optical Flow", "Constraint", 1.000, 0.000, 2.0
 
 uOption(uBlend, float, "slider", "Optical Flow", "Temporal Smoothing", 0.5, 0.0, 1.0,
 "Temporal Smoothing: Higher = Less temporal noise");
+
+#ifndef LINEAR_SAMPLING
+    #define LINEAR_SAMPLING 0
+#endif
+
+#if LINEAR_SAMPLING == 1
+    #define MFILTER MinFilter = LINEAR; MagFilter = LINEAR
+#else
+    #define MFILTER MinFilter = POINT; MagFilter = POINT
+#endif
 
 texture2D r_color  : COLOR;
 texture2D r_pbuffer { Width = DSIZE.x; Height = DSIZE.y; Format = RGBA16; MipLevels = RSIZE; };
@@ -71,8 +81,8 @@ sampler2D s_color   { Texture = r_color; SRGBTexture = TRUE; };
 sampler2D s_pbuffer { Texture = r_pbuffer; };
 sampler2D s_cbuffer { Texture = r_cbuffer; };
 sampler2D s_cuddxy  { Texture = r_cuddxy; };
-sampler2D s_coflow  { Texture = r_coflow; MinFilter = POINT; MagFilter = POINT; };
-sampler2D s_caccum  { Texture = r_caccum; MinFilter = POINT; MagFilter = POINT; };
+sampler2D s_coflow  { Texture = r_coflow; MFILTER; };
+sampler2D s_caccum  { Texture = r_caccum; MFILTER; };
 sampler2D s_copy    { Texture = r_copy;  SRGBTexture = TRUE; };
 
 /* [ Pixel Shaders ] */
