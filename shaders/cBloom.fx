@@ -128,7 +128,7 @@ v2fu vs_upsample1(uint id : SV_VertexID) { return upsample2Dvs(id, 1.0); }
 /*
     [ Pixel Shaders ]
     Thresholding - [https://github.com/keijiro/KinoBloom] [MIT]
-    Tonemap      - [https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/]
+    Tonemap      - [https://github.com/TheRealMJP/BakingLab] [MIT]
     Noise        - [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
 */
 
@@ -194,8 +194,29 @@ float4 ps_downsample0(v2fd input): SV_TARGET
 
     // Combine and apply the brightness response curve
     s *= max(rq, s.a - uThreshold) / max(s.a, 1e-4);
-    s = saturate(lerp(s.a, s, uSaturation) * uIntensity);
+    s = saturate(lerp(s.a, s, uSaturation));
     return s;
+}
+
+// sRGB => XYZ => D65_2_D60 => AP1 => RRT_SAT
+static const float3x3 ACESInputMat = float3x3(
+    0.59719, 0.35458, 0.04823,
+    0.07600, 0.90834, 0.01566,
+    0.02840, 0.13383, 0.83777
+);
+
+// ODT_SAT => XYZ => D60_2_D65 => sRGB
+static const float3x3 ACESOutputMat = float3x3(
+     1.60475, -0.53108, -0.07367,
+    -0.10208,  1.10813, -0.00605,
+    -0.00327, -0.07276,  1.07602
+);
+
+float3 RRTAndODTFit(float3 v)
+{
+    float3 a = v * (v + 0.0245786f) - 0.000090537f;
+    float3 b = v * (0.983729f * v + 0.4329510f) + 0.238081f;
+    return a / b;
 }
 
 float4 ps_downsample1(v2fd input) : SV_Target { return downsample2Dps(s_bloom1, input); }
@@ -218,7 +239,10 @@ float4 ps_upsample1(v2fu input) : SV_Target
     const float4 n = float4(0.06711056, 0.00583715, 52.9829189, 0.5 / 255);
     float f = frac(n.z * frac(dot(input.vpos.xy, n.xy))) * n.w;
     float4 o = upsample2Dps(s_bloom1, input);
-    o = o * mad(2.51, o, 0.03) / mad(o, mad(2.43, o, 0.59), 0.14);
+    o *= uIntensity;
+    o = mul(ACESInputMat, o.rgb);
+    o = RRTAndODTFit(o.rgb);
+    o = mul(ACESOutputMat, o.rgb);
     return saturate(o + f);
 }
 

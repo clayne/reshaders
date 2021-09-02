@@ -53,7 +53,18 @@ uniform float4 kBackColor <
     ui_min = 0.0; ui_max = 1.0;
 > = float4(0.0, 0.0, 0.0, 0.0);
 
-struct v2f { float4 vpos : SV_Position; float4 uv[2] : TEXCOORD0; };
+texture2D r_color : COLOR;
+sampler2D s_color
+{
+    Texture = r_color;
+    SRGBTexture = TRUE;
+};
+
+struct v2f
+{
+    float4 vpos : SV_Position;
+    float4 uv[2] : TEXCOORD0;
+};
 
 v2f vs_contour(in uint id : SV_VertexID)
 {
@@ -61,7 +72,7 @@ v2f vs_contour(in uint id : SV_VertexID)
     float2 texcoord;
     core::vsinit(id, texcoord, output.vpos);
 
-    float2 ts = core::getpixelsize();
+    float2 ts = 1.0 / float2(BUFFER_WIDTH, BUFFER_HEIGHT);
     output.uv[0].xy = texcoord.xy;
     output.uv[0].zw = texcoord.xy + ts.xy;
     output.uv[1].xy = texcoord.xy + float2(ts.x, 0.0);
@@ -73,10 +84,10 @@ void ps_contour(v2f input, out float3 c : SV_Target0)
 {
     // Color samples
     float3 cImage[4];
-    cImage[0] = tex2D(core::samplers::srgb, input.uv[0].xy).rgb;
-    cImage[1] = tex2D(core::samplers::srgb, input.uv[0].zw).rgb;
-    cImage[2] = tex2D(core::samplers::srgb, input.uv[1].xy).rgb;
-    cImage[3] = tex2D(core::samplers::srgb, input.uv[1].zw).rgb;
+    cImage[0] = tex2D(s_color, input.uv[0].xy).rgb;
+    cImage[1] = tex2D(s_color, input.uv[0].zw).rgb;
+    cImage[2] = tex2D(s_color, input.uv[1].xy).rgb;
+    cImage[3] = tex2D(s_color, input.uv[1].zw).rgb;
 
     // Roberts cross operator
     float3 cga = cImage[1] - cImage[0];
@@ -96,8 +107,6 @@ technique KinoContour
     {
         VertexShader = vs_contour;
         PixelShader  = ps_contour;
-        #if BUFFER_COLOR_BIT_DEPTH != 10
-            SRGBWriteEnable = true;
-        #endif
+        SRGBWriteEnable = TRUE;
     }
 }

@@ -203,11 +203,11 @@ float4 ps_output(float4 vpos : SV_POSITION,
                  float2 uv : TEXCOORD0) : SV_Target
 {
     float4 oBlur;
+    float noise = core::noise(vpos.xy);
     const float samples = 1.0 / (8.0 - 1.0);
     float2 oFlow = tex2Dlod(s_cflow, float4(uv, 0.0, uDetail)).xy;
     oFlow = oFlow * rcp(ISIZE) * core::getaspectratio();
     oFlow *= uScale;
-    float noise = core::noise(vpos.xy + oFlow);
 
     // Vignette output if called
     float2 coord = (uv - 0.5) * core::getaspectratio() * 2.0;
