@@ -28,7 +28,7 @@ uOption(uBlend, float, "slider", "Post Process", "Temporal Smoothing", 0.250, 0.
 uOption(uDetail, float, "slider", "Post Process", "Flow Mipmap Bias", 0.000, 0.000, FSIZE - 1,
 "Postprocess Blur: Higher = Less spatial noise");
 
-uOption(uNormal, bool, "radio", "Display", "Lines Normal Direction", false, 0, 0,
+uOption(uNormal, bool, "radio", "Display", "Lines Normal Direction", true, 0, 0,
 "Normal to velocity direction");
 
 texture2D r_color  : COLOR;
@@ -182,7 +182,7 @@ float4 ps_output(float4 position : SV_POSITION,
     float len = length(velocity) * VELOCITY_SCALE * 0.05;
     float3 outp;
     outp.rg = 0.5 * (1.0 + velocity.xy / (len + 1e-4));
-    outp.b = 0.5 * (2.0 - (outp.r + outp.g));
+    outp.b = 0.5 * (2.0 - dot(outp.rg, 1.0));
     return float4(outp, 1.0);
 }
 
@@ -221,5 +221,11 @@ technique cOpticalFlow
         VertexCount = NUM_LINES * 2;
         VertexShader = vs_output;
         PixelShader = ps_output;
+        BlendEnable = TRUE;
+        BlendOp = ADD;
+        SrcBlend = SRCALPHA;
+        DestBlend = INVSRCALPHA;
+        SrcBlendAlpha = ONE;
+        DestBlendAlpha = ONE;
     }
 }
