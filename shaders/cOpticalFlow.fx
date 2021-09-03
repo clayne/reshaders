@@ -54,9 +54,8 @@ void ps_convert(float4 vpos : SV_POSITION,
     // r1 = get derivatives from previous frame
     float3 uImage = tex2D(s_color, uv.xy).rgb;
     float3 output = uImage.rgb / dot(uImage.rgb , 1.0);
-    float obright = max(max(output.r, output.g), output.b);
     r0.xy = tex2D(s_cbuffer, uv).xy;
-    r0.zw = output.rg / obright;
+    r0.zw = output.rg;
 }
 
 void ps_filter(float4 vpos : SV_POSITION,
@@ -108,7 +107,6 @@ float4 ps_flow(float4 vpos : SV_POSITION,
 }
 
 /*
-    Not working port of rendering flow streams
     Uniforms: https://github.com/diwi/PixelFlow/blob/master/src/com/thomasdiewald/pixelflow/java/imageprocessing/DwOpticalFlow.java#L230
     Vertex Shader : https://github.com/diwi/PixelFlow/blob/master/src/com/thomasdiewald/pixelflow/glsl/OpticalFlow/renderVelocityStreams.vert
     Pixel Shader : https://github.com/diwi/PixelFlow/blob/master/src/com/thomasdiewald/pixelflow/glsl/OpticalFlow/renderVelocityStreams.frag
