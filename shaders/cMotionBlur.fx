@@ -101,8 +101,7 @@ float4 ps_source(float4 vpos : SV_POSITION,
 {
     float3 uImage = tex2D(s_color, uv.xy).rgb;
     float3 output = uImage.rgb / dot(uImage.rgb , 1.0);
-    float obright = max(max(output.r, output.g), output.b);
-    output = output.rg / obright;
+    output = output.rg;
     return float4(output.rg, 0.0, 0.0);
 }
 
