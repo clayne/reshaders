@@ -43,7 +43,6 @@ sampler2D s_pbuffer { Texture = r_pbuffer; };
 sampler2D s_cbuffer { Texture = r_cbuffer; };
 sampler2D s_cuddxy  { Texture = r_cuddxy; };
 
-
 /* [ Pixel Shaders ] */
 
 void ps_convert(float4 vpos : SV_POSITION,
@@ -115,13 +114,16 @@ float4 ps_flow(float4 vpos : SV_POSITION,
     Pixel Shader : https://github.com/diwi/PixelFlow/blob/master/src/com/thomasdiewald/pixelflow/glsl/OpticalFlow/renderVelocityStreams.frag
 */
 
-#define SPACE 8
-#define LINES_X (BUFFER_WIDTH / SPACE)
-#define LINES_Y (BUFFER_HEIGHT / SPACE)
+#ifndef VERTEX_SPACING
+    #define VERTEX_SPACING 8
+#endif
+
+#define LINES_X uint(BUFFER_WIDTH / VERTEX_SPACING)
+#define LINES_Y uint(BUFFER_HEIGHT / VERTEX_SPACING)
 #define NUM_LINES (LINES_X * LINES_Y)
 #define SPACE_X (BUFFER_WIDTH / LINES_X)
 #define SPACE_Y (BUFFER_HEIGHT / LINES_Y)
-#define VELOCITY_SCALE (SPACE_X + SPACE_Y)
+#define VELOCITY_SCALE (SPACE_X + SPACE_Y) * 1
 
 void vs_output(in uint id : SV_VERTEXID,
                inout float4 position : SV_POSITION,
