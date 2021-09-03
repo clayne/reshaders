@@ -97,7 +97,7 @@ void ps_convert(float4 vpos : SV_POSITION,
     float3 uImage = tex2D(s_color, uv.xy).rgb;
     float3 output = uImage.rgb / dot(uImage.rgb , 1.0);
     r0.xy = tex2D(s_cbuffer, uv).xy;
-    r0.zw = output.rg;
+    r0.zw = output.rg / max(max(output.r, output.g), output.b);
 }
 
 void ps_filter(float4 vpos : SV_POSITION,
