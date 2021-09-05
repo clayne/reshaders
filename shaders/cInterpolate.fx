@@ -107,6 +107,10 @@ void ps_convert(float4 vpos : SV_POSITION,
 {
     float2 uImage;
     float2 vofs[uTaps];
+    const float uLod = log2(max(DSIZE.x, DSIZE.y)) - log2(ISIZE);
+    const float uArea = math::pi() * (uRadius * uRadius) / uTaps;
+    const float uBias = log2(sqrt(uArea));
+    const float uMip = max(uLod, uLod + uBias);
 
     for (int i = 0; i < 7; i++)
     {
@@ -116,7 +120,7 @@ void ps_convert(float4 vpos : SV_POSITION,
 
     for (int j = 0; j < uTaps; j++)
     {
-        float2 uColor = tex2D(s_buffer, vofs[j]).xy;
+        float2 uColor = tex2Dlod(s_buffer, float4(vofs[j], 0.0, uMip)).xy;
         uImage = lerp(uImage, uColor, rcp(float(j) + 1));
     }
 
