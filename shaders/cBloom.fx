@@ -156,22 +156,22 @@ float4 downsample2Dps(sampler2D src, v2fd input)
     output  = (a0 + a1 + a2 + a3) * weight.x; // Center quad
     output += (b2 + d1 + c0 + c1) * weight.y; // Top - left quad
     output += (d1 + b1 + c1 + c2) * weight.y; // Top - right quad
-    output += (c1 + c2 + d0 + b0) * weight.y; // Bottom - right quad
+    output += (c1 + c2 + d0 + b3) * weight.y; // Bottom - right quad
     output += (c0 + c1 + b0 + d0) * weight.y; // Bottom - left quad
     return output;
 }
 
 float4 upsample2Dps(sampler2D src, v2fu input)
 {
-    float4 a0 = tex2D(src, input.uOffset0.xy);
-    float4 a1 = tex2D(src, input.uOffset0.zw);
-    float4 a2 = tex2D(src, input.uOffset0.xw);
-    float4 a3 = tex2D(src, input.uOffset0.zy);
-    float4 c0 = tex2D(src, input.uOffset1.yw);
-    float4 b0 = tex2D(src, input.uOffset1.xw);
-    float4 b1 = tex2D(src, input.uOffset1.zw);
-    float4 b2 = tex2D(src, input.uOffset2.wx);
-    float4 b3 = tex2D(src, input.uOffset2.wz);
+    float4 a0 = tex2D(src, input.uOffset0.xy); // (-1.0, -1.0)
+    float4 a1 = tex2D(src, input.uOffset0.zw); // ( 1.0,  1.0)
+    float4 a2 = tex2D(src, input.uOffset0.xw); // (-1.0,  1.0)
+    float4 a3 = tex2D(src, input.uOffset0.zy); // ( 1.0, -1.0)
+    float4 c0 = tex2D(src, input.uOffset1.yw); // ( 0.0,  0.0)
+    float4 b0 = tex2D(src, input.uOffset1.xw); // (-1.0,  0.0)
+    float4 b1 = tex2D(src, input.uOffset1.zw); // ( 1.0,  0.0)
+    float4 b2 = tex2D(src, input.uOffset2.wx); // ( 0.0,  1.0)
+    float4 b3 = tex2D(src, input.uOffset2.wz); // ( 0.0,  1.0)
 
     float4 output;
     const float3 weights = float3(1.0, 2.0, 4.0) / 16.0;

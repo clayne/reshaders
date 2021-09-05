@@ -63,19 +63,28 @@ sampler2D s_cflow  { Texture = r_cflow;  AddressU = MIRROR; AddressV = MIRROR; }
 
 /* [ Vertex Shaders ] */
 
+static const int uSteps = 6;
+static const float uOffset[uSteps] =
+{
+    0.65772, 2.45017, 4.41096,
+    6.37285, 8.33626, 10.30153
+};
+
 void vs_convert(in uint id : SV_VERTEXID,
                 inout float4 vpos : SV_POSITION,
                 inout float2 uv : TEXCOORD0,
-                inout float4 ofs[7] : TEXCOORD1)
+                inout float4 ofs[6] : TEXCOORD1)
 {
     // Calculate texel offset of the mipped texture
-    const float2 uSize = math::computelodtexel(DSIZE.xy, ISIZE) * uRadius;
     core::vsinit(id, uv, vpos);
+    const float2 tSize = log2(max(DSIZE.x, DSIZE.y)) - log2(256.0);
+    const float2 pSize = 1.0 / (DSIZE / exp2(tSize));
+    const float2 dSize = float2(pSize.x, 0.0);
 
-    for(int i = 0; i < 7; i++)
+    for(int i = 0; i < uSteps; i++)
     {
-        ofs[i].xy = math::vogel(i, uv, uSize, uTaps);
-        ofs[i].zw = math::vogel(7 + i, uv, uSize, uTaps);
+        ofs[i].xy = uv + uOffset[i] * dSize;
+        ofs[i].zw = uv - uOffset[i] * dSize;
     }
 }
 
@@ -84,13 +93,14 @@ void vs_filter(in uint id : SV_VERTEXID,
                inout float2 uv : TEXCOORD0,
                inout float4 ofs[7] : TEXCOORD1)
 {
-    const float2 uSize = rcp(ISIZE) * uRadius;
     core::vsinit(id, uv, vpos);
+    const float2 pSize = rcp(ISIZE);
+    const float2 dSize = float2(0.0, pSize.y);
 
-    for(int i = 0; i < 7; i++)
+    for(int i = 0; i < uSteps; i++)
     {
-        ofs[i].xy = math::vogel(i, uv, uSize, uTaps);
-        ofs[i].zw = math::vogel(7 + i, uv, uSize, uTaps);
+        ofs[i].xy = uv + uOffset[i] * dSize;
+        ofs[i].zw = uv - uOffset[i] * dSize;
     }
 }
 
