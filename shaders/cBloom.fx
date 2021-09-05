@@ -174,11 +174,11 @@ float4 upsample2Dps(sampler2D src, v2fu input)
     float4 b3 = tex2D(src, input.uOffset2.wz); // ( 0.0,  1.0)
 
     float4 output;
-    const float3 weights = float3(1.0, 2.0, 4.0) / 16.0;
+    const float3 weights = float3(1.0, 2.0, 4.0);
     output  = (a0 + a1 + a2 + a3) * weights.x;
     output += (b0 + b1 + b2 + b3) * weights.y;
     output += c0 * weights.z;
-    return output;
+    return output / 16.0;
 }
 
 float4 ps_downsample0(v2fd input): SV_TARGET
