@@ -19,8 +19,11 @@
         ui_type = utype; ui_min = umin; ui_max = umax; ui_tooltip = utooltip;   		\
         > = uvalue
 
-uOption(uConst, float, "slider", "Optical Flow", "Constraint", 2.000, 0.000, 4.000,
+uOption(uConst, float, "slider", "Optical Flow", "Constraint", 1.000, 0.000, 2.000,
 "Regularization: Higher = Smoother flow");
+
+uOption(uRadius, float, "slider", "Optical Flow", "Prefilter", 8.000, 0.000, 16.00,
+"Prefilter Blur: Higher = Less spatial noise");
 
 uOption(uBlend, float, "slider", "Post Process", "Temporal Smoothing", 0.250, 0.000, 0.500,
 "Temporal Smoothing: Higher = Less temporal noise");
@@ -43,6 +46,26 @@ sampler2D s_pbuffer { Texture = r_pbuffer; };
 sampler2D s_cbuffer { Texture = r_cbuffer; };
 sampler2D s_cuddxy  { Texture = r_cuddxy; };
 
+/* [ Vertex Shaders ] */
+
+static const int uTaps = 14;
+
+void vs_filter(in uint id : SV_VERTEXID,
+               inout float4 vpos : SV_POSITION,
+               inout float2 uv : TEXCOORD0,
+               inout float4 ofs[7] : TEXCOORD1)
+{
+    const float uLod = log2(max(DSIZE.x, DSIZE.y)) - log2(max(DSIZE.x / 2, DSIZE.y / 2));
+    const float2 uSize = (1.0 / (DSIZE * exp2(-uLod))) * uRadius;
+    core::vsinit(id, uv, vpos);
+
+    for(int i = 0; i < 7; i++)
+    {
+        ofs[i].xy = uv + math::vogel(i, uSize, uTaps);
+        ofs[i].zw = uv + math::vogel(7 + i, uSize, uTaps);
+    }
+}
+
 /* [ Pixel Shaders ] */
 
 void ps_convert(float4 vpos : SV_POSITION,
@@ -60,17 +83,38 @@ void ps_convert(float4 vpos : SV_POSITION,
 
 void ps_filter(float4 vpos : SV_POSITION,
                float2 uv : TEXCOORD0,
+               float4 ofs[7] : TEXCOORD1,
                out float4 r0 : SV_TARGET0,
                out float4 r1 : SV_TARGET1)
 {
-    float4 uImage = tex2D(s_pbuffer, uv);
-    r0 = uImage.zw;
+    const float uArea = math::pi() * (uRadius * uRadius) / uTaps;
+    const float uBias = log2(sqrt(uArea));
+    const float uLod = log2(max(DSIZE.x, DSIZE.y)) - log2(max(DSIZE.x / 2, DSIZE.y / 2));
+    const float uMip = max(uLod, uLod + uBias + 1.0);
+
+    float2 cImage;
+    float2 vofs[uTaps];
+
+    for (int i = 0; i < 7; i++)
+    {
+        vofs[i] = ofs[i].xy;
+        vofs[i + 7] = ofs[i].zw;
+    }
+
+    for (int j = 0; j < uTaps; j++)
+    {
+        float2 uColor = tex2Dlod(s_pbuffer, float4(vofs[j], 0.0, uMip)).zw;
+        cImage = lerp(cImage, uColor, rcp(float(j) + 1));
+    }
+
+    r0 = cImage;
+    float2 pImage = tex2D(s_pbuffer, uv).xy;
     float2 cGrad;
     float2 pGrad;
-    cGrad.x = dot(ddx(uImage.zw), 1.0);
-    cGrad.y = dot(ddy(uImage.zw), 1.0);
-    pGrad.x = dot(ddx(uImage.xy), 1.0);
-    pGrad.y = dot(ddy(uImage.xy), 1.0);
+    cGrad.x = dot(ddx(cImage), 1.0);
+    cGrad.y = dot(ddy(cImage), 1.0);
+    pGrad.x = dot(ddx(pImage), 1.0);
+    pGrad.y = dot(ddy(pImage), 1.0);
     r1 = cGrad + pGrad;
 }
 
@@ -195,7 +239,7 @@ technique cOpticalFlow
 
     pass cProcessFrame
     {
-        VertexShader = vs_generic;
+        VertexShader = vs_filter;
         PixelShader = ps_filter;
         RenderTarget0 = r_cbuffer;
         RenderTarget1 = r_cuddxy;

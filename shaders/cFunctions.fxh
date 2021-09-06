@@ -85,7 +85,7 @@ namespace math
     float3 fsqrt(float3 c) { return c * rsqrt(c); }
     float4 fsqrt(float4 c) { return c * rsqrt(c); }
 
-    float2 vogel(int uIndex, float2 uv, float2 pSize, int uTaps)
+    float2 vogel(int uIndex, float2 pSize, int uTaps)
     {
         const float  GoldenAngle = pi() * (3.0 - sqrt(5.0));
         const float2 Radius = (sqrt(uIndex + 0.5f) / sqrt(uTaps)) * pSize;
@@ -93,7 +93,7 @@ namespace math
 
         float2 SineCosine;
         sincos(Theta, SineCosine.x, SineCosine.y);
-        return Radius * SineCosine.yx + uv;
+        return Radius * SineCosine.yx;
     }
 
     float min3(float3 c) { return min(c.r, min(c.g, c.b)); }

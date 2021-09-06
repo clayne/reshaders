@@ -69,13 +69,14 @@ void vs_convert(in uint id : SV_VERTEXID,
                 inout float4 ofs[7] : TEXCOORD1)
 {
     // Calculate texel offset of the mipped texture
-    const float2 uSize = math::computelodtexel(DSIZE.xy, ISIZE) * uRadius;
+    const float uLod = log2(max(DSIZE.x, DSIZE.y)) - log2(ISIZE);
+    const float2 uSize = (1.0 / (DSIZE / exp2(uLod))) * uRadius;
     core::vsinit(id, uv, vpos);
 
     for(int i = 0; i < 7; i++)
     {
-        ofs[i].xy = math::vogel(i, uv, uSize, uTaps);
-        ofs[i].zw = math::vogel(7 + i, uv, uSize, uTaps);
+        ofs[i].xy = uv + math::vogel(i, uSize, uTaps);
+        ofs[i].zw = uv + math::vogel(7 + i, uSize, uTaps);
     }
 }
 
@@ -89,8 +90,8 @@ void vs_filter(in uint id : SV_VERTEXID,
 
     for(int i = 0; i < 7; i++)
     {
-        ofs[i].xy = math::vogel(i, uv, uSize, uTaps);
-        ofs[i].zw = math::vogel(7 + i, uv, uSize, uTaps);
+        ofs[i].xy = uv + math::vogel(i, uSize, uTaps);
+        ofs[i].zw = uv + math::vogel(7 + i, uSize, uTaps);
     }
 }
 
@@ -112,10 +113,6 @@ void ps_convert(float4 vpos : SV_POSITION,
 {
     float2 uImage;
     float2 vofs[uTaps];
-    const float uLod = log2(max(DSIZE.x, DSIZE.y)) - log2(ISIZE);
-    const float uArea = math::pi() * (uRadius * uRadius) / uTaps;
-    const float uBias = log2(sqrt(uArea));
-    const float uMip = max(uLod, uLod + uBias);
 
     for (int i = 0; i < 7; i++)
     {
@@ -125,7 +122,7 @@ void ps_convert(float4 vpos : SV_POSITION,
 
     for (int j = 0; j < uTaps; j++)
     {
-        float2 uColor = tex2Dlod(s_buffer, float4(vofs[j], 0.0, uMip)).xy;
+        float2 uColor = tex2D(s_buffer, vofs[j]).xy;
         uImage = lerp(uImage, uColor, rcp(float(j) + 1));
     }
 

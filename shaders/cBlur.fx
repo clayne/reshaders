@@ -49,8 +49,8 @@ void vs_source( in uint id : SV_VERTEXID,
 
     for(int i = 0; i < oNum; i++)
     {
-        ofs[i].xy = math::vogel(i, uv, uSize, uTaps);
-        ofs[i].zw = math::vogel(oNum + i, uv, uSize, uTaps);
+        ofs[i].xy = uv + math::vogel(i, uSize, uTaps);
+        ofs[i].zw = uv + math::vogel(i, uSize, uTaps);
     }
 }
 
@@ -64,8 +64,8 @@ void vs_filter( in uint id : SV_VERTEXID,
 
     for(int i = 0; i < oNum; i++)
     {
-        ofs[i].xy = math::vogel(i, uv, uSize, uTaps);
-        ofs[i].zw = math::vogel(oNum + i, uv, uSize, uTaps);
+        ofs[i].xy = uv + math::vogel(i, uSize, uTaps);
+        ofs[i].zw = uv + math::vogel(i, uSize, uTaps);
     }
 }
 
