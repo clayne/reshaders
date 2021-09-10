@@ -22,7 +22,19 @@
     CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#include "cFunctions.fxh"
+#define CONST_LOG2(x) (\
+    (uint((x)  & 0xAAAAAAAA) != 0) | \
+    (uint(((x) & 0xFFFF0000) != 0) << 4) | \
+    (uint(((x) & 0xFF00FF00) != 0) << 3) | \
+    (uint(((x) & 0xF0F0F0F0) != 0) << 2) | \
+    (uint(((x) & 0xCCCCCCCC) != 0) << 1))
+
+#define BIT2_LOG2(x)  ((x) | (x) >> 1)
+#define BIT4_LOG2(x)  (BIT2_LOG2(x) | BIT2_LOG2(x) >> 2)
+#define BIT8_LOG2(x)  (BIT4_LOG2(x) | BIT4_LOG2(x) >> 4)
+#define BIT16_LOG2(x) (BIT8_LOG2(x) | BIT8_LOG2(x) >> 8)
+#define LOG2(x)       (CONST_LOG2((BIT16_LOG2(x) >> 1) + 1))
+#define RMAX(x, y)     x ^ ((x ^ y) & -(x < y)) // max(x, y)
 
 #define DSIZE uint2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2)
 #define RSIZE LOG2(RMAX(DSIZE.x, DSIZE.y)) + 1
@@ -33,7 +45,6 @@
         ui_category = ucategory; ui_label = ulabel;                             		\
         ui_type = utype; ui_min = umin; ui_max = umax; ui_tooltip = utooltip;   		\
         > = uvalue
-
 
 uOption(uBlockSize, int, "slider", "Datamosh", "Block Size", 16, 4, 32,
 "Size of compression macroblock.");
@@ -85,7 +96,18 @@ sampler2D s_coflow  { Texture = r_coflow; MFILTER; AddressU = MIRROR; AddressV =
 sampler2D s_caccum  { Texture = r_caccum; MFILTER; AddressU = MIRROR; AddressV = MIRROR; };
 sampler2D s_copy    { Texture = r_copy;  SRGBTexture = TRUE; };
 
-/* [ Pixel Shaders ] */
+/* [Vertex Shaders] */
+
+void vs_generic(in uint id : SV_VERTEXID,
+                inout float2 uv : TEXCOORD0,
+                inout float4 vpos : SV_POSITION)
+{
+    uv.x = (id == 2) ? 2.0 : 0.0;
+    uv.y = (id == 1) ? 2.0 : 0.0;
+    vpos = float4(uv * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+}
+
+/* [Pixel Shaders ] */
 
 void ps_convert(float4 vpos : SV_POSITION,
                 float2 uv : TEXCOORD0,
@@ -129,10 +151,10 @@ float4 ps_flow(float4 vpos : SV_POSITION,
                float2 uv : TEXCOORD0) : SV_TARGET
 {
     const float uRegularize = max(4.0 * pow(uConst * 1e-2, 2.0), 1e-10);
-    const float pyramids = (FSIZE - 1) - 0.5;
+    const float pyramids = log2(max(DSIZE.x, DSIZE.y));
     float2 cFlow = 0.0;
 
-    for(float i = pyramids; i >= 0; i--)
+    for(float i = pyramids - 0.5; i >= 0; i--)
     {
         float4 ucalc = float4(uv, 0.0, i);
         float2 cFrame = tex2Dlod(s_cbuffer, ucalc).xy;
