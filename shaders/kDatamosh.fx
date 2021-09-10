@@ -78,11 +78,11 @@ texture2D r_caccum  { Width = DSIZE.x / 2; Height = DSIZE.y / 2; Format = R16F; 
 texture2D r_copy    { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA8; };
 
 sampler2D s_color   { Texture = r_color; SRGBTexture = TRUE; };
-sampler2D s_pbuffer { Texture = r_pbuffer; };
-sampler2D s_cbuffer { Texture = r_cbuffer; };
-sampler2D s_cuddxy  { Texture = r_cuddxy; };
-sampler2D s_coflow  { Texture = r_coflow; MFILTER; };
-sampler2D s_caccum  { Texture = r_caccum; MFILTER; };
+sampler2D s_pbuffer { Texture = r_pbuffer; AddressU = MIRROR; AddressV = MIRROR; };
+sampler2D s_cbuffer { Texture = r_cbuffer; AddressU = MIRROR; AddressV = MIRROR; };
+sampler2D s_cuddxy  { Texture = r_cuddxy;  AddressU = MIRROR; AddressV = MIRROR; };
+sampler2D s_coflow  { Texture = r_coflow; MFILTER; AddressU = MIRROR; AddressV = MIRROR; };
+sampler2D s_caccum  { Texture = r_caccum; MFILTER; AddressU = MIRROR; AddressV = MIRROR; };
 sampler2D s_copy    { Texture = r_copy;  SRGBTexture = TRUE; };
 
 /* [ Pixel Shaders ] */

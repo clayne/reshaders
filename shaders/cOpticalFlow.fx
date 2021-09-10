@@ -9,10 +9,6 @@
 
 #include "cFunctions.fxh"
 
-#define DSIZE uint2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2)
-#define RSIZE LOG2(RMAX(DSIZE.x, DSIZE.y)) + 1
-#define FSIZE LOG2(RMAX(DSIZE.x / 2, DSIZE.y / 2)) + 1
-
 #define uOption(option, udata, utype, ucategory, ulabel, uvalue, umin, umax, utooltip)  \
         uniform udata option <                                                  		\
         ui_category = ucategory; ui_label = ulabel;                             		\
@@ -22,132 +18,122 @@
 uOption(uConst, float, "slider", "Optical Flow", "Constraint", 1.000, 0.000, 2.000,
 "Regularization: Higher = Smoother flow");
 
-uOption(uRadius, float, "slider", "Optical Flow", "Prefilter", 8.000, 0.000, 16.00,
-"Prefilter Blur: Higher = Less spatial noise");
-
 uOption(uBlend, float, "slider", "Post Process", "Temporal Smoothing", 0.250, 0.000, 0.500,
 "Temporal Smoothing: Higher = Less temporal noise");
 
-uOption(uDetail, float, "slider", "Post Process", "Flow Mipmap Bias", 0.000, 0.000, FSIZE - 1,
+uOption(uDetail, float, "slider", "Post Process", "Flow Mipmap Bias", 4.500, 0.000, 7.000,
 "Postprocess Blur: Higher = Less spatial noise");
 
 uOption(uNormal, bool, "radio", "Display", "Lines Normal Direction", true, 0, 0,
 "Normal to velocity direction");
 
-texture2D r_color  : COLOR;
-texture2D r_pbuffer { Width = DSIZE.x; Height = DSIZE.y; Format = RGBA16; MipLevels = RSIZE; };
-texture2D r_cbuffer { Width = DSIZE.x; Height = DSIZE.y; Format = RG16; MipLevels = RSIZE; };
-texture2D r_cuddxy  { Width = DSIZE.x; Height = DSIZE.y; Format = RG16F; MipLevels = RSIZE; };
-texture2D r_coflow  { Width = DSIZE.x / 2; Height = DSIZE.y / 2; Format = RG16F; MipLevels = FSIZE; };
-
-sampler2D s_coflow  { Texture = r_coflow; AddressU = MIRROR; AddressV = MIRROR; };
-sampler2D s_color   { Texture = r_color; SRGBTexture = TRUE; };
-sampler2D s_pbuffer { Texture = r_pbuffer; };
-sampler2D s_cbuffer { Texture = r_cbuffer; };
-sampler2D s_cuddxy  { Texture = r_cuddxy; };
-
-/* [ Vertex Shaders ] */
-
+#define DSIZE uint2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2)
+#define RSIZE LOG2(RMAX(DSIZE.x, DSIZE.y)) + 1
+#define ISIZE 128.0
 static const int uTaps = 14;
 
-void vs_filter(in uint id : SV_VERTEXID,
-               inout float4 vpos : SV_POSITION,
-               inout float2 uv : TEXCOORD0,
-               inout float4 ofs[7] : TEXCOORD1)
-{
-    const float uLod = log2(max(DSIZE.x, DSIZE.y)) - log2(max(DSIZE.x / 2, DSIZE.y / 2));
-    const float2 uSize = (1.0 / (DSIZE * exp2(-uLod))) * uRadius;
-    core::vsinit(id, uv, vpos);
+texture2D r_color  : COLOR;
+texture2D r_buffer { Width = DSIZE.x; Height = DSIZE.y; Format = RG16; MipLevels = RSIZE; };
+texture2D r_cinfo0 { Width = ISIZE; Height = ISIZE; Format = RGBA16; MipLevels = 8; };
+texture2D r_cinfo1 { Width = ISIZE; Height = ISIZE; Format = RG16; };
+texture2D r_cddxy  { Width = ISIZE; Height = ISIZE; Format = RG16F; MipLevels = 8; };
+texture2D r_cflow  { Width = ISIZE; Height = ISIZE; Format = RG16F; MipLevels = 8; };
 
-    for(int i = 0; i < 7; i++)
-    {
-        ofs[i].xy = uv + math::vogel(i, uSize, uTaps);
-        ofs[i].zw = uv + math::vogel(7 + i, uSize, uTaps);
-    }
-}
+sampler2D s_cflow  { Texture = r_cflow; AddressU = MIRROR; AddressV = MIRROR; };
+sampler2D s_color  { Texture = r_color; SRGBTexture = TRUE; };
+sampler2D s_buffer { Texture = r_buffer; AddressU = MIRROR; AddressV = MIRROR; };
+sampler2D s_cinfo0 { Texture = r_cinfo0; AddressU = MIRROR; AddressV = MIRROR; };
+sampler2D s_cinfo1 { Texture = r_cinfo1; AddressU = MIRROR; AddressV = MIRROR; };
+sampler2D s_cddxy  { Texture = r_cddxy; AddressU = MIRROR; AddressV = MIRROR; };
+
+static const int step_count = 6;
+
+static const float weights[step_count] =
+{
+	0.16501, 0.17507, 0.10112,
+	0.04268, 0.01316, 0.00296
+};
+
+static const float offsets[step_count] =
+{
+	0.65772, 2.45017, 4.41096,
+	6.37285, 8.33626, 10.30153
+};
 
 /* [ Pixel Shaders ] */
 
-void ps_convert(float4 vpos : SV_POSITION,
-                float2 uv : TEXCOORD0,
-                out float4 r0 : SV_TARGET0)
+float4 blur2D(sampler2D src, float2 uv, float2 direction, float2 psize)
 {
-    // r0.xy = copy blurred frame from last run
-    // r0.zw = blur current frame, than blur + copy at ps_filter
-    // r1 = get derivatives from previous frame
-    float3 uImage = tex2D(s_color, uv.xy).rgb;
+    float4 output;
+
+    for (int i = 0; i < step_count; ++i) {
+        const float2 texcoord_offset = offsets[i] * direction / psize;
+        const float4 samples =
+        tex2D(src, uv + texcoord_offset) +
+        tex2D(src, uv - texcoord_offset);
+        output += weights[i] * samples;
+    }
+
+    return output;
+}
+
+void ps_normalize(float4 vpos : SV_POSITION,
+                  float2 uv : TEXCOORD0,
+                  out float2 r0 : SV_TARGET0)
+{
+    float3 uImage = tex2D(s_color, uv).rgb;
     float3 output = uImage.rgb / dot(uImage.rgb , 1.0);
-    r0.xy = tex2D(s_cbuffer, uv).xy;
-    r0.zw = output.rg / max(max(output.r, output.g), output.b);
+    r0 = output.rg / max(max(output.r, output.g), output.b);
 }
 
-void ps_filter(float4 vpos : SV_POSITION,
-               float2 uv : TEXCOORD0,
-               float4 ofs[7] : TEXCOORD1,
-               out float4 r0 : SV_TARGET0,
-               out float4 r1 : SV_TARGET1)
+void ps_blit(float4 vpos : SV_POSITION,
+             float2 uv : TEXCOORD0,
+             out float4 r0 : SV_TARGET0)
 {
-    const float uArea = math::pi() * (uRadius * uRadius) / uTaps;
-    const float uBias = log2(sqrt(uArea));
-    const float uLod = log2(max(DSIZE.x, DSIZE.y)) - log2(max(DSIZE.x / 2, DSIZE.y / 2));
-    const float uMip = max(uLod, uLod + uBias + 1.0);
-
-    float2 cImage;
-    float2 vofs[uTaps];
-
-    for (int i = 0; i < 7; i++)
-    {
-        vofs[i] = ofs[i].xy;
-        vofs[i + 7] = ofs[i].zw;
-    }
-
-    for (int j = 0; j < uTaps; j++)
-    {
-        float2 uColor = tex2Dlod(s_pbuffer, float4(vofs[j], 0.0, uMip)).zw;
-        cImage = lerp(cImage, uColor, rcp(float(j) + 1));
-    }
-
-    r0 = cImage;
-    float2 pImage = tex2D(s_pbuffer, uv).xy;
-    float2 cGrad;
-    float2 pGrad;
-    cGrad.x = dot(ddx(cImage), 1.0);
-    cGrad.y = dot(ddy(cImage), 1.0);
-    pGrad.x = dot(ddx(pImage), 1.0);
-    pGrad.y = dot(ddy(pImage), 1.0);
-    r1 = cGrad + pGrad;
+    r0.xy = tex2D(s_buffer, uv).xy;
+    r0.zw = tex2D(s_cinfo1, uv).xy;
 }
 
-/*
-    https://www.cs.auckland.ac.nz/~rklette/CCV-CIMAT/pdfs/B08-HornSchunck.pdf
-    - Use a regular image pyramid for input frames I(., .,t)
-    - Processing starts at a selected level (of lower resolution)
-    - Obtained results are used for initializing optic flow values at a
-      lower level (of higher resolution)
-    - Repeat until full resolution level of original frames is reached
-*/
-
-float4 ps_flow(float4 vpos : SV_POSITION,
-               float2 uv : TEXCOORD0) : SV_Target
+void ps_hblur(float4 vpos : SV_POSITION,
+              float2 uv : TEXCOORD0,
+              out float2 r0 : SV_TARGET0)
 {
-    const float uRegularize = max(4.0 * pow(uConst * 1e-2, 2.0), 1e-10);
-    const float pyramids = (FSIZE) - 0.5;
+    r0 = blur2D(s_cinfo0, uv, float2(1.0, 0.0), ISIZE).xy;
+}
+
+void ps_vblur(float4 vpos : SV_POSITION,
+              float2 uv : TEXCOORD0,
+              out float2 r0 : SV_TARGET0,
+              out float2 r1 : SV_TARGET1)
+{
+    r0 = blur2D(s_cinfo1, uv, float2(0.0, 1.0), ISIZE).xy;
+    r1.x = dot(ddx(r0), 1.0);
+    r1.y = dot(ddy(r0), 1.0);
+}
+
+void ps_oflow(float4 vpos: SV_POSITION,
+              float2 uv : TEXCOORD0,
+              out float4 r0 : SV_TARGET0,
+              out float4 r1 : SV_TARGET1)
+{
+    const float uRegularize = max(4.0 * pow(uConst * 1e-3, 2.0), 1e-10);
+    const float pyramids = log2(ISIZE);
     float2 cFlow = 0.0;
 
-    for(float i = pyramids; i >= 0; i--)
+    for(float i = pyramids - 0.5; i >= 0; i--)
     {
         float4 ucalc = float4(uv, 0.0, i);
-        float2 cFrame = tex2Dlod(s_cbuffer, ucalc).xy;
-        float2 pFrame = tex2Dlod(s_pbuffer, ucalc).xy;
+        float4 cframe = tex2Dlod(s_cinfo0, ucalc);
+        float2 ddxy = tex2Dlod(s_cddxy, ucalc).xy;
 
-        float2 ddxy = tex2Dlod(s_cuddxy, ucalc).xy;
-        float dt = dot(cFrame - pFrame, 1.0);
+        float dt = dot(cframe.xy - cframe.zw, 1.0);
         float dCalc = dot(ddxy.xy, cFlow) + dt;
         float dSmooth = rcp(dot(ddxy.xy, ddxy.xy) + uRegularize);
         cFlow = cFlow - ((ddxy.xy * dCalc) * dSmooth);
     }
 
-    return float4(cFlow.xy, 0.0, uBlend);
+    r0 = float4(cFlow.xy, 0.0, uBlend);
+    r1 = float4(tex2D(s_cinfo0, uv).rgb, 0.0);
 }
 
 /*
@@ -186,7 +172,7 @@ void vs_output(in uint id : SV_VERTEXID,
 
     // get velocity from texture at origin location
     const float2 wh_rcp = 0.5 / DSIZE;
-    velocity = tex2Dlod(s_coflow, float4(origin.x * wh_rcp.x, 1.0 - origin.y * wh_rcp.y, 0.0, uDetail)).xy;
+    velocity = tex2Dlod(s_cflow, float4(origin.x * wh_rcp.x, 1.0 - origin.y * wh_rcp.y, 0.0, uDetail)).xy;
 
     // SCALE velocity
     float2 dir = velocity * VELOCITY_SCALE;
@@ -230,26 +216,56 @@ float4 ps_output(float4 position : SV_POSITION,
 
 technique cOpticalFlow
 {
-    pass cNormalize
+    pass normalize
     {
         VertexShader = vs_generic;
-        PixelShader = ps_convert;
-        RenderTarget0 = r_pbuffer;
+        PixelShader = ps_normalize;
+        RenderTarget0 = r_buffer;
     }
 
-    pass cProcessFrame
-    {
-        VertexShader = vs_filter;
-        PixelShader = ps_filter;
-        RenderTarget0 = r_cbuffer;
-        RenderTarget1 = r_cuddxy;
-    }
-
-    pass cOpticalFlow
+    pass copy
     {
         VertexShader = vs_generic;
-        PixelShader = ps_flow;
-        RenderTarget0 = r_coflow;
+        PixelShader = ps_blit;
+        RenderTarget0 = r_cinfo0;
+    }
+
+    pass horizontalblur
+    {
+        VertexShader = vs_generic;
+        PixelShader = ps_hblur;
+        RenderTarget0 = r_cinfo1;
+    }
+
+    pass verticalblur_ddxy
+    {
+        VertexShader = vs_generic;
+        PixelShader = ps_vblur;
+        RenderTarget0 = r_cinfo0;
+        RenderTarget1 = r_cddxy;
+        RenderTargetWriteMask = 1 | 2;
+    }
+
+    /*
+        Smooth optical flow with BlendOps
+        How it works:
+            Src = Current optical flow
+            Dest = Previous optical flow
+            SRCALPHA = Blending weight between Src and Dest
+            If SRCALPHA = 0.25, the blending would be
+            Src * (1.0 - 0.25) + Dest * 0.25
+            The previous flow's output gets quartered every frame
+        Note:
+            Disable ClearRenderTargets to blend with existing
+            data in r_cflow before rendering
+    */
+
+    pass opticalflow
+    {
+        VertexShader = vs_generic;
+        PixelShader = ps_oflow;
+        RenderTarget0 = r_cflow;
+        RenderTarget1 = r_cinfo1;
         ClearRenderTargets = FALSE;
         BlendEnable = TRUE;
         BlendOp = ADD;
@@ -257,7 +273,7 @@ technique cOpticalFlow
         DestBlend = SRCALPHA;
     }
 
-    pass cOutput
+    pass output
     {
         PrimitiveTopology = LINELIST;
         VertexCount = NUM_LINES * 2;

@@ -16,7 +16,12 @@
 #define RMAX(x, y)     x ^ ((x ^ y) & -(x < y)) // max(x, y)
 
 /*
-    noise() - [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
+    noise()      - [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
+    computelod() - [https://john-chapman.github.io/2019/03/29/convolution.html]
+    median()     - [https://github.com/GPUOpen-Effects/FidelityFX-CAS] [MIT]
+    vogel()      - [http://blog.marmakoide.org/?p=1s]
+    pi()         - [https://github.com/microsoft/DirectX-Graphics-Samples] [MIT]
+    de/encode    - [https://aras-p.info/texts/CompactNormalStorage.html]
 */
 
 namespace core
@@ -55,13 +60,6 @@ void vs_generic(in uint id : SV_VERTEXID,
 {
     core::vsinit(id, uv, vpos);
 }
-
-/*
-    computelod() - [https://john-chapman.github.io/2019/03/29/convolution.html]
-    median()     - [https://github.com/GPUOpen-Effects/FidelityFX-CAS] [MIT]
-    vogel()      - [http://blog.marmakoide.org/?p=1s]
-    pi()         - [https://github.com/microsoft/DirectX-Graphics-Samples] [MIT]
-*/
 
 namespace math
 {
@@ -119,10 +117,6 @@ namespace math
         return max(min(a, b), min(max(a, b), c));
     }
 }
-
-/*
-    Encode and decode normal - [https://aras-p.info/texts/CompactNormalStorage.html]
-*/
 
 namespace cv
 {
