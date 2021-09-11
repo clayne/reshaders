@@ -35,14 +35,14 @@ texture2D r_color  : COLOR;
 texture2D r_buffer { Width = DSIZE.x; Height = DSIZE.y; Format = RG16; MipLevels = RSIZE; };
 texture2D r_cinfo0 { Width = ISIZE; Height = ISIZE; Format = RGBA16; MipLevels = 8; };
 texture2D r_cinfo1 { Width = ISIZE; Height = ISIZE; Format = RG16; };
-texture2D r_cddxy  { Width = ISIZE; Height = ISIZE; Format = RG16F; MipLevels = 8; };
+texture2D r_cinfof { Width = ISIZE; Height = ISIZE; Format = RG16F; MipLevels = 8; };
 texture2D r_cflow  { Width = ISIZE; Height = ISIZE; Format = RG16F; MipLevels = 8; };
 
 sampler2D s_color  { Texture = r_color; SRGBTexture = TRUE; };
 sampler2D s_buffer { Texture = r_buffer; AddressU = MIRROR; AddressV = MIRROR; };
 sampler2D s_cinfo0 { Texture = r_cinfo0; AddressU = MIRROR; AddressV = MIRROR; };
 sampler2D s_cinfo1 { Texture = r_cinfo1; AddressU = MIRROR; AddressV = MIRROR; };
-sampler2D s_cddxy  { Texture = r_cddxy; AddressU = MIRROR; AddressV = MIRROR; };
+sampler2D s_cinfof { Texture = r_cinfof; AddressU = MIRROR; AddressV = MIRROR; };
 sampler2D s_cflow  { Texture = r_cflow; AddressU = MIRROR; AddressV = MIRROR; };
 
 static const int step_count = 6;
@@ -81,9 +81,7 @@ void ps_normalize(float4 vpos : SV_POSITION,
                   float2 uv : TEXCOORD0,
                   out float2 r0 : SV_TARGET0)
 {
-    float3 uImage = tex2D(s_color, uv).rgb;
-    float3 output = uImage.rgb / dot(uImage.rgb , 1.0);
-    r0 = output.rg / max(max(output.r, output.g), output.b);
+    r0 = normalize(tex2D(s_color, uv).rgb).xy;
 }
 
 void ps_blit(float4 vpos : SV_POSITION,
@@ -124,7 +122,7 @@ void ps_oflow(float4 vpos: SV_POSITION,
     {
         float4 ucalc = float4(uv, 0.0, i);
         float4 cframe = tex2Dlod(s_cinfo0, ucalc);
-        float2 ddxy = tex2Dlod(s_cddxy, ucalc).xy;
+        float2 ddxy = tex2Dlod(s_cinfof, ucalc).xy;
 
         float dt = dot(cframe.xy - cframe.zw, 1.0);
         float dCalc = dot(ddxy.xy, cFlow) + dt;
@@ -184,7 +182,7 @@ technique cMotionBlur
         VertexShader = vs_generic;
         PixelShader = ps_vblur;
         RenderTarget0 = r_cinfo0;
-        RenderTarget1 = r_cddxy;
+        RenderTarget1 = r_cinfof;
         RenderTargetWriteMask = 1 | 2;
     }
 

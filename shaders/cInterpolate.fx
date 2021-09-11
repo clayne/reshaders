@@ -92,9 +92,7 @@ void ps_normalize(float4 vpos : SV_POSITION,
                   float2 uv : TEXCOORD0,
                   out float2 r0 : SV_TARGET0)
 {
-    float3 uImage = tex2D(s_color, uv).rgb;
-    float3 output = uImage.rgb / dot(uImage.rgb , 1.0);
-    r0 = output.rg / max(max(output.r, output.g), output.b);
+    r0 = normalize(tex2D(s_color, uv).rgb).xy;
 }
 
 void ps_blit(float4 vpos : SV_POSITION,

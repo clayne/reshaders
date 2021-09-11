@@ -3,7 +3,7 @@ uniform float uThreshold <
     ui_type = "drag";
     ui_min = 0.0;
     ui_label = "Threshold";
-> = 0.8;
+> = 1.8;
 
 uniform float uSmooth <
     ui_type = "drag";
@@ -21,7 +21,7 @@ uniform float uIntensity <
     ui_type = "drag";
     ui_min = 0.0;
     ui_label = "Intensity";
-> = 1.0;
+> = 100.0;
 
 texture2D r_color : COLOR;
 texture2D r_bloom1 { Width = BUFFER_WIDTH / 2;   Height = BUFFER_HEIGHT / 2;   Format = RGBA16F; };
@@ -70,8 +70,8 @@ struct v2fd
     float4 vpos : SV_Position;
     float4 uOffset0 : TEXCOORD0; // Inner quad
     float4 uOffset1 : TEXCOORD1; // Outer quad
-    float4 uOffset2 : TEXCOORD2; // Horiz quad
-    float4 uOffset3 : TEXCOORD3; // Verti quad
+    float4 uOffset2 : TEXCOORD2; // Horizontal
+    float4 uOffset3 : TEXCOORD3; // Vertical
 };
 
 v2fd downsample2Dvs(uint id, float uFact)

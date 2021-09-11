@@ -115,11 +115,8 @@ void ps_convert(float4 vpos : SV_POSITION,
 {
     // r0.xy = copy blurred frame from last run
     // r0.zw = blur current frame, than blur + copy at ps_filter
-    // r1 = get derivatives from previous frame
-    float3 uImage = tex2D(s_color, uv.xy).rgb;
-    float3 output = uImage.rgb / dot(uImage.rgb , 1.0);
     r0.xy = tex2D(s_cbuffer, uv).xy;
-    r0.zw = output.rg / max(max(output.r, output.g), output.b);
+    r0.zw = normalize(tex2D(s_color, uv).rgb).xy;
 }
 
 void ps_filter(float4 vpos : SV_POSITION,
