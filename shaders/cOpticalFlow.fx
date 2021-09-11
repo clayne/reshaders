@@ -30,7 +30,6 @@ uOption(uNormal, bool, "radio", "Display", "Lines Normal Direction", true, 0, 0,
 #define DSIZE uint2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2)
 #define RSIZE LOG2(RMAX(DSIZE.x, DSIZE.y)) + 1
 #define ISIZE 128.0
-static const int uTaps = 14;
 
 texture2D r_color  : COLOR;
 texture2D r_buffer { Width = DSIZE.x; Height = DSIZE.y; Format = RG16; MipLevels = RSIZE; };
@@ -42,6 +41,7 @@ texture2D r_cflow  { Width = ISIZE; Height = ISIZE; Format = RG16F; MipLevels = 
 sampler2D s_cflow  { Texture = r_cflow; AddressU = MIRROR; AddressV = MIRROR; };
 sampler2D s_color  { Texture = r_color; SRGBTexture = TRUE; };
 sampler2D s_buffer { Texture = r_buffer; AddressU = MIRROR; AddressV = MIRROR; };
+sampler2D s_lodbia { Texture = r_buffer; AddressU = MIRROR; AddressV = MIRROR; MipLODBias = 1.0; };
 sampler2D s_cinfo0 { Texture = r_cinfo0; AddressU = MIRROR; AddressV = MIRROR; };
 sampler2D s_cinfo1 { Texture = r_cinfo1; AddressU = MIRROR; AddressV = MIRROR; };
 sampler2D s_cddxy  { Texture = r_cddxy; AddressU = MIRROR; AddressV = MIRROR; };
@@ -81,9 +81,7 @@ void ps_normalize(float4 vpos : SV_POSITION,
                   float2 uv : TEXCOORD0,
                   out float2 r0 : SV_TARGET0)
 {
-    float3 uImage = tex2D(s_color, uv).rgb;
-    float3 output = uImage.rgb / dot(uImage.rgb , 1.0);
-    r0 = output.rg / max(max(output.r, output.g), output.b);
+	r0 = normalize(tex2D(s_color, uv).rgb).xy;
 }
 
 void ps_blit(float4 vpos : SV_POSITION,
@@ -120,13 +118,13 @@ void ps_oflow(float4 vpos: SV_POSITION,
     const float pyramids = log2(ISIZE);
     float2 cFlow = 0.0;
 
-    for(float i = pyramids - 0.5; i >= 0; i--)
+    for(float i = pyramids; i >= 0; i -= 0.5)
     {
         float4 ucalc = float4(uv, 0.0, i);
-        float4 cframe = tex2Dlod(s_cinfo0, ucalc);
+        float4 frame = tex2Dlod(s_cinfo0, ucalc);
         float2 ddxy = tex2Dlod(s_cddxy, ucalc).xy;
 
-        float dt = dot(cframe.xy - cframe.zw, 1.0);
+        float dt = dot(frame.xy - frame.zw, 1.0);
         float dCalc = dot(ddxy.xy, cFlow) + dt;
         float dSmooth = rcp(dot(ddxy.xy, ddxy.xy) + uRegularize);
         cFlow = cFlow - ((ddxy.xy * dCalc) * dSmooth);
@@ -171,7 +169,7 @@ void vs_output(in uint id : SV_VERTEXID,
     float2 origin = offset + float2(col, row) * spacing;
 
     // get velocity from texture at origin location
-    const float2 wh_rcp = 0.5 / DSIZE;
+    const float2 wh_rcp = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
     velocity = tex2Dlod(s_cflow, float4(origin.x * wh_rcp.x, 1.0 - origin.y * wh_rcp.y, 0.0, uDetail)).xy;
 
     // SCALE velocity
