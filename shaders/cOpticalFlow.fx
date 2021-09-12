@@ -32,7 +32,7 @@ uOption(uNormal, bool, "radio", "Display", "Lines Normal Direction", true, 0, 0,
 #define ISIZE 128.0
 
 texture2D r_color  : COLOR;
-texture2D r_buffer { Width = DSIZE.x; Height = DSIZE.y; Format = RG16; MipLevels = RSIZE; };
+texture2D r_buffer { Width = DSIZE.x; Height = DSIZE.y; Format = RG8; MipLevels = RSIZE; };
 texture2D r_cinfo0 { Width = ISIZE; Height = ISIZE; Format = RGBA16; MipLevels = 8; };
 texture2D r_cinfo1 { Width = ISIZE; Height = ISIZE; Format = RG16; };
 texture2D r_cddxy  { Width = ISIZE; Height = ISIZE; Format = RG16F; MipLevels = 8; };

@@ -81,8 +81,8 @@ uOption(uBlend, float, "slider", "Optical Flow", "Temporal Smoothing", 0.5, 0.0,
 #endif
 
 texture2D r_color  : COLOR;
-texture2D r_pbuffer { Width = DSIZE.x; Height = DSIZE.y; Format = RGBA16; MipLevels = RSIZE; };
-texture2D r_cbuffer { Width = DSIZE.x; Height = DSIZE.y; Format = RG16; MipLevels = RSIZE; };
+texture2D r_pbuffer { Width = DSIZE.x; Height = DSIZE.y; Format = RGBA8; MipLevels = RSIZE; };
+texture2D r_cbuffer { Width = DSIZE.x; Height = DSIZE.y; Format = RG8; MipLevels = RSIZE; };
 texture2D r_cuddxy  { Width = DSIZE.x; Height = DSIZE.y; Format = RG16F; MipLevels = RSIZE; };
 texture2D r_coflow  { Width = DSIZE.x / 2; Height = DSIZE.y / 2; Format = RG16F; MipLevels = FSIZE; };
 texture2D r_caccum  { Width = DSIZE.x / 2; Height = DSIZE.y / 2; Format = R16F;  MipLevels = FSIZE; };
@@ -113,26 +113,21 @@ void ps_convert(float4 vpos : SV_POSITION,
                 float2 uv : TEXCOORD0,
                 out float4 r0 : SV_TARGET0)
 {
-    // r0.xy = copy blurred frame from last run
-    // r0.zw = blur current frame, than blur + copy at ps_filter
-    r0.xy = tex2D(s_cbuffer, uv).xy;
-    r0.zw = normalize(tex2D(s_color, uv).rgb).xy;
+    // r0.xy = normalize current frame
+    // r0.zw = get normalized frame from last pass
+    r0.xy = normalize(tex2D(s_color, uv).rgb).xy;
+    r0.zw = tex2D(s_cbuffer, uv).xy;
 }
 
 void ps_filter(float4 vpos : SV_POSITION,
                float2 uv : TEXCOORD0,
-               out float4 r0 : SV_TARGET0,
-               out float4 r1 : SV_TARGET1)
+               out float2 r0 : SV_TARGET0,
+               out float2 r1 : SV_TARGET1)
 {
     float4 uImage = tex2D(s_pbuffer, uv);
-    r0 = uImage.zw;
-    float2 cGrad;
-    float2 pGrad;
-    cGrad.x = dot(ddx(uImage.zw), 1.0);
-    cGrad.y = dot(ddy(uImage.zw), 1.0);
-    pGrad.x = dot(ddx(uImage.xy), 1.0);
-    pGrad.y = dot(ddy(uImage.xy), 1.0);
-    r1 = cGrad + pGrad;
+    r0 = uImage.xy;
+    r1.x = dot(ddx(uImage.xyzw), 1.0);
+    r1.y = dot(ddy(uImage.xyzw), 1.0);
 }
 
 /*
@@ -151,11 +146,11 @@ float4 ps_flow(float4 vpos : SV_POSITION,
     const float pyramids = log2(max(DSIZE.x, DSIZE.y));
     float2 cFlow = 0.0;
 
-    for(float i = pyramids - 0.5; i >= 0; i--)
+    for(float i = pyramids; i >= 0; i -= 0.5)
     {
         float4 ucalc = float4(uv, 0.0, i);
         float2 cFrame = tex2Dlod(s_cbuffer, ucalc).xy;
-        float2 pFrame = tex2Dlod(s_pbuffer, ucalc).xy;
+        float2 pFrame = tex2Dlod(s_pbuffer, ucalc).zw;
 
         float2 ddxy = tex2Dlod(s_cuddxy, ucalc).xy;
         float dt = dot(cFrame - pFrame, 1.0);
