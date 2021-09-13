@@ -41,7 +41,6 @@ texture2D r_cflow  { Width = ISIZE; Height = ISIZE; Format = RG16F; MipLevels = 
 sampler2D s_cflow  { Texture = r_cflow; AddressU = MIRROR; AddressV = MIRROR; };
 sampler2D s_color  { Texture = r_color; SRGBTexture = TRUE; };
 sampler2D s_buffer { Texture = r_buffer; AddressU = MIRROR; AddressV = MIRROR; };
-sampler2D s_lodbia { Texture = r_buffer; AddressU = MIRROR; AddressV = MIRROR; MipLODBias = 1.0; };
 sampler2D s_cinfo0 { Texture = r_cinfo0; AddressU = MIRROR; AddressV = MIRROR; };
 sampler2D s_cinfo1 { Texture = r_cinfo1; AddressU = MIRROR; AddressV = MIRROR; };
 sampler2D s_cddxy  { Texture = r_cddxy; AddressU = MIRROR; AddressV = MIRROR; };
@@ -50,14 +49,14 @@ static const int step_count = 6;
 
 static const float weights[step_count] =
 {
-	0.16501, 0.17507, 0.10112,
-	0.04268, 0.01316, 0.00296
+    0.16501, 0.17507, 0.10112,
+    0.04268, 0.01316, 0.00296
 };
 
 static const float offsets[step_count] =
 {
-	0.65772, 2.45017, 4.41096,
-	6.37285, 8.33626, 10.30153
+    0.65772, 2.45017, 4.41096,
+    6.37285, 8.33626, 10.30153
 };
 
 /* [ Pixel Shaders ] */
@@ -81,7 +80,9 @@ void ps_normalize(float4 vpos : SV_POSITION,
                   float2 uv : TEXCOORD0,
                   out float2 r0 : SV_TARGET0)
 {
-	r0 = normalize(tex2D(s_color, uv).rgb).xy;
+    float3 c0 = tex2D(s_color, uv).rgb;
+    c0 /= dot(c0, 1.0);
+    r0 = c0.xy / max(max(c0.r, c0.g), c0.b);
 }
 
 void ps_blit(float4 vpos : SV_POSITION,
@@ -141,7 +142,7 @@ void ps_oflow(float4 vpos: SV_POSITION,
 */
 
 #ifndef VERTEX_SPACING
-    #define VERTEX_SPACING 8
+    #define VERTEX_SPACING 10
 #endif
 
 #define LINES_X uint(BUFFER_WIDTH / VERTEX_SPACING)
