@@ -60,42 +60,48 @@ sampler2D s_cddxy  { Texture = r_cddxy; AddressU = MIRROR; AddressV = MIRROR; };
 sampler2D s_cflow  { Texture = r_cflow; AddressU = MIRROR; AddressV = MIRROR; };
 sampler2D s_pcolor { Texture = r_pcolor; SRGBTexture = TRUE; };
 
-static const int step_count = 6;
-
-static const float weights[step_count] =
+float gauss1D(float pos)
 {
-    0.16501, 0.17507, 0.10112,
-    0.04268, 0.01316, 0.00296
-};
-
-static const float offsets[step_count] =
-{
-    0.65772, 2.45017, 4.41096,
-    6.37285, 8.33626, 10.30153
-};
+    const float sigma = 0.5;
+    return exp(-(pos * pos) / (2.0 * sigma * sigma));
+}
 
 /* [ Pixel Shaders ] */
 
 float4 blur2D(sampler2D src, float2 uv, float2 direction, float2 psize)
 {
-    float4 output;
+    float2 sampleuv;
+    const float steps = 7.0;
+    const float kernel = 2.0 * steps + 1.0;
+    const float2 usize = (1.0 / psize) * direction;
+    float4 output = tex2D(src, uv);
+    float total = 1.0;
 
-    for (int i = 0; i < step_count; ++i) {
-        const float2 texcoord_offset = offsets[i] * direction / psize;
-        const float4 samples =
-        tex2D(src, uv + texcoord_offset) +
-        tex2D(src, uv - texcoord_offset);
-        output += weights[i] * samples;
+    [unroll]
+    for(float i = 1.0; i < 2.0 * steps; i += 2.0)
+    {
+        const float offsetD1 = i;
+        const float offsetD2 = i + 1.0;
+        const float weightD1 = gauss1D(offsetD1 / kernel);
+        const float weightD2 = gauss1D(offsetD2 / kernel);
+        const float weightL = weightD1 + weightD2;
+        total += 2.0 * weightL;
+
+        const float offsetL = ((offsetD1 * weightD1) + (offsetD2 * weightD2)) / weightL;
+        sampleuv = uv - offsetL * usize;
+        output += tex2D(src, sampleuv) * weightL;
+        sampleuv = uv + offsetL * usize;
+        output += tex2D(src, sampleuv) * weightL;
     }
 
-    return output;
+    return output / total;
 }
 
 void ps_normalize(float4 vpos : SV_POSITION,
                   float2 uv : TEXCOORD0,
                   out float2 r0 : SV_TARGET0)
 {
-    float3 c0 = tex2D(s_color, uv).rgb;
+    float3 c0 = max(tex2D(s_color, uv).rgb, 1e-3);
     c0 /= dot(c0, 1.0);
     r0 = c0.xy / max(max(c0.r, c0.g), c0.b);
 }

@@ -115,7 +115,7 @@ void ps_convert(float4 vpos : SV_POSITION,
 {
     // r0.xy = normalize current frame
     // r0.zw = get normalized frame from last pass
-    float3 c0 = tex2D(s_color, uv).rgb;
+    float3 c0 = max(tex2D(s_color, uv).rgb, 1e-3);
     c0 /= dot(c0, 1.0);
     r0.xy = c0.xy / max(max(c0.r, c0.g), c0.b);
     r0.zw = tex2D(s_cbuffer, uv).xy;
