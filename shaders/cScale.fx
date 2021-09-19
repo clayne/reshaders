@@ -1,6 +1,4 @@
 
-#include "cFunctions.fxh"
-
 uniform float kScale <
     ui_label = "Scale";
     ui_type = "drag";
@@ -21,22 +19,36 @@ sampler2D s_color
     AddressU = MIRROR;
     AddressV = MIRROR;
     #if BUFFER_COLOR_BIT_DEPTH != 10
-        SRGBTexture = true;
+        SRGBTexture = TRUE;
     #endif
 };
 
-struct v2f { float4 vpos : SV_POSITION; float2 uv : TEXCOORD0; };
+struct v2f
+{
+    float4 vpos : SV_POSITION;
+    float2 uv : TEXCOORD0;
+};
+
+void vsinit(in uint id,
+            inout float2 uv,
+            inout float4 vpos)
+{
+    uv.x = (id == 2) ? 2.0 : 0.0;
+    uv.y = (id == 1) ? 2.0 : 0.0;
+    vpos = float4(uv * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+}
 
 v2f vs_tile(in uint id : SV_VertexID)
 {
     v2f output;
     float2 coord;
-    core::vsinit(id, coord, output.vpos);
+    vsinit(id, coord, output.vpos);
+    const float2 screensize = float2(BUFFER_WIDTH, BUFFER_HEIGHT);
 
     output.uv -= 0.5;
     output.uv += coord + float2(kCenter.x, -kCenter.y);
-    float2 s = output.uv * core::getscreensize() * (kScale * 0.01);
-    output.uv = floor(s) / core::getscreensize();
+    float2 s = output.uv * screensize * (kScale * 0.01);
+    output.uv = floor(s) / screensize;
     output.uv += 0.5;
     return output;
 }
@@ -53,7 +65,7 @@ technique Tile
         VertexShader = vs_tile;
         PixelShader = ps_tile;
         #if BUFFER_COLOR_BIT_DEPTH != 10
-            SRGBWriteEnable = true;
+            SRGBWriteEnable = TRUE;
         #endif
     }
 }

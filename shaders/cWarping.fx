@@ -11,7 +11,19 @@
     - Lord of Lunacy, KingEric1992, and Marty McFly for power of 2 function
 */
 
-#include "cFunctions.fxh"
+#define CONST_LOG2(x) (\
+    (uint((x)  & 0xAAAAAAAA) != 0) | \
+    (uint(((x) & 0xFFFF0000) != 0) << 4) | \
+    (uint(((x) & 0xFF00FF00) != 0) << 3) | \
+    (uint(((x) & 0xF0F0F0F0) != 0) << 2) | \
+    (uint(((x) & 0xCCCCCCCC) != 0) << 1))
+
+#define BIT2_LOG2(x)  ((x) | (x) >> 1)
+#define BIT4_LOG2(x)  (BIT2_LOG2(x) | BIT2_LOG2(x) >> 2)
+#define BIT8_LOG2(x)  (BIT4_LOG2(x) | BIT4_LOG2(x) >> 4)
+#define BIT16_LOG2(x) (BIT8_LOG2(x) | BIT8_LOG2(x) >> 8)
+#define LOG2(x)       (CONST_LOG2((BIT16_LOG2(x) >> 1) + 1))
+#define RMAX(x, y)     x ^ ((x ^ y) & -(x < y)) // max(x, y)
 
 #define uOption(option, udata, utype, ucategory, ulabel, uvalue, umin, umax, utooltip)  \
         uniform udata option <                                                  		\
@@ -60,38 +72,50 @@ sampler2D s_cddxy  { Texture = r_cddxy; AddressU = MIRROR; AddressV = MIRROR; };
 sampler2D s_cflow  { Texture = r_cflow; AddressU = MIRROR; AddressV = MIRROR; };
 sampler2D s_pcolor { Texture = r_pcolor; SRGBTexture = TRUE; };
 
-float gauss1D(float pos)
+/* [Vertex Shaders] */
+
+void vs_generic(in uint id : SV_VERTEXID,
+                inout float2 uv : TEXCOORD0,
+                inout float4 vpos : SV_POSITION)
 {
-    const float sigma = 0.5;
-    return exp(-(pos * pos) / (2.0 * sigma * sigma));
+    uv.x = (id == 2) ? 2.0 : 0.0;
+    uv.y = (id == 1) ? 2.0 : 0.0;
+    vpos = float4(uv * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
 
 /* [ Pixel Shaders ] */
 
+float gauss1D(const int position, const int kernel)
+{
+    const float sigma = kernel / 3.0;
+    const float pi = 3.1415926535897932384626433832795f;
+    float output = rsqrt(2.0 * pi * (sigma * sigma));
+    return output * exp(-0.5 * position * position / (sigma * sigma));
+}
+
 float4 blur2D(sampler2D src, float2 uv, float2 direction, float2 psize)
 {
     float2 sampleuv;
-    const float steps = 7.0;
-    const float kernel = 2.0 * steps + 1.0;
+    const float kernel = 14;
     const float2 usize = (1.0 / psize) * direction;
-    float4 output = tex2D(src, uv);
-    float total = 1.0;
+    float4 output = tex2D(src, uv) * gauss1D(0.0, kernel);
+    float total = gauss1D(0.0, kernel);
 
     [unroll]
-    for(float i = 1.0; i < 2.0 * steps; i += 2.0)
+    for(float i = 1.0; i < kernel; i += 2.0)
     {
         const float offsetD1 = i;
         const float offsetD2 = i + 1.0;
-        const float weightD1 = gauss1D(offsetD1 / kernel);
-        const float weightD2 = gauss1D(offsetD2 / kernel);
+        const float weightD1 = gauss1D(offsetD1, kernel);
+        const float weightD2 = gauss1D(offsetD2, kernel);
         const float weightL = weightD1 + weightD2;
-        total += 2.0 * weightL;
-
         const float offsetL = ((offsetD1 * weightD1) + (offsetD2 * weightD2)) / weightL;
+
         sampleuv = uv - offsetL * usize;
         output += tex2D(src, sampleuv) * weightL;
         sampleuv = uv + offsetL * usize;
         output += tex2D(src, sampleuv) * weightL;
+        total += 2.0 * weightL;
     }
 
     return output / total;
@@ -165,7 +189,8 @@ float urand(float2 uv)
 float4 ps_output(float4 vpos : SV_POSITION,
                  float2 uv : TEXCOORD0) : SV_Target
 {
-    const float2 pSize = rcp(ISIZE) * core::getaspectratio();
+    const float aspectratio = BUFFER_WIDTH / BUFFER_HEIGHT;
+    const float2 pSize = rcp(ISIZE) * aspectratio;
     float2 pFlow = tex2Dlod(s_cflow, float4(uv, 0.0, uDetail)).xy * uScale;
     pFlow = (uNoise) ? pFlow * urand(vpos.xy + pFlow / uScale) : pFlow;
     float4 pMCF = tex2D(s_color, uv + pFlow * pSize);
@@ -173,8 +198,8 @@ float4 ps_output(float4 vpos : SV_POSITION,
     return lerp(pMCF, pMCB, uAvg);
 }
 
-float4 ps_previous( float4 vpos : SV_POSITION,
-                    float2 uv : TEXCOORD0) : SV_Target
+float4 ps_previous(float4 vpos : SV_POSITION,
+                   float2 uv : TEXCOORD0) : SV_Target
 {
     return tex2D(s_color, uv);
 }

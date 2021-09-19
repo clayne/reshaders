@@ -24,17 +24,29 @@
     CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#include "cFunctions.fxh"
-
 uniform float uFalloff <
     ui_label = "Falloff";
     ui_type = "drag";
 > = 0.5f;
 
+/* [Vertex Shaders] */
+
+void vs_generic(in uint id : SV_VERTEXID,
+                inout float2 uv : TEXCOORD0,
+                inout float4 vpos : SV_POSITION)
+{
+    uv.x = (id == 2) ? 2.0 : 0.0;
+    uv.y = (id == 1) ? 2.0 : 0.0;
+    vpos = float4(uv * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+}
+
+/* [ Pixel Shaders ] */
+
 float4 ps_vignette(float4 vpos : SV_POSITION,
                    float2 uv : TEXCOORD0) : SV_Target
 {
-    float2 coord = (uv - 0.5) * core::getaspectratio() * 2.0;
+    const float aspectratio = BUFFER_WIDTH / BUFFER_HEIGHT;
+    float2 coord = (uv - 0.5) * aspectratio * 2.0;
     float rf = length(coord) * uFalloff;
     float rf2_1 = mad(rf, rf, 1.0);
     return rcp(rf2_1 * rf2_1);

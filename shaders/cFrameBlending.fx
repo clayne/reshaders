@@ -3,18 +3,41 @@
     Frame blending without blendops
 */
 
-#include "cFunctions.fxh"
-
 uniform float uBlend <
     ui_label = "Blend Factor"; ui_type = "slider";
     ui_min = 0.0; ui_max = 1.0;
 > = 0.5;
 
 texture2D r_color  : COLOR;
-texture2D r_pimage { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; };
 
-sampler2D s_color  { Texture = r_color;  SRGBTexture = TRUE; };
-sampler2D s_pimage { Texture = r_pimage; SRGBTexture = TRUE; };
+texture2D r_pimage
+{
+    Width = BUFFER_WIDTH;
+    Height = BUFFER_HEIGHT;
+};
+
+sampler2D s_color
+{
+    Texture = r_color;
+    SRGBTexture = TRUE;
+};
+
+sampler2D s_pimage
+{
+    Texture = r_pimage;
+    SRGBTexture = TRUE;
+};
+
+/* [Vertex Shaders] */
+
+void vs_generic(in uint id : SV_VERTEXID,
+                inout float2 uv : TEXCOORD0,
+                inout float4 vpos : SV_POSITION)
+{
+    uv.x = (id == 2) ? 2.0 : 0.0;
+    uv.y = (id == 1) ? 2.0 : 0.0;
+    vpos = float4(uv * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+}
 
 /* [Pixel Shaders] */
 

@@ -5,7 +5,26 @@
     Change: use gamma conversion before and after processing
 */
 
-#include "cFunctions.fxh"
+texture2D r_color : COLOR;
+
+sampler2D s_color
+{
+    Texture = r_color;
+    SRGBTexture = TRUE;
+};
+
+/* [Vertex Shaders] */
+
+void vs_generic(in uint id : SV_VERTEXID,
+                inout float2 uv : TEXCOORD0,
+                inout float4 vpos : SV_POSITION)
+{
+    uv.x = (id == 2) ? 2.0 : 0.0;
+    uv.y = (id == 1) ? 2.0 : 0.0;
+    vpos = float4(uv * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+}
+
+/* [ Pixel Shaders ] */
 
 float3 p_tone(float3 n)
 {
@@ -20,7 +39,7 @@ float3 p_tone(float3 n)
 
 float3 ps_tonemap(float4 vpos : SV_POSITION, float2 uv : TEXCOORD0) : SV_Target
 {
-    float3 kLinear = tex2D(core::samplers::srgb, uv).rgb;
+    float3 kLinear = tex2D(s_color, uv).rgb;
     const float3 kWhitePoint = 1.0 / p_tone(float3(2.80f, 2.90f, 3.10f));
     kLinear = p_tone(kLinear) * 1.25 * kWhitePoint;
     return pow(abs(kLinear), 1.25);

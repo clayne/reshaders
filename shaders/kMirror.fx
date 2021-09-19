@@ -22,8 +22,6 @@
     CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#include "cFunctions.fxh"
-
 uniform float kDivisor <
     ui_label = "Divisor";
     ui_type = "drag";
@@ -42,6 +40,27 @@ uniform float kRoll <
 uniform bool kSymmetry <
     ui_label = "Symmetry?";
 > = true;
+
+texture2D r_color : COLOR;
+
+sampler2D s_color
+{
+    Texture = r_color;
+    SRGBTexture = TRUE;
+};
+
+/* [Vertex Shaders] */
+
+void vs_generic(in uint id : SV_VERTEXID,
+                inout float2 uv : TEXCOORD0,
+                inout float4 vpos : SV_POSITION)
+{
+    uv.x = (id == 2) ? 2.0 : 0.0;
+    uv.y = (id == 1) ? 2.0 : 0.0;
+    vpos = float4(uv * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+}
+
+/* [ Pixel Shaders ] */
 
 void ps_mirror(in float4 vpos : SV_Position, in float2 uv : TEXCOORD, out float4 c : SV_Target)
 {
@@ -64,7 +83,7 @@ void ps_mirror(in float4 vpos : SV_Position, in float2 uv : TEXCOORD, out float4
     // Reflection at the border of the screen.
     uv = max(min(uv, 2.0 - uv), -uv);
 
-    c = tex2D(core::samplers::srgb, uv);
+    c = tex2D(s_color, uv);
 }
 
 technique KinoMirror
@@ -74,7 +93,7 @@ technique KinoMirror
         VertexShader = vs_generic;
         PixelShader = ps_mirror;
         #if BUFFER_COLOR_BIT_DEPTH != 10
-            SRGBWriteEnable = true;
+            SRGBWriteEnable = TRUE;
         #endif
     }
 }

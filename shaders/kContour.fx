@@ -21,8 +21,6 @@
     CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#include "cFunctions.fxh"
-
 uniform float kThreshold <
     ui_label = "Threshold";
     ui_type = "slider";
@@ -54,6 +52,7 @@ uniform float4 kBackColor <
 > = float4(0.0, 0.0, 0.0, 0.0);
 
 texture2D r_color : COLOR;
+
 sampler2D s_color
 {
     Texture = r_color;
@@ -66,11 +65,20 @@ struct v2f
     float4 uv[2] : TEXCOORD0;
 };
 
+void vsinit(in uint id,
+            inout float2 uv,
+            inout float4 vpos)
+{
+    uv.x = (id == 2) ? 2.0 : 0.0;
+    uv.y = (id == 1) ? 2.0 : 0.0;
+    vpos = float4(uv * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+}
+
 v2f vs_contour(in uint id : SV_VertexID)
 {
     v2f output;
     float2 texcoord;
-    core::vsinit(id, texcoord, output.vpos);
+    vsinit(id, texcoord, output.vpos);
 
     float2 ts = 1.0 / float2(BUFFER_WIDTH, BUFFER_HEIGHT);
     output.uv[0].xy = texcoord.xy;

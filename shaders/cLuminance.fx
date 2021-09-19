@@ -1,5 +1,4 @@
 
-#include "cFunctions.fxh"
 
 uniform int uSelect <
     ui_type = "combo";
@@ -8,9 +7,30 @@ uniform int uSelect <
     ui_tooltip = "Select Luminance";
 > = 0;
 
+texture2D r_color : COLOR;
+
+sampler2D s_color
+{
+    Texture = r_color;
+    SRGBTexture = TRUE;
+};
+
+/* [Vertex Shaders] */
+
+void vs_generic(in uint id : SV_VERTEXID,
+                inout float2 uv : TEXCOORD0,
+                inout float4 vpos : SV_POSITION)
+{
+    uv.x = (id == 2) ? 2.0 : 0.0;
+    uv.y = (id == 1) ? 2.0 : 0.0;
+    vpos = float4(uv * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+}
+
+/* [Pixel Shaders] */
+
 float4 ps_greyscale(float4 vpos : SV_POSITION, float2 uv : TEXCOORD0) : SV_Target0
 {
-    float4 color = tex2D(core::samplers::srgb, uv);
+    float4 color = tex2D(s_color, uv);
     [branch] switch(uSelect)
     {
         case 0:
@@ -32,6 +52,6 @@ technique cGrayScale
     {
         VertexShader = vs_generic;
         PixelShader = ps_greyscale;
-        SRGBWriteEnable = true;
+        SRGBWriteEnable = TRUE;
     }
 }
