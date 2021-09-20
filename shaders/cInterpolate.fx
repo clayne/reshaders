@@ -46,6 +46,9 @@ uOption(uAverage, float, "slider", "Basic", "Frame Average", 0.000, 0.000, 1.000
 uOption(uDebug, bool, "radio", "Basic", "Debug", false, 0, 0,
 "Show optical flow result");
 
+uOption(uLerp, bool, "radio", "Basic", "Lerp Interpolation", false, 0, 0,
+"Lerp mix interpolated frames");
+
 #define DSIZE uint2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2)
 #define RSIZE LOG2(RMAX(DSIZE.x, DSIZE.y)) + 1
 #define ISIZE 128.0
@@ -58,13 +61,13 @@ texture2D r_cddxy  { Width = ISIZE; Height = ISIZE; Format = RG16F; MipLevels = 
 texture2D r_cflow  { Width = ISIZE; Height = ISIZE; Format = RG16F; MipLevels = 8; };
 texture2D r_pcolor { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; };
 
-sampler2D s_color  { Texture = r_color; SRGBTexture = TRUE; };
+sampler2D s_color  { Texture = r_color; AddressU = MIRROR; AddressV = MIRROR; SRGBTexture = TRUE; };
 sampler2D s_buffer { Texture = r_buffer; AddressU = MIRROR; AddressV = MIRROR; };
 sampler2D s_cinfo0 { Texture = r_cinfo0; AddressU = MIRROR; AddressV = MIRROR; };
 sampler2D s_cinfo1 { Texture = r_cinfo1; AddressU = MIRROR; AddressV = MIRROR; };
 sampler2D s_cddxy  { Texture = r_cddxy; AddressU = MIRROR; AddressV = MIRROR;  };
 sampler2D s_cflow  { Texture = r_cflow; AddressU = MIRROR; AddressV = MIRROR; };
-sampler2D s_pcolor { Texture = r_pcolor; SRGBTexture = TRUE; };
+sampler2D s_pcolor { Texture = r_pcolor; AddressU = MIRROR; AddressV = MIRROR; SRGBTexture = TRUE; };
 
 /* [Vertex Shaders] */
 
@@ -193,7 +196,8 @@ float4 ps_output(float4 vpos : SV_POSITION,
     float4 pMCB = tex2D(s_color, uv - pFlow * pSize);
     float4 pMCF = tex2D(s_pcolor, uv + pFlow * pSize);
     float4 pAvg = lerp(pRef, pSrc, uAverage);
-    return (uDebug) ? float4(pFlow, 1.0, 1.0) : Median3(pMCF, pMCB, pAvg);
+    float4 output = (uLerp) ? lerp(pMCF, pMCB, pAvg) : Median3(pMCF, pMCB, pAvg);
+    return (uDebug) ? float4(pFlow, 1.0, 1.0) : output;
 }
 
 float4 ps_previous( float4 vpos : SV_POSITION,
