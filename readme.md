@@ -6,7 +6,7 @@
 - New developers can learn
 - Coping mechanism
 - **Goals**
-  - Flow vectors
+  - Mosiac
 
 ## Shader Descriptions
 - (!) : Original shader
