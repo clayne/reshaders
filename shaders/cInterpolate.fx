@@ -90,7 +90,7 @@ float gauss1D(const int position, const int kernel)
     return output * exp(-0.5 * position * position / (sigma * sigma));
 }
 
-float4 blur2D(sampler2D src, float2 uv, float2 direction, float2 psize)
+float4 blur1D(sampler2D src, float2 uv, float2 direction, float2 psize)
 {
     float2 sampleuv;
     const float kernel = 14;
@@ -139,7 +139,7 @@ void ps_hblur(float4 vpos : SV_POSITION,
               float2 uv : TEXCOORD0,
               out float2 r0 : SV_TARGET0)
 {
-    r0 = blur2D(s_cinfo0, uv, float2(1.0, 0.0), ISIZE).xy;
+    r0 = blur1D(s_cinfo0, uv, float2(1.0, 0.0), ISIZE).xy;
 }
 
 void ps_vblur(float4 vpos : SV_POSITION,
@@ -147,7 +147,7 @@ void ps_vblur(float4 vpos : SV_POSITION,
               out float2 r0 : SV_TARGET0,
               out float2 r1 : SV_TARGET1)
 {
-    r0 = blur2D(s_cinfo1, uv, float2(0.0, 1.0), ISIZE).xy;
+    r0 = blur1D(s_cinfo1, uv, float2(0.0, 1.0), ISIZE).xy;
     r1.x = dot(ddx(r0), 1.0);
     r1.y = dot(ddy(r0), 1.0);
 }
@@ -193,8 +193,16 @@ float4 ps_output(float4 vpos : SV_POSITION,
     float2 pFlow = tex2Dlod(s_cflow, float4(uv, 0.0, uDetail)).xy;
     float4 pRef = tex2D(s_color, uv);
     float4 pSrc = tex2D(s_pcolor, uv);
-    float4 pMCB = tex2D(s_color, uv - pFlow * pSize);
-    float4 pMCF = tex2D(s_pcolor, uv + pFlow * pSize);
+    float4 pMCB, pMCF;
+
+    if(uLerp) {
+        pMCB = tex2D(s_color, uv + pFlow * pSize);
+        pMCF = tex2D(s_pcolor, uv - pFlow * pSize);
+    } else {
+        pMCB = tex2D(s_color, uv - pFlow * pSize);
+        pMCF = tex2D(s_pcolor, uv + pFlow * pSize);
+    }
+
     float4 pAvg = lerp(pRef, pSrc, uAverage);
     float4 output = (uLerp) ? lerp(pMCF, pMCB, pAvg) : Median3(pMCF, pMCB, pAvg);
     return (uDebug) ? float4(pFlow, 1.0, 1.0) : output;

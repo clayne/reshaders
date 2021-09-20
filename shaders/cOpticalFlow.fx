@@ -1,10 +1,15 @@
 
 /*
-    Optical flow motion blur using color by Brimson
-    Special Thanks to
-    - MartinBFFan and Pao on Discord for reporting bugs
-    - BSD for bug propaganda and helping to solve my issue
-    - Lord of Lunacy, KingEric1992, and Marty McFly for power of 2 function
+    Horn-Schunck Assumptions by Michael Black https://www.youtube.com/watch?v=tIwpDuqJqcE
+    1. Brightness is constant
+    2. Deviations from constancy are Gaussian
+    3. Motion is small (<1 pixel)
+    4. First-order Taylor series is a good approximation
+    5. Image is differentiable
+    6. Flow field is smooth
+    7. Deviations from smooth are Gaussian
+    8. First order smoothness is all that matters
+    9. Flow derivative is approximated by first differences
 */
 
 #define CONST_LOG2(x) (\
@@ -57,10 +62,6 @@ sampler2D s_cinfo0 { Texture = r_cinfo0; AddressU = MIRROR; AddressV = MIRROR; }
 sampler2D s_cinfo1 { Texture = r_cinfo1; AddressU = MIRROR; AddressV = MIRROR; };
 sampler2D s_cddxy  { Texture = r_cddxy; AddressU = MIRROR; AddressV = MIRROR; };
 
-static const float steps = 7.0;
-static const float kernel = 2.0 * steps + 1.0;
-static const float sigma = kernel / 3.0;
-
 /* [Vertex Shaders] */
 
 void vs_generic(in uint id : SV_VERTEXID,
@@ -82,7 +83,7 @@ float gauss1D(const int position, const int kernel)
     return output * exp(-0.5 * position * position / (sigma * sigma));
 }
 
-float4 blur2D(sampler2D src, float2 uv, float2 direction, float2 psize)
+float4 blur1D(sampler2D src, float2 uv, float2 direction, float2 psize)
 {
     float2 sampleuv;
     const float kernel = 14;
@@ -131,7 +132,7 @@ void ps_hblur(float4 vpos : SV_POSITION,
               float2 uv : TEXCOORD0,
               out float2 r0 : SV_TARGET0)
 {
-    r0 = blur2D(s_cinfo0, uv, float2(1.0, 0.0), ISIZE).xy;
+    r0 = blur1D(s_cinfo0, uv, float2(1.0, 0.0), ISIZE).xy;
 }
 
 void ps_vblur(float4 vpos : SV_POSITION,
@@ -139,7 +140,7 @@ void ps_vblur(float4 vpos : SV_POSITION,
               out float2 r0 : SV_TARGET0,
               out float2 r1 : SV_TARGET1)
 {
-    r0 = blur2D(s_cinfo1, uv, float2(0.0, 1.0), ISIZE).xy;
+    r0 = blur1D(s_cinfo1, uv, float2(0.0, 1.0), ISIZE).xy;
     r1.x = dot(ddx(r0), 1.0);
     r1.y = dot(ddy(r0), 1.0);
 }
