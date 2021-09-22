@@ -253,6 +253,19 @@ technique cWarping
         RenderTarget1 = r_cinfo1;
     }
 
+    pass opticalflow
+    {
+        VertexShader = vs_generic;
+        PixelShader = ps_oflow;
+        RenderTarget0 = r_cflow;
+        RenderTarget1 = r_cinfo1;
+        ClearRenderTargets = FALSE;
+        BlendEnable = TRUE;
+        BlendOp = ADD;
+        SrcBlend = INVSRCALPHA;
+        DestBlend = SRCALPHA;
+    }
+
     pass interpolate
     {
         VertexShader = vs_generic;
