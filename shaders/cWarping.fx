@@ -75,12 +75,12 @@ sampler2D s_pcolor { Texture = r_pcolor; SRGBTexture = TRUE; };
 /* [Vertex Shaders] */
 
 void vs_generic(in uint id : SV_VERTEXID,
-                inout float2 uv : TEXCOORD0,
-                inout float4 vpos : SV_POSITION)
+                out float4 position : SV_POSITION,
+                out float2 texcoord : TEXCOORD)
 {
-    uv.x = (id == 2) ? 2.0 : 0.0;
-    uv.y = (id == 1) ? 2.0 : 0.0;
-    vpos = float4(uv * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    texcoord.x = (id == 2) ? 2.0 : 0.0;
+    texcoord.y = (id == 1) ? 2.0 : 0.0;
+    position = float4(texcoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
 
 /* [ Pixel Shaders ] */
@@ -147,37 +147,47 @@ void ps_hblur(float4 vpos : SV_POSITION,
 
 void ps_vblur(float4 vpos : SV_POSITION,
               float2 uv : TEXCOORD0,
-              out float2 r0 : SV_TARGET0,
-              out float2 r1 : SV_TARGET1)
+              out float2 r0 : SV_TARGET0)
 {
     r0 = blur1D(s_cinfo1, uv, float2(0.0, 1.0), ISIZE).xy;
-    r1.x = dot(ddx(r0), 1.0);
-    r1.y = dot(ddy(r0), 1.0);
+}
+
+void ps_ddxy(float4 vpos : SV_POSITION,
+             float2 uv : TEXCOORD0,
+             out float2 r0 : SV_TARGET0,
+             out float2 r1 : SV_TARGET1)
+{
+    const float2 psize = 1.0 / tex2Dsize(s_cinfo0, 0.0);
+    float4 s_dx0 = tex2D(s_cinfo0, uv + float2(psize.x, 0.0));
+    float4 s_dx1 = tex2D(s_cinfo0, uv - float2(psize.x, 0.0));
+    float4 s_dy0 = tex2D(s_cinfo0, uv + float2(0.0, psize.y));
+    float4 s_dy1 = tex2D(s_cinfo0, uv - float2(0.0, psize.y));
+    r0.x = dot(s_dx0 - s_dx1, 1.0);
+    r0.y = dot(s_dy0 - s_dy1, 1.0);
+    r1 = tex2D(s_cinfo0, uv).rg;
 }
 
 void ps_oflow(float4 vpos: SV_POSITION,
               float2 uv : TEXCOORD0,
-              out float4 r0 : SV_TARGET0,
-              out float4 r1 : SV_TARGET1)
+              out float4 r0 : SV_TARGET0)
 {
-    const float uRegularize = max(4.0 * pow(uConst * 1e-3, 2.0), 1e-10);
+	const float lambda = max(4.0 * pow(uConst * 1e-3, 2.0), 1e-10);
     const float pyramids = log2(ISIZE);
     float2 cFlow = 0.0;
 
     for(float i = pyramids - 0.5; i >= 0; i--)
     {
         float4 ucalc = float4(uv, 0.0, i);
-        float4 cframe = tex2Dlod(s_cinfo0, ucalc);
+        float4 frame = tex2Dlod(s_cinfo0, ucalc);
         float2 ddxy = tex2Dlod(s_cddxy, ucalc).xy;
 
-        float dt = dot(cframe.xy - cframe.zw, 1.0);
+        float dt = dot(frame.xy - frame.zw, 1.0);
         float dCalc = dot(ddxy.xy, cFlow) + dt;
-        float dSmooth = rcp(dot(ddxy.xy, ddxy.xy) + uRegularize);
+        float dSmooth = rcp(dot(ddxy.xy, ddxy.xy) + lambda);
         cFlow = cFlow - ((ddxy.xy * dCalc) * dSmooth);
     }
 
     r0 = float4(cFlow.xy, 0.0, uBlend);
-    r1 = float4(tex2D(s_cinfo0, uv).rgb, 0.0);
 }
 
 float urand(float2 uv)
@@ -213,7 +223,7 @@ technique cWarping
         RenderTarget0 = r_buffer;
     }
 
-    pass copy
+    pass scale_storeprevious
     {
         VertexShader = vs_generic;
         PixelShader = ps_blit;
@@ -227,40 +237,20 @@ technique cWarping
         RenderTarget0 = r_cinfo1;
     }
 
-    pass verticalblur_ddxy
+    pass verticalblur
     {
         VertexShader = vs_generic;
         PixelShader = ps_vblur;
         RenderTarget0 = r_cinfo0;
-        RenderTarget1 = r_cddxy;
         RenderTargetWriteMask = 1 | 2;
     }
 
-    /*
-        Smooth optical flow with BlendOps
-        How it works:
-            Src = Current optical flow
-            Dest = Previous optical flow
-            SRCALPHA = Blending weight between Src and Dest
-            If SRCALPHA = 0.25, the blending would be
-            Src * (1.0 - 0.25) + Dest * 0.25
-            The previous flow's output gets quartered every frame
-        Note:
-            Disable ClearRenderTargets to blend with existing
-            data in r_cflow before rendering
-    */
-
-    pass opticalflow
+    pass derivatives_copy
     {
         VertexShader = vs_generic;
-        PixelShader = ps_oflow;
-        RenderTarget0 = r_cflow;
+        PixelShader = ps_ddxy;
+        RenderTarget0 = r_cddxy;
         RenderTarget1 = r_cinfo1;
-        ClearRenderTargets = FALSE;
-        BlendEnable = TRUE;
-        BlendOp = ADD;
-        SrcBlend = INVSRCALPHA;
-        DestBlend = SRCALPHA;
     }
 
     pass interpolate

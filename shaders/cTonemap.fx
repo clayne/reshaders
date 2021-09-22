@@ -16,12 +16,12 @@ sampler2D s_color
 /* [Vertex Shaders] */
 
 void vs_generic(in uint id : SV_VERTEXID,
-                inout float2 uv : TEXCOORD0,
-                inout float4 vpos : SV_POSITION)
+                out float4 position : SV_POSITION,
+                out float2 texcoord : TEXCOORD)
 {
-    uv.x = (id == 2) ? 2.0 : 0.0;
-    uv.y = (id == 1) ? 2.0 : 0.0;
-    vpos = float4(uv * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    texcoord.x = (id == 2) ? 2.0 : 0.0;
+    texcoord.y = (id == 1) ? 2.0 : 0.0;
+    position = float4(texcoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
 
 /* [ Pixel Shaders ] */
