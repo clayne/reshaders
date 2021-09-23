@@ -163,8 +163,14 @@ void ps_ddxy(float4 vpos : SV_POSITION,
     float2 s_sx1 = tex2D(s_cinfo0, uv + float2(+psize.x, +psize.y)).rg;
     float2 s_sy0 = tex2D(s_cinfo0, uv + float2(-psize.x, -psize.y)).rg;
     float2 s_sy1 = tex2D(s_cinfo0, uv + float2(+psize.x, -psize.y)).rg;
-    r0.x = dot(s_sy1 - s_sy0, 0.25) + dot(s_sx1 - s_sx0, 0.25);
-    r0.y = dot(s_sx0 - s_sy0, 0.25) + dot(s_sx1 - s_sy1, 0.25);
+    float4 dx0;
+    dx0.xy = s_sy1 - s_sy0;
+    dx0.zw = s_sx1 - s_sx0;
+    float4 dy0;
+    dy0.xy = s_sx0 - s_sy0;
+    dy0.zw = s_sx1 - s_sy1;
+    r0.x = dot(dx0, 0.25);
+    r0.y = dot(dy0, 0.25);
     r1 = tex2D(s_cinfo0, uv).rg;
 }
 
