@@ -44,9 +44,9 @@ uOption(uNormal, bool, "radio", "Display", "Lines Normal Direction", true, 0, 0,
 #define ISIZE 128.0
 
 texture2D r_color  : COLOR;
-texture2D r_buffer { Width = DSIZE.x; Height = DSIZE.y; Format = RG8; MipLevels = RSIZE; };
-texture2D r_cinfo0 { Width = ISIZE; Height = ISIZE; Format = RGBA16; MipLevels = 8; };
-texture2D r_cinfo1 { Width = ISIZE; Height = ISIZE; Format = RG16; };
+texture2D r_buffer { Width = DSIZE.x; Height = DSIZE.y; Format = R16F; MipLevels = RSIZE; };
+texture2D r_cinfo0 { Width = ISIZE; Height = ISIZE; Format = RG16F; MipLevels = 8; };
+texture2D r_cinfo1 { Width = ISIZE; Height = ISIZE; Format = R16F; };
 texture2D r_cddxy  { Width = ISIZE; Height = ISIZE; Format = RG16F; MipLevels = 8; };
 texture2D r_cflow  { Width = ISIZE; Height = ISIZE; Format = RG16F; MipLevels = 8; };
 
@@ -108,33 +108,34 @@ float4 blur2D(sampler2D src, float2 uv, float2 direction, float2 psize)
 
 void ps_normalize(float4 vpos : SV_POSITION,
                   float2 uv : TEXCOORD0,
-                  out float2 r0 : SV_TARGET0)
+                  out float r0 : SV_TARGET0)
 {
-    float3 c0 = max(tex2D(s_color, uv).rgb, 1e-3);
+    float3 c0 = max(1e-7, tex2D(s_color, uv).rgb);
     c0 /= dot(c0, 1.0);
-    r0 = c0.xy / max(max(c0.r, c0.g), c0.b);
+    c0 /= max(max(c0.r, c0.g), c0.b);
+    r0 = dot(c0, 1.0 / 3.0);
 }
 
 void ps_blit(float4 vpos : SV_POSITION,
              float2 uv : TEXCOORD0,
-             out float4 r0 : SV_TARGET0)
+             out float2 r0 : SV_TARGET0)
 {
-    r0.xy = tex2D(s_buffer, uv).xy;
-    r0.zw = tex2D(s_cinfo1, uv).xy;
+    r0.x = tex2D(s_buffer, uv).x;
+    r0.y = tex2D(s_cinfo1, uv).x;
 }
 
 void ps_hblur(float4 vpos : SV_POSITION,
               float2 uv : TEXCOORD0,
               out float2 r0 : SV_TARGET0)
 {
-    r0 = blur2D(s_cinfo0, uv, float2(1.0, 0.0), ISIZE).xy;
+    r0 = blur2D(s_cinfo0, uv, float2(1.0, 0.0), ISIZE).x;
 }
 
 void ps_vblur(float4 vpos : SV_POSITION,
               float2 uv : TEXCOORD0,
               out float2 r0 : SV_TARGET0)
 {
-    r0 = blur2D(s_cinfo1, uv, float2(0.0, 1.0), ISIZE).xy;
+    r0 = blur2D(s_cinfo1, uv, float2(0.0, 1.0), ISIZE).x;
 }
 
 void ps_ddxy(float4 vpos : SV_POSITION,
@@ -143,12 +144,12 @@ void ps_ddxy(float4 vpos : SV_POSITION,
              out float2 r1 : SV_TARGET1)
 {
     const float2 psize = 1.0 / tex2Dsize(s_cinfo0, 0.0);
-    float4 s_sx0 = tex2D(s_cinfo0, uv + float2(-psize.x, +psize.y));
-    float4 s_sx1 = tex2D(s_cinfo0, uv + float2(+psize.x, +psize.y));
-    float4 s_sy0 = tex2D(s_cinfo0, uv + float2(-psize.x, -psize.y));
-    float4 s_sy1 = tex2D(s_cinfo0, uv + float2(+psize.x, -psize.y));
-    r0.x = dot(s_sy1 - s_sy0, 0.125) + dot(s_sx1 - s_sx0, 0.125);
-    r0.y = dot(s_sx0 - s_sy0, 0.125) + dot(s_sx1 - s_sy1, 0.125);
+    float2 s_sx0 = tex2D(s_cinfo0, uv + float2(-psize.x, +psize.y)).rg;
+    float2 s_sx1 = tex2D(s_cinfo0, uv + float2(+psize.x, +psize.y)).rg;
+    float2 s_sy0 = tex2D(s_cinfo0, uv + float2(-psize.x, -psize.y)).rg;
+    float2 s_sy1 = tex2D(s_cinfo0, uv + float2(+psize.x, -psize.y)).rg;
+    r0.x = dot(s_sy1 - s_sy0, 0.25) + dot(s_sx1 - s_sx0, 0.25);
+    r0.y = dot(s_sx0 - s_sy0, 0.25) + dot(s_sx1 - s_sy1, 0.25);
     r1 = tex2D(s_cinfo0, uv).rg;
 }
 
@@ -164,9 +165,9 @@ void ps_oflow(float4 vpos: SV_POSITION,
     {
         float4 ucalc = float4(uv, 0.0, i);
         float4 frame = tex2Dlod(s_cinfo0, ucalc);
-        float2 ddxy = tex2Dlod(s_cinfof, ucalc).xy;
+        float2 ddxy = tex2Dlod(s_cddxy, ucalc).xy;
 
-        float dt = dot(frame.xy - frame.zw, 0.5);
+        float dt = frame.x - frame.y;
         float dCalc = dot(ddxy.xy, cFlow) + dt;
         float dSmooth = rcp(dot(ddxy.xy, ddxy.xy) + lambda);
         cFlow = cFlow - ((ddxy.xy * dCalc) * dSmooth);
@@ -281,7 +282,7 @@ technique cOpticalFlow
         VertexShader = vs_generic;
         PixelShader = ps_vblur;
         RenderTarget0 = r_cinfo0;
-        RenderTargetWriteMask = 1 | 2;
+        RenderTargetWriteMask = 1;
     }
 
     pass derivatives_copy
