@@ -23,7 +23,7 @@ uniform float uIntensity <
     ui_label = "Intensity";
 > = 100.0;
 
-texture2D r_color : COLOR;
+texture2D r_color  : COLOR;
 texture2D r_bloom1 { Width = BUFFER_WIDTH / 2;   Height = BUFFER_HEIGHT / 2;   Format = RGBA16F; };
 texture2D r_bloom2 { Width = BUFFER_WIDTH / 4;   Height = BUFFER_HEIGHT / 4;   Format = RGBA16F; };
 texture2D r_bloom3 { Width = BUFFER_WIDTH / 8;   Height = BUFFER_HEIGHT / 8;   Format = RGBA16F; };
@@ -33,14 +33,7 @@ texture2D r_bloom6 { Width = BUFFER_WIDTH / 64;  Height = BUFFER_HEIGHT / 64;  F
 texture2D r_bloom7 { Width = BUFFER_WIDTH / 128; Height = BUFFER_HEIGHT / 128; Format = RGBA16F; };
 texture2D r_bloom8 { Width = BUFFER_WIDTH / 256; Height = BUFFER_HEIGHT / 256; Format = RGBA16F; };
 
-sampler2D s_color
-{
-    Texture = r_color;
-    #if BUFFER_COLOR_BIT_DEPTH != 10
-        SRGBTexture = TRUE;
-    #endif
-};
-
+sampler2D s_color  { Texture = r_color; SRGBTexture = TRUE; };
 sampler2D s_bloom1 { Texture = r_bloom1; };
 sampler2D s_bloom2 { Texture = r_bloom2; };
 sampler2D s_bloom3 { Texture = r_bloom3; };
@@ -272,9 +265,5 @@ technique cBloom
     pass { vsu(4); psu(4); rt(3); blend(ADD, ONE, ONE); }
     pass { vsu(3); psu(3); rt(2); blend(ADD, ONE, ONE); }
     pass { vsu(2); psu(2); rt(1); blend(ADD, ONE, ONE); }
-    pass { vsu(1); psu(1); blend(ADD, ONE, INVSRCCOLOR);
-        #if BUFFER_COLOR_BIT_DEPTH != 10
-            SRGBWriteEnable = TRUE;
-        #endif
-    }
+    pass { vsu(1); psu(1); blend(ADD, ONE, INVSRCCOLOR); SRGBWriteEnable = TRUE; }
 }

@@ -81,20 +81,106 @@ uOption(uBlend, float, "slider", "Optical Flow", "Temporal Smoothing", 0.5, 0.0,
 #endif
 
 texture2D r_color  : COLOR;
-texture2D r_pbuffer { Width = DSIZE.x; Height = DSIZE.y; Format = RGBA8; MipLevels = RSIZE; };
-texture2D r_cbuffer { Width = DSIZE.x; Height = DSIZE.y; Format = RG8; MipLevels = RSIZE; };
-texture2D r_cuddxy  { Width = DSIZE.x; Height = DSIZE.y; Format = RG16F; MipLevels = RSIZE; };
-texture2D r_coflow  { Width = DSIZE.x / 2; Height = DSIZE.y / 2; Format = RG16F; MipLevels = FSIZE; };
-texture2D r_caccum  { Width = DSIZE.x / 2; Height = DSIZE.y / 2; Format = R16F;  MipLevels = FSIZE; };
-texture2D r_copy    { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA8; };
 
-sampler2D s_color   { Texture = r_color; SRGBTexture = TRUE; };
-sampler2D s_pbuffer { Texture = r_pbuffer; AddressU = MIRROR; AddressV = MIRROR; };
-sampler2D s_cbuffer { Texture = r_cbuffer; AddressU = MIRROR; AddressV = MIRROR; };
-sampler2D s_cuddxy  { Texture = r_cuddxy;  AddressU = MIRROR; AddressV = MIRROR; };
-sampler2D s_coflow  { Texture = r_coflow; MFILTER; AddressU = MIRROR; AddressV = MIRROR; };
-sampler2D s_caccum  { Texture = r_caccum; MFILTER; AddressU = MIRROR; AddressV = MIRROR; };
-sampler2D s_copy    { Texture = r_copy;  SRGBTexture = TRUE; };
+texture2D r_pbuffer
+{
+    Width = DSIZE.x;
+    Height = DSIZE.y;
+    Format = RG16F;
+    MipLevels = RSIZE;
+};
+
+texture2D r_cbuffer
+{
+    Width = DSIZE.x;
+    Height = DSIZE.y;
+    Format = R16F;
+    MipLevels = RSIZE;
+};
+
+texture2D r_cuddxy
+{
+    Width = DSIZE.x;
+    Height = DSIZE.y;
+    Format = RG16F;
+    MipLevels = RSIZE;
+};
+
+texture2D r_coflow
+{
+    Width = DSIZE.x;
+    Height = DSIZE.y;
+    Format = RG16F;
+    MipLevels = RSIZE;
+};
+
+texture2D r_caccum
+{
+    Width = DSIZE.x;
+    Height = DSIZE.y;
+    Format = R16F;
+    MipLevels = RSIZE;
+};
+
+texture2D r_copy
+{
+    Width = BUFFER_WIDTH;
+    Height = BUFFER_HEIGHT;
+    Format = RGBA8;
+};
+
+sampler2D s_color
+{
+    Texture = r_color;
+    AddressU = MIRROR;
+    AddressV = MIRROR;
+    SRGBTexture = TRUE;
+};
+
+sampler2D s_pbuffer
+{
+    Texture = r_pbuffer;
+    AddressU = MIRROR;
+    AddressV = MIRROR;
+};
+
+sampler2D s_cbuffer
+{
+    Texture = r_cbuffer;
+    AddressU = MIRROR;
+    AddressV = MIRROR;
+};
+
+sampler2D s_cuddxy
+{
+    Texture = r_cuddxy;
+    AddressU = MIRROR;
+    AddressV = MIRROR;
+};
+
+sampler2D s_coflow
+{
+    Texture = r_coflow;
+    MFILTER;
+    AddressU = MIRROR;
+    AddressV = MIRROR;
+};
+
+sampler2D s_caccum
+{
+    Texture = r_caccum;
+    MFILTER;
+    AddressU = MIRROR;
+    AddressV = MIRROR;
+};
+
+sampler2D s_copy
+{
+    Texture = r_copy;
+    AddressU = MIRROR;
+    AddressV = MIRROR;
+    SRGBTexture = TRUE;
+};
 
 /* [Vertex Shaders] */
 
@@ -111,25 +197,36 @@ void vs_generic(in uint id : SV_VERTEXID,
 
 void ps_convert(float4 vpos : SV_POSITION,
                 float2 uv : TEXCOORD0,
-                out float4 r0 : SV_TARGET0)
+                out float2 r0 : SV_TARGET0)
 {
     // r0.xy = normalize current frame
     // r0.zw = get normalized frame from last pass
     float3 c0 = max(tex2D(s_color, uv).rgb, 1e-7);
     c0 /= dot(c0, 1.0);
-    r0.xy = c0.xy / max(max(c0.r, c0.g), c0.b);
-    r0.zw = tex2D(s_cbuffer, uv).xy;
+    c0 /= max(max(c0.r, c0.g), c0.b);
+    r0.x = dot(c0, 1.0 / 3.0);
+    r0.y = tex2D(s_cbuffer, uv).x;
 }
 
 void ps_filter(float4 vpos : SV_POSITION,
                float2 uv : TEXCOORD0,
-               out float2 r0 : SV_TARGET0,
+               out float r0 : SV_TARGET0,
                out float2 r1 : SV_TARGET1)
 {
-    float4 uImage = tex2D(s_pbuffer, uv);
-    r0 = uImage.xy;
-    r1.x = dot(ddx(uImage.xyzw), 1.0);
-    r1.y = dot(ddy(uImage.xyzw), 1.0);
+    r0 = tex2D(s_pbuffer, uv).x;
+    const float2 psize = 1.0 / tex2Dsize(s_pbuffer, 0.0);
+    float2 s0 = tex2D(s_pbuffer, uv + float2(-psize.x, +psize.y)).rg;
+    float2 s1 = tex2D(s_pbuffer, uv + float2(+psize.x, +psize.y)).rg;
+    float2 s2 = tex2D(s_pbuffer, uv + float2(-psize.x, -psize.y)).rg;
+    float2 s3 = tex2D(s_pbuffer, uv + float2(+psize.x, -psize.y)).rg;
+    float4 dx0;
+    dx0.xy = s1 - s0;
+    dx0.zw = s3 - s2;
+    float4 dy0;
+    dy0.xy = s0 - s2;
+    dy0.zw = s1 - s3;
+    r1.x = dot(dx0, 0.25);
+    r1.y = dot(dy0, 0.25);
 }
 
 /*
@@ -145,17 +242,17 @@ float4 ps_flow(float4 vpos : SV_POSITION,
                float2 uv : TEXCOORD0) : SV_TARGET
 {
     const float uRegularize = max(4.0 * pow(uConst * 1e-2, 2.0), 1e-10);
-    const float pyramids = log2(max(DSIZE.x, DSIZE.y));
+    const int pyramids = ceil(log2(max(DSIZE.x, DSIZE.y)));
     float2 cFlow = 0.0;
 
-    for(float i = pyramids; i >= 0; i -= 0.5)
+    for(float i = pyramids; i >= 0; i--)
     {
         float4 ucalc = float4(uv, 0.0, i);
-        float2 cFrame = tex2Dlod(s_cbuffer, ucalc).xy;
-        float2 pFrame = tex2Dlod(s_pbuffer, ucalc).zw;
-
+        float cFrame = tex2Dlod(s_cbuffer, ucalc).x;
+        float pFrame = tex2Dlod(s_pbuffer, ucalc).y;
         float2 ddxy = tex2Dlod(s_cuddxy, ucalc).xy;
-        float dt = dot(cFrame - pFrame, 1.0);
+
+        float dt = cFrame - pFrame;
         float dCalc = dot(ddxy.xy, cFlow) + dt;
         float dSmooth = rcp(dot(ddxy.xy, ddxy.xy) + uRegularize);
         cFlow = cFlow - ((ddxy.xy * dCalc) * dSmooth);

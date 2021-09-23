@@ -62,9 +62,7 @@ texture2D r_color : COLOR;
 sampler2D s_color
 {
     Texture = r_color;
-    #if BUFFER_COLOR_BIT_DEPTH != 10
-        SRGBTexture = TRUE;
-    #endif
+    SRGBTexture = TRUE;
 };
 
 struct v2f
@@ -164,8 +162,6 @@ technique ContrastAdaptiveSharpen
     {
         VertexShader = vs_cas;
         PixelShader  = ps_cas;
-        #if BUFFER_COLOR_BIT_DEPTH != 10
-            SRGBWriteEnable = TRUE;
-        #endif
+        SRGBWriteEnable = TRUE;
     }
 }

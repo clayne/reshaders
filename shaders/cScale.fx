@@ -18,9 +18,7 @@ sampler2D s_color
     Texture = r_color;
     AddressU = MIRROR;
     AddressV = MIRROR;
-    #if BUFFER_COLOR_BIT_DEPTH != 10
-        SRGBTexture = TRUE;
-    #endif
+    SRGBTexture = TRUE;
 };
 
 struct v2f
@@ -64,8 +62,6 @@ technique Tile
     {
         VertexShader = vs_tile;
         PixelShader = ps_tile;
-        #if BUFFER_COLOR_BIT_DEPTH != 10
-            SRGBWriteEnable = TRUE;
-        #endif
+        SRGBWriteEnable = TRUE;
     }
 }

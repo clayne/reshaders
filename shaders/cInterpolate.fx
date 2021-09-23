@@ -11,6 +11,44 @@
     - Lord of Lunacy, KingEric1992, and Marty McFly for power of 2 function
 */
 
+uniform float uConst <
+    ui_type = "drag";
+    ui_label = "Constraint";
+    ui_tooltip = "Higher = Smoother flow";
+> = 1.0;
+
+uniform float uBlend <
+    ui_type = "drag";
+    ui_label = "Temporal Blending";
+    ui_tooltip = "Higher = Less temporal noise";
+    ui_max = 0.5;
+> = 0.25;
+
+uniform float uDetail <
+    ui_type = "drag";
+    ui_label = "Mipmap Bias";
+    ui_tooltip = "Higher = Less spatial noise";
+> = 4.5;
+
+uniform float uAverage <
+    ui_type = "drag";
+    ui_label = "Frame average";
+    ui_tooltip = "Higher = More past frame blend influence";
+    ui_max = 1.0;
+> = 0.0;
+
+uniform bool uDebug <
+    ui_type = "radio";
+    ui_label = "Debug";
+    ui_tooltip = "Show optical flow results";
+> = false;
+
+uniform bool uLerp <
+    ui_type = "radio";
+    ui_label = "Lerp interpolation";
+    ui_tooltip = "Lerp mix interpolated frames";
+> = false;
+
 #define CONST_LOG2(x) (\
     (uint((x)  & 0xAAAAAAAA) != 0) | \
     (uint(((x) & 0xFFFF0000) != 0) << 4) | \
@@ -25,49 +63,100 @@
 #define LOG2(x)       (CONST_LOG2((BIT16_LOG2(x) >> 1) + 1))
 #define RMAX(x, y)     x ^ ((x ^ y) & -(x < y)) // max(x, y)
 
-#define uOption(option, udata, utype, ucategory, ulabel, uvalue, umin, umax, utooltip)  \
-        uniform udata option <                                                  		\
-        ui_category = ucategory; ui_label = ulabel;                             		\
-        ui_type = utype; ui_min = umin; ui_max = umax; ui_tooltip = utooltip;   		\
-        > = uvalue
-
-uOption(uConst, float, "slider", "Basic", "Constraint", 1.000, 0.000, 2.000,
-"Regularization: Higher = Smoother flow");
-
-uOption(uBlend, float, "slider", "Basic", "Flow Blend", 0.250, 0.000, 0.500,
-"Temporal Smoothing: Higher = Less temporal noise");
-
-uOption(uDetail, float, "slider", "Basic", "Flow MipMap", 4.500, 0.000, 7.000,
-"Postprocess Blur: Higher = Less spatial noise");
-
-uOption(uAverage, float, "slider", "Basic", "Frame Average", 0.000, 0.000, 1.000,
-"Frame Average: Higher = More past frame blend influence");
-
-uOption(uDebug, bool, "radio", "Basic", "Debug", false, 0, 0,
-"Show optical flow result");
-
-uOption(uLerp, bool, "radio", "Basic", "Lerp Interpolation", false, 0, 0,
-"Lerp mix interpolated frames");
-
 #define DSIZE uint2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2)
 #define RSIZE LOG2(RMAX(DSIZE.x, DSIZE.y)) + 1
 #define ISIZE 128.0
 
-texture2D r_color  : COLOR;
-texture2D r_buffer { Width = DSIZE.x; Height = DSIZE.y; Format = R16F; MipLevels = RSIZE; };
-texture2D r_cinfo0 { Width = ISIZE; Height = ISIZE; Format = RG16F; MipLevels = 8; };
-texture2D r_cinfo1 { Width = ISIZE; Height = ISIZE; Format = R16F; };
-texture2D r_cddxy  { Width = ISIZE; Height = ISIZE; Format = RG16F; MipLevels = 8; };
-texture2D r_cflow  { Width = ISIZE; Height = ISIZE; Format = RG16F; MipLevels = 8; };
-texture2D r_pcolor { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; };
+texture2D r_color : COLOR;
 
-sampler2D s_color  { Texture = r_color; AddressU = MIRROR; AddressV = MIRROR; SRGBTexture = TRUE; };
-sampler2D s_buffer { Texture = r_buffer; AddressU = MIRROR; AddressV = MIRROR; };
-sampler2D s_cinfo0 { Texture = r_cinfo0; AddressU = MIRROR; AddressV = MIRROR; };
-sampler2D s_cinfo1 { Texture = r_cinfo1; AddressU = MIRROR; AddressV = MIRROR; };
-sampler2D s_cddxy  { Texture = r_cddxy; AddressU = MIRROR; AddressV = MIRROR;  };
-sampler2D s_cflow  { Texture = r_cflow; AddressU = MIRROR; AddressV = MIRROR; };
-sampler2D s_pcolor { Texture = r_pcolor; AddressU = MIRROR; AddressV = MIRROR; SRGBTexture = TRUE; };
+texture2D r_buffer
+{
+    Width = DSIZE.x;
+    Height = DSIZE.y;
+    Format = R16F;
+    MipLevels = RSIZE;
+};
+
+texture2D r_cinfo0
+{
+    Width = ISIZE;
+    Height = ISIZE;
+    Format = RG16F;
+    MipLevels = 8;
+};
+
+texture2D r_cinfo1
+{
+    Width = ISIZE;
+    Height = ISIZE;
+    Format = R16F;
+};
+
+texture2D r_cddxy
+{
+    Width = ISIZE;
+    Height = ISIZE;
+    Format = RG16F;
+    MipLevels = 8;
+};
+
+texture2D r_cflow
+{
+    Width = ISIZE;
+    Height = ISIZE;
+    Format = RG16F;
+    MipLevels = 8;
+};
+
+texture2D r_pcolor
+{
+    Width = BUFFER_WIDTH;
+    Height = BUFFER_HEIGHT;
+    Format = RGBA8;
+};
+
+sampler2D s_color
+{
+    Texture = r_color;
+    AddressU = MIRROR;
+    AddressV = MIRROR;
+    SRGBTexture = TRUE;
+};
+
+sampler2D s_buffer
+{
+    Texture = r_buffer;
+};
+
+sampler2D s_cinfo0
+{
+    Texture = r_cinfo0;
+};
+
+sampler2D s_cinfo1
+{
+    Texture = r_cinfo1;
+};
+
+sampler2D s_cddxy
+{
+    Texture = r_cddxy;
+};
+
+sampler2D s_cflow
+{
+    Texture = r_cflow;
+    AddressU = MIRROR;
+    AddressV = MIRROR;
+};
+
+sampler2D s_pcolor
+{
+    Texture = r_pcolor;
+    AddressU = MIRROR;
+    AddressV = MIRROR;
+    SRGBTexture = TRUE;
+};
 
 /* [Vertex Shaders] */
 

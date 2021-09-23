@@ -7,6 +7,30 @@
     - Lord of Lunacy, KingEric1992, and Marty McFly for power of 2 function
 */
 
+uniform float uConst <
+    ui_type = "drag";
+    ui_label = "Constraint";
+    ui_tooltip = "Higher = Smoother flow";
+> = 1.0;
+
+uniform float uBlend <
+    ui_type = "drag";
+    ui_label = "Temporal Blending";
+    ui_tooltip = "Higher = Less temporal noise";
+    ui_max = 0.5;
+> = 0.25;
+
+uniform float uDetail <
+    ui_type = "drag";
+    ui_label = "Mipmap Bias";
+    ui_tooltip = "Higher = Less spatial noise";
+> = 4.5;
+
+uniform bool uNormal <
+    ui_label = "Lines Normal Direction";
+    ui_tooltip = "Normal to velocity direction";
+> = true;
+
 #define CONST_LOG2(x) (\
     (uint((x)  & 0xAAAAAAAA) != 0) | \
     (uint(((x) & 0xFFFF0000) != 0) << 4) | \
@@ -20,24 +44,6 @@
 #define BIT16_LOG2(x) (BIT8_LOG2(x) | BIT8_LOG2(x) >> 8)
 #define LOG2(x)       (CONST_LOG2((BIT16_LOG2(x) >> 1) + 1))
 #define RMAX(x, y)     x ^ ((x ^ y) & -(x < y)) // max(x, y)
-
-#define uOption(option, udata, utype, ucategory, ulabel, uvalue, umin, umax, utooltip)  \
-        uniform udata option <                                                  		\
-        ui_category = ucategory; ui_label = ulabel;                             		\
-        ui_type = utype; ui_min = umin; ui_max = umax; ui_tooltip = utooltip;   		\
-        > = uvalue
-
-uOption(uConst, float, "slider", "Optical Flow", "Constraint", 1.000, 0.000, 2.000,
-"Regularization: Higher = Smoother flow");
-
-uOption(uBlend, float, "slider", "Post Process", "Temporal Smoothing", 0.250, 0.000, 0.500,
-"Temporal Smoothing: Higher = Less temporal noise");
-
-uOption(uDetail, float, "slider", "Post Process", "Flow Mipmap Bias", 1.500, 0.000, 7.000,
-"Postprocess Blur: Higher = Less spatial noise");
-
-uOption(uNormal, bool, "radio", "Display", "Lines Normal Direction", true, 0, 0,
-"Normal to velocity direction");
 
 #define DSIZE uint2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2)
 #define RSIZE LOG2(RMAX(DSIZE.x, DSIZE.y)) + 1

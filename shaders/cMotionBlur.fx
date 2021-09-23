@@ -7,6 +7,31 @@
     - Lord of Lunacy, KingEric1992, and Marty McFly for power of 2 function
 */
 
+uniform float uScale <
+    ui_type = "drag";
+    ui_label = "Flow Scale";
+    ui_tooltip = "Higher = More motion blur";
+> = 1.0;
+
+uniform float uConst <
+    ui_type = "drag";
+    ui_label = "Constraint";
+    ui_tooltip = "Higher = Smoother flow";
+> = 1.0;
+
+uniform float uBlend <
+    ui_type = "drag";
+    ui_label = "Temporal Blending";
+    ui_tooltip = "Higher = Less temporal noise";
+    ui_max = 0.5;
+> = 0.25;
+
+uniform float uDetail <
+    ui_type = "drag";
+    ui_label = "Mipmap Bias";
+    ui_tooltip = "Higher = Less spatial noise";
+> = 4.5;
+
 #define CONST_LOG2(x) (\
     (uint((x)  & 0xAAAAAAAA) != 0) | \
     (uint(((x) & 0xFFFF0000) != 0) << 4) | \
@@ -21,41 +46,89 @@
 #define LOG2(x)       (CONST_LOG2((BIT16_LOG2(x) >> 1) + 1))
 #define RMAX(x, y)     x ^ ((x ^ y) & -(x < y)) // max(x, y)
 
-#define uOption(option, udata, utype, ucategory, ulabel, uvalue, umin, umax, utooltip)  \
-        uniform udata option <                                                          \
-        ui_category = ucategory; ui_label = ulabel;                                     \
-        ui_type = utype; ui_min = umin; ui_max = umax; ui_tooltip = utooltip;           \
-        > = uvalue
-
-uOption(uScale, float, "slider", "Basic", "Scale", 2.000, 0.000, 4.000,
-"Scale: Higher = More motion blur");
-
-uOption(uConst, float, "slider", "Optical Flow", "Constraint", 1.000, 0.000, 2.000,
-"Regularization: Higher = Smoother flow");
-
-uOption(uBlend, float, "slider", "Post Process", "Temporal Smoothing", 0.250, 0.000, 0.500,
-"Temporal Smoothing: Higher = Less temporal noise");
-
-uOption(uDetail, float, "slider", "Post Process", "Flow Mipmap Bias", 4.500, 0.000, 7.000,
-"Postprocess Blur: Higher = Less spatial noise");
-
 #define DSIZE uint2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2)
 #define RSIZE LOG2(RMAX(DSIZE.x, DSIZE.y)) + 1
 #define ISIZE 128.0
 
-texture2D r_color  : COLOR;
-texture2D r_buffer { Width = DSIZE.x; Height = DSIZE.y; Format = R16F; MipLevels = RSIZE; };
-texture2D r_cinfo0 { Width = ISIZE; Height = ISIZE; Format = RG16F; MipLevels = 8; };
-texture2D r_cinfo1 { Width = ISIZE; Height = ISIZE; Format = R16F; };
-texture2D r_cinfof { Width = ISIZE; Height = ISIZE; Format = RG16F; MipLevels = 8; };
-texture2D r_cflow  { Width = ISIZE; Height = ISIZE; Format = RG16F; MipLevels = 8; };
+texture2D r_color : COLOR;
 
-sampler2D s_color  { Texture = r_color; SRGBTexture = TRUE; };
-sampler2D s_buffer { Texture = r_buffer; AddressU = MIRROR; AddressV = MIRROR; };
-sampler2D s_cinfo0 { Texture = r_cinfo0; AddressU = MIRROR; AddressV = MIRROR; };
-sampler2D s_cinfo1 { Texture = r_cinfo1; AddressU = MIRROR; AddressV = MIRROR; };
-sampler2D s_cinfof { Texture = r_cinfof; AddressU = MIRROR; AddressV = MIRROR; };
-sampler2D s_cflow  { Texture = r_cflow; AddressU = MIRROR; AddressV = MIRROR; };
+texture2D r_buffer
+{
+    Width = DSIZE.x;
+    Height = DSIZE.y;
+    Format = R16F;
+    MipLevels = RSIZE;
+};
+
+texture2D r_cinfo0
+{
+    Width = ISIZE;
+    Height = ISIZE;
+    Format = RG16F;
+    MipLevels = 8;
+};
+
+texture2D r_cinfo1
+{
+    Width = ISIZE;
+    Height = ISIZE;
+    Format = R16F;
+};
+
+texture2D r_cinfof
+{
+    Width = ISIZE;
+    Height = ISIZE;
+    Format = RG16F;
+    MipLevels = 8;
+};
+
+texture2D r_cflow
+{
+    Width = ISIZE;
+    Height = ISIZE;
+    Format = RG16F;
+    MipLevels = 8;
+};
+
+sampler2D s_color
+{
+    Texture = r_color;
+    SRGBTexture = TRUE;
+};
+
+sampler2D s_buffer
+{
+    Texture = r_buffer;
+};
+
+sampler2D s_cinfo0
+{
+    Texture = r_cinfo0;
+    AddressU = MIRROR;
+    AddressV = MIRROR;
+};
+
+sampler2D s_cinfo1
+{
+    Texture = r_cinfo1;
+    AddressU = MIRROR;
+    AddressV = MIRROR;
+};
+
+sampler2D s_cinfof
+{
+    Texture = r_cinfof;
+    AddressU = MIRROR;
+    AddressV = MIRROR;
+};
+
+sampler2D s_cflow
+{
+    Texture = r_cflow;
+    AddressU = MIRROR;
+    AddressV = MIRROR;
+};
 
 /* [Vertex Shaders] */
 

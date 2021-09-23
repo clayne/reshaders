@@ -8,7 +8,12 @@ uniform float2 kShiftB <
 > = 1.0;
 
 texture2D r_color : COLOR;
-sampler2D s_color { Texture = r_color; SRGBTexture = TRUE; };
+
+sampler2D s_color
+{
+    Texture = r_color;
+    SRGBTexture = TRUE;
+};
 
 /*
     NOTE: pixelsize = 1.0 / screensize

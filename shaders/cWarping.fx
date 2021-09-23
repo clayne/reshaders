@@ -11,6 +11,55 @@
     - Lord of Lunacy, KingEric1992, and Marty McFly for power of 2 function
 */
 
+#define uOption(option, udata, utype, ucategory, ulabel, uvalue, umin, umax, utooltip)  \
+        uniform udata option <                                                  		\
+        ui_category = ucategory; ui_label = ulabel;                             		\
+        ui_type = utype; ui_min = umin; ui_max = umax; ui_tooltip = utooltip;   		\
+        > = uvalue
+
+uniform float uScale <
+    ui_type = "drag";
+    ui_label = "Flow Scale";
+    ui_tooltip = "Higher = More motion blur";
+> = 1.0;
+
+uniform float uConst <
+    ui_type = "drag";
+    ui_label = "Constraint";
+    ui_tooltip = "Higher = Smoother flow";
+> = 1.0;
+
+uniform float uBlend <
+    ui_type = "drag";
+    ui_label = "Temporal Blending";
+    ui_tooltip = "Higher = Less temporal noise";
+    ui_max = 0.5;
+> = 0.25;
+
+uniform float uDetail <
+    ui_type = "drag";
+    ui_label = "Mipmap Bias";
+    ui_tooltip = "Higher = Less spatial noise";
+> = 4.5;
+
+uniform float uAvg <
+    ui_type = "drag";
+    ui_label = "Warp Factor";
+    ui_tooltip = "Higher = More warp opacity";
+    ui_max = 1.0;
+> = 0.95;
+
+uniform bool uNoise <
+    ui_type = "radio";
+    ui_label = "Warp Noise";
+> = false;
+
+uniform bool uDebug <
+    ui_type = "radio";
+    ui_label = "Debug";
+    ui_tooltip = "Show optical flow result";
+> = false;
+
 #define CONST_LOG2(x) (\
     (uint((x)  & 0xAAAAAAAA) != 0) | \
     (uint(((x) & 0xFFFF0000) != 0) << 4) | \
@@ -24,33 +73,6 @@
 #define BIT16_LOG2(x) (BIT8_LOG2(x) | BIT8_LOG2(x) >> 8)
 #define LOG2(x)       (CONST_LOG2((BIT16_LOG2(x) >> 1) + 1))
 #define RMAX(x, y)     x ^ ((x ^ y) & -(x < y)) // max(x, y)
-
-#define uOption(option, udata, utype, ucategory, ulabel, uvalue, umin, umax, utooltip)  \
-        uniform udata option <                                                  		\
-        ui_category = ucategory; ui_label = ulabel;                             		\
-        ui_type = utype; ui_min = umin; ui_max = umax; ui_tooltip = utooltip;   		\
-        > = uvalue
-
-uOption(uScale, float, "slider", "Basic", "Scale",  2.000, 0.000, 4.000,
-"Velocity Scale: Higher = More warping");
-
-uOption(uConst, float, "slider", "Basic", "Constraint", 2.000, 0.000, 4.000,
-"Regularization: Higher = Smoother flow");
-
-uOption(uNoise, bool, "radio", "Basic", "Noise", true, 0, 0,
-"Noise warping");
-
-uOption(uBlend, float, "slider", "Advanced", "Flow Blend", 0.950, 0.000, 1.000,
-"Temporal Smoothing: Higher = Less temporal noise");
-
-uOption(uDetail, float, "slider", "Advanced", "Flow MipMap", 0.000, 0.000, 7.000,
-"Postprocess Blur: Higher = Less spatial noise");
-
-uOption(uAvg, float, "slider", "Advanced", "Warp Factor", 0.950, 0.000, 1.000,
-"Higher = More warp opacity");
-
-uOption(uDebug, bool, "radio", "Advanced", "Debug", false, 0, 0,
-"Show optical flow result");
 
 #define DSIZE uint2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2)
 #define RSIZE LOG2(RMAX(DSIZE.x, DSIZE.y)) + 1
