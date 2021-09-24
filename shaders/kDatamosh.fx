@@ -22,6 +22,85 @@
     CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+uniform int uBlockSize <
+    ui_category = "Datamosh";
+    ui_type = "slider";
+    ui_label = "Block Size";
+    ui_min = 4;
+    ui_max = 32;
+> = 16;
+
+uniform float uEntropy <
+    ui_category = "Datamosh";
+    ui_type = "slider";
+    ui_label = "Entropy";
+    ui_tooltip = "The larger value stronger noise and makes mosh last longer.";
+    ui_min = 0.0;
+    ui_max = 1.0;
+> = 0.5;
+
+uniform float uContrast <
+    ui_category = "Datamosh";
+    ui_type = "slider";
+    ui_label = "Contrast";
+    ui_tooltip = "Contrast of stripe-shaped noise.";
+    ui_min = 0.5;
+    ui_max = 4.0;
+> = 1.0;
+
+uniform float uScale <
+    ui_category = "Datamosh";
+    ui_type = "slider";
+    ui_label = "Scale";
+    ui_tooltip = "Scale factor for velocity vectors.";
+    ui_min = 0.0;
+    ui_max = 2.0;
+> = 0.8;
+
+uniform float uDiffusion <
+    ui_category = "Datamosh";
+    ui_type = "slider";
+    ui_label = "Diffusion";
+    ui_tooltip = "Amount of random displacement.";
+    ui_min = 0.0;
+    ui_max = 2.0;
+> = 0.4;
+
+uniform float uDetail <
+    ui_category = "Motion Vectors";
+    ui_type = "drag";
+    ui_label = "Blockiness";
+    ui_tooltip = "How blocky the motion vectors should be.";
+    ui_min = 0.0;
+> = 0.0;
+
+uniform float uConst <
+    ui_category = "Motion Vectors";
+    ui_type = "drag";
+    ui_label = "Constraint";
+    ui_tooltip = "Higher = Smoother flow";
+    ui_min = 0.0;
+> = 0.0;
+
+uniform float uBlend <
+    ui_category = "Motion Vectors";
+    ui_type = "drag";
+    ui_label = "Temporal Smoothing";
+    ui_tooltip = "Higher = Less temporal noise";
+    ui_min = 0.0;
+    ui_max = 1.0;
+> = 0.5;
+
+#ifndef LINEAR_SAMPLING
+    #define LINEAR_SAMPLING 0
+#endif
+
+#if LINEAR_SAMPLING == 1
+    #define MFILTER MinFilter = LINEAR; MagFilter = LINEAR
+#else
+    #define MFILTER MinFilter = POINT; MagFilter = POINT
+#endif
+
 #define CONST_LOG2(x) (\
     (uint((x)  & 0xAAAAAAAA) != 0) | \
     (uint(((x) & 0xFFFF0000) != 0) << 4) | \
@@ -39,46 +118,6 @@
 #define DSIZE uint2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2)
 #define RSIZE LOG2(RMAX(DSIZE.x, DSIZE.y)) + 1
 #define FSIZE LOG2(RMAX(DSIZE.x / 2, DSIZE.y / 2)) + 1
-
-#define uOption(option, udata, utype, ucategory, ulabel, uvalue, umin, umax, utooltip)  \
-        uniform udata option <                                                  		\
-        ui_category = ucategory; ui_label = ulabel;                             		\
-        ui_type = utype; ui_min = umin; ui_max = umax; ui_tooltip = utooltip;   		\
-        > = uvalue
-
-uOption(uBlockSize, int, "slider", "Datamosh", "Block Size", 16, 4, 32,
-"Size of compression macroblock.");
-
-uOption(uEntropy, float, "slider", "Datamosh", "Entropy", 0.5, 0.0, 1.0,
-"The larger value stronger noise and makes mosh last longer.");
-
-uOption(uContrast, float, "slider", "Datamosh", "Contrast", 1.0, 0.5, 4.0,
-"Contrast of stripe-shaped noise.");
-
-uOption(uScale, float, "slider", "Datamosh", "Scale", 0.8, 0.0, 2.0,
-"Scale factor for velocity vectors.");
-
-uOption(uDiffusion, float, "slider", "Datamosh", "Diffusion", 0.4, 0.0, 2.0,
-"Amount of random displacement.");
-
-uOption(uDetail, float, "slider", "Datamosh", "Blockiness", 2.0, 0.0, FSIZE - 1,
-"How blocky the motion vectors should be.");
-
-uOption(uConst, float, "slider", "Optical Flow", "Constraint", 1.000, 0.000, 2.000,
-"Regularization: Higher = Smoother flow");
-
-uOption(uBlend, float, "slider", "Optical Flow", "Temporal Smoothing", 0.5, 0.0, 1.0,
-"Temporal Smoothing: Higher = Less temporal noise");
-
-#ifndef LINEAR_SAMPLING
-    #define LINEAR_SAMPLING 0
-#endif
-
-#if LINEAR_SAMPLING == 1
-    #define MFILTER MinFilter = LINEAR; MagFilter = LINEAR
-#else
-    #define MFILTER MinFilter = POINT; MagFilter = POINT
-#endif
 
 texture2D r_color  : COLOR;
 
