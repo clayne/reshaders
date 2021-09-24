@@ -133,50 +133,103 @@ sampler2D s_cflow
 /* [Vertex Shaders] */
 
 void vs_generic(in uint id : SV_VERTEXID,
-                out float4 position : SV_POSITION,
-                out float2 texcoord : TEXCOORD)
+                inout float4 position : SV_POSITION,
+                inout float2 texcoord : TEXCOORD0)
 {
     texcoord.x = (id == 2) ? 2.0 : 0.0;
     texcoord.y = (id == 1) ? 2.0 : 0.0;
     position = float4(texcoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
 
-/* [ Pixel Shaders ] */
+static const float gKernel = 14;
 
-float gauss1D(const int position, const int kernel)
+float gauss1D(const int position)
 {
-    const float sigma = kernel / 3.0;
+    const float sigma = gKernel / 3.0;
     const float pi = 3.1415926535897932384626433832795f;
     float output = rsqrt(2.0 * pi * (sigma * sigma));
     return output * exp(-0.5 * position * position / (sigma * sigma));
 }
 
-float4 blur2D(sampler2D src, float2 uv, float2 direction, float2 psize)
+float2 output_weights(const float index)
 {
-    float2 sampleuv;
-    const float kernel = 14;
-    const float2 usize = (1.0 / psize) * direction;
-    float4 output = tex2D(src, uv) * gauss1D(0.0, kernel);
-    float total = gauss1D(0.0, kernel);
+    float2 weight;
+    weight[0] = gauss1D(index);
+    weight[1] = gauss1D(index + 1.0);
+    return weight;
+}
 
-    [unroll]
-    for(float i = 1.0; i < kernel; i += 2.0)
+float2 output_offsetL(const float index)
+{
+    float2 gWeights = output_weights(index);
+    float gWeightL = gWeights[0] + gWeights[1];
+    const float2 gOffsets = float2(index, index + 1.0);
+    float2 gOutput;
+    gOutput[0] = dot(gOffsets, gWeights) / gWeightL;
+    gOutput[1] = -gOutput[0]; // store negatives here
+    return gOutput;
+}
+
+void vs_hblur(in uint id : SV_VERTEXID,
+              inout float4 position : SV_POSITION,
+              inout float2 texcoord : TEXCOORD0,
+              inout float4 offsets[7] : TEXCOORD1)
+{
+    vs_generic(id, position, texcoord);
+    const float2 gDirection = float2(1.0 / ISIZE, 0.0);
+
+    [unroll] for(int i = 0; i < 7; i++)
     {
-        const float offsetD1 = i;
-        const float offsetD2 = i + 1.0;
-        const float weightD1 = gauss1D(offsetD1, kernel);
-        const float weightD2 = gauss1D(offsetD2, kernel);
-        const float weightL = weightD1 + weightD2;
-        const float offsetL = ((offsetD1 * weightD1) + (offsetD2 * weightD2)) / weightL;
+        const float2 gOffsetL = output_offsetL(i * 2 + 1);
+        offsets[i] = texcoord.xyxy + gOffsetL.xxyy * gDirection.xyxy;
+    }
+}
 
-        sampleuv = uv - offsetL * usize;
-        output += tex2D(src, sampleuv) * weightL;
-        sampleuv = uv + offsetL * usize;
-        output += tex2D(src, sampleuv) * weightL;
-        total += 2.0 * weightL;
+void vs_vblur(in uint id : SV_VERTEXID,
+              inout float4 position : SV_POSITION,
+              inout float2 texcoord : TEXCOORD0,
+              inout float4 offsets[7] : TEXCOORD1)
+{
+    vs_generic(id, position, texcoord);
+    const float2 gDirection = float2(0.0, 1.0 / ISIZE);
+
+    [unroll] for(int i = 0; i < 7; i++)
+    {
+        const float2 gOffsetL = output_offsetL(i * 2 + 1);
+        offsets[i] = texcoord.xyxy + gOffsetL.xxyy * gDirection.xyxy;
+    }
+}
+
+void vs_ddxy(in uint id : SV_VERTEXID,
+             inout float4 position : SV_POSITION,
+             inout float2 texcoord : TEXCOORD0,
+             inout float4 offsets : TEXCOORD1)
+{
+    const float2 gSize = 1.0 / ISIZE;
+    const float4 gOffsets = float4(gSize, -gSize);
+    vs_generic(id, position, texcoord);
+    offsets = texcoord.xyxy + gOffsets;
+}
+
+/* [ Pixel Shaders ] */
+
+float4 blur1D(sampler2D src,
+              float2 uv,
+              float4 offset[7])
+{
+    float gTotal = gauss1D(0.0);
+    float4 gOutput = tex2D(src, uv) * gauss1D(0.0);
+
+    [unroll] for(int i = 0; i < 7; i ++)
+    {
+        const float2 gWeights = output_weights(i * 2 + 1);
+        const float gWeightL = gWeights[0] + gWeights[1];
+        gOutput += tex2D(src, offset[i].xy) * gWeightL;
+        gOutput += tex2D(src, offset[i].zw) * gWeightL;
+        gTotal += 2.0 * gWeightL;
     }
 
-    return output / total;
+    return gOutput / gTotal;
 }
 
 void ps_normalize(float4 vpos : SV_POSITION,
@@ -199,28 +252,30 @@ void ps_blit(float4 vpos : SV_POSITION,
 
 void ps_hblur(float4 vpos : SV_POSITION,
               float2 uv : TEXCOORD0,
+              float4 offsets[7] : TEXCOORD1,
               out float2 r0 : SV_TARGET0)
 {
-    r0 = blur2D(s_cinfo0, uv, float2(1.0, 0.0), ISIZE).x;
+    r0 = blur1D(s_cinfo0, uv, offsets).x;
 }
 
 void ps_vblur(float4 vpos : SV_POSITION,
               float2 uv : TEXCOORD0,
+              float4 offsets[7] : TEXCOORD1,
               out float2 r0 : SV_TARGET0)
 {
-    r0 = blur2D(s_cinfo1, uv, float2(0.0, 1.0), ISIZE).x;
+    r0 = blur1D(s_cinfo1, uv, offsets).x;
 }
 
 void ps_ddxy(float4 vpos : SV_POSITION,
              float2 uv : TEXCOORD0,
+             float4 offsets : TEXCOORD1,
              out float2 r0 : SV_TARGET0,
              out float2 r1 : SV_TARGET1)
 {
-    const float2 psize = 1.0 / tex2Dsize(s_cinfo0, 0.0);
-    float2 s0 = tex2D(s_cinfo0, uv + float2(-psize.x, +psize.y)).rg;
-    float2 s1 = tex2D(s_cinfo0, uv + float2(+psize.x, +psize.y)).rg;
-    float2 s2 = tex2D(s_cinfo0, uv + float2(-psize.x, -psize.y)).rg;
-    float2 s3 = tex2D(s_cinfo0, uv + float2(+psize.x, -psize.y)).rg;
+    float2 s0 = tex2D(s_cinfo0, offsets.zy).xy; // (-x, +y)
+    float2 s1 = tex2D(s_cinfo0, offsets.xy).xy; // (+x, +y)
+    float2 s2 = tex2D(s_cinfo0, offsets.zw).xy; // (-x, -y)
+    float2 s3 = tex2D(s_cinfo0, offsets.xw).xy; // (+x, -y)
     float4 dx0;
     dx0.xy = s1 - s0;
     dx0.zw = s3 - s2;
@@ -299,14 +354,14 @@ technique cMotionBlur
 
     pass horizontalblur
     {
-        VertexShader = vs_generic;
+        VertexShader = vs_hblur;
         PixelShader = ps_hblur;
         RenderTarget0 = r_cinfo1;
     }
 
     pass verticalblur
     {
-        VertexShader = vs_generic;
+        VertexShader = vs_vblur;
         PixelShader = ps_vblur;
         RenderTarget0 = r_cinfo0;
         RenderTargetWriteMask = 1;
@@ -314,7 +369,7 @@ technique cMotionBlur
 
     pass derivatives_copy
     {
-        VertexShader = vs_generic;
+        VertexShader = vs_ddxy;
         PixelShader = ps_ddxy;
         RenderTarget0 = r_cinfof;
         RenderTarget1 = r_cinfo1;

@@ -119,9 +119,8 @@ uniform float uBlend <
 
 #define DSIZE uint2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2)
 #define RSIZE LOG2(RMAX(DSIZE.x, DSIZE.y)) + 1
-#define FSIZE LOG2(RMAX(DSIZE.x / 2, DSIZE.y / 2)) + 1
 
-texture2D r_color  : COLOR;
+texture2D r_color : COLOR;
 
 texture2D r_pbuffer
 {
@@ -227,7 +226,7 @@ sampler2D s_copy
 
 void vs_generic(in uint id : SV_VERTEXID,
                 out float4 position : SV_POSITION,
-                out float2 texcoord : TEXCOORD)
+                out float2 texcoord : TEXCOORD0)
 {
     texcoord.x = (id == 2) ? 2.0 : 0.0;
     texcoord.y = (id == 1) ? 2.0 : 0.0;
