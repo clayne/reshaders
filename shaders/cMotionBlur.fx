@@ -11,7 +11,7 @@ uniform float uScale <
     ui_type = "drag";
     ui_label = "Flow Scale";
     ui_tooltip = "Higher = More motion blur";
-> = 1.0;
+> = 2.0;
 
 uniform float uConst <
     ui_type = "drag";

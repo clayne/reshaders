@@ -242,7 +242,7 @@ float4 ps_flow(float4 vpos : SV_POSITION,
                float2 uv : TEXCOORD0) : SV_TARGET
 {
     const float uRegularize = max(4.0 * pow(uConst * 1e-2, 2.0), 1e-10);
-    const int pyramids = ceil(log2(max(DSIZE.x, DSIZE.y)));
+    const int pyramids = RSIZE - 1;
     float2 cFlow = 0.0;
 
     for(float i = pyramids; i >= 0; i--)
