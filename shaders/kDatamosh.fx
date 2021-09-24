@@ -22,6 +22,8 @@
     CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+uniform float uTime < source = "timer"; >;
+
 uniform int uBlockSize <
     ui_category = "Datamosh";
     ui_type = "slider";
@@ -80,7 +82,7 @@ uniform float uConst <
     ui_label = "Constraint";
     ui_tooltip = "Higher = Smoother flow";
     ui_min = 0.0;
-> = 0.0;
+> = 1.0;
 
 uniform float uBlend <
     ui_category = "Motion Vectors";
@@ -305,8 +307,6 @@ float urand(float2 uv)
     float f = dot(float2(12.9898, 78.233), uv);
     return frac(43758.5453 * sin(f));
 }
-
-uniform float uTime < source = "timer"; >;
 
 float4 ps_accum(float4 vpos : SV_POSITION,
                 float2 uv : TEXCOORD0) : SV_TARGET
