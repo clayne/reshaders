@@ -3,25 +3,26 @@ uniform float uThreshold <
     ui_type = "drag";
     ui_min = 0.0;
     ui_label = "Threshold";
-> = 1.8;
+> = 0.8;
 
 uniform float uSmooth <
     ui_type = "drag";
     ui_min = 0.0;
     ui_label = "Smoothing";
+    ui_max = 1.0;
 > = 0.5;
 
 uniform float uSaturation <
     ui_type = "drag";
     ui_min = 0.0;
     ui_label = "Saturation";
-> = 1.5;
+> = 1.0;
 
 uniform float uIntensity <
     ui_type = "drag";
     ui_min = 0.0;
     ui_label = "Intensity";
-> = 100.0;
+> = 1.0;
 
 texture2D r_color  : COLOR;
 texture2D r_bloom1 { Width = BUFFER_WIDTH / 2;   Height = BUFFER_HEIGHT / 2;   Format = RGBA16F; };
@@ -176,18 +177,18 @@ float4 upsample2Dps(sampler2D src, v2fu input)
 
 float4 ps_downsample0(v2fd input): SV_TARGET
 {
-    const float  knee = mad(uThreshold, uSmooth, 1e-5f);
+    const float knee = mad(uThreshold, uSmooth, 1e-5f);
     const float3 curve = float3(uThreshold - knee, knee * 2.0, 0.25 / knee);
     float4 s = downsample2Dps(s_color, input);
 
     // Under-threshold
-    s.a = max(s.r, max(s.g, s.b));
-    float rq = clamp(s.a - curve.x, 0.0, curve.y);
+    float br = max(s.r, max(s.g, s.b));
+    float rq = clamp(br - curve.x, 0.0, curve.y);
     rq = curve.z * rq * rq;
 
     // Combine and apply the brightness response curve
-    s *= max(rq, s.a - uThreshold) / max(s.a, 1e-4);
-    s = saturate(lerp(s.a, s, uSaturation));
+    s *= max(rq, br - uThreshold) / max(br, 1e-10);
+    s = saturate(lerp(br, s.rgb, uSaturation));
     return s;
 }
 

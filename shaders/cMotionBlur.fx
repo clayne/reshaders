@@ -316,8 +316,9 @@ float noise(float2 vpos)
     return frac(n.z * frac(dot(vpos.xy, n.xy)));
 }
 
-float4 ps_output(float4 vpos : SV_POSITION,
-                 float2 uv : TEXCOORD0) : SV_Target
+void ps_output(float4 vpos : SV_POSITION,
+               float2 uv : TEXCOORD0,
+               out float4 r0 : SV_Target)
 {
     float4 oBlur;
     const float aspectratio = BUFFER_WIDTH / BUFFER_HEIGHT;
@@ -333,7 +334,7 @@ float4 ps_output(float4 vpos : SV_POSITION,
         oBlur = lerp(oBlur, uColor, rcp(float(k) + 1));
     }
 
-    return oBlur;
+    r0 = oBlur;
 }
 
 technique cMotionBlur
