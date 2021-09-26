@@ -94,13 +94,14 @@ float4 ps_mosaic(float4 vpos : SV_POSITION,
             return c0 * gCircle;
         // Triangle https://www.shadertoy.com/view/4d2SWy
         case 1:
+            const float2 gDivisor = 1.0 / (2.0 * uRadius);
             mCoord = floor(uv * uRadius) / uRadius;
             uv -= mCoord;
             uv *= uRadius;
             float2 gComposite;
-            gComposite.x = step(1.0 - uv.y, uv.x) / (2.0 * uRadius.x);
-            gComposite.y = step(uv.x, uv.y) / (2.0 * uRadius.y);
-            return tex2Dlod(s_lods, float4(mCoord + gComposite, 0.0, log2(gRadius) - 1.0));
+            gComposite.x = step(1.0 - uv.y, uv.x);
+            gComposite.y = step(uv.x, uv.y);
+            return tex2Dlod(s_lods, float4(mCoord + gComposite * gDivisor, 0.0, 0.0));
         default:
             mCoord = round(gFragCoord / uRadius) * uRadius;
             gCoord = mCoord * gPixelSize;
