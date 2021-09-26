@@ -32,12 +32,16 @@ void vs_generic(in uint id : SV_VERTEXID,
 
 /* [Pixel Shaders] */
 
-void ps_blit(float4 vpos : SV_POSITION, float2 uv : TEXCOORD0, out float4 r0 : SV_TARGET0)
+void ps_blit(float4 vpos : SV_POSITION,
+             float2 uv : TEXCOORD0,
+             out float4 r0 : SV_TARGET0)
 {
     r0 = tex2D(s_color, uv);
 }
 
-void ps_blend(float4 vpos : SV_POSITION, float2 uv : TEXCOORD0, out float4 r0 : SV_TARGET0)
+void ps_blend(float4 vpos : SV_POSITION,
+              float2 uv : TEXCOORD0,
+              out float4 r0 : SV_TARGET0)
 {
     float4 src = tex2D(s_blit, uv);
     float4 dest = tex2D(s_color, uv);
