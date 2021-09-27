@@ -1,10 +1,10 @@
 
-uniform int2 uRadius <
+uniform int2 _Radius <
     ui_type = "drag";
     ui_label = "Mosaic Radius";
 > = 16.0;
 
-uniform int uShape <
+uniform int _Shape <
     ui_type = "slider";
     ui_label = "Mosaic Shape";
     ui_max = 2;
@@ -26,9 +26,9 @@ uniform int uShape <
 
 #define RMIPS LOG2(RMAX(BUFFER_WIDTH, BUFFER_HEIGHT)) + 1
 
-texture2D r_color : COLOR;
+texture2D _RenderColor : COLOR;
 
-texture2D r_lods
+texture2D _RenderLOD < pooled = false; >
 {
     Width = BUFFER_WIDTH;
     Height = BUFFER_HEIGHT;
@@ -36,17 +36,17 @@ texture2D r_lods
     Format = RGBA8;
 };
 
-sampler2D s_color
+sampler2D _SampleColor
 {
-    Texture = r_color;
+    Texture = _RenderColor;
     AddressU = MIRROR;
     AddressV = MIRROR;
     SRGBTexture = TRUE;
 };
 
-sampler2D s_lods
+sampler2D _SampleLOD
 {
-    Texture = r_lods;
+    Texture = _RenderLOD;
     AddressU = MIRROR;
     AddressV = MIRROR;
     SRGBTexture = TRUE;
@@ -54,58 +54,57 @@ sampler2D s_lods
 
 /* [Vertex Shaders] */
 
-void vs_generic(in uint id : SV_VERTEXID,
-                inout float4 position : SV_POSITION,
-                inout float2 texcoord : TEXCOORD0)
+void PostProcessVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD0)
 {
-    texcoord.x = (id == 2) ? 2.0 : 0.0;
-    texcoord.y = (id == 1) ? 2.0 : 0.0;
-    position = float4(texcoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    TexCoord.x = (ID == 2) ? 2.0 : 0.0;
+    TexCoord.y = (ID == 1) ? 2.0 : 0.0;
+    Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
 
 /* [Pixel Shaders] */
 
-float4 ps_blit(float4 vpos : SV_POSITION,
-               float2 uv : TEXCOORD0) : SV_Target0
+void BlitPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    return tex2D(s_color, uv);
+    OutputColor0 = tex2D(_SampleColor, TexCoord);
 }
 
-float4 ps_mosaic(float4 vpos : SV_POSITION,
-                 float2 uv : TEXCOORD0) : SV_Target0
+void MosaicPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    float2 gFragCoord = uv * float2(BUFFER_WIDTH, BUFFER_HEIGHT);
-    float2 gPixelSize = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
-    float2 mCoord, gCoord;
-    float gRadius = max(uRadius.x, uRadius.y);
+    float2 FragCoord = TexCoord * float2(BUFFER_WIDTH, BUFFER_HEIGHT);
+    float2 PixelSize = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
+    float2 BlockCoord, MosaicCoord;
+    float MaxRadius = max(_Radius.x, _Radius.y);
 
-    [branch] switch(uShape)
+    [branch] switch(_Shape)
     {
         // Circle https://www.shadertoy.com/view/4d2SWy
         case 0:
-            mCoord = floor(gFragCoord / gRadius) * gRadius;
-            gCoord = mCoord * gPixelSize;
-            float4 c0 = tex2Dlod(s_lods, float4(gCoord, 0.0, log2(gRadius) - 1.0));
+            BlockCoord = floor(FragCoord / MaxRadius) * MaxRadius;
+            MosaicCoord = BlockCoord * PixelSize;
+            float4 Color = tex2Dlod(_SampleLOD, float4(MosaicCoord, 0.0, log2(MaxRadius) - 1.0));
 
-            float2 gOffset = gFragCoord - mCoord;
-            float2 gCenter = gRadius / 2.0;
-            float gLength = distance(gCenter, gOffset);
-            float gCircle = 1.0 - smoothstep(-2.0 , 0.0, gLength - gCenter.x);
-            return c0 * gCircle;
+            float2 Offset = FragCoord - BlockCoord;
+            float2 Center = MaxRadius / 2.0;
+            float Length = distance(Center, Offset);
+            float Circle = 1.0 - smoothstep(-2.0 , 0.0, Length - Center.x);
+            OutputColor0 = Color * Circle;
+            break;
         // Triangle https://www.shadertoy.com/view/4d2SWy
         case 1:
-            const float2 gDivisor = 1.0 / (2.0 * uRadius);
-            mCoord = floor(uv * uRadius) / uRadius;
-            uv -= mCoord;
-            uv *= uRadius;
-            float2 gComposite;
-            gComposite.x = step(1.0 - uv.y, uv.x);
-            gComposite.y = step(uv.x, uv.y);
-            return tex2Dlod(s_lods, float4(mCoord + gComposite * gDivisor, 0.0, 0.0));
+            const float2 Divisor = 1.0 / (2.0 * _Radius);
+            BlockCoord = floor(TexCoord * _Radius) / _Radius;
+            TexCoord -= BlockCoord;
+            TexCoord *= _Radius;
+            float2 Composite;
+            Composite.x = step(1.0 - TexCoord.y, TexCoord.x);
+            Composite.y = step(TexCoord.x, TexCoord.y);
+            OutputColor0 = tex2Dlod(_SampleLOD, float4(BlockCoord + Composite * Divisor, 0.0, 0.0));
+            break;
         default:
-            mCoord = round(gFragCoord / uRadius) * uRadius;
-            gCoord = mCoord * gPixelSize;
-            return tex2Dlod(s_lods, float4(gCoord, 0.0, log2(gRadius) - 1.0));
+            BlockCoord = round(FragCoord / _Radius) * _Radius;
+            MosaicCoord = BlockCoord * PixelSize;
+            OutputColor0 = tex2Dlod(_SampleLOD, float4(MosaicCoord, 0.0, log2(MaxRadius) - 1.0));
+            break;
     }
 }
 
@@ -113,16 +112,16 @@ technique cMosaic
 {
     pass
     {
-        VertexShader = vs_generic;
-        PixelShader = ps_blit;
-        RenderTarget0 = r_lods;
+        VertexShader = PostProcessVS;
+        PixelShader = BlitPS;
+        RenderTarget0 = _RenderLOD;
         SRGBWriteEnable = TRUE;
     }
 
     pass
     {
-        VertexShader = vs_generic;
-        PixelShader = ps_mosaic;
+        VertexShader = PostProcessVS;
+        PixelShader = MosaicPS;
         SRGBWriteEnable = TRUE;
     }
 }

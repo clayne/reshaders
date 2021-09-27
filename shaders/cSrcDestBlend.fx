@@ -1,60 +1,54 @@
 
-texture2D r_color : COLOR;
+texture2D _RenderColor : COLOR;
 
-texture2D r_blit
+texture2D _RenderCopy
 {
     Width = BUFFER_WIDTH;
     Height = BUFFER_HEIGHT;
     Format = RGBA8;
 };
 
-sampler2D s_color
+sampler2D _SampleColor
 {
-    Texture = r_color;
+    Texture = _RenderColor;
 };
 
-sampler2D s_blit
+sampler2D _SampleCopy
 {
-    Texture = r_blit;
+    Texture = _RenderCopy;
     SRGBTexture = TRUE;
 };
 
 /* [Vertex Shaders] */
 
-void vs_generic(in uint id : SV_VERTEXID,
-                out float4 position : SV_POSITION,
-                out float2 texcoord : TEXCOORD)
+void PostProcessVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD0)
 {
-    texcoord.x = (id == 2) ? 2.0 : 0.0;
-    texcoord.y = (id == 1) ? 2.0 : 0.0;
-    position = float4(texcoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    TexCoord.x = (ID == 2) ? 2.0 : 0.0;
+    TexCoord.y = (ID == 1) ? 2.0 : 0.0;
+    Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
 
 /* [Pixel Shaders] */
 
-void ps_blit(float4 vpos : SV_POSITION,
-             float2 uv : TEXCOORD0,
-             out float4 r0 : SV_TARGET0)
+void BlitPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    r0 = tex2D(s_color, uv);
+    OutputColor0 = tex2D(_SampleColor, TexCoord);
 }
 
-void ps_blend(float4 vpos : SV_POSITION,
-              float2 uv : TEXCOORD0,
-              out float4 r0 : SV_TARGET0)
+void BlendPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    float4 src = tex2D(s_blit, uv);
-    float4 dest = tex2D(s_color, uv);
-    r0 = (src + dest);
+    float4 src = tex2D(_SampleCopy, TexCoord);
+    float4 dest = tex2D(_SampleColor, TexCoord);
+    OutputColor0 = (src + dest);
 }
 
 technique CopyBuffer
 {
     pass
     {
-        VertexShader = vs_generic;
-        PixelShader = ps_blit;
-        RenderTarget0 = r_blit;
+        VertexShader = PostProcessVS;
+        PixelShader = BlitPS;
+        RenderTarget0 = _RenderCopy;
     }
 }
 
@@ -62,8 +56,8 @@ technique BlendBuffer
 {
     pass
     {
-        VertexShader = vs_generic;
-        PixelShader = ps_blend;
+        VertexShader = PostProcessVS;
+        PixelShader = BlendPS;
         SRGBWriteEnable = TRUE;
     }
 }

@@ -3,74 +3,75 @@
     Frame blending without blendops
 */
 
-uniform float uBlend <
-    ui_label = "Blend Factor"; ui_type = "slider";
-    ui_min = 0.0; ui_max = 1.0;
+uniform float _Blend <
+    ui_label = "Blend Factor";
+    ui_type = "slider";
+    ui_min = 0.0;
+    ui_max = 1.0;
 > = 0.5;
 
-texture2D r_color  : COLOR;
+texture2D _RenderColor : COLOR;
 
-texture2D r_pimage
+texture2D _RenderCopy
 {
     Width = BUFFER_WIDTH;
     Height = BUFFER_HEIGHT;
 };
 
-sampler2D s_color
+sampler2D _SampleColor
 {
-    Texture = r_color;
+    Texture = _RenderColor;
     SRGBTexture = TRUE;
 };
 
-sampler2D s_pimage
+sampler2D _SampleCopy
 {
-    Texture = r_pimage;
+    Texture = _RenderCopy;
     SRGBTexture = TRUE;
 };
 
 /* [Vertex Shaders] */
 
-void vs_generic(in uint id : SV_VERTEXID,
-                out float4 position : SV_POSITION,
-                out float2 texcoord : TEXCOORD)
+void PostProcessVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD0)
 {
-    texcoord.x = (id == 2) ? 2.0 : 0.0;
-    texcoord.y = (id == 1) ? 2.0 : 0.0;
-    position = float4(texcoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    TexCoord.x = (ID == 2) ? 2.0 : 0.0;
+    TexCoord.y = (ID == 1) ? 2.0 : 0.0;
+    Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
+
 
 /* [Pixel Shaders] */
 
 // Execute the blending first (the pframe will initially be 0)
 
-float4 ps_blend(float4 vpos : SV_POSITION, float2 uv: TEXCOORD0) : SV_TARGET
+void BlendPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    float4 cframe = tex2D(s_color, uv);
-    float4 pframe = tex2D(s_pimage, uv);
-    return lerp(cframe, pframe, uBlend);
+    float4 CurrentFrame = tex2D(_SampleColor, TexCoord);
+    float4 PreviousFrame = tex2D(_SampleCopy, TexCoord);
+    OutputColor0 = lerp(CurrentFrame, PreviousFrame, _Blend);
 }
 
 // Save the results generated from ps_blend() into a texture to use later
 
-float4 ps_pimage(float4 vpos : SV_POSITION, float2 uv: TEXCOORD0) : SV_TARGET
+void CopyPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    return tex2D(s_color, uv);
+    OutputColor0 = tex2D(_SampleColor, TexCoord);
 }
 
 technique cBlending
 {
     pass
     {
-        VertexShader = vs_generic;
-        PixelShader = ps_blend;
+        VertexShader = PostProcessVS;
+        PixelShader = BlendPS;
         SRGBWriteEnable = TRUE;
     }
 
     pass
     {
-        VertexShader = vs_generic;
-        PixelShader = ps_pimage;
-        RenderTarget = r_pimage;
+        VertexShader = PostProcessVS;
+        PixelShader = CopyPS;
+        RenderTarget = _RenderCopy;
         SRGBWriteEnable = TRUE;
     }
 }

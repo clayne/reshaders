@@ -22,9 +22,9 @@
     CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-uniform float uTime < source = "timer"; >;
+uniform float _Time < source = "timer"; >;
 
-uniform int uBlockSize <
+uniform int _BlockSize <
     ui_category = "Datamosh";
     ui_type = "slider";
     ui_label = "Block Size";
@@ -32,7 +32,7 @@ uniform int uBlockSize <
     ui_max = 32;
 > = 16;
 
-uniform float uEntropy <
+uniform float _Entropy <
     ui_category = "Datamosh";
     ui_type = "slider";
     ui_label = "Entropy";
@@ -41,7 +41,7 @@ uniform float uEntropy <
     ui_max = 1.0;
 > = 0.5;
 
-uniform float uContrast <
+uniform float _Contrast <
     ui_category = "Datamosh";
     ui_type = "slider";
     ui_label = "Contrast";
@@ -50,7 +50,7 @@ uniform float uContrast <
     ui_max = 4.0;
 > = 1.0;
 
-uniform float uScale <
+uniform float _Scale <
     ui_category = "Datamosh";
     ui_type = "slider";
     ui_label = "Scale";
@@ -59,7 +59,7 @@ uniform float uScale <
     ui_max = 2.0;
 > = 0.8;
 
-uniform float uDiffusion <
+uniform float _Diffusion <
     ui_category = "Datamosh";
     ui_type = "slider";
     ui_label = "Diffusion";
@@ -68,7 +68,7 @@ uniform float uDiffusion <
     ui_max = 2.0;
 > = 0.4;
 
-uniform float uDetail <
+uniform float _Detail <
     ui_category = "Motion Vectors";
     ui_type = "drag";
     ui_label = "Blockiness";
@@ -76,7 +76,7 @@ uniform float uDetail <
     ui_min = 0.0;
 > = 0.0;
 
-uniform float uConst <
+uniform float _Constraint <
     ui_category = "Motion Vectors";
     ui_type = "drag";
     ui_label = "Constraint";
@@ -84,7 +84,7 @@ uniform float uConst <
     ui_min = 0.0;
 > = 1.0;
 
-uniform float uBlend <
+uniform float _BlendFactor <
     ui_category = "Motion Vectors";
     ui_type = "drag";
     ui_label = "Temporal Smoothing";
@@ -120,9 +120,9 @@ uniform float uBlend <
 #define DSIZE uint2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2)
 #define RSIZE LOG2(RMAX(DSIZE.x, DSIZE.y)) + 1
 
-texture2D r_color : COLOR;
+texture2D _RenderColor : COLOR;
 
-texture2D r_pbuffer
+texture2D _RenderPreviousBuffer
 {
     Width = DSIZE.x;
     Height = DSIZE.y;
@@ -130,7 +130,7 @@ texture2D r_pbuffer
     MipLevels = RSIZE;
 };
 
-texture2D r_cbuffer
+texture2D _RenderCurrentBuffer
 {
     Width = DSIZE.x;
     Height = DSIZE.y;
@@ -138,7 +138,7 @@ texture2D r_cbuffer
     MipLevels = RSIZE;
 };
 
-texture2D r_cuddxy
+texture2D _RenderDerivatives
 {
     Width = DSIZE.x;
     Height = DSIZE.y;
@@ -146,7 +146,7 @@ texture2D r_cuddxy
     MipLevels = RSIZE;
 };
 
-texture2D r_coflow
+texture2D _RenderOpticalFlow
 {
     Width = DSIZE.x;
     Height = DSIZE.y;
@@ -154,7 +154,7 @@ texture2D r_coflow
     MipLevels = RSIZE;
 };
 
-texture2D r_caccum
+texture2D _RenderAccumulation
 {
     Width = DSIZE.x;
     Height = DSIZE.y;
@@ -162,61 +162,61 @@ texture2D r_caccum
     MipLevels = RSIZE;
 };
 
-texture2D r_copy
+texture2D _RenderCopy
 {
     Width = BUFFER_WIDTH;
     Height = BUFFER_HEIGHT;
     Format = RGBA8;
 };
 
-sampler2D s_color
+sampler2D _SampleColor
 {
-    Texture = r_color;
+    Texture = _RenderColor;
     AddressU = MIRROR;
     AddressV = MIRROR;
     SRGBTexture = TRUE;
 };
 
-sampler2D s_pbuffer
+sampler2D _SamplePreviousBuffer
 {
-    Texture = r_pbuffer;
+    Texture = _RenderPreviousBuffer;
     AddressU = MIRROR;
     AddressV = MIRROR;
 };
 
-sampler2D s_cbuffer
+sampler2D _SampleCurrentBuffer
 {
-    Texture = r_cbuffer;
+    Texture = _RenderCurrentBuffer;
     AddressU = MIRROR;
     AddressV = MIRROR;
 };
 
-sampler2D s_cuddxy
+sampler2D _SampleDerivatives
 {
-    Texture = r_cuddxy;
+    Texture = _RenderDerivatives;
     AddressU = MIRROR;
     AddressV = MIRROR;
 };
 
-sampler2D s_coflow
+sampler2D _SampleOpticalFlow
 {
-    Texture = r_coflow;
+    Texture = _RenderOpticalFlow;
     MFILTER;
     AddressU = MIRROR;
     AddressV = MIRROR;
 };
 
-sampler2D s_caccum
+sampler2D _SampleAccumulation
 {
-    Texture = r_caccum;
+    Texture = _RenderAccumulation;
     MFILTER;
     AddressU = MIRROR;
     AddressV = MIRROR;
 };
 
-sampler2D s_copy
+sampler2D _SampleCopy
 {
-    Texture = r_copy;
+    Texture = _RenderCopy;
     AddressU = MIRROR;
     AddressV = MIRROR;
     SRGBTexture = TRUE;
@@ -224,49 +224,43 @@ sampler2D s_copy
 
 /* [Vertex Shaders] */
 
-void vs_generic(in uint id : SV_VERTEXID,
-                out float4 position : SV_POSITION,
-                out float2 texcoord : TEXCOORD0)
+void PostProcessVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD0)
 {
-    texcoord.x = (id == 2) ? 2.0 : 0.0;
-    texcoord.y = (id == 1) ? 2.0 : 0.0;
-    position = float4(texcoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    TexCoord.x = (ID == 2) ? 2.0 : 0.0;
+    TexCoord.y = (ID == 1) ? 2.0 : 0.0;
+    Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
 
 /* [Pixel Shaders ] */
 
-void ps_convert(float4 vpos : SV_POSITION,
-                float2 uv : TEXCOORD0,
-                out float2 r0 : SV_TARGET0)
+void ConvertPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0)
 {
-    // r0.xy = normalize current frame
-    // r0.zw = get normalized frame from last pass
-    float3 c0 = max(tex2D(s_color, uv).rgb, 1e-7);
-    c0 /= dot(c0, 1.0);
-    c0 /= max(max(c0.r, c0.g), c0.b);
-    r0.x = dot(c0, 1.0 / 3.0);
-    r0.y = tex2D(s_cbuffer, uv).x;
+    // r0.x = normalize current frame
+    // r0.y = copy normalized frame from last run
+    float3 Color = max(tex2D(_SampleColor, TexCoord).rgb, 1e-7);
+    Color /= dot(Color, 1.0);
+    Color /= max(max(Color.r, Color.g), Color.b);
+    OutputColor0.x = dot(Color, 1.0 / 3.0);
+    OutputColor0.y = tex2D(_SampleCurrentBuffer, TexCoord).x;
 }
 
-void ps_filter(float4 vpos : SV_POSITION,
-               float2 uv : TEXCOORD0,
-               out float r0 : SV_TARGET0,
-               out float2 r1 : SV_TARGET1)
+void FilterPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float OutputColor0 : SV_TARGET0, out float2 ColorOutput1 : SV_TARGET1)
 {
-    r0 = tex2D(s_pbuffer, uv).x;
-    const float2 psize = 1.0 / tex2Dsize(s_pbuffer, 0.0);
-    float2 s0 = tex2D(s_pbuffer, uv + float2(-psize.x, +psize.y)).rg;
-    float2 s1 = tex2D(s_pbuffer, uv + float2(+psize.x, +psize.y)).rg;
-    float2 s2 = tex2D(s_pbuffer, uv + float2(-psize.x, -psize.y)).rg;
-    float2 s3 = tex2D(s_pbuffer, uv + float2(+psize.x, -psize.y)).rg;
-    float4 dx0;
-    dx0.xy = s1 - s0;
-    dx0.zw = s3 - s2;
-    float4 dy0;
-    dy0.xy = s0 - s2;
-    dy0.zw = s1 - s3;
-    r1.x = dot(dx0, 0.25);
-    r1.y = dot(dy0, 0.25);
+    const float2 PixelSize = 1.0 / tex2Dsize(_SamplePreviousBuffer, 0.0);
+    float2 Sample0 = tex2D(_SamplePreviousBuffer, TexCoord + float2(-PixelSize.x, +PixelSize.y)).xy;
+    float2 Sample1 = tex2D(_SamplePreviousBuffer, TexCoord + float2(+PixelSize.x, +PixelSize.y)).xy;
+    float2 Sample2 = tex2D(_SamplePreviousBuffer, TexCoord + float2(-PixelSize.x, -PixelSize.y)).xy;
+    float2 Sample3 = tex2D(_SamplePreviousBuffer, TexCoord + float2(+PixelSize.x, -PixelSize.y)).xy;
+    float4 DerivativesX;
+    DerivativesX.xy = Sample1 - Sample0;
+    DerivativesX.zw = Sample3 - Sample2;
+    float4 DerivativesY;
+    DerivativesY.xy = Sample0 - Sample2;
+    DerivativesY.zw = Sample1 - Sample3;
+
+    OutputColor0 = tex2D(_SamplePreviousBuffer, TexCoord).x;
+    ColorOutput1.x = dot(DerivativesX, 0.25);
+    ColorOutput1.y = dot(DerivativesY, 0.25);
 }
 
 /*
@@ -278,137 +272,132 @@ void ps_filter(float4 vpos : SV_POSITION,
     - Repeat until full resolution level of original frames is reached
 */
 
-float4 ps_flow(float4 vpos : SV_POSITION,
-               float2 uv : TEXCOORD0) : SV_TARGET
+void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    const float uRegularize = max(4.0 * pow(uConst * 1e-2, 2.0), 1e-10);
-    const int pyramids = RSIZE - 1;
-    float2 cFlow = 0.0;
+    const float Lambda = max(4.0 * pow(_Constraint * 1e-2, 2.0), 1e-10);
+    const int PyramidLevels = RSIZE - 1;
+    float2 Flow = 0.0;
 
-    for(float i = pyramids; i >= 0; i--)
+    for(float i = PyramidLevels; i >= 0; i--)
     {
-        float4 ucalc = float4(uv, 0.0, i);
-        float cFrame = tex2Dlod(s_cbuffer, ucalc).x;
-        float pFrame = tex2Dlod(s_pbuffer, ucalc).y;
-        float2 ddxy = tex2Dlod(s_cuddxy, ucalc).xy;
+        float4 CalculateUV = float4(TexCoord, 0.0, i);
+        float CurrentFrame = tex2Dlod(_SampleCurrentBuffer, CalculateUV).x;
+        float PreviousFrame = tex2Dlod(_SamplePreviousBuffer, CalculateUV).y;
+        float3 Derivatives;
+        Derivatives.xy = tex2Dlod(_SampleDerivatives, CalculateUV).xy;
+        Derivatives.z = CurrentFrame - PreviousFrame;
 
-        float dt = cFrame - pFrame;
-        float dCalc = dot(ddxy.xy, cFlow) + dt;
-        float dSmooth = rcp(dot(ddxy.xy, ddxy.xy) + uRegularize);
-        cFlow = cFlow - ((ddxy.xy * dCalc) * dSmooth);
+        float Linear = dot(Derivatives.xy, Flow) + Derivatives.z;
+        float Smoothness = rcp(dot(Derivatives.xy, Derivatives.xy) + Lambda);
+        Flow = Flow - ((Derivatives.xy * Linear) * Smoothness);
     }
 
-    return float4(cFlow.xy, 0.0, uBlend);
+    OutputColor0 = float4(Flow.xy, 0.0, _BlendFactor);
 }
 
-float urand(float2 uv)
+float RandomNoise(float2 TexCoord)
 {
-    float f = dot(float2(12.9898, 78.233), uv);
+    float f = dot(float2(12.9898, 78.233), TexCoord);
     return frac(43758.5453 * sin(f));
 }
 
-float4 ps_accum(float4 vpos : SV_POSITION,
-                float2 uv : TEXCOORD0) : SV_TARGET
+void AccumulatePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    float uQuality = 1.0 - uEntropy;
-    float2 t0 = float2(uTime, 0.0);
+    float Quality = 1.0 - _Entropy;
+    float2 Time = float2(_Time, 0.0);
 
     // Random numbers
-    float3 rand;
-    rand.x = urand(uv + t0.xy);
-    rand.y = urand(uv + t0.yx);
-    rand.z = urand(uv.yx - t0.xx);
+    float3 Random;
+    Random.x = RandomNoise(TexCoord.xy + Time.xy);
+    Random.y = RandomNoise(TexCoord.xy + Time.yx);
+    Random.z = RandomNoise(TexCoord.yx - Time.xx);
 
     // Motion vector
-    float2 mv = tex2Dlod(s_coflow, float4(uv, 0.0, uDetail)).xy;
-    mv *= uScale;
+    float2 MotionVector = tex2Dlod(_SampleOpticalFlow, float4(TexCoord, 0.0, _Detail)).xy;
+    MotionVector *= _Scale;
 
     // Normalized screen space -> Pixel coordinates
-    mv = mv * (DSIZE / 2);
+    MotionVector = MotionVector * (DSIZE / 2);
 
     // Small random displacement (diffusion)
-    mv += (rand.xy - 0.5)  * uDiffusion;
+    MotionVector += (Random.xy - 0.5)  * _Diffusion;
 
     // Pixel perfect snapping
-    mv = round(mv);
-
-    float4 acc;
+    MotionVector = round(MotionVector);
 
     // Accumulates the amount of motion.
-    float mv_len = length(mv);
+    float MotionVectorLength = length(MotionVector);
+
     // - Simple update
-    float acc_update = min(mv_len, uBlockSize) * 0.005;
-    acc_update += rand.z * lerp(-0.02, 0.02, uQuality);
+    float UpdateAccumulation = min(MotionVectorLength, _BlockSize) * 0.005;
+    UpdateAccumulation = saturate(UpdateAccumulation + Random.z * lerp(-0.02, 0.02, Quality));
+
     // - Reset to random level
-    float acc_reset = rand.z * 0.5 + uQuality;
+    float ResetAccumulation = saturate(Random.z * 0.5 + Quality);
 
     // - Reset if the amount of motion is larger than the block size.
-    if(mv_len > uBlockSize)
+    if(MotionVectorLength > _BlockSize)
     {
-        acc.rgb = saturate(acc_reset);
-        acc.a = 0.0;
+        OutputColor0.rgb = ResetAccumulation;
+        OutputColor0.a = 0.0;
     } else {
         // This should work given law of addition
-        acc.rgb = saturate(acc_update);
-        acc.a = 1.0;
+        OutputColor0.rgb = UpdateAccumulation;
+        OutputColor0.a = 1.0;
     }
-
-    return acc;
 }
 
-float4 ps_output(float4 vpos : SV_POSITION,
-                 float2 uv : TEXCOORD0) : SV_TARGET
+void OutputPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    const float2 disptexel = 1.0 / (DSIZE.xy / 2.0);
-    float uQuality = 1.0 - uEntropy;
-    float2 mvec = tex2Dlod(s_coflow, float4(uv, 0.0, uDetail)).xy * disptexel;
-    float4 src = tex2D(s_color, uv); // Color from the original image
-    float disp = tex2D(s_caccum, uv).r; // Displacement vector
-    float4 work = tex2D(s_copy, uv - mvec * 0.98);
+    const float2 DisplacementTexel = 1.0 / (DSIZE.xy / 2.0);
+    const float Quality = 1.0 - _Entropy;
+
+    float2 MotionVectors = tex2Dlod(_SampleOpticalFlow, float4(TexCoord, 0.0, _Detail)).xy * DisplacementTexel;
+    float4 Source = tex2D(_SampleColor, TexCoord); // Color from the original image
+    float Displacement = tex2D(_SampleAccumulation, TexCoord).r; // Displacement vector
+    float4 Working = tex2D(_SampleCopy, TexCoord - MotionVectors * 0.98);
 
     // Generate some pseudo random numbers.
-    float mrand = urand(uv + length(mvec));
-    float4 rand = frac(float4(1.0, 17.37135, 841.4272, 3305.121) * mrand);
+    float RandomMotion = RandomNoise(TexCoord + length(MotionVectors));
+    float4 RandomNumbers = frac(float4(1.0, 17.37135, 841.4272, 3305.121) * RandomMotion);
 
     // Generate noise patterns that look like DCT bases.
-    // - Frequency
-    float2 uv1 = uv * disptexel * (rand.x * 80.0 / uContrast);
+    float2 Frequency = TexCoord * DisplacementTexel * (RandomNumbers.x * 80.0 / _Contrast);
     // - Basis wave (vertical or horizontal)
-    float dct = cos(lerp(uv1.x, uv1.y, 0.5 < rand.y));
+    float DCT = cos(lerp(Frequency.x, Frequency.y, 0.5 < RandomNumbers.y));
     // - Random amplitude (the high freq, the less amp)
-    dct *= rand.z * (1.0 - rand.x) * uContrast;
+    DCT *= RandomNumbers.z * (1.0 - RandomNumbers.x) * _Contrast;
 
     // Conditional weighting
     // - DCT-ish noise: acc > 0.5
-    float cw = (disp > 0.5) * dct;
+    float ConditionalWeight = (Displacement > 0.5) * DCT;
     // - Original image: rand < (Q * 0.8 + 0.2) && acc == 1.0
-    cw = lerp(cw, 1.0, rand.w < lerp(0.2, 1.0, uQuality) * (disp > 1.0 - 1e-3));
-    // - If the conditions above are not met, choose work.
+    ConditionalWeight = lerp(ConditionalWeight, 1.0, RandomNumbers.w < lerp(0.2, 1.0, Quality) * (Displacement > 1.0 - 1e-3));
 
-    return float4(lerp(work.rgb, src.rgb, cw), src.a);
+    // - If the conditions above are not met, choose work.
+    OutputColor0 = lerp(Working, Source, ConditionalWeight);
 }
 
-float4 ps_copy(float4 vpos : SV_POSITION,
-               float2 uv : TEXCOORD0) : SV_Target
+void CopyPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    return float4(tex2D(s_color, uv).rgb, 1.0);
+    OutputColor0 = float4(tex2D(_SampleColor, TexCoord).rgb, 1.0);
 }
 
 technique KinoDatamosh
 {
-    pass cNormalize
+    pass
     {
-        VertexShader = vs_generic;
-        PixelShader = ps_convert;
-        RenderTarget0 = r_pbuffer;
+        VertexShader = PostProcessVS;
+        PixelShader = ConvertPS;
+        RenderTarget0 = _RenderPreviousBuffer;
     }
 
-    pass cProcessFrame
+    pass
     {
-        VertexShader = vs_generic;
-        PixelShader = ps_filter;
-        RenderTarget0 = r_cbuffer;
-        RenderTarget1 = r_cuddxy;
+        VertexShader = PostProcessVS;
+        PixelShader = FilterPS;
+        RenderTarget0 = _RenderCurrentBuffer;
+        RenderTarget1 = _RenderDerivatives;
     }
 
     /*
@@ -425,11 +414,11 @@ technique KinoDatamosh
             data in r_cflow before rendering
     */
 
-    pass cOpticalFlow
+    pass
     {
-        VertexShader = vs_generic;
-        PixelShader = ps_flow;
-        RenderTarget0 = r_coflow;
+        VertexShader = PostProcessVS;
+        PixelShader = OpticalFlowPS;
+        RenderTarget0 = _RenderOpticalFlow;
         ClearRenderTargets = FALSE;
         BlendEnable = TRUE;
         BlendOp = ADD;
@@ -457,11 +446,11 @@ technique KinoDatamosh
             }
     */
 
-    pass cAccumulate
+    pass
     {
-        VertexShader = vs_generic;
-        PixelShader = ps_accum;
-        RenderTarget0 = r_caccum;
+        VertexShader = PostProcessVS;
+        PixelShader = AccumulatePS;
+        RenderTarget0 = _RenderAccumulation;
         ClearRenderTargets = FALSE;
         BlendEnable = TRUE;
         BlendOp = ADD;
@@ -469,18 +458,18 @@ technique KinoDatamosh
         DestBlend = SRCALPHA; // The result about to accumulate
     }
 
-    pass cOutput
+    pass
     {
-        VertexShader = vs_generic;
-        PixelShader = ps_output;
+        VertexShader = PostProcessVS;
+        PixelShader = OutputPS;
         SRGBWriteEnable = TRUE;
     }
 
-    pass cBlit
+    pass
     {
-        VertexShader = vs_generic;
-        PixelShader = ps_copy;
-        RenderTarget = r_copy;
+        VertexShader = PostProcessVS;
+        PixelShader = CopyPS;
+        RenderTarget = _RenderCopy;
         SRGBWriteEnable = TRUE;
     }
 }

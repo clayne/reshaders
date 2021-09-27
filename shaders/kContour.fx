@@ -21,100 +21,85 @@
     CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-uniform float kThreshold <
+uniform float _Threshold <
     ui_label = "Threshold";
     ui_type = "slider";
     ui_min = 0.0; ui_max = 1.0;
 > = 0.05f;
 
-uniform float kInvRange <
+uniform float _InvRange <
     ui_label = "Inverse Range";
     ui_type = "slider";
     ui_min = 0.0; ui_max = 1.0;
 > = 0.05f;
 
-uniform float kColorSensitivity <
+uniform float _ColorSensitivity <
     ui_label = "Color Sensitivity";
     ui_type = "slider";
     ui_min = 0.0; ui_max = 1.0;
 > = 0.0f;
 
-uniform float4 kFrontColor <
+uniform float4 _FrontColor <
     ui_label = "Front Color";
     ui_type = "color";
     ui_min = 0.0; ui_max = 1.0;
 > = float4(1.0, 1.0, 1.0, 1.0);
 
-uniform float4 kBackColor <
+uniform float4 _BackColor <
     ui_label = "Back Color";
     ui_type = "color";
     ui_min = 0.0; ui_max = 1.0;
 > = float4(0.0, 0.0, 0.0, 0.0);
 
-texture2D r_color : COLOR;
+texture2D _RenderColor : COLOR;
 
-sampler2D s_color
+sampler2D _SampleColor
 {
-    Texture = r_color;
+    Texture = _RenderColor;
     SRGBTexture = TRUE;
 };
 
-struct v2f
+void ContourVS(in uint ID : SV_VertexID, inout float4 Position : SV_POSITION, inout float4 Offset[2] : TEXCOORD)
 {
-    float4 vpos : SV_Position;
-    float4 uv[2] : TEXCOORD0;
-};
-
-void vsinit(in uint id,
-            inout float2 uv,
-            inout float4 vpos)
-{
-    uv.x = (id == 2) ? 2.0 : 0.0;
-    uv.y = (id == 1) ? 2.0 : 0.0;
-    vpos = float4(uv * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
-}
-
-v2f vs_contour(in uint id : SV_VertexID)
-{
-    v2f output;
-    float2 texcoord;
-    vsinit(id, texcoord, output.vpos);
+    float2 TexCoord;
+    TexCoord.x = (ID == 2) ? 2.0 : 0.0;
+    TexCoord.y = (ID == 1) ? 2.0 : 0.0;
+    Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 
     float2 ts = 1.0 / float2(BUFFER_WIDTH, BUFFER_HEIGHT);
-    output.uv[0].xy = texcoord.xy;
-    output.uv[0].zw = texcoord.xy + ts.xy;
-    output.uv[1].xy = texcoord.xy + float2(ts.x, 0.0);
-    output.uv[1].zw = texcoord.xy + float2(0.0, ts.y);
-    return output;
+    Offset[0].xy = TexCoord;
+    Offset[0].zw = TexCoord + ts.xy;
+    Offset[1].xy = TexCoord + float2(ts.x, 0.0);
+    Offset[1].zw = TexCoord + float2(0.0, ts.y);
 }
 
-void ps_contour(v2f input, out float3 c : SV_Target0)
+void ContourPS(float4 Position : SV_POSITION, float4 Offset[2] : TEXCOORD0, out float3 OutputColor0 : SV_Target0)
 {
     // Color samples
-    float3 cImage[4];
-    cImage[0] = tex2D(s_color, input.uv[0].xy).rgb;
-    cImage[1] = tex2D(s_color, input.uv[0].zw).rgb;
-    cImage[2] = tex2D(s_color, input.uv[1].xy).rgb;
-    cImage[3] = tex2D(s_color, input.uv[1].zw).rgb;
+    float3 Image[4];
+    Image[0] = tex2D(_SampleColor, Offset[0].xy).rgb;
+    Image[1] = tex2D(_SampleColor, Offset[0].zw).rgb;
+    Image[2] = tex2D(_SampleColor, Offset[1].xy).rgb;
+    Image[3] = tex2D(_SampleColor, Offset[1].zw).rgb;
 
     // Roberts cross operator
-    float3 cga = cImage[1] - cImage[0];
-    float3 cgb = cImage[3] - cImage[2];
-    float cg = sqrt(dot(cga, cga) + dot(cgb, cgb));
+    float3 CrossA = Image[1] - Image[0];
+    float3 CrossB = Image[3] - Image[2];
+    float Cross = sqrt(dot(CrossA, CrossA) + dot(CrossB, CrossB));
 
     // Thresholding
-    float edge = cg * kColorSensitivity;
-    edge = saturate((edge - kThreshold) * kInvRange);
-    float3 cb = lerp(cImage[0], kBackColor.rgb, kBackColor.a);
-    c = lerp(cb, kFrontColor.rgb, edge * kFrontColor.a);
+    float Edge = Cross * _ColorSensitivity;
+    Edge = saturate((Edge - _Threshold) * _InvRange);
+    float3 ColorBackground = lerp(Image[0], _BackColor.rgb, _BackColor.a);
+    OutputColor0 = lerp(ColorBackground, _FrontColor.rgb, Edge * _FrontColor.a);
 }
 
 technique KinoContour
 {
     pass
     {
-        VertexShader = vs_contour;
-        PixelShader  = ps_contour;
+        VertexShader = ContourVS;
+        PixelShader = ContourPS;
         SRGBWriteEnable = TRUE;
     }
 }

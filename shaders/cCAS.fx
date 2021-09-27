@@ -43,106 +43,90 @@
         Included a label and tooltip description. I followed AMDs official naming guidelines for FidelityFX.
 */
 
-uniform float kContrast <
+uniform float _Contrast <
     ui_type = "drag";
     ui_label = "Contrast Adaptation";
     ui_tooltip = "Adjusts the range the shader adapts to high contrast (0 is not all the way off).  Higher values = more high contrast sharpening.";
     ui_min = 0.0; ui_max = 1.0;
 > = 0.0;
 
-uniform float kSharpening <
+uniform float _Sharpening <
     ui_type = "drag";
     ui_label = "Sharpening intensity";
     ui_tooltip = "Adjusts sharpening intensity by averaging the original pixels to the sharpened result.  1.0 is the unmodified default.";
     ui_min = 0.0; ui_max = 1.0;
 > = 1.0;
 
-texture2D r_color : COLOR;
+texture2D _RenderColor : COLOR;
 
-sampler2D s_color
+sampler2D _SampleColor
 {
-    Texture = r_color;
+    Texture = _RenderColor;
     SRGBTexture = TRUE;
 };
 
-struct v2f
+void SharpenVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float4 Offset[3] : TEXCOORD0)
 {
-    float4 vpos : SV_Position;
-    float4 uOffset[3] : TEXCOORD0;
-};
+    float2 TexCoord;
+    TexCoord.x = (ID == 2) ? 2.0 : 0.0;
+    TexCoord.y = (ID == 1) ? 2.0 : 0.0;
+    Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 
-void vsinit(in uint id,
-            inout float2 uv,
-            inout float4 vpos)
-{
-    uv.x = (id == 2) ? 2.0 : 0.0;
-    uv.y = (id == 1) ? 2.0 : 0.0;
-    vpos = float4(uv * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    const float2 PixelSize = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
+    Offset[0] = TexCoord.xyxy + float4(-1.0,-1.0, 1.0, 1.0) * PixelSize.xyxy;
+    Offset[1] = TexCoord.xxxy + float4(-1.0, 1.0, 0.0, 0.0) * PixelSize.xxxy;
+    Offset[2] = TexCoord.yyxx + float4(-1.0, 1.0, 0.0, 0.0) * PixelSize.yyxx;
 }
 
-v2f vs_cas(in uint id : SV_VertexID)
-{
-    v2f output;
-    float2 coord;
-    vsinit(id, coord, output.vpos);
-
-    const float2 ts = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
-    output.uOffset[0] = coord.xyxy + float4(-1.0,-1.0, 1.0, 1.0) * ts.xyxy;
-    output.uOffset[1] = coord.xxxy + float4(-1.0, 1.0, 0.0, 0.0) * ts.xxxy;
-    output.uOffset[2] = coord.yyxx + float4(-1.0, 1.0, 0.0, 0.0) * ts.yyxx;
-    return output;
-}
-
-float3 ps_cas(v2f input) : SV_Target
+void SharpenPS(float4 Position : SV_POSITION, float4 Offset[3] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
     // fetch a 3x3 neighborhood around the pixel 'e',
-    //  a b c
-    //  d(e)f
-    //  g h i
+    //  A B C
+    //  D(E)F
+    //  G H I
 
-    float3 a = tex2D(s_color, input.uOffset[0].xw).rgb; // [-1, 1]
-    float3 b = tex2D(s_color, input.uOffset[2].zy).rgb; // [ 0, 1]
-    float3 c = tex2D(s_color, input.uOffset[0].zw).rgb; // [ 1, 1]
+    float3 A = tex2D(_SampleColor, Offset[0].xw).rgb; // [-1, 1]
+    float3 B = tex2D(_SampleColor, Offset[2].zy).rgb; // [ 0, 1]
+    float3 C = tex2D(_SampleColor, Offset[0].zw).rgb; // [ 1, 1]
 
-    float3 d = tex2D(s_color, input.uOffset[1].xw).rgb; // [-1, 0]
-    float3 e = tex2D(s_color, input.uOffset[1].zw).rgb; // [ 0, 0]
-    float3 f = tex2D(s_color, input.uOffset[1].yw).rgb; // [ 1, 0]
+    float3 D = tex2D(_SampleColor, Offset[1].xw).rgb; // [-1, 0]
+    float3 E = tex2D(_SampleColor, Offset[1].zw).rgb; // [ 0, 0]
+    float3 F = tex2D(_SampleColor, Offset[1].yw).rgb; // [ 1, 0]
 
-    float3 g = tex2D(s_color, input.uOffset[0].xy).rgb; // [-1,-1]
-    float3 h = tex2D(s_color, input.uOffset[2].zx).rgb; // [ 0,-1]
-    float3 i = tex2D(s_color, input.uOffset[0].zy).rgb; // [ 1,-1]
+    float3 G = tex2D(_SampleColor, Offset[0].xy).rgb; // [-1,-1]
+    float3 H = tex2D(_SampleColor, Offset[2].zx).rgb; // [ 0,-1]
+    float3 I = tex2D(_SampleColor, Offset[0].zy).rgb; // [ 1,-1]
 
     // Soft min and max.
-    //  a b c             b
-    //  d e f * 0.5  +  d e f * 0.5
-    //  g h i             h
+    //  A B C             B
+    //  D E F * 0.5  +  D E F * 0.5
+    //  G H I             H
     // These are 2.0x bigger (factored out the extra multiply).
-    float3 mnRGB  = min(min(min(d, e), min(f, b)), h);
-    float3 mnRGB2 = min(mnRGB, min(min(a, c), min(g, i)));
-    mnRGB += mnRGB2;
 
-    float3 mxRGB  = max(max(max(d, e), max(f, b)), h);
-    float3 mxRGB2 = max(mxRGB, max(max(a, c), max(g, i)));
-    mxRGB += mxRGB2;
+    float3 MinRGB  = min(min(min(D, E), min(F, B)), H);
+    float3 MinRGB2 = min(MinRGB, min(min(A, C), min(G, I)));
+    MinRGB += MinRGB2;
+
+    float3 MaxRGB  = max(max(max(D, E), max(F, B)), H);
+    float3 MaxRGB2 = max(MaxRGB, max(max(A, C), max(G, I)));
+    MaxRGB += MaxRGB2;
 
     // Smooth minimum distance to signal limit divided by smooth max.
-    float3 rcpMRGB = rcp(mxRGB);
-    float3 ampRGB  = saturate(min(mnRGB, 2.0 - mxRGB) * rcpMRGB);
+    float3 RCPMaxRGB = rcp(MaxRGB);
+    float3 AmpRGB  = saturate(min(MinRGB, 2.0 - MaxRGB) * RCPMaxRGB);
 
     // Shaping amount of sharpening.
-    ampRGB = rsqrt(ampRGB);
+    AmpRGB = rsqrt(AmpRGB);
+    float Peak = mad(-3.0, _Contrast, 8.0);
+    float3 WeightRGB = -rcp(AmpRGB * Peak);
+    float3 RCPWeightRGB = rcp(mad(4.0, WeightRGB, 1.0));
 
-    float peak = mad(-3.0, kContrast, 8.0);
-    float3 wRGB = -rcp(ampRGB * peak);
-
-    float3 rcpWeightRGB = rcp(mad(4.0, wRGB, 1.0));
-
-    //                0 w 0
-    //  Filter shape: w 1 w
-    //                0 w 0
-    float3 window = b + d + f + h;
-    float3 o = mad(window, wRGB, e) * rcpWeightRGB;
-    return saturate(lerp(e, o, kSharpening));
+    //                0 W 0
+    //  Filter shape: W 1 W
+    //                0 W 0
+    float3 Window = B + D + F + H;
+    float3 Output = mad(Window, WeightRGB, E) * RCPWeightRGB;
+    OutputColor0 = saturate(lerp(E, Output, _Sharpening));
 }
 
 technique ContrastAdaptiveSharpen
@@ -160,8 +144,8 @@ technique ContrastAdaptiveSharpen
 {
     pass
     {
-        VertexShader = vs_cas;
-        PixelShader  = ps_cas;
+        VertexShader = SharpenVS;
+        PixelShader  = SharpenPS;
         SRGBWriteEnable = TRUE;
     }
 }

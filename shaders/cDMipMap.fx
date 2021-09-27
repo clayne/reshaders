@@ -20,73 +20,77 @@
 #define DSIZE uint2(BUFFER_WIDTH, BUFFER_HEIGHT)
 #define RMIPS LOG2(RMAX(DSIZE.x, DSIZE.y)) + 1
 
-uniform float uLod <
+uniform float _LOD <
     ui_min = 0.0;
     ui_max = RMIPS;
     ui_label = "MipLevel";
     ui_type = "slider";
 > = 0.0;
 
-uniform float uWeight <
+uniform float _Weight <
     ui_min = 0.0;
     ui_label = "Intensity";
     ui_type = "drag";
 > = 8.0;
 
-texture2D r_color : COLOR;
+texture2D _RenderColor : COLOR;
 
-texture2D r_mipmaps
+texture2D _RenderLOD  < pooled = false; >
 {
     Width = DSIZE.x;
     Height = DSIZE.y;
     MipLevels = RMIPS;
-    Format = RGB10A2;
+    Format = RGBA8;
 };
 
-sampler2D s_color
+sampler2D _SampleColor
 {
-    Texture = r_color;
+    Texture = _RenderColor;
+    AddressU = MIRROR;
+    AddressV = MIRROR;
+};
+
+sampler2D _SampleLOD
+{
+    Texture = _RenderLOD;
     SRGBTexture = TRUE;
 };
 
-sampler2D s_mipmaps
-{
-    Texture = r_mipmaps;
-};
+/* [Vertex Shaders] */
 
-void vs_generic(in uint id : SV_VERTEXID,
-                out float4 position : SV_POSITION,
-                out float2 texcoord : TEXCOORD)
+void PostProcessVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD0)
 {
-    texcoord.x = (id == 2) ? 2.0 : 0.0;
-    texcoord.y = (id == 1) ? 2.0 : 0.0;
-    position = float4(texcoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    TexCoord.x = (ID == 2) ? 2.0 : 0.0;
+    TexCoord.y = (ID == 1) ? 2.0 : 0.0;
+    Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
 
-float4 ps_init(float4 vpos : SV_POSITION, float2 uv : TEXCOORD0) : SV_TARGET0
+/* [Pixel Shaders] */
+
+float4 MipMapPS(float4 vpos : SV_POSITION, float2 uv : TEXCOORD0) : SV_TARGET0
 {
-    return tex2D(s_color, uv);
+    return tex2D(_SampleColor, uv);
 }
 
-float4 ps_output(float4 vpos : SV_POSITION, float2 uv : TEXCOORD0) : SV_TARGET0
+float4 OutputPS(float4 vpos : SV_POSITION, float2 uv : TEXCOORD0) : SV_TARGET0
 {
-    float4 g1 = tex2Dlod(s_mipmaps, float4(uv, 0.0, uLod));
-    float4 g2 = tex2Dlod(s_mipmaps, float4(uv, 0.0, uLod + 1.0));
-    return ((g2 - g1) * uWeight) * 0.5 + 0.5;
+    float4 Gaussian1 = tex2Dlod(_SampleLOD, float4(uv, 0.0, _LOD));
+    float4 Gaussian2 = tex2Dlod(_SampleLOD, float4(uv, 0.0, _LOD + 1.0));
+    return ((Gaussian2 - Gaussian1) * _Weight) * 0.5 + 0.5;
 }
 technique cDMipMap
 {
     pass
     {
-        VertexShader = vs_generic;
-        PixelShader = ps_init;
-        RenderTarget0 = r_mipmaps;
+        VertexShader = PostProcessVS;
+        PixelShader = MipMapPS;
+        RenderTarget0 = _RenderLOD;
     }
 
     pass
     {
-        VertexShader = vs_generic;
-        PixelShader = ps_output;
+        VertexShader = PostProcessVS;
+        PixelShader = OutputPS;
         SRGBWriteEnable = TRUE;
     }
 }

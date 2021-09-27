@@ -1,36 +1,32 @@
 
-uniform float4 uColor <
+uniform float4 _Color <
     ui_min = 0.0;
     ui_label = "Color";
     ui_type = "color";
 > = 1.0;
 
-void vs_generic(in uint id : SV_VERTEXID,
-                out float4 position : SV_POSITION,
-                out float2 texcoord : TEXCOORD)
+void PostProcessVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD0)
 {
-    texcoord.x = (id == 2) ? 2.0 : 0.0;
-    texcoord.y = (id == 1) ? 2.0 : 0.0;
-    position = float4(texcoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    TexCoord.x = (ID == 2) ? 2.0 : 0.0;
+    TexCoord.y = (ID == 1) ? 2.0 : 0.0;
+    Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
 
-float4 ps_color(float4 vpos : SV_Position) : SV_Target
+float4 ColorPS(float4 Position : SV_Position) : SV_Target
 {
-    return uColor;
+    return _Color;
 }
 
 technique cColor
 {
     pass
     {
-        VertexShader = vs_generic;
-        PixelShader = ps_color;
+        VertexShader = PostProcessVS;
+        PixelShader = ColorPS;
         BlendEnable = TRUE;
         BlendOp = ADD;
         SrcBlend = DESTCOLOR;
         DestBlend = SRCALPHA;
-        #if BUFFER_COLOR_BIT_DEPTH != 10
-            SRGBWriteEnable = true;
-        #endif
+        SRGBWriteEnable = TRUE;
     }
 }

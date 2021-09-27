@@ -24,41 +24,38 @@
     CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-uniform float uFalloff <
+uniform float _Falloff <
     ui_label = "Falloff";
     ui_type = "drag";
 > = 0.5f;
 
 /* [Vertex Shaders] */
 
-void vs_generic(in uint id : SV_VERTEXID,
-                out float4 position : SV_POSITION,
-                out float2 texcoord : TEXCOORD)
+void PostProcessVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD)
 {
-    texcoord.x = (id == 2) ? 2.0 : 0.0;
-    texcoord.y = (id == 1) ? 2.0 : 0.0;
-    position = float4(texcoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    TexCoord.x = (ID == 2) ? 2.0 : 0.0;
+    TexCoord.y = (ID == 1) ? 2.0 : 0.0;
+    Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
 
 /* [ Pixel Shaders ] */
 
-float4 ps_vignette(float4 vpos : SV_POSITION,
-                   float2 uv : TEXCOORD0) : SV_Target
+void VignettePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    const float aspectratio = BUFFER_WIDTH / BUFFER_HEIGHT;
-    float2 coord = (uv - 0.5) * aspectratio * 2.0;
-    float rf = length(coord) * uFalloff;
-    float rf2_1 = mad(rf, rf, 1.0);
-    return rcp(rf2_1 * rf2_1);
+    const float AspectRatio = BUFFER_WIDTH / BUFFER_HEIGHT;
+    float2 Coord = (TexCoord - 0.5) * AspectRatio * 2.0;
+    float Radius = length(Coord) * _Falloff;
+    float Radius2_1 = mad(Radius, Radius, 1.0);
+    OutputColor0 = rcp(Radius2_1 * Radius2_1);
 }
 
 technique KinoVignette
 {
     pass
     {
-        VertexShader = vs_generic;
-        PixelShader = ps_vignette;
-        SRGBWriteEnable = true;
+        VertexShader = PostProcessVS;
+        PixelShader = VignettePS;
+        SRGBWriteEnable = TRUE;
         // Multiplication blend mode
         BlendEnable = TRUE;
         BlendOp = ADD;

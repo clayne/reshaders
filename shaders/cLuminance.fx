@@ -7,42 +7,45 @@ uniform int uSelect <
     ui_tooltip = "Select Luminance";
 > = 0;
 
-texture2D r_color : COLOR;
+texture2D _RenderColor : COLOR;
 
-sampler2D s_color
+sampler2D _SampleColor
 {
-    Texture = r_color;
+    Texture = _RenderColor;
     SRGBTexture = TRUE;
 };
 
 /* [Vertex Shaders] */
 
-void vs_generic(in uint id : SV_VERTEXID,
-                out float4 position : SV_POSITION,
-                out float2 texcoord : TEXCOORD)
+void PostProcessVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD0)
 {
-    texcoord.x = (id == 2) ? 2.0 : 0.0;
-    texcoord.y = (id == 1) ? 2.0 : 0.0;
-    position = float4(texcoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    TexCoord.x = (ID == 2) ? 2.0 : 0.0;
+    TexCoord.y = (ID == 1) ? 2.0 : 0.0;
+    Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
 
 /* [Pixel Shaders] */
 
-float4 ps_greyscale(float4 vpos : SV_POSITION, float2 uv : TEXCOORD0) : SV_Target0
+void LuminancePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    float4 color = tex2D(s_color, uv);
+    float4 Color = tex2D(_SampleColor, TexCoord);
     [branch] switch(uSelect)
     {
         case 0:
-            return float4(dot(color.rgb, 1.0 / 3.0).rrr, 1.0);
+            OutputColor0 = dot(Color.rgb, 1.0 / 3.0);
+            break;
         case 1:
-            return float4(dot(color.rgb, 1.0).rrr, 1.0);
+            OutputColor0 = dot(Color.rgb, 1.0);
+            break;
         case 2:
-            return max(color.r, max(color.g, color.b));
+            OutputColor0 = max(Color.r, max(Color.g, Color.b));
+            break;
         case 3:
-            return length(color.rgb) * rsqrt(3.0);
+            OutputColor0 = length(Color.rgb) * rsqrt(3.0);
+            break;
         default:
-            return color;
+            OutputColor0 = Color;
+            break;
     }
 }
 
@@ -50,8 +53,8 @@ technique cGrayScale
 {
     pass
     {
-        VertexShader = vs_generic;
-        PixelShader = ps_greyscale;
+        VertexShader = PostProcessVS;
+        PixelShader = LuminancePS;
         SRGBWriteEnable = TRUE;
     }
 }

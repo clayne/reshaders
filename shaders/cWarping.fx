@@ -11,50 +11,44 @@
     - Lord of Lunacy, KingEric1992, and Marty McFly for power of 2 function
 */
 
-#define uOption(option, udata, utype, ucategory, ulabel, uvalue, umin, umax, utooltip)  \
-        uniform udata option <                                                  		\
-        ui_category = ucategory; ui_label = ulabel;                             		\
-        ui_type = utype; ui_min = umin; ui_max = umax; ui_tooltip = utooltip;   		\
-        > = uvalue
-
-uniform float uScale <
+uniform float _Scale <
     ui_type = "drag";
     ui_label = "Flow Scale";
     ui_tooltip = "Higher = More motion blur";
 > = 1.0;
 
-uniform float uConst <
+uniform float _Constraint <
     ui_type = "drag";
     ui_label = "Constraint";
     ui_tooltip = "Higher = Smoother flow";
 > = 1.0;
 
-uniform float uBlend <
+uniform float _Blend <
     ui_type = "drag";
     ui_label = "Temporal Blending";
     ui_tooltip = "Higher = Less temporal noise";
     ui_max = 0.5;
 > = 0.25;
 
-uniform float uDetail <
+uniform float _Detail <
     ui_type = "drag";
     ui_label = "Mipmap Bias";
     ui_tooltip = "Higher = Less spatial noise";
 > = 4.5;
 
-uniform float uAvg <
+uniform float _Average <
     ui_type = "drag";
     ui_label = "Warp Factor";
     ui_tooltip = "Higher = More warp opacity";
     ui_max = 1.0;
 > = 0.95;
 
-uniform bool uNoise <
+uniform bool _Noise <
     ui_type = "radio";
     ui_label = "Warp Noise";
 > = false;
 
-uniform bool uDebug <
+uniform bool _Debug <
     ui_type = "radio";
     ui_label = "Debug";
     ui_tooltip = "Show optical flow result";
@@ -78,270 +72,322 @@ uniform bool uDebug <
 #define RSIZE LOG2(RMAX(DSIZE.x, DSIZE.y)) + 1
 #define ISIZE 128.0
 
-texture2D r_color  : COLOR;
-texture2D r_buffer { Width = DSIZE.x; Height = DSIZE.y; Format = R16F; MipLevels = RSIZE; };
-texture2D r_cinfo0 { Width = ISIZE; Height = ISIZE; Format = RG16F; MipLevels = 8; };
-texture2D r_cinfo1 { Width = ISIZE; Height = ISIZE; Format = R16F; };
-texture2D r_cddxy  { Width = ISIZE; Height = ISIZE; Format = RG16F; MipLevels = 8; };
-texture2D r_cflow  { Width = ISIZE; Height = ISIZE; Format = RG16F; MipLevels = 8; };
-texture2D r_pcolor { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; };
+texture2D _RenderColor : COLOR;
 
-sampler2D s_color  { Texture = r_color; SRGBTexture = TRUE; };
-sampler2D s_buffer { Texture = r_buffer; AddressU = MIRROR; AddressV = MIRROR; };
-sampler2D s_cinfo0 { Texture = r_cinfo0; AddressU = MIRROR; AddressV = MIRROR; };
-sampler2D s_cinfo1 { Texture = r_cinfo1; AddressU = MIRROR; AddressV = MIRROR; };
-sampler2D s_cddxy  { Texture = r_cddxy; AddressU = MIRROR; AddressV = MIRROR; };
-sampler2D s_cflow  { Texture = r_cflow; AddressU = MIRROR; AddressV = MIRROR; };
-sampler2D s_pcolor { Texture = r_pcolor; SRGBTexture = TRUE; };
+texture2D _RenderBuffer
+{
+    Width = DSIZE.x;
+    Height = DSIZE.y;
+    Format = R16F;
+    MipLevels = RSIZE;
+};
+
+texture2D _RenderInfo0
+{
+    Width = ISIZE;
+    Height = ISIZE;
+    Format = RG16F;
+    MipLevels = 8;
+};
+
+texture2D _RenderInfo1
+{
+    Width = ISIZE;
+    Height = ISIZE;
+    Format = R16F;
+};
+
+texture2D _RenderDerivatives
+{
+    Width = ISIZE;
+    Height = ISIZE;
+    Format = RG16F;
+    MipLevels = 8;
+};
+
+texture2D _RenderOpticalFlow
+{
+    Width = ISIZE;
+    Height = ISIZE;
+    Format = RG16F;
+    MipLevels = 8;
+};
+
+texture2D _RenderCopy
+{
+    Width = BUFFER_WIDTH;
+    Height = BUFFER_HEIGHT;
+};
+
+sampler2D _SampleColor
+{
+    Texture = _RenderColor;
+    SRGBTexture = TRUE;
+    AddressU = MIRROR;
+    AddressV = MIRROR;
+};
+
+sampler2D _SampleBuffer
+{
+    Texture = _RenderBuffer;
+    AddressU = MIRROR;
+    AddressV = MIRROR;
+};
+
+sampler2D _SampleInfo0
+{
+    Texture = _RenderInfo0;
+    AddressU = MIRROR;
+    AddressV = MIRROR;
+};
+
+sampler2D _SampleInfo1
+{
+    Texture = _RenderInfo1;
+    AddressU = MIRROR;
+    AddressV = MIRROR;
+};
+
+sampler2D _SampleDerivatives
+{
+    Texture = _RenderDerivatives;
+    AddressU = MIRROR;
+    AddressV = MIRROR;
+};
+
+sampler2D _SampleOpticalFlow
+{
+    Texture = _RenderOpticalFlow;
+    AddressU = MIRROR;
+    AddressV = MIRROR;
+};
+
+sampler2D _SampleCopy
+{
+    Texture = _RenderCopy;
+    SRGBTexture = TRUE;
+    AddressU = MIRROR;
+    AddressV = MIRROR;
+};
 
 /* [Vertex Shaders] */
 
-void vs_generic(in uint id : SV_VERTEXID,
-                out float4 position : SV_POSITION,
-                out float2 texcoord : TEXCOORD0)
+void PostProcessVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD0)
 {
-    texcoord.x = (id == 2) ? 2.0 : 0.0;
-    texcoord.y = (id == 1) ? 2.0 : 0.0;
-    position = float4(texcoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    TexCoord.x = (ID == 2) ? 2.0 : 0.0;
+    TexCoord.y = (ID == 1) ? 2.0 : 0.0;
+    Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
 
-static const float gKernel = 14;
+static const float KernelSize = 14;
 
-float gauss1D(const int position)
+float Gaussian1D(const int Position)
 {
-    const float sigma = gKernel / 3.0;
-    const float pi = 3.1415926535897932384626433832795f;
-    float output = rsqrt(2.0 * pi * (sigma * sigma));
-    return output * exp(-0.5 * position * position / (sigma * sigma));
+    const float Sigma = KernelSize / 3.0;
+    const float Pi = 3.1415926535897932384626433832795f;
+    float Output = rsqrt(2.0 * Pi * (Sigma * Sigma));
+    return Output * exp(-0.5 * Position * Position / (Sigma * Sigma));
 }
 
-float2 output_weights(const float index)
+float2 OutputWeights(const float Index)
 {
-    float2 weight;
-    weight[0] = gauss1D(index);
-    weight[1] = gauss1D(index + 1.0);
-    return weight;
+    float2 Weights;
+    Weights[0] = Gaussian1D(Index);
+    Weights[1] = Gaussian1D(Index + 1.0);
+    return Weights;
 }
 
-float2 output_offsetL(const float index)
+float2 OutputOffsets(const float Index)
 {
-    float2 gWeights = output_weights(index);
-    float gWeightL = gWeights[0] + gWeights[1];
-    const float2 gOffsets = float2(index, index + 1.0);
-    float2 gOutput;
-    gOutput[0] = dot(gOffsets, gWeights) / gWeightL;
-    gOutput[1] = -gOutput[0]; // store negatives here
-    return gOutput;
+    float2 Weights = OutputWeights(Index);
+    float WeightL = Weights[0] + Weights[1];
+    const float2 Offsets = float2(Index, Index + 1.0);
+    float2 Output;
+    Output[0] = dot(Offsets, Weights) / WeightL;
+    Output[1] = -Output[0]; // store negatives here
+    return Output;
 }
 
-void vs_hblur(in uint id : SV_VERTEXID,
-              inout float4 position : SV_POSITION,
-              inout float2 texcoord : TEXCOORD0,
-              inout float4 offsets[7] : TEXCOORD1)
+void HorizontalBlurVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD0, inout float4 Offsets[7] : TEXCOORD1)
 {
-    vs_generic(id, position, texcoord);
-    const float2 gDirection = float2(1.0 / ISIZE, 0.0);
+    PostProcessVS(ID, Position, TexCoord);
+    const float2 Direction = float2(1.0 / ISIZE, 0.0);
 
     [unroll] for(int i = 0; i < 7; i++)
     {
-        const float2 gOffsetL = output_offsetL(i * 2 + 1);
-        offsets[i] = texcoord.xyxy + gOffsetL.xxyy * gDirection.xyxy;
+        const float2 LinearOffset = OutputOffsets(i * 2 + 1);
+        Offsets[i] = TexCoord.xyxy + LinearOffset.xxyy * Direction.xyxy;
     }
 }
 
-void vs_vblur(in uint id : SV_VERTEXID,
-              inout float4 position : SV_POSITION,
-              inout float2 texcoord : TEXCOORD0,
-              inout float4 offsets[7] : TEXCOORD1)
+void VerticalBlurVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD0, inout float4 Offsets[7] : TEXCOORD1)
 {
-    vs_generic(id, position, texcoord);
-    const float2 gDirection = float2(0.0, 1.0 / ISIZE);
+    PostProcessVS(ID, Position, TexCoord);
+    const float2 Direction = float2(0.0, 1.0 / ISIZE);
 
     [unroll] for(int i = 0; i < 7; i++)
     {
-        const float2 gOffsetL = output_offsetL(i * 2 + 1);
-        offsets[i] = texcoord.xyxy + gOffsetL.xxyy * gDirection.xyxy;
+        const float2 LinearOffset = OutputOffsets(i * 2 + 1);
+        Offsets[i] = TexCoord.xyxy + LinearOffset.xxyy * Direction.xyxy;
     }
 }
 
-void vs_ddxy(in uint id : SV_VERTEXID,
-             inout float4 position : SV_POSITION,
-             inout float2 texcoord : TEXCOORD0,
-             inout float4 offsets : TEXCOORD1)
+void DerivativesVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD0, inout float4 Offsets : TEXCOORD1)
 {
-    const float2 gSize = 1.0 / ISIZE;
-    const float4 gOffsets = float4(gSize, -gSize);
-    vs_generic(id, position, texcoord);
-    offsets = texcoord.xyxy + gOffsets;
+    const float2 PixelSize = 1.0 / ISIZE;
+    const float4 PixelOffset = float4(PixelSize, -PixelSize);
+    PostProcessVS(ID, Position, TexCoord);
+    Offsets = TexCoord.xyxy + PixelOffset;
 }
 
 /* [ Pixel Shaders ] */
 
-float4 blur1D(sampler2D src,
-              float2 uv,
-              float4 offset[7])
+float4 Blur1D(sampler2D Source, float2 TexCoord, float4 Offsets[7])
 {
-    float gTotal = gauss1D(0.0);
-    float4 gOutput = tex2D(src, uv) * gauss1D(0.0);
+    float Total = Gaussian1D(0.0);
+    float4 Output = tex2D(Source, TexCoord) * Gaussian1D(0.0);
 
     [unroll] for(int i = 0; i < 7; i ++)
     {
-        const float2 gWeights = output_weights(i * 2 + 1);
-        const float gWeightL = gWeights[0] + gWeights[1];
-        gOutput += tex2D(src, offset[i].xy) * gWeightL;
-        gOutput += tex2D(src, offset[i].zw) * gWeightL;
-        gTotal += 2.0 * gWeightL;
+        const float2 Weights = OutputWeights(i * 2 + 1);
+        const float WeightL = Weights[0] + Weights[1];
+        Output += tex2D(Source, Offsets[i].xy) * WeightL;
+        Output += tex2D(Source, Offsets[i].zw) * WeightL;
+        Total += 2.0 * WeightL;
     }
 
-    return gOutput / gTotal;
+    return Output / Total;
 }
 
-void ps_normalize(float4 vpos : SV_POSITION,
-                  float2 uv : TEXCOORD0,
-                  out float r0 : SV_TARGET0)
+void NormalizePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0)
 {
-    float3 c0 = max(1e-7, tex2D(s_color, uv).rgb);
-    c0 /= dot(c0, 1.0);
-    c0 /= max(max(c0.r, c0.g), c0.b);
-    r0 = dot(c0, 1.0 / 3.0);
+    float3 Color = max(1e-7, tex2D(_SampleColor, TexCoord).rgb);
+    Color /= dot(Color, 1.0);
+    Color /= max(max(Color.r, Color.g), Color.b);
+    OutputColor0 = dot(Color, 1.0 / 3.0);
 }
 
-void ps_blit(float4 vpos : SV_POSITION,
-             float2 uv : TEXCOORD0,
-             out float2 r0 : SV_TARGET0)
+void BlitPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0)
 {
-    r0.x = tex2D(s_buffer, uv).x;
-    r0.y = tex2D(s_cinfo1, uv).x;
+    OutputColor0.x = tex2D(_SampleBuffer, TexCoord).x;
+    OutputColor0.y = tex2D(_SampleInfo1, TexCoord).x;
 }
 
-void ps_hblur(float4 vpos : SV_POSITION,
-              float2 uv : TEXCOORD0,
-              float4 offsets[7] : TEXCOORD1,
-              out float2 r0 : SV_TARGET0)
+void HorizontalBlurPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets[7] : TEXCOORD1, out float OutputColor0 : SV_TARGET0)
 {
-    r0 = blur1D(s_cinfo0, uv, offsets).x;
+    OutputColor0 = Blur1D(_SampleInfo0, TexCoord, Offsets).x;
 }
 
-void ps_vblur(float4 vpos : SV_POSITION,
-              float2 uv : TEXCOORD0,
-              float4 offsets[7] : TEXCOORD1,
-              out float2 r0 : SV_TARGET0)
+void VerticalBlurPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets[7] : TEXCOORD1, out float2 OutputColor0 : SV_TARGET0)
 {
-    r0 = blur1D(s_cinfo1, uv, offsets).x;
+    OutputColor0 = Blur1D(_SampleInfo1, TexCoord, Offsets).x;
 }
 
-void ps_ddxy(float4 vpos : SV_POSITION,
-             float2 uv : TEXCOORD0,
-             float4 offsets : TEXCOORD1,
-             out float2 r0 : SV_TARGET0,
-             out float2 r1 : SV_TARGET1)
+void DeriviativesPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets : TEXCOORD1, out float2 OutputColor0 : SV_TARGET0, out float2 OutputColor1 : SV_TARGET1)
 {
-    float2 s0 = tex2D(s_cinfo0, offsets.zy).xy; // (-x, +y)
-    float2 s1 = tex2D(s_cinfo0, offsets.xy).xy; // (+x, +y)
-    float2 s2 = tex2D(s_cinfo0, offsets.zw).xy; // (-x, -y)
-    float2 s3 = tex2D(s_cinfo0, offsets.xw).xy; // (+x, -y)
-    float4 dx0;
-    dx0.xy = s1 - s0;
-    dx0.zw = s3 - s2;
-    float4 dy0;
-    dy0.xy = s0 - s2;
-    dy0.zw = s1 - s3;
-    r0.x = dot(dx0, 0.25);
-    r0.y = dot(dy0, 0.25);
-    r1 = tex2D(s_cinfo0, uv).rg;
+    float2 Sample0 = tex2D(_SampleInfo0, Offsets.zy).xy; // (-x, +y)
+    float2 Sample1 = tex2D(_SampleInfo0, Offsets.xy).xy; // (+x, +y)
+    float2 Sample2 = tex2D(_SampleInfo0, Offsets.zw).xy; // (-x, -y)
+    float2 Sample3 = tex2D(_SampleInfo0, Offsets.xw).xy; // (+x, -y)
+    float4 DerivativeX;
+    DerivativeX.xy = Sample1 - Sample0;
+    DerivativeX.zw = Sample3 - Sample2;
+    float4 DerivativeY;
+    DerivativeY.xy = Sample0 - Sample2;
+    DerivativeY.zw = Sample1 - Sample3;
+    OutputColor0.x = dot(DerivativeX, 0.25);
+    OutputColor0.y = dot(DerivativeY, 0.25);
+    OutputColor1 = tex2D(_SampleInfo0, TexCoord).rg;
 }
 
-void ps_oflow(float4 vpos: SV_POSITION,
-              float2 uv : TEXCOORD0,
-              out float4 r0 : SV_TARGET0)
+void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    const int pyramids = ceil(log2(ISIZE));
-    const float lambda = max(4.0 * pow(uConst * 1e-3, 2.0), 1e-10);
-    float2 cFlow = 0.0;
+    const int PyramidLevels = ceil(log2(ISIZE));
+    const float Lamdba = max(4.0 * pow(_Constraint * 1e-3, 2.0), 1e-10);
+    float2 Flow = 0.0;
 
-    for(int i = pyramids; i >= 0; i--)
+    for(int i = PyramidLevels; i >= 0; i--)
     {
-        float4 ucalc = float4(uv, 0.0, i);
-        float4 frame = tex2Dlod(s_cinfo0, ucalc);
-        float2 ddxy = tex2Dlod(s_cddxy, ucalc).xy;
+        float4 CalculateUV = float4(TexCoord, 0.0, i);
+        float2 Frame = tex2Dlod(_SampleInfo0, CalculateUV).xy;
+        float3 Derivatives;
+        Derivatives.xy = tex2Dlod(_SampleDerivatives, CalculateUV).xy;
+        Derivatives.z = Frame.x - Frame.y;
 
-        float dt = frame.x - frame.y;
-        float dCalc = dot(ddxy.xy, cFlow) + dt;
-        float dSmooth = rcp(dot(ddxy.xy, ddxy.xy) + lambda);
-        cFlow = cFlow - ((ddxy.xy * dCalc) * dSmooth);
+        float Linear = dot(Derivatives.xy, Flow) + Derivatives.z;
+        float Smoothness = rcp(dot(Derivatives.xy, Derivatives.xy) + Lamdba);
+        Flow = Flow - ((Derivatives.xy * Linear) * Smoothness);
     }
 
-    r0 = float4(cFlow.xy * uScale, 0.0, uBlend);
+    OutputColor0 = float4(Flow.xy * _Scale, 0.0, _Blend);
 }
 
-float urand(float2 uv)
+float RandomNoise(float2 uv)
 {
     float f = dot(float2(12.9898, 78.233), uv);
     return frac(43758.5453 * sin(f));
 }
 
-float4 ps_output(float4 vpos : SV_POSITION,
-                 float2 uv : TEXCOORD0) : SV_Target
+void WarpPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    const float aspectratio = BUFFER_WIDTH / BUFFER_HEIGHT;
-    const float2 pSize = rcp(ISIZE) * aspectratio;
-    float2 pFlow = tex2Dlod(s_cflow, float4(uv, 0.0, uDetail)).xy;
-    pFlow = (uNoise) ? pFlow * urand(vpos.xy + pFlow) : pFlow;
-    float4 pMCF = tex2D(s_color, uv + pFlow * pSize);
-    float4 pMCB = tex2D(s_pcolor, uv - pFlow * pSize);
-    return lerp(pMCF, pMCB, uAvg);
+    const float AspectRatio = BUFFER_WIDTH / BUFFER_HEIGHT;
+    const float2 PixelSize = rcp(ISIZE) * AspectRatio;
+    float2 pFlow = tex2Dlod(_SampleOpticalFlow, float4(TexCoord, 0.0, _Detail)).xy;
+    pFlow = (_Noise) ? pFlow * RandomNoise(Position.xy + pFlow) : pFlow;
+    float4 ForwardCompensation = tex2D(_SampleColor, TexCoord + pFlow * PixelSize);
+    float4 BackwardCompensation = tex2D(_SampleCopy, TexCoord - pFlow * PixelSize);
+    OutputColor0 = lerp(ForwardCompensation, BackwardCompensation, _Average);
 }
 
-float4 ps_previous(float4 vpos : SV_POSITION,
-                   float2 uv : TEXCOORD0) : SV_Target
+void CopyPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    return tex2D(s_color, uv);
+    OutputColor0 = tex2D(_SampleColor, TexCoord);
 }
 
 technique cWarping
 {
-    pass normalize
+    pass
     {
-        VertexShader = vs_generic;
-        PixelShader = ps_normalize;
-        RenderTarget0 = r_buffer;
+        VertexShader = PostProcessVS;
+        PixelShader = NormalizePS;
+        RenderTarget0 = _RenderBuffer;
     }
 
-    pass scale_storeprevious
+    pass
     {
-        VertexShader = vs_generic;
-        PixelShader = ps_blit;
-        RenderTarget0 = r_cinfo0;
+        VertexShader = PostProcessVS;
+        PixelShader = BlitPS;
+        RenderTarget0 = _RenderInfo0;
     }
 
-    pass horizontalblur
+    pass
     {
-        VertexShader = vs_hblur;
-        PixelShader = ps_hblur;
-        RenderTarget0 = r_cinfo1;
+        VertexShader = HorizontalBlurVS;
+        PixelShader = HorizontalBlurPS;
+        RenderTarget0 = _RenderInfo1;
     }
 
-    pass verticalblur
+    pass
     {
-        VertexShader = vs_vblur;
-        PixelShader = ps_vblur;
-        RenderTarget0 = r_cinfo0;
+        VertexShader = VerticalBlurVS;
+        PixelShader = VerticalBlurPS;
+        RenderTarget0 = _RenderInfo0;
         RenderTargetWriteMask = 1;
     }
 
-    pass derivatives_copy
+    pass
     {
-        VertexShader = vs_ddxy;
-        PixelShader = ps_ddxy;
-        RenderTarget0 = r_cddxy;
-        RenderTarget1 = r_cinfo1;
+        VertexShader = DerivativesVS;
+        PixelShader = DeriviativesPS;
+        RenderTarget0 = _RenderDerivatives;
+        RenderTarget1 = _RenderInfo1;
     }
 
-    pass opticalflow
+    pass
     {
-        VertexShader = vs_generic;
-        PixelShader = ps_oflow;
-        RenderTarget0 = r_cflow;
+        VertexShader = PostProcessVS;
+        PixelShader = OpticalFlowPS;
+        RenderTarget0 = _RenderOpticalFlow;
         ClearRenderTargets = FALSE;
         BlendEnable = TRUE;
         BlendOp = ADD;
@@ -349,17 +395,18 @@ technique cWarping
         DestBlend = SRCALPHA;
     }
 
-    pass interpolate
+    pass
     {
-        VertexShader = vs_generic;
-        PixelShader = ps_output;
+        VertexShader = PostProcessVS;
+        PixelShader = WarpPS;
         SRGBWriteEnable = TRUE;
     }
-    pass blit
+
+    pass
     {
-        VertexShader = vs_generic;
-        PixelShader = ps_previous;
-        RenderTarget = r_pcolor;
+        VertexShader = PostProcessVS;
+        PixelShader = CopyPS;
+        RenderTarget = _RenderCopy;
         SRGBWriteEnable = TRUE;
     }
 }

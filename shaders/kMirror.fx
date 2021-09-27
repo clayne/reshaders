@@ -22,78 +22,70 @@
     CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-uniform float kDivisor <
-    ui_label = "Divisor";
+uniform float _Divisor <
     ui_type = "drag";
 > = 0.05f;
 
-uniform float kOffset <
-    ui_label = "Offset";
+uniform float _Offset <
     ui_type = "drag";
 > = 0.05f;
 
-uniform float kRoll <
-    ui_label = "Roll";
+uniform float _Roll <
     ui_type = "drag";
 > = 0.0f;
 
-uniform bool kSymmetry <
-    ui_label = "Symmetry?";
+uniform bool _Symmetry <
 > = true;
 
-texture2D r_color : COLOR;
+texture2D _RenderColor : COLOR;
 
-sampler2D s_color
+sampler2D _SampleColor
 {
-    Texture = r_color;
+    Texture = _RenderColor;
     SRGBTexture = TRUE;
 };
 
 /* [Vertex Shaders] */
 
-void vs_generic(in uint id : SV_VERTEXID,
-                out float4 position : SV_POSITION,
-                out float2 texcoord : TEXCOORD)
+void PostProcessVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD)
 {
-    texcoord.x = (id == 2) ? 2.0 : 0.0;
-    texcoord.y = (id == 1) ? 2.0 : 0.0;
-    position = float4(texcoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    TexCoord.x = (ID == 2) ? 2.0 : 0.0;
+    TexCoord.y = (ID == 1) ? 2.0 : 0.0;
+    Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
 
 /* [ Pixel Shaders ] */
 
-void ps_mirror(in float4 vpos : SV_Position, in float2 uv : TEXCOORD, out float4 c : SV_Target)
+void MirrorPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD, out float4 OutputColor0 : SV_TARGET0)
 {
     // Convert to the polar coordinate.
-    float2 sc = uv - 0.5;
-    float phi = atan2(sc.y, sc.x);
-    float r = length(sc);
+    float2 Polar = TexCoord - 0.5;
+    float Phi = atan2(Polar.y, Polar.x);
+    float Radius = length(Polar);
 
     // Angular repeating.
-    phi += kOffset;
-    phi = phi - kDivisor * floor(phi / kDivisor);
+    Phi += _Offset;
+    Phi = Phi - _Divisor * floor(Phi / _Divisor);
 
-    if(kSymmetry) { phi = min(phi, kDivisor - phi); }
-    phi += kRoll - kOffset;
+    if(_Symmetry) { Phi = min(Phi, _Divisor - Phi); }
+    Phi += _Roll - _Offset;
 
     // Convert back to the texture coordinate.
-    float2 scphi; sincos(phi, scphi.x, scphi.y);
-    uv = scphi.yx * r + 0.5;
+    float2 PhiSinCos; sincos(Phi, PhiSinCos.x, PhiSinCos.y);
+    TexCoord = PhiSinCos.yx * Radius + 0.5;
 
     // Reflection at the border of the screen.
-    uv = max(min(uv, 2.0 - uv), -uv);
+    TexCoord = max(min(TexCoord, 2.0 - TexCoord), -TexCoord);
 
-    c = tex2D(s_color, uv);
+    OutputColor0 = tex2D(_SampleColor, TexCoord);
 }
 
 technique KinoMirror
 {
     pass
     {
-        VertexShader = vs_generic;
-        PixelShader = ps_mirror;
-        #if BUFFER_COLOR_BIT_DEPTH != 10
-            SRGBWriteEnable = TRUE;
-        #endif
+        VertexShader = PostProcessVS;
+        PixelShader = MirrorPS;
+        SRGBWriteEnable = TRUE;
     }
 }

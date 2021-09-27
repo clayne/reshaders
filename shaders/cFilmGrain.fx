@@ -4,54 +4,51 @@
     Yoinked code by Luluco250 (RIP) [https://www.shadertoy.com/view/4t2fRz] [MIT]
 */
 
-uniform float uSpeed <
+uniform float _Speed <
     ui_label = "Speed";
     ui_type = "drag";
 > = 2.0f;
 
-uniform float uVariance <
+uniform float _Variance <
     ui_label = "Variance";
     ui_type = "drag";
 > = 0.5f;
 
-uniform float uIntensity <
+uniform float _Intensity <
     ui_label = "Variance";
     ui_type = "drag";
 > = 0.005f;
 
-uniform float uTimer < source = "timer"; >;
+uniform float _Time < source = "timer"; >;
 
-void vs_generic(in uint id : SV_VERTEXID,
-                out float4 position : SV_POSITION,
-                out float2 texcoord : TEXCOORD)
+void PostProcessVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD0)
 {
-    texcoord.x = (id == 2) ? 2.0 : 0.0;
-    texcoord.y = (id == 1) ? 2.0 : 0.0;
-    position = float4(texcoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    TexCoord.x = (ID == 2) ? 2.0 : 0.0;
+    TexCoord.y = (ID == 1) ? 2.0 : 0.0;
+    Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
 
-float gaussian(float x, float sigma)
+float Gaussian1D(float x, float Sigma)
 {
-    const float pi = 3.14159265359;
-    const float cSigma = sigma * sigma;
-    return rsqrt(pi * cSigma) * exp(-((x * x) / (2.0 * cSigma)));
+    const float Pi = 3.14159265359;
+    Sigma = Sigma * Sigma;
+    return rsqrt(Pi * Sigma) * exp(-((x * x) / (2.0 * Sigma)));
 }
 
-float4 ps_vignette(float4 vpos : SV_POSITION, float2 uv : TEXCOORD0) : SV_Target
+float4 VignettePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0) : SV_Target
 {
-    const float2 psize = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
-    float cTime = rcp(1e+3 / uTimer) * uSpeed;
-    float cSeed = dot(vpos.xy, float2(12.9898, 78.233));
-    float noise = frac(sin(cSeed) * 43758.5453 + cTime);
-	return gaussian(noise, uVariance) * uIntensity;
+    float Time = rcp(1e+3 / _Time) * _Speed;
+    float Seed = dot(Position.xy, float2(12.9898, 78.233));
+    float Noise = frac(sin(Seed) * 43758.5453 + Time);
+    return Gaussian1D(Noise, _Variance) * _Intensity;
 }
 
 technique cGrain
 {
     pass
     {
-        VertexShader = vs_generic;
-        PixelShader = ps_vignette;
+        VertexShader = PostProcessVS;
+        PixelShader = VignettePS;
         SRGBWriteEnable = TRUE;
         // (Shader[Src] * SrcBlend) + (Buffer[Dest] * DestBlend)
         // This shader: (Shader[Src] * (1.0 - Buffer[Dest])) + Buffer[Dest]

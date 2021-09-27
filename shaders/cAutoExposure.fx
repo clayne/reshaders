@@ -19,7 +19,7 @@
 #define LOG2(x)       (CONST_LOG2((BIT16_LOG2(x) >> 1) + 1))
 #define RMAX(x, y)     x ^ ((x ^ y) & -(x < y)) // max(x, y)
 
-uniform float uRate <
+uniform float _TimeRate <
     ui_label = "Smoothing";
     ui_type = "drag";
     ui_tooltip = "Exposure time smoothing";
@@ -27,69 +27,67 @@ uniform float uRate <
     ui_max = 1.0;
 > = 0.95;
 
-uniform float uBias <
+uniform float _ManualBias <
     ui_label = "Exposure";
     ui_type = "drag";
     ui_tooltip = "Optional manual bias ";
     ui_min = 0.0;
 > = 2.0;
 
-texture2D r_color : COLOR;
+texture2D _RenderColor : COLOR;
 
-texture2D r_mips
+texture2D _RenderLOD < pooled = false; >
 {
-    Width = BUFFER_WIDTH / 2;
-    Height = BUFFER_HEIGHT / 2;
+    Width = BUFFER_WIDTH;
+    Height = BUFFER_HEIGHT;
     MipLevels = LOG2(RMAX(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2)) + 1;
     Format = R16F;
 };
 
-sampler2D s_color
+sampler2D _SampleColor
 {
-    Texture = r_color;
+    Texture = _RenderColor;
     SRGBTexture = TRUE;
 };
 
-sampler2D s_mips
+sampler2D _SampleLOD
 {
-    Texture = r_mips;
+    Texture = _RenderLOD;
 };
 
-void vs_generic(in uint id : SV_VERTEXID,
-                out float4 position : SV_POSITION,
-                out float2 texcoord : TEXCOORD)
+void PostProcessVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD)
 {
-    texcoord.x = (id == 2) ? 2.0 : 0.0;
-    texcoord.y = (id == 1) ? 2.0 : 0.0;
-    position = float4(texcoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    TexCoord.x = (ID == 2) ? 2.0 : 0.0;
+    TexCoord.y = (ID == 1) ? 2.0 : 0.0;
+    Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
 
-float4 ps_blit(float4 vpos : SV_POSITION, float2 uv : TEXCOORD0) : SV_Target0
+void BlitPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    float4 color = tex2D(s_color, uv);
-    return float4(max(color.r, max(color.g, color.b)).rrr, uRate);
+    float4 Color = tex2D(_SampleColor, TexCoord);
+    OutputColor0 = float4(max(Color.r, max(Color.g, Color.b)).rrr, _TimeRate);
 }
 
-float4 ps_expose(float4 vpos : SV_POSITION, float2 uv : TEXCOORD0) : SV_TARGET0
+void ExposurePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-	const float lod = ceil(log2(max(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2)));
-    float aLuma = tex2Dlod(s_mips, float4(uv, 0.0, lod)).r;
-    float4 oColor = tex2D(s_color, uv);
+    const float LOD = ceil(log2(max(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2)));
+    float AverageLuma = tex2Dlod(_SampleLOD, float4(TexCoord, 0.0, LOD)).r;
+    float4 Color = tex2D(_SampleColor, TexCoord);
 
     // KeyValue represents an exposure compensation curve
     // From https://knarkowicz.wordpress.com/2016/01/09/automatic-exposure/
-    float KeyValue = 1.03 - (2.0 / (log10(aLuma + 1.0) + 2.0));
-    float ExposureValue = log2(KeyValue / aLuma) + uBias;
-    return oColor * exp2(ExposureValue);
+    float KeyValue = 1.03 - (2.0 / (log10(AverageLuma + 1.0) + 2.0));
+    float ExposureValue = log2(KeyValue / AverageLuma) + _ManualBias;
+    OutputColor0 = Color * exp2(ExposureValue);
 }
 
 technique cAutoExposure
 {
     pass
     {
-        VertexShader = vs_generic;
-        PixelShader = ps_blit;
-        RenderTarget = r_mips;
+        VertexShader = PostProcessVS;
+        PixelShader = BlitPS;
+        RenderTarget = _RenderLOD;
         ClearRenderTargets = FALSE;
         BlendEnable = TRUE;
         BlendOp = ADD;
@@ -99,8 +97,8 @@ technique cAutoExposure
 
     pass
     {
-        VertexShader = vs_generic;
-        PixelShader = ps_expose;
+        VertexShader = PostProcessVS;
+        PixelShader = ExposurePS;
         SRGBWriteEnable = TRUE;
     }
 }
