@@ -17,11 +17,11 @@ sampler2D _SampleColor
 
 /*
     NOTE: pixelsize = 1.0 / screensize
-    uv + kShiftR * pixelsize == uv + kShiftR / screensize
+    TexCoord + _ShiftRed * pixelsize == TexCoord + _ShiftRed / screensize
 
     QUESTION: "Why do we have to divide our shifting value with screensize?"
     ANSWER: Texture coordinates in window-space is between 0.0 - 1.0.
-            Thus, uv + 1.0 moves the texture to the window's other side, rendering it out of sight
+            Thus, TexCoord + 1.0 moves the texture to the window's other side, rendering it out of sight
 */
 
 void PostProcessVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD)
