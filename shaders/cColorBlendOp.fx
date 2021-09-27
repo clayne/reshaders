@@ -17,7 +17,7 @@ float4 ColorPS(float4 Position : SV_Position) : SV_Target
     return _Color;
 }
 
-technique cColor
+technique cColorBlendOp
 {
     pass
     {

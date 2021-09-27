@@ -78,7 +78,7 @@ float4 OutputPS(float4 vpos : SV_POSITION, float2 uv : TEXCOORD0) : SV_TARGET0
     float4 Gaussian2 = tex2Dlod(_SampleLOD, float4(uv, 0.0, _LOD + 1.0));
     return ((Gaussian2 - Gaussian1) * _Weight) * 0.5 + 0.5;
 }
-technique cDMipMap
+technique cDifference
 {
     pass
     {
