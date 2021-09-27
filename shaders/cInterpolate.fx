@@ -77,7 +77,7 @@ texture2D _RenderBuffer
     MipLevels = RSIZE;
 };
 
-texture2D _RenderInfo0
+texture2D _RenderInfo0_Interpolate
 {
     Width = ISIZE;
     Height = ISIZE;
@@ -85,14 +85,14 @@ texture2D _RenderInfo0
     MipLevels = 8;
 };
 
-texture2D _RenderInfo1
+texture2D _RenderInfo1_Interpolate
 {
     Width = ISIZE;
     Height = ISIZE;
     Format = R16F;
 };
 
-texture2D _RenderDerivatives
+texture2D _RenderDerivatives_Interpolate
 {
     Width = ISIZE;
     Height = ISIZE;
@@ -100,7 +100,7 @@ texture2D _RenderDerivatives
     MipLevels = 8;
 };
 
-texture2D _RenderOpticalFlow
+texture2D _RenderOpticalFlow_Interpolate
 {
     Width = ISIZE;
     Height = ISIZE;
@@ -108,7 +108,7 @@ texture2D _RenderOpticalFlow
     MipLevels = 8;
 };
 
-texture2D _RenderCopy
+texture2D _RenderCopy_Interpolate
 {
     Width = BUFFER_WIDTH;
     Height = BUFFER_HEIGHT;
@@ -131,35 +131,35 @@ sampler2D _SampleBuffer
 
 sampler2D _SampleInfo0
 {
-    Texture = _RenderInfo0;
+    Texture = _RenderInfo0_Interpolate;
     AddressU = MIRROR;
     AddressV = MIRROR;
 };
 
 sampler2D _SampleInfo1
 {
-    Texture = _RenderInfo1;
+    Texture = _RenderInfo1_Interpolate;
     AddressU = MIRROR;
     AddressV = MIRROR;
 };
 
 sampler2D _SampleDerivatives
 {
-    Texture = _RenderDerivatives;
+    Texture = _RenderDerivatives_Interpolate;
     AddressU = MIRROR;
     AddressV = MIRROR;
 };
 
 sampler2D _SampleOpticalFlow
 {
-    Texture = _RenderOpticalFlow;
+    Texture = _RenderOpticalFlow_Interpolate;
     AddressU = MIRROR;
     AddressV = MIRROR;
 };
 
 sampler2D _SampleCopy
 {
-    Texture = _RenderCopy;
+    Texture = _RenderCopy_Interpolate;
     SRGBTexture = TRUE;
     AddressU = MIRROR;
     AddressV = MIRROR;
@@ -368,21 +368,21 @@ technique cInterpolate
     {
         VertexShader = PostProcessVS;
         PixelShader = BlitPS;
-        RenderTarget0 = _RenderInfo0;
+        RenderTarget0 = _RenderInfo0_Interpolate;
     }
 
     pass
     {
         VertexShader = HorizontalBlurVS;
         PixelShader = HorizontalBlurPS;
-        RenderTarget0 = _RenderInfo1;
+        RenderTarget0 = _RenderInfo1_Interpolate;
     }
 
     pass
     {
         VertexShader = VerticalBlurVS;
         PixelShader = VerticalBlurPS;
-        RenderTarget0 = _RenderInfo0;
+        RenderTarget0 = _RenderInfo0_Interpolate;
         RenderTargetWriteMask = 1;
     }
 
@@ -390,15 +390,15 @@ technique cInterpolate
     {
         VertexShader = DerivativesVS;
         PixelShader = DeriviativesPS;
-        RenderTarget0 = _RenderDerivatives;
-        RenderTarget1 = _RenderInfo1;
+        RenderTarget0 = _RenderDerivatives_Interpolate;
+        RenderTarget1 = _RenderInfo1_Interpolate;
     }
 
     pass
     {
         VertexShader = PostProcessVS;
         PixelShader = OpticalFlowPS;
-        RenderTarget0 = _RenderOpticalFlow;
+        RenderTarget0 = _RenderOpticalFlow_Interpolate;
         ClearRenderTargets = FALSE;
         BlendEnable = TRUE;
         BlendOp = ADD;
@@ -417,7 +417,7 @@ technique cInterpolate
     {
         VertexShader = PostProcessVS;
         PixelShader = CopyPS;
-        RenderTarget = _RenderCopy;
+        RenderTarget = _RenderCopy_Interpolate;
         SRGBWriteEnable = TRUE;
     }
 }

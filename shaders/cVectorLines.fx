@@ -20,7 +20,7 @@ uniform float _Detail <
     ui_type = "drag";
     ui_label = "Mipmap Bias";
     ui_tooltip = "Higher = Less spatial noise";
-> = 4.5;
+> = 0.0;
 
 uniform bool _Normal <
     ui_label = "Lines Normal Direction";
@@ -55,7 +55,7 @@ texture2D _RenderBuffer
     MipLevels = RSIZE;
 };
 
-texture2D _RenderInfo0
+texture2D _RenderInfo0_VectorLines
 {
     Width = ISIZE;
     Height = ISIZE;
@@ -63,14 +63,14 @@ texture2D _RenderInfo0
     MipLevels = 8;
 };
 
-texture2D _RenderInfo1
+texture2D _RenderInfo1_VectorLines
 {
     Width = ISIZE;
     Height = ISIZE;
     Format = R16F;
 };
 
-texture2D _RenderDerivatives
+texture2D _RenderDerivatives_VectorLines
 {
     Width = ISIZE;
     Height = ISIZE;
@@ -78,7 +78,7 @@ texture2D _RenderDerivatives
     MipLevels = 8;
 };
 
-texture2D _RenderOpticalFlow
+texture2D _RenderOpticalFlow_VectorLines
 {
     Width = ISIZE;
     Height = ISIZE;
@@ -88,7 +88,7 @@ texture2D _RenderOpticalFlow
 
 sampler2D _SampleOpticalFlow
 {
-    Texture = _RenderOpticalFlow;
+    Texture = _RenderOpticalFlow_VectorLines;
     AddressU = MIRROR;
     AddressV = MIRROR;
 };
@@ -108,21 +108,21 @@ sampler2D _SampleBuffer
 
 sampler2D _SampleInfo0
 {
-    Texture = _RenderInfo0;
+    Texture = _RenderInfo0_VectorLines;
     AddressU = MIRROR;
     AddressV = MIRROR;
 };
 
 sampler2D _SampleInfo1
 {
-    Texture = _RenderInfo1;
+    Texture = _RenderInfo1_VectorLines;
     AddressU = MIRROR;
     AddressV = MIRROR;
 };
 
 sampler2D _SampleDerivatives
 {
-    Texture = _RenderDerivatives;
+    Texture = _RenderDerivatives_VectorLines;
     AddressU = MIRROR;
     AddressV = MIRROR;
 };
@@ -331,8 +331,8 @@ void OutputVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, ino
     {
         // lines, normal to velocity direction
         Direction *= 0.5;
-        float2 dir_n = float2(Direction.y, -Direction.x);
-        VertexPosition = Origin + Direction - dir_n + dir_n * VertexID * 2;
+        float2 DirectionNormal = float2(Direction.y, -Direction.x);
+        VertexPosition = Origin + Direction - DirectionNormal + DirectionNormal * VertexID * 2;
     } else {
         // lines,in velocity direction
         VertexPosition = Origin + Direction * VertexID;
@@ -343,14 +343,15 @@ void OutputVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, ino
     Position = float4(VertexPositionNormal * 2.0 - 1.0, 0.0, 1.0); // ndc: [-1, +1]
 }
 
-void OutputPS(float4 Position : SV_POSITION, float2 Velocity : TEXCOORD0, out float3 OutputColor0 : SV_TARGET0)
+void OutputPS(float4 Position : SV_POSITION, float2 Velocity : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
     float Length = length(Velocity) * VELOCITY_SCALE * 0.05;
     OutputColor0.rg = 0.5 * (1.0 + Velocity.xy / (Length + 1e-4));
     OutputColor0.b = 0.5 * (2.0 - dot(OutputColor0.rg, 1.0));
+    OutputColor0.a = 1.0;
 }
 
-technique cOpticalFlow
+technique cVectorLines
 {
     pass
     {
@@ -363,21 +364,21 @@ technique cOpticalFlow
     {
         VertexShader = PostProcessVS;
         PixelShader = BlitPS;
-        RenderTarget0 = _RenderInfo0;
+        RenderTarget0 = _RenderInfo0_VectorLines;
     }
 
     pass
     {
         VertexShader = HorizontalBlurVS;
         PixelShader = HorizontalBlurPS;
-        RenderTarget0 = _RenderInfo1;
+        RenderTarget0 = _RenderInfo1_VectorLines;
     }
 
     pass
     {
         VertexShader = VerticalBlurVS;
         PixelShader = VerticalBlurPS;
-        RenderTarget0 = _RenderInfo0;
+        RenderTarget0 = _RenderInfo0_VectorLines;
         RenderTargetWriteMask = 1;
     }
 
@@ -385,15 +386,15 @@ technique cOpticalFlow
     {
         VertexShader = DerivativesVS;
         PixelShader = DeriviativesPS;
-        RenderTarget0 = _RenderDerivatives;
-        RenderTarget1 = _RenderInfo1;
+        RenderTarget0 = _RenderDerivatives_VectorLines;
+        RenderTarget1 = _RenderInfo1_VectorLines;
     }
 
     pass
     {
         VertexShader = PostProcessVS;
         PixelShader = OpticalFlowPS;
-        RenderTarget0 = _RenderOpticalFlow;
+        RenderTarget0 = _RenderOpticalFlow_VectorLines;
         ClearRenderTargets = FALSE;
         BlendEnable = TRUE;
         BlendOp = ADD;

@@ -82,7 +82,7 @@ texture2D _RenderBuffer
     MipLevels = RSIZE;
 };
 
-texture2D _RenderInfo0
+texture2D _RenderInfo0_Warping
 {
     Width = ISIZE;
     Height = ISIZE;
@@ -90,14 +90,14 @@ texture2D _RenderInfo0
     MipLevels = 8;
 };
 
-texture2D _RenderInfo1
+texture2D _RenderInfo1_Warping
 {
     Width = ISIZE;
     Height = ISIZE;
     Format = R16F;
 };
 
-texture2D _RenderDerivatives
+texture2D _RenderDerivatives_Warping
 {
     Width = ISIZE;
     Height = ISIZE;
@@ -105,7 +105,7 @@ texture2D _RenderDerivatives
     MipLevels = 8;
 };
 
-texture2D _RenderOpticalFlow
+texture2D _RenderOpticalFlow_Warping
 {
     Width = ISIZE;
     Height = ISIZE;
@@ -113,7 +113,7 @@ texture2D _RenderOpticalFlow
     MipLevels = 8;
 };
 
-texture2D _RenderCopy
+texture2D _RenderCopy_Warping
 {
     Width = BUFFER_WIDTH;
     Height = BUFFER_HEIGHT;
@@ -136,35 +136,35 @@ sampler2D _SampleBuffer
 
 sampler2D _SampleInfo0
 {
-    Texture = _RenderInfo0;
+    Texture = _RenderInfo0_Warping;
     AddressU = MIRROR;
     AddressV = MIRROR;
 };
 
 sampler2D _SampleInfo1
 {
-    Texture = _RenderInfo1;
+    Texture = _RenderInfo1_Warping;
     AddressU = MIRROR;
     AddressV = MIRROR;
 };
 
 sampler2D _SampleDerivatives
 {
-    Texture = _RenderDerivatives;
+    Texture = _RenderDerivatives_Warping;
     AddressU = MIRROR;
     AddressV = MIRROR;
 };
 
 sampler2D _SampleOpticalFlow
 {
-    Texture = _RenderOpticalFlow;
+    Texture = _RenderOpticalFlow_Warping;
     AddressU = MIRROR;
     AddressV = MIRROR;
 };
 
 sampler2D _SampleCopy
 {
-    Texture = _RenderCopy;
+    Texture = _RenderCopy_Warping;
     SRGBTexture = TRUE;
     AddressU = MIRROR;
     AddressV = MIRROR;
@@ -357,21 +357,21 @@ technique cWarping
     {
         VertexShader = PostProcessVS;
         PixelShader = BlitPS;
-        RenderTarget0 = _RenderInfo0;
+        RenderTarget0 = _RenderInfo0_Warping;
     }
 
     pass
     {
         VertexShader = HorizontalBlurVS;
         PixelShader = HorizontalBlurPS;
-        RenderTarget0 = _RenderInfo1;
+        RenderTarget0 = _RenderInfo1_Warping;
     }
 
     pass
     {
         VertexShader = VerticalBlurVS;
         PixelShader = VerticalBlurPS;
-        RenderTarget0 = _RenderInfo0;
+        RenderTarget0 = _RenderInfo0_Warping;
         RenderTargetWriteMask = 1;
     }
 
@@ -379,15 +379,15 @@ technique cWarping
     {
         VertexShader = DerivativesVS;
         PixelShader = DeriviativesPS;
-        RenderTarget0 = _RenderDerivatives;
-        RenderTarget1 = _RenderInfo1;
+        RenderTarget0 = _RenderDerivatives_Warping;
+        RenderTarget1 = _RenderInfo1_Warping;
     }
 
     pass
     {
         VertexShader = PostProcessVS;
         PixelShader = OpticalFlowPS;
-        RenderTarget0 = _RenderOpticalFlow;
+        RenderTarget0 = _RenderOpticalFlow_Warping;
         ClearRenderTargets = FALSE;
         BlendEnable = TRUE;
         BlendOp = ADD;
@@ -406,7 +406,7 @@ technique cWarping
     {
         VertexShader = PostProcessVS;
         PixelShader = CopyPS;
-        RenderTarget = _RenderCopy;
+        RenderTarget = _RenderCopy_Warping;
         SRGBWriteEnable = TRUE;
     }
 }

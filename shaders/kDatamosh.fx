@@ -138,7 +138,7 @@ texture2D _RenderCurrentBuffer
     MipLevels = RSIZE;
 };
 
-texture2D _RenderDerivatives
+texture2D _RenderDataMoshDerivatives
 {
     Width = DSIZE.x;
     Height = DSIZE.y;
@@ -146,7 +146,7 @@ texture2D _RenderDerivatives
     MipLevels = RSIZE;
 };
 
-texture2D _RenderOpticalFlow
+texture2D _RenderDataMoshOpticalFlow
 {
     Width = DSIZE.x;
     Height = DSIZE.y;
@@ -193,14 +193,14 @@ sampler2D _SampleCurrentBuffer
 
 sampler2D _SampleDerivatives
 {
-    Texture = _RenderDerivatives;
+    Texture = _RenderDataMoshDerivatives;
     AddressU = MIRROR;
     AddressV = MIRROR;
 };
 
 sampler2D _SampleOpticalFlow
 {
-    Texture = _RenderOpticalFlow;
+    Texture = _RenderDataMoshOpticalFlow;
     MFILTER;
     AddressU = MIRROR;
     AddressV = MIRROR;
@@ -397,7 +397,7 @@ technique KinoDatamosh
         VertexShader = PostProcessVS;
         PixelShader = FilterPS;
         RenderTarget0 = _RenderCurrentBuffer;
-        RenderTarget1 = _RenderDerivatives;
+        RenderTarget1 = _RenderDataMoshDerivatives;
     }
 
     /*
@@ -418,7 +418,7 @@ technique KinoDatamosh
     {
         VertexShader = PostProcessVS;
         PixelShader = OpticalFlowPS;
-        RenderTarget0 = _RenderOpticalFlow;
+        RenderTarget0 = _RenderDataMoshOpticalFlow;
         ClearRenderTargets = FALSE;
         BlendEnable = TRUE;
         BlendOp = ADD;

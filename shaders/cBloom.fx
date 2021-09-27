@@ -178,12 +178,11 @@ void PrefilterPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out
 
     // Under-threshold
     float Brightness = max(Color.r, max(Color.g, Color.b));
-    float Response = clamp(Brightness - Curve.x, 0.0, Curve.y);
-    Response = Curve.z * Response * Response;
+    float ResponseCurve = clamp(Brightness - Curve.x, 0.0, Curve.y);
+    ResponseCurve = Curve.z * ResponseCurve * ResponseCurve;
 
     // Combine and apply the brightness response curve
-    Color *= max(Response, Brightness - _Threshold) / max(Brightness, 1e-10);
-    OutputColor0 = saturate(lerp(Brightness, Color.rgb, _Saturation));
+    OutputColor0 = Color * max(ResponseCurve, Brightness - _Threshold) / max(Brightness, 1e-10);
 }
 
 // sRGB => XYZ => D65_2_D60 => AP1 => RRT_SAT
@@ -227,18 +226,18 @@ void CompositePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out
 {
     float Dither = frac(52.9829189 * frac(dot(Position.xy, float2(0.06711056, 0.00583715))));
     float4 Src = tex2D(_SampleBloom1, TexCoord);
-    float4 Dest = tex2D(_SampleColor, TexCoord);
+    float Brightness = max(max(Src.r, Src.g), Src.b);
+    Src = saturate(lerp(Brightness, Src.rgb, _Saturation));
     Src *= _Intensity;
     Src = mul(ACESInputMat, Src.rgb);
     Src = RRTAndODTFit(Src.rgb);
     Src = saturate(mul(ACESOutputMat, Src.rgb));
-    OutputColor0 = (Src + Dest) - (Src * Dest);
-    OutputColor0 += Dither * (1.0 / 255);
+    OutputColor0 = Src + Dither * (1.0 / 255);
 }
 
 /* [ TECHNIQUE ] */
 
-technique c
+technique cBloom
 {
     #define blend(i, j, k) BlendEnable = TRUE; BlendOp = i; SrcBlend = j; DestBlend = k
     pass { VertexShader = PostProcessVS; PixelShader = PrefilterPS; RenderTarget = _RenderBloom1; }
@@ -255,6 +254,6 @@ technique c
     pass { VertexShader = UpsampleVS5; PixelShader = UpsamplePS5; RenderTarget = _RenderBloom4; blend(ADD, ONE, ONE); }
     pass { VertexShader = UpsampleVS4; PixelShader = UpsamplePS4; RenderTarget = _RenderBloom3; blend(ADD, ONE, ONE); }
     pass { VertexShader = UpsampleVS3; PixelShader = UpsamplePS3; RenderTarget = _RenderBloom2; blend(ADD, ONE, ONE); }
-    pass { VertexShader = UpsampleVS2; PixelShader = UpsamplePS2; RenderTarget = _RenderBloom1; blend(ADD, ONE, ONE); }
-    pass { VertexShader = PostProcessVS; PixelShader = CompositePS; SRGBWriteEnable = TRUE; }
+    pass { VertexShader = UpsampleVS2; PixelShader = UpsamplePS2; RenderTarget = _RenderBloom1; }
+    pass { VertexShader = PostProcessVS; PixelShader = CompositePS; blend(ADD, ONE, INVSRCCOLOR); SRGBWriteEnable = TRUE; }
 }

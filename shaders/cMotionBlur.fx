@@ -60,7 +60,7 @@ texture2D _RenderBuffer
     MipLevels = RSIZE;
 };
 
-texture2D _RenderInfo0
+texture2D _RenderInfo0_MotionBlur
 {
     Width = ISIZE;
     Height = ISIZE;
@@ -68,14 +68,14 @@ texture2D _RenderInfo0
     MipLevels = 8;
 };
 
-texture2D _RenderInfo1
+texture2D _RenderInfo1_MotionBlur
 {
     Width = ISIZE;
     Height = ISIZE;
     Format = R16F;
 };
 
-texture2D _RenderDerivatives
+texture2D _RenderDerivatives_MotionBlur
 {
     Width = ISIZE;
     Height = ISIZE;
@@ -83,7 +83,7 @@ texture2D _RenderDerivatives
     MipLevels = 8;
 };
 
-texture2D _RenderOpticalFlow
+texture2D _RenderOpticalFlow_MotionBlur
 {
     Width = ISIZE;
     Height = ISIZE;
@@ -106,28 +106,28 @@ sampler2D _SampleBuffer
 
 sampler2D _SampleInfo0
 {
-    Texture = _RenderInfo0;
+    Texture = _RenderInfo0_MotionBlur;
     AddressU = MIRROR;
     AddressV = MIRROR;
 };
 
 sampler2D _SampleInfo1
 {
-    Texture = _RenderInfo1;
+    Texture = _RenderInfo1_MotionBlur;
     AddressU = MIRROR;
     AddressV = MIRROR;
 };
 
 sampler2D _SampleDerivatives
 {
-    Texture = _RenderDerivatives;
+    Texture = _RenderDerivatives_MotionBlur;
     AddressU = MIRROR;
     AddressV = MIRROR;
 };
 
 sampler2D _SampleOpticalFlow
 {
-    Texture = _RenderOpticalFlow;
+    Texture = _RenderOpticalFlow_MotionBlur;
     AddressU = MIRROR;
     AddressV = MIRROR;
 };
@@ -321,21 +321,21 @@ technique cMotionBlur
     {
         VertexShader = PostProcessVS;
         PixelShader = BlitPS;
-        RenderTarget0 = _RenderInfo0;
+        RenderTarget0 = _RenderInfo0_MotionBlur;
     }
 
     pass
     {
         VertexShader = HorizontalBlurVS;
         PixelShader = HorizontalBlurPS;
-        RenderTarget0 = _RenderInfo1;
+        RenderTarget0 = _RenderInfo1_MotionBlur;
     }
 
     pass
     {
         VertexShader = VerticalBlurVS;
         PixelShader = VerticalBlurPS;
-        RenderTarget0 = _RenderInfo0;
+        RenderTarget0 = _RenderInfo0_MotionBlur;
         RenderTargetWriteMask = 1;
     }
 
@@ -343,15 +343,15 @@ technique cMotionBlur
     {
         VertexShader = DerivativesVS;
         PixelShader = DeriviativesPS;
-        RenderTarget0 = _RenderDerivatives;
-        RenderTarget1 = _RenderInfo1;
+        RenderTarget0 = _RenderDerivatives_MotionBlur;
+        RenderTarget1 = _RenderInfo1_MotionBlur;
     }
 
     pass
     {
         VertexShader = PostProcessVS;
         PixelShader = OpticalFlowPS;
-        RenderTarget0 = _RenderOpticalFlow;
+        RenderTarget0 = _RenderOpticalFlow_MotionBlur;
         ClearRenderTargets = FALSE;
         BlendEnable = TRUE;
         BlendOp = ADD;

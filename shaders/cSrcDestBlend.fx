@@ -1,7 +1,7 @@
 
 texture2D _RenderColor : COLOR;
 
-texture2D _RenderCopy
+texture2D _RenderFrame
 {
     Width = BUFFER_WIDTH;
     Height = BUFFER_HEIGHT;
@@ -11,11 +11,12 @@ texture2D _RenderCopy
 sampler2D _SampleColor
 {
     Texture = _RenderColor;
+    SRGBTexture = TRUE;
 };
 
-sampler2D _SampleCopy
+sampler2D _SampleFrame
 {
-    Texture = _RenderCopy;
+    Texture = _RenderFrame;
     SRGBTexture = TRUE;
 };
 
@@ -37,22 +38,23 @@ void BlitPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out floa
 
 void BlendPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    float4 src = tex2D(_SampleCopy, TexCoord);
+    float4 src = tex2D(_SampleFrame, TexCoord);
     float4 dest = tex2D(_SampleColor, TexCoord);
     OutputColor0 = (src + dest);
 }
 
-technique CopyBuffer
+technique cCopyBuffer
 {
     pass
     {
         VertexShader = PostProcessVS;
         PixelShader = BlitPS;
-        RenderTarget0 = _RenderCopy;
+        RenderTarget0 = _RenderFrame;
+        SRGBWriteEnable = TRUE;
     }
 }
 
-technique BlendBuffer
+technique cBlendBuffer
 {
     pass
     {

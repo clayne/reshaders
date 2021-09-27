@@ -40,7 +40,7 @@ void TilePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out floa
     OutputColor0 = tex2D(_SampleColor, TexCoord);
 }
 
-technique Tile
+technique cTiles
 {
     pass
     {

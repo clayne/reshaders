@@ -28,7 +28,7 @@ uniform int _Shape <
 
 texture2D _RenderColor : COLOR;
 
-texture2D _RenderLOD < pooled = false; >
+texture2D _RenderMosaicLOD < pooled = false; >
 {
     Width = BUFFER_WIDTH;
     Height = BUFFER_HEIGHT;
@@ -44,9 +44,9 @@ sampler2D _SampleColor
     SRGBTexture = TRUE;
 };
 
-sampler2D _SampleLOD
+sampler2D _SampleMosaicLOD
 {
-    Texture = _RenderLOD;
+    Texture = _RenderMosaicLOD;
     AddressU = MIRROR;
     AddressV = MIRROR;
     SRGBTexture = TRUE;
@@ -81,7 +81,7 @@ void MosaicPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out fl
         case 0:
             BlockCoord = floor(FragCoord / MaxRadius) * MaxRadius;
             MosaicCoord = BlockCoord * PixelSize;
-            float4 Color = tex2Dlod(_SampleLOD, float4(MosaicCoord, 0.0, log2(MaxRadius) - 1.0));
+            float4 Color = tex2Dlod(_SampleMosaicLOD, float4(MosaicCoord, 0.0, log2(MaxRadius) - 1.0));
 
             float2 Offset = FragCoord - BlockCoord;
             float2 Center = MaxRadius / 2.0;
@@ -98,12 +98,12 @@ void MosaicPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out fl
             float2 Composite;
             Composite.x = step(1.0 - TexCoord.y, TexCoord.x);
             Composite.y = step(TexCoord.x, TexCoord.y);
-            OutputColor0 = tex2Dlod(_SampleLOD, float4(BlockCoord + Composite * Divisor, 0.0, 0.0));
+            OutputColor0 = tex2Dlod(_SampleMosaicLOD, float4(BlockCoord + Composite * Divisor, 0.0, 0.0));
             break;
         default:
             BlockCoord = round(FragCoord / _Radius) * _Radius;
             MosaicCoord = BlockCoord * PixelSize;
-            OutputColor0 = tex2Dlod(_SampleLOD, float4(MosaicCoord, 0.0, log2(MaxRadius) - 1.0));
+            OutputColor0 = tex2Dlod(_SampleMosaicLOD, float4(MosaicCoord, 0.0, log2(MaxRadius) - 1.0));
             break;
     }
 }
@@ -114,7 +114,7 @@ technique cMosaic
     {
         VertexShader = PostProcessVS;
         PixelShader = BlitPS;
-        RenderTarget0 = _RenderLOD;
+        RenderTarget0 = _RenderMosaicLOD;
         SRGBWriteEnable = TRUE;
     }
 

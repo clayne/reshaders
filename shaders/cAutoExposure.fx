@@ -36,7 +36,7 @@ uniform float _ManualBias <
 
 texture2D _RenderColor : COLOR;
 
-texture2D _RenderLOD < pooled = false; >
+texture2D _RenderLumaLOD
 {
     Width = BUFFER_WIDTH;
     Height = BUFFER_HEIGHT;
@@ -50,9 +50,9 @@ sampler2D _SampleColor
     SRGBTexture = TRUE;
 };
 
-sampler2D _SampleLOD
+sampler2D _SampleLumaLOD
 {
-    Texture = _RenderLOD;
+    Texture = _RenderLumaLOD;
 };
 
 void PostProcessVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD)
@@ -71,7 +71,7 @@ void BlitPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out floa
 void ExposurePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
     const float LOD = ceil(log2(max(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2)));
-    float AverageLuma = tex2Dlod(_SampleLOD, float4(TexCoord, 0.0, LOD)).r;
+    float AverageLuma = tex2Dlod(_SampleLumaLOD, float4(TexCoord, 0.0, LOD)).r;
     float4 Color = tex2D(_SampleColor, TexCoord);
 
     // KeyValue represents an exposure compensation curve
@@ -87,7 +87,7 @@ technique cAutoExposure
     {
         VertexShader = PostProcessVS;
         PixelShader = BlitPS;
-        RenderTarget = _RenderLOD;
+        RenderTarget = _RenderLumaLOD;
         ClearRenderTargets = FALSE;
         BlendEnable = TRUE;
         BlendOp = ADD;
