@@ -2,7 +2,7 @@
 uniform int2 _Radius <
     ui_type = "drag";
     ui_label = "Mosaic Radius";
-> = 16.0;
+> = 32.0;
 
 uniform int _Shape <
     ui_type = "slider";
@@ -91,6 +91,7 @@ void MosaicPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out fl
             break;
         // Triangle https://www.shadertoy.com/view/4d2SWy
         case 1:
+        	const float MaxLODLevel = log2(max(BUFFER_WIDTH, BUFFER_HEIGHT)) - log2(MaxRadius);
             const float2 Divisor = 1.0 / (2.0 * _Radius);
             BlockCoord = floor(TexCoord * _Radius) / _Radius;
             TexCoord -= BlockCoord;
@@ -98,10 +99,10 @@ void MosaicPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out fl
             float2 Composite;
             Composite.x = step(1.0 - TexCoord.y, TexCoord.x);
             Composite.y = step(TexCoord.x, TexCoord.y);
-            OutputColor0 = tex2Dlod(_SampleMosaicLOD, float4(BlockCoord + Composite * Divisor, 0.0, 0.0));
+            OutputColor0 = tex2Dlod(_SampleMosaicLOD, float4(BlockCoord + Composite * Divisor, 0.0, MaxLODLevel - 1));
             break;
         default:
-            BlockCoord = round(FragCoord / _Radius) * _Radius;
+            BlockCoord = round(FragCoord / MaxRadius) * MaxRadius;
             MosaicCoord = BlockCoord * PixelSize;
             OutputColor0 = tex2Dlod(_SampleMosaicLOD, float4(MosaicCoord, 0.0, log2(MaxRadius) - 1.0));
             break;

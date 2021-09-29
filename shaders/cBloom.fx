@@ -87,7 +87,8 @@ struct v2fu
     float4 uOffset2 : TEXCOORD2; // Hortical Taps
 };
 
-v2fu UpsampleVS(uint id, float uFact) {
+v2fu UpsampleVS(uint id, float uFact)
+{
     v2fu output;
     float2 coord;
     PostProcessVS(id, output.vpos, coord);
@@ -121,53 +122,53 @@ v2fu UpsampleVS2(uint id : SV_VertexID) { return UpsampleVS(id, 2.0); }
     Noise        - [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
 */
 
-float4 DownsamplePS(sampler2D src, v2fd input)
+float4 DownsamplePS(sampler2D Source, v2fd input)
 {
-    float4 a0 = tex2D(src, input.uOffset0.xy); // (-1.0, -1.0)
-    float4 a1 = tex2D(src, input.uOffset0.zw); // ( 1.0,  1.0)
-    float4 a2 = tex2D(src, input.uOffset0.xw); // (-1.0,  1.0)
-    float4 a3 = tex2D(src, input.uOffset0.zy); // ( 1.0, -1.0)
+    float4 A0 = tex2D(Source, input.uOffset0.xy); // (-1.0, -1.0)
+    float4 A1 = tex2D(Source, input.uOffset0.zw); // ( 1.0,  1.0)
+    float4 A2 = tex2D(Source, input.uOffset0.xw); // (-1.0,  1.0)
+    float4 A3 = tex2D(Source, input.uOffset0.zy); // ( 1.0, -1.0)
 
-    float4 b0 = tex2D(src, input.uOffset1.xy); // (-2.0, -2.0)
-    float4 b1 = tex2D(src, input.uOffset1.zw); // ( 2.0,  2.0)
-    float4 b2 = tex2D(src, input.uOffset1.xw); // (-2.0,  2.0)
-    float4 b3 = tex2D(src, input.uOffset1.zy); // ( 2.0, -2.0)
+    float4 B0 = tex2D(Source, input.uOffset1.xy); // (-2.0, -2.0)
+    float4 B1 = tex2D(Source, input.uOffset1.zw); // ( 2.0,  2.0)
+    float4 B2 = tex2D(Source, input.uOffset1.xw); // (-2.0,  2.0)
+    float4 B3 = tex2D(Source, input.uOffset1.zy); // ( 2.0, -2.0)
 
-    float4 c0 = tex2D(src, input.uOffset2.xw); // (-2.0, 0.0)
-    float4 c1 = tex2D(src, input.uOffset2.yw); // ( 0.0, 0.0)
-    float4 c2 = tex2D(src, input.uOffset2.zw); // ( 2.0, 0.0)
+    float4 C0 = tex2D(Source, input.uOffset2.xw); // (-2.0, 0.0)
+    float4 C1 = tex2D(Source, input.uOffset2.yw); // ( 0.0, 0.0)
+    float4 C2 = tex2D(Source, input.uOffset2.zw); // ( 2.0, 0.0)
 
-    float4 d0 = tex2D(src, input.uOffset3.wx); // (0.0, -2.0)
-    float4 d1 = tex2D(src, input.uOffset3.wz); // (0.0,  2.0)
+    float4 D0 = tex2D(Source, input.uOffset3.wx); // (0.0, -2.0)
+    float4 D1 = tex2D(Source, input.uOffset3.wz); // (0.0,  2.0)
 
-    float4 output;
-    const float2 weight = float2(0.5, 0.125) / 4.0;
-    output  = (a0 + a1 + a2 + a3) * weight.x; // Center quad
-    output += (b2 + d1 + c0 + c1) * weight.y; // Top - left quad
-    output += (d1 + b1 + c1 + c2) * weight.y; // Top - right quad
-    output += (c1 + c2 + d0 + b3) * weight.y; // Bottom - right quad
-    output += (c0 + c1 + b0 + d0) * weight.y; // Bottom - left quad
-    return output;
+    float4 Output;
+    const float2 Weight = float2(0.5, 0.125) / 4.0;
+    Output  = (A0 + A1 + A2 + A3) * Weight.x; // Center quad
+    Output += (B2 + D1 + C0 + C1) * Weight.y; // Top - left quad
+    Output += (D1 + B1 + C1 + C2) * Weight.y; // Top - right quad
+    Output += (C1 + C2 + D0 + B3) * Weight.y; // Bottom - right quad
+    Output += (C0 + C1 + B0 + D0) * Weight.y; // Bottom - left quad
+    return Output;
 }
 
-float4 UpsamplePS(sampler2D src, v2fu input)
+float4 UpsamplePS(sampler2D Source, v2fu input)
 {
-    float4 a0 = tex2D(src, input.uOffset0.xy); // (-1.0, -1.0)
-    float4 a1 = tex2D(src, input.uOffset0.zw); // ( 1.0,  1.0)
-    float4 a2 = tex2D(src, input.uOffset0.xw); // (-1.0,  1.0)
-    float4 a3 = tex2D(src, input.uOffset0.zy); // ( 1.0, -1.0)
-    float4 c0 = tex2D(src, input.uOffset1.yw); // ( 0.0,  0.0)
-    float4 b0 = tex2D(src, input.uOffset1.xw); // (-1.0,  0.0)
-    float4 b1 = tex2D(src, input.uOffset1.zw); // ( 1.0,  0.0)
-    float4 b2 = tex2D(src, input.uOffset2.wx); // ( 0.0,  1.0)
-    float4 b3 = tex2D(src, input.uOffset2.wz); // ( 0.0,  1.0)
+    float4 A0 = tex2D(Source, input.uOffset0.xy); // (-1.0, -1.0)
+    float4 A1 = tex2D(Source, input.uOffset0.zw); // ( 1.0,  1.0)
+    float4 A2 = tex2D(Source, input.uOffset0.xw); // (-1.0,  1.0)
+    float4 A3 = tex2D(Source, input.uOffset0.zy); // ( 1.0, -1.0)
+    float4 C0 = tex2D(Source, input.uOffset1.yw); // ( 0.0,  0.0)
+    float4 B0 = tex2D(Source, input.uOffset1.xw); // (-1.0,  0.0)
+    float4 B1 = tex2D(Source, input.uOffset1.zw); // ( 1.0,  0.0)
+    float4 B2 = tex2D(Source, input.uOffset2.wx); // ( 0.0,  1.0)
+    float4 B3 = tex2D(Source, input.uOffset2.wz); // ( 0.0,  1.0)
 
-    float4 output;
-    const float3 weights = float3(1.0, 2.0, 4.0);
-    output  = (a0 + a1 + a2 + a3) * weights.x;
-    output += (b0 + b1 + b2 + b3) * weights.y;
-    output += c0 * weights.z;
-    return output / 16.0;
+    float4 Output;
+    const float3 Weights = float3(1.0, 2.0, 4.0);
+    Output  = (A0 + A1 + A2 + A3) * Weights.x;
+    Output += (B0 + B1 + B2 + B3) * Weights.y;
+    Output += C0 * Weights.z;
+    return Output / 16.0;
 }
 
 void PrefilterPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)

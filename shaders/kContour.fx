@@ -51,6 +51,11 @@ uniform float4 _BackColor <
     ui_min = 0.0; ui_max = 1.0;
 > = float4(0.0, 0.0, 0.0, 0.0);
 
+uniform bool _NormalizeInput <
+    ui_label = "Normalize Color Input";
+    ui_type = "radio";
+> = false;
+
 texture2D _RenderColor : COLOR;
 
 sampler2D _SampleColor
@@ -76,21 +81,31 @@ void ContourVS(in uint ID : SV_VertexID, inout float4 Position : SV_POSITION, in
 void ContourPS(float4 Position : SV_POSITION, float4 Offset[2] : TEXCOORD0, out float3 OutputColor0 : SV_Target0)
 {
     // Color samples
-    float3 Image[4];
-    Image[0] = tex2D(_SampleColor, Offset[0].xy).rgb;
-    Image[1] = tex2D(_SampleColor, Offset[0].zw).rgb;
-    Image[2] = tex2D(_SampleColor, Offset[1].xy).rgb;
-    Image[3] = tex2D(_SampleColor, Offset[1].zw).rgb;
+    float3 SampledColor[4];
+    SampledColor[0] = tex2D(_SampleColor, Offset[0].xy).rgb;
+    SampledColor[1] = tex2D(_SampleColor, Offset[0].zw).rgb;
+    SampledColor[2] = tex2D(_SampleColor, Offset[1].xy).rgb;
+    SampledColor[3] = tex2D(_SampleColor, Offset[1].zw).rgb;
+    float3 CrossA, CrossB;
 
     // Roberts cross operator
-    float3 CrossA = Image[1] - Image[0];
-    float3 CrossB = Image[3] - Image[2];
+    if(_NormalizeInput)
+    {
+        CrossA = normalize(SampledColor[1]) - normalize(SampledColor[0]);
+        CrossB = normalize(SampledColor[3]) - normalize(SampledColor[2]);
+    }
+    else
+    {
+        CrossA = SampledColor[1] - SampledColor[0];
+        CrossB = SampledColor[3] - SampledColor[2];
+    }
+
     float Cross = sqrt(dot(CrossA, CrossA) + dot(CrossB, CrossB));
 
     // Thresholding
     float Edge = Cross * _ColorSensitivity;
     Edge = saturate((Edge - _Threshold) * _InvRange);
-    float3 ColorBackground = lerp(Image[0], _BackColor.rgb, _BackColor.a);
+    float3 ColorBackground = lerp(SampledColor[0], _BackColor.rgb, _BackColor.a);
     OutputColor0 = lerp(ColorBackground, _FrontColor.rgb, Edge * _FrontColor.a);
 }
 
