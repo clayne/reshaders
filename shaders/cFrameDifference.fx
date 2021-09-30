@@ -20,6 +20,11 @@ uniform float _Scale <
     ui_max = 2.0;
 > = 1.0;
 
+uniform bool _NormalizeInput <
+    ui_type = "radio";
+    ui_label = "Scaling";
+> = false;
+
 texture2D _RenderColor : COLOR;
 
 sampler2D _SampleColor
@@ -87,7 +92,7 @@ void DifferencePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, ou
     const float Weight = _Weight * 1e-2;
     float3 Current = tex2D(_SampleCurrent, TexCoord).rgb;
     float3 Previous = tex2D(_SamplePrevious, TexCoord).rgb;
-    OutputColor0.rgb = Current - Previous;
+    OutputColor0.rgb = (_NormalizeInput) ? normalize(Current) - normalize(Previous) : Current - Previous;
     OutputColor0.rgb *= rsqrt(dot(OutputColor0.rgb, OutputColor0.rgb) + Weight);
     OutputColor0.rgb = _Scale * dot(abs(OutputColor0.rgb), 1.0 / 3.0);
     OutputColor0.a = _Blend;
@@ -95,7 +100,7 @@ void DifferencePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, ou
 
 void OutputPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    OutputColor0 = tex2D(_SampleDifference, TexCoord).rrr;
+    OutputColor0 = tex2D(_SampleDifference, TexCoord).r;
 }
 
 void BlitPS1(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
