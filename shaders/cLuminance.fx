@@ -1,8 +1,8 @@
 
 
-uniform int uSelect <
+uniform int _Select <
     ui_type = "combo";
-    ui_items = "Average\0Sum\0Max3\0Filmic\0None\0";
+    ui_items = " Average\0 Sum\0 Max3\0 Filmic\0 None\0";
     ui_label = "Method";
     ui_tooltip = "Select Luminance";
 > = 0;
@@ -29,7 +29,7 @@ void PostProcessVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION
 void LuminancePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
     float4 Color = tex2D(_SampleColor, TexCoord);
-    [branch] switch(uSelect)
+    [branch] switch(_Select)
     {
         case 0:
             OutputColor0 = dot(Color.rgb, 1.0 / 3.0);
