@@ -22,7 +22,7 @@ uniform float _Scale <
 
 uniform bool _NormalizeInput <
     ui_type = "radio";
-    ui_label = "Scaling";
+    ui_label = "Normalize Input";
 > = false;
 
 texture2D _RenderColor : COLOR;

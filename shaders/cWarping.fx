@@ -234,7 +234,7 @@ void VerticalBlurVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITIO
 
 void DerivativesVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD0, inout float4 Offsets : TEXCOORD1)
 {
-    const float2 PixelSize = 1.0 / ISIZE;
+    const float2 PixelSize = 0.5 / ISIZE;
     const float4 PixelOffset = float4(PixelSize, -PixelSize);
     PostProcessVS(ID, Position, TexCoord);
     Offsets = TexCoord.xyxy + PixelOffset;
@@ -283,7 +283,7 @@ void VerticalBlurPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, 
     OutputColor0 = Blur1D(_SampleInfo1, TexCoord, Offsets).x;
 }
 
-void DeriviativesPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets : TEXCOORD1, out float2 OutputColor0 : SV_TARGET0, out float2 OutputColor1 : SV_TARGET1)
+void DeriviativesPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets : TEXCOORD1, out float2 OutputColor0 : SV_TARGET0, out float OutputColor1 : SV_TARGET1)
 {
     float2 Sample0 = tex2D(_SampleInfo0, Offsets.zy).xy; // (-x, +y)
     float2 Sample1 = tex2D(_SampleInfo0, Offsets.xy).xy; // (+x, +y)
@@ -297,7 +297,7 @@ void DeriviativesPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, 
     DerivativeY.zw = Sample1 - Sample3;
     OutputColor0.x = dot(DerivativeX, 0.25);
     OutputColor0.y = dot(DerivativeY, 0.25);
-    OutputColor1 = tex2D(_SampleInfo0, TexCoord).rg;
+    OutputColor1 = tex2D(_SampleInfo0, TexCoord).x;
 }
 
 void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)

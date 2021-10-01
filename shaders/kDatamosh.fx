@@ -117,7 +117,7 @@ uniform float _BlendFactor <
 #define LOG2(x)       (CONST_LOG2((BIT16_LOG2(x) >> 1) + 1))
 #define RMAX(x, y)     x ^ ((x ^ y) & -(x < y)) // max(x, y)
 
-#define DSIZE uint2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2)
+#define DSIZE uint2(BUFFER_WIDTH, BUFFER_HEIGHT)
 #define RSIZE LOG2(RMAX(DSIZE.x, DSIZE.y)) + 1
 
 texture2D _RenderColor : COLOR;
@@ -159,7 +159,6 @@ texture2D _RenderAccumulation
     Width = DSIZE.x;
     Height = DSIZE.y;
     Format = R16F;
-    MipLevels = RSIZE;
 };
 
 texture2D _RenderCopy
@@ -246,7 +245,7 @@ void ConvertPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out f
 
 void FilterPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float OutputColor0 : SV_TARGET0, out float2 ColorOutput1 : SV_TARGET1)
 {
-    const float2 PixelSize = 1.0 / tex2Dsize(_SamplePreviousBuffer, 0.0);
+    const float2 PixelSize = 0.5 / tex2Dsize(_SamplePreviousBuffer, 0.0);
     float2 Sample0 = tex2D(_SamplePreviousBuffer, TexCoord + float2(-PixelSize.x, +PixelSize.y)).xy;
     float2 Sample1 = tex2D(_SamplePreviousBuffer, TexCoord + float2(+PixelSize.x, +PixelSize.y)).xy;
     float2 Sample2 = tex2D(_SamplePreviousBuffer, TexCoord + float2(-PixelSize.x, -PixelSize.y)).xy;
