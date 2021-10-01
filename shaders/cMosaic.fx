@@ -71,6 +71,7 @@ void BlitPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out floa
 void MosaicPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
     float2 FragCoord = TexCoord * float2(BUFFER_WIDTH, BUFFER_HEIGHT);
+    const float2 ScreenSize = float2(BUFFER_WIDTH, BUFFER_HEIGHT);
     float2 PixelSize = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
     float2 BlockCoord, MosaicCoord;
     float MaxRadius = max(_Radius.x, _Radius.y);

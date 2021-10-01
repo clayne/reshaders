@@ -118,8 +118,7 @@ v2fu UpsampleVS2(uint id : SV_VertexID) { return UpsampleVS(id, 2.0); }
 /*
     [ Pixel Shaders ]
     Thresholding - [https://github.com/keijiro/Kino] [MIT]
-    Tonemap      - [https://github.com/TheRealMJP/BakingLab] [MIT]
-    Noise        - [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare]
+    Tonemap - [https://github.com/TheRealMJP/BakingLab] [MIT]
 */
 
 float4 DownsamplePS(sampler2D Source, v2fd input)
@@ -225,7 +224,6 @@ float4 UpsamplePS2(v2fu input) : SV_Target { return UpsamplePS(_SampleBloom2, in
 
 void CompositePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    float Dither = frac(52.9829189 * frac(dot(Position.xy, float2(0.06711056, 0.00583715))));
     float4 Src = tex2D(_SampleBloom1, TexCoord);
     float Brightness = max(max(Src.r, Src.g), Src.b);
     Src = saturate(lerp(Brightness, Src.rgb, _Saturation));
@@ -233,7 +231,7 @@ void CompositePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out
     Src = mul(ACESInputMat, Src.rgb);
     Src = RRTAndODTFit(Src.rgb);
     Src = saturate(mul(ACESOutputMat, Src.rgb));
-    OutputColor0 = Src + Dither * (1.0 / 255);
+    OutputColor0 = Src;
 }
 
 /* [ TECHNIQUE ] */

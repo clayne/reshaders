@@ -51,6 +51,13 @@ uniform float4 _BackColor <
     ui_min = 0.0; ui_max = 1.0;
 > = float4(0.0, 0.0, 0.0, 0.0);
 
+uniform int _Select <
+    ui_type = "combo";
+    ui_items = " Fwidth\0 Laplacian\0 Sobel\0 Prewitt\0 Robert\0 Scharr\0 Kayyali\0 Kroon\0 None\0";
+    ui_label = "Method";
+    ui_tooltip = "Select Edge Detection";
+> = 0;
+
 uniform bool _NormalizeInput <
     ui_label = "Normalize Color Input";
     ui_type = "radio";
@@ -64,48 +71,128 @@ sampler2D _SampleColor
     SRGBTexture = TRUE;
 };
 
-void ContourVS(in uint ID : SV_VertexID, inout float4 Position : SV_POSITION, inout float4 Offset[2] : TEXCOORD)
+void PostProcessVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD0)
 {
-    float2 TexCoord;
     TexCoord.x = (ID == 2) ? 2.0 : 0.0;
     TexCoord.y = (ID == 1) ? 2.0 : 0.0;
     Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
-
-    float2 ts = 1.0 / float2(BUFFER_WIDTH, BUFFER_HEIGHT);
-    Offset[0].xy = TexCoord;
-    Offset[0].zw = TexCoord + ts.xy;
-    Offset[1].xy = TexCoord + float2(ts.x, 0.0);
-    Offset[1].zw = TexCoord + float2(0.0, ts.y);
 }
 
-void ContourPS(float4 Position : SV_POSITION, float4 Offset[2] : TEXCOORD0, out float3 OutputColor0 : SV_Target0)
+void ContourVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float4 TexCoord[3] : TEXCOORD0)
 {
-    // Color samples
-    float3 SampledColor[4];
-    SampledColor[0] = tex2D(_SampleColor, Offset[0].xy).rgb;
-    SampledColor[1] = tex2D(_SampleColor, Offset[0].zw).rgb;
-    SampledColor[2] = tex2D(_SampleColor, Offset[1].xy).rgb;
-    SampledColor[3] = tex2D(_SampleColor, Offset[1].zw).rgb;
-    float3 CrossA, CrossB;
+    float2 TexCoord0;
+    PostProcessVS(ID, Position, TexCoord0);
+    const float2 PixelSize = 1.0 / float2(BUFFER_WIDTH, BUFFER_HEIGHT);
+    TexCoord[0] = TexCoord0.xyyy + float4(-PixelSize.x, +PixelSize.y, 0.0, -PixelSize.y);
+    TexCoord[1] = TexCoord0.xyyy + float4(0.0, +PixelSize.y, 0.0, -PixelSize.y);
+    TexCoord[2] = TexCoord0.xyyy + float4(+PixelSize.x, +PixelSize.y, 0.0, -PixelSize.y);
+}
 
-    // Roberts cross operator
-    if(_NormalizeInput)
-    {
-        CrossA = normalize(SampledColor[1]) - normalize(SampledColor[0]);
-        CrossB = normalize(SampledColor[3]) - normalize(SampledColor[2]);
-    }
-    else
-    {
-        CrossA = SampledColor[1] - SampledColor[0];
-        CrossB = SampledColor[3] - SampledColor[2];
-    }
+float Magnitude(float3 X, float3 Y)
+{
+    return sqrt(dot(X, X) + dot(Y, Y));
+}
 
-    float Cross = sqrt(dot(CrossA, CrossA) + dot(CrossB, CrossB));
+float3 NormalizeColor(float3 Color)
+{
+    float3 NColor = Color / dot(Color, 1.0);
+    float NBright = max(max(NColor.r, NColor.g), NColor.b);
+    return (_NormalizeInput) ? NColor / NBright : Color;
+}
+void ContourPS(float4 Position : SV_POSITION, float4 TexCoord[3] : TEXCOORD0, out float3 OutputColor0 : SV_TARGET0)
+{
+    /*
+        A0 B0 C0
+        A1 B1 C1
+        A2 B2 C2
+    */
+
+    float3 A0 = NormalizeColor(tex2D(_SampleColor, TexCoord[0].xy).rgb);
+    float3 A1 = NormalizeColor(tex2D(_SampleColor, TexCoord[0].xz).rgb);
+    float3 A2 = NormalizeColor(tex2D(_SampleColor, TexCoord[0].xw).rgb);
+
+    float3 B0 = NormalizeColor(tex2D(_SampleColor, TexCoord[1].xy).rgb);
+    float3 B1 = NormalizeColor(tex2D(_SampleColor, TexCoord[1].xz).rgb);
+    float3 B2 = NormalizeColor(tex2D(_SampleColor, TexCoord[1].xw).rgb);
+
+    float3 C0 = NormalizeColor(tex2D(_SampleColor, TexCoord[2].xy).rgb);
+    float3 C1 = NormalizeColor(tex2D(_SampleColor, TexCoord[2].xz).rgb);
+    float3 C2 = NormalizeColor(tex2D(_SampleColor, TexCoord[2].xw).rgb);
+
+    float3 _Ix, _Iy, Edge;
+
+    switch(_Select)
+    {
+        case 0: // fwidth()
+            _Ix = ddx(B1);
+            _Iy = ddy(B1);
+            Edge = Magnitude(_Ix, _Iy);
+            break;
+        case 1: // Laplacian
+            Edge = (A1 + C1 + B0 + B2) + (B1 * -4.0);
+            Edge = length(Edge) / sqrt(3.0);
+            break;
+        case 2: // Sobel
+            _Ix = (-A0 + ((-A1 * 2.0) - A2)) + (C0 + (C1 * 2.0) + C2);
+            _Iy = (-A0 + ((-B0 * 2.0) - C0)) + (A2 + (B2 * 2.0) + C2);
+            Edge = Magnitude(_Ix, _Iy);
+            break;
+        case 3: // Prewitt
+            _Ix = (-A0 - A1 - A2) + (C0 + C1 + C2);
+            _Iy = (-A0 - B0 - C0) + (A2 + B2 + C2);
+            Edge = Magnitude(_Ix, _Iy);
+            break;
+        case 4: // Robert's Cross
+            _Ix = C0 - B1;
+            _Iy = B0 - C1;
+            Edge = Magnitude(_Ix, _Iy);
+            break;
+        case 5: // Scharr
+            _Ix += A0 * -3.0;
+            _Ix += A1 * -10.0;
+            _Ix += A2 * -3.0;
+            _Ix += C0 * 3.0;
+            _Ix += C1 * 10.0;
+            _Ix += C2 * 3.0;
+
+            _Iy += A0 * 3.0;
+            _Iy += B0 * 10.0;
+            _Iy += C0 * 3.0;
+            _Iy += A2 * -3.0;
+            _Iy += B2 * -10.0;
+            _Iy += C2 * -3.0;
+            Edge = Magnitude(_Ix, _Iy);
+            break;
+        case 6: // Kayyali
+            float3 Cross = (A0 * 6.0) + (C0 * -6.0) + (A2 * -6.0) + (C2 * 6.0);
+            Edge = Magnitude(Cross, -Cross);
+            break;
+        case 7: // Kroon
+            _Ix += A0 * -17.0;
+            _Ix += A1 * -61.0;
+            _Ix += A2 * -17.0;
+            _Ix += C0 * 17.0;
+            _Ix += C1 * 61.0;
+            _Ix += C2 * 17.0;
+
+            _Iy += A0 * 17.0;
+            _Iy += B0 * 61.0;
+            _Iy += C0 * 17.0;
+            _Iy += A2 * -17.0;
+            _Iy += B2 * -61.0;
+            _Iy += C2 * -17.0;
+            Edge = Magnitude(_Ix, _Iy);
+            break;
+        default:
+            Edge = tex2D(_SampleColor, TexCoord[1].xz).rgb;
+            break;
+    }
 
     // Thresholding
-    float Edge = Cross * _ColorSensitivity;
+    Edge = Edge * _ColorSensitivity;
     Edge = saturate((Edge - _Threshold) * _InvRange);
-    float3 ColorBackground = lerp(SampledColor[0], _BackColor.rgb, _BackColor.a);
+    float3 Base = tex2D(_SampleColor, TexCoord[1].xz).rgb;
+    float3 ColorBackground = lerp(Base, _BackColor.rgb, _BackColor.a);
     OutputColor0 = lerp(ColorBackground, _FrontColor.rgb, Edge * _FrontColor.a);
 }
 
