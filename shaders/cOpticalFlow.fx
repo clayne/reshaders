@@ -3,6 +3,7 @@ uniform float _Constraint <
     ui_type = "drag";
     ui_label = "Constraint";
     ui_tooltip = "Higher = Smoother flow";
+    ui_min = 0.0;
 > = 1.0;
 
 uniform float _Blend <
@@ -16,6 +17,7 @@ uniform float _Detail <
     ui_type = "drag";
     ui_label = "Mipmap Bias";
     ui_tooltip = "Higher = Less spatial noise";
+    ui_min = 0.0;
 > = 0.0;
 
 #define CONST_LOG2(x) (\
