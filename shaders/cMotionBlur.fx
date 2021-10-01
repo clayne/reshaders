@@ -247,13 +247,18 @@ void VerticalBlurPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, 
 
 void DeriviativesPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets : TEXCOORD1, out float2 OutputColor0 : SV_TARGET0, out float2 OutputColor1 : SV_TARGET1)
 {
-	float4 Sample0;
-    Sample0.x = tex2D(_SampleInfo0, Offsets.zy).x; // (-x, +y)
-    Sample0.y = tex2D(_SampleInfo0, Offsets.xy).x; // (+x, +y)
-    Sample0.z = tex2D(_SampleInfo0, Offsets.zw).x; // (-x, -y)
-    Sample0.w = tex2D(_SampleInfo0, Offsets.xw).x; // (+x, -y)
-    OutputColor0.x = dot(Sample0, float4( 6.0, -6.0, -6.0,  6.0));
-    OutputColor0.y = dot(Sample0, float4(-6.0,  6.0,  6.0, -6.0));
+    float2 Sample0 = tex2D(_SampleInfo0, Offsets.zy).xy; // (-x, +y)
+    float2 Sample1 = tex2D(_SampleInfo0, Offsets.xy).xy; // (+x, +y)
+    float2 Sample2 = tex2D(_SampleInfo0, Offsets.zw).xy; // (-x, -y)
+    float2 Sample3 = tex2D(_SampleInfo0, Offsets.xw).xy; // (+x, -y)
+    float4 DerivativeX;
+    DerivativeX.xy = Sample1 - Sample0;
+    DerivativeX.zw = Sample3 - Sample2;
+    float4 DerivativeY;
+    DerivativeY.xy = Sample0 - Sample2;
+    DerivativeY.zw = Sample1 - Sample3;
+    OutputColor0.x = dot(DerivativeX, 0.25);
+    OutputColor0.y = dot(DerivativeY, 0.25);
     OutputColor1 = tex2D(_SampleInfo0, TexCoord).rg;
 }
 
