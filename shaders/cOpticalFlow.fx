@@ -104,12 +104,14 @@ void PostProcessVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION
     Position = TexCoord.xyxy * float4(2.0, -2.0, 0.0, 0.0) + float4(-1.0, 1.0, 0.0, 1.0);
 }
 
-void DerivativesVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD0, inout float4 Offsets : TEXCOORD1)
+void DerivativesVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float4 TexCoord[3] : TEXCOORD0)
 {
-    const float2 PixelSize = 0.5 / _SIZE;
-    const float4 PixelOffset = float4(PixelSize, -PixelSize);
-    PostProcessVS(ID, Position, TexCoord);
-    Offsets = TexCoord.xyxy + PixelOffset;
+    float2 TexCoord0;
+    PostProcessVS(ID, Position, TexCoord0);
+    const float2 PixelSize = 1.0 / _SIZE;
+    TexCoord[0] = TexCoord0.xyyy + float4(-PixelSize.x, +PixelSize.y, 0.0, -PixelSize.y);
+    TexCoord[1] = TexCoord0.xyyy + float4(0.0, +PixelSize.y, 0.0, -PixelSize.y);
+    TexCoord[2] = TexCoord0.xyyy + float4(+PixelSize.x, +PixelSize.y, 0.0, -PixelSize.y);
 }
 
 /* [Pixel Shaders] */
@@ -122,33 +124,39 @@ void BlitPS0(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out flo
     OutputColor0 = dot(Color, 1.0 / 3.0);
 }
 
-void DerivativesPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets : TEXCOORD1, out float2 OutputColor0 : SV_TARGET0)
+void DerivativesPS(float4 Position : SV_POSITION, float4 TexCoord[3] : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0)
 {
-    float2 Sample0; // (-x, +y)
-    Sample0.x = tex2D(_SampleCurrent, Offsets.zy).x;
-    Sample0.y = tex2D(_SamplePrevious, Offsets.zy).x;
-    float2 Sample1; // (+x, +y)
-    Sample1.x = tex2D(_SampleCurrent, Offsets.xy).x;
-    Sample1.y = tex2D(_SamplePrevious, Offsets.xy).x;
-    float2 Sample2; // (-x, -y)
-    Sample2.x = tex2D(_SampleCurrent, Offsets.zw).x;
-    Sample2.y = tex2D(_SamplePrevious, Offsets.zw).x;
-    float2 Sample3; // (+x, -y)
-    Sample3.x = tex2D(_SampleCurrent, Offsets.xw).x;
-    Sample3.y = tex2D(_SamplePrevious, Offsets.xw).x;
-    float4 DerivativeX;
-    DerivativeX.xy = Sample1 - Sample0;
-    DerivativeX.zw = Sample3 - Sample2;
-    float4 DerivativeY;
-    DerivativeY.xy = Sample0 - Sample2;
-    DerivativeY.zw = Sample1 - Sample3;
-    OutputColor0.x = dot(DerivativeX, 0.25);
-    OutputColor0.y = dot(DerivativeY, 0.25);
+    float A0 = tex2D(_SampleCurrent, TexCoord[0].xy).x;
+    float A1 = tex2D(_SampleCurrent, TexCoord[0].xz).x;
+    float A2 = tex2D(_SampleCurrent, TexCoord[0].xw).x;
+
+    float B0 = tex2D(_SampleCurrent, TexCoord[1].xy).x;
+    float B1 = tex2D(_SampleCurrent, TexCoord[1].xz).x;
+    float B2 = tex2D(_SampleCurrent, TexCoord[1].xw).x;
+
+    float C0 = tex2D(_SampleCurrent, TexCoord[2].xy).x;
+    float C1 = tex2D(_SampleCurrent, TexCoord[2].xz).x;
+    float C2 = tex2D(_SampleCurrent, TexCoord[2].xw).x;
+
+    OutputColor0 = 0.0;
+    OutputColor0.x += A0 * -3.0;
+    OutputColor0.x += A1 * -10.0;
+    OutputColor0.x += A2 * -3.0;
+    OutputColor0.x += C0 * 3.0;
+    OutputColor0.x += C1 * 10.0;
+    OutputColor0.x += C2 * 3.0;
+
+    OutputColor0.y += A0 * 3.0;
+    OutputColor0.y += B0 * 10.0;
+    OutputColor0.y += C0 * 3.0;
+    OutputColor0.y += A2 * -3.0;
+    OutputColor0.y += B2 * -10.0;
+    OutputColor0.y += C2 * -3.0;
 }
 
 void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    const int PyramidLevels = ceil(_MIPS) - 1;
+    const float PyramidLevels = (ceil(_MIPS) - 1) - 0.5;
     const float Lamdba = max(4.0 * pow(_Constraint * 1e-3, 2.0), 1e-10);
     float2 Flow = 0.0;
 

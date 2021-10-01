@@ -245,7 +245,7 @@ void VerticalBlurPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, 
     OutputColor0 = Blur1D(_SampleInfo1, TexCoord, Offsets).x;
 }
 
-void DeriviativesPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets : TEXCOORD1, out float2 OutputColor0 : SV_TARGET0, out float2 OutputColor1 : SV_TARGET1)
+void DerivativesPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets : TEXCOORD1, out float2 OutputColor0 : SV_TARGET0, out float2 OutputColor1 : SV_TARGET1)
 {
     float2 Sample0 = tex2D(_SampleInfo0, Offsets.zy).xy; // (-x, +y)
     float2 Sample1 = tex2D(_SampleInfo0, Offsets.xy).xy; // (+x, +y)
@@ -264,11 +264,11 @@ void DeriviativesPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, 
 
 void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    const int PyramidLevels = ceil(log2(ISIZE));
+    const float PyramidLevels = ceil(log2(ISIZE)) - 0.5;
     const float Lamdba = max(4.0 * pow(_Constraint * 1e-3, 2.0), 1e-10);
     float2 Flow = 0.0;
 
-    for(int i = PyramidLevels; i >= 0; i--)
+    for(float i = PyramidLevels; i >= 0; i--)
     {
         float4 CalculateUV = float4(TexCoord, 0.0, i);
         float2 Frame = tex2Dlod(_SampleInfo0, CalculateUV).xy;
@@ -342,7 +342,7 @@ technique cMotionBlur
     pass
     {
         VertexShader = DerivativesVS;
-        PixelShader = DeriviativesPS;
+        PixelShader = DerivativesPS;
         RenderTarget0 = _RenderDerivatives_MotionBlur;
         RenderTarget1 = _RenderInfo1_MotionBlur;
     }

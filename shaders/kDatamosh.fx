@@ -274,7 +274,7 @@ void FilterPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out fl
 void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
     const float Lambda = max(4.0 * pow(_Constraint * 1e-2, 2.0), 1e-10);
-    const int PyramidLevels = RSIZE - 1;
+    const float PyramidLevels = (RSIZE - 1) - 0.5;
     float2 Flow = 0.0;
 
     for(float i = PyramidLevels; i >= 0; i--)
