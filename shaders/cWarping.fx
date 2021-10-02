@@ -15,26 +15,26 @@ uniform float _Scale <
     ui_type = "drag";
     ui_label = "Flow Scale";
     ui_tooltip = "Higher = More motion blur";
-> = 1.0;
+> = 4.0;
 
 uniform float _Constraint <
     ui_type = "drag";
     ui_label = "Constraint";
     ui_tooltip = "Higher = Smoother flow";
-> = 1.0;
+> = 0.0;
 
 uniform float _Blend <
     ui_type = "drag";
     ui_label = "Temporal Blending";
     ui_tooltip = "Higher = Less temporal noise";
     ui_max = 0.5;
-> = 0.25;
+> = 0.9;
 
 uniform float _Detail <
     ui_type = "drag";
     ui_label = "Mipmap Bias";
     ui_tooltip = "Higher = Less spatial noise";
-> = 4.5;
+> = 0.0;
 
 uniform float _Average <
     ui_type = "drag";
@@ -82,7 +82,7 @@ texture2D _RenderBuffer
     MipLevels = RSIZE;
 };
 
-texture2D _RenderInfo0_Warping
+texture2D _RenderData0_Warping
 {
     Width = ISIZE;
     Height = ISIZE;
@@ -90,22 +90,7 @@ texture2D _RenderInfo0_Warping
     MipLevels = 8;
 };
 
-texture2D _RenderInfo1_Warping
-{
-    Width = ISIZE;
-    Height = ISIZE;
-    Format = R16F;
-};
-
-texture2D _RenderDerivatives_Warping
-{
-    Width = ISIZE;
-    Height = ISIZE;
-    Format = RG16F;
-    MipLevels = 8;
-};
-
-texture2D _RenderOpticalFlow_Warping
+texture2D _RenderData1_Warping
 {
     Width = ISIZE;
     Height = ISIZE;
@@ -114,6 +99,20 @@ texture2D _RenderOpticalFlow_Warping
 };
 
 texture2D _RenderCopy_Warping
+{
+    Width = ISIZE;
+    Height = ISIZE;
+    Format = R16F;
+};
+
+texture2D _RenderOpticalFlow_Warping
+{
+    Width = ISIZE;
+    Height = ISIZE;
+    Format = RG16F;
+};
+
+texture2D _RenderFrame_Warping
 {
     Width = BUFFER_WIDTH;
     Height = BUFFER_HEIGHT;
@@ -134,23 +133,23 @@ sampler2D _SampleBuffer
     AddressV = MIRROR;
 };
 
-sampler2D _SampleInfo0
+sampler2D _SampleData0
 {
-    Texture = _RenderInfo0_Warping;
+    Texture = _RenderData0_Warping;
     AddressU = MIRROR;
     AddressV = MIRROR;
 };
 
-sampler2D _SampleInfo1
+sampler2D _SampleData1
 {
-    Texture = _RenderInfo1_Warping;
+    Texture = _RenderData1_Warping;
     AddressU = MIRROR;
     AddressV = MIRROR;
 };
 
-sampler2D _SampleDerivatives
+sampler2D _SampleCopy
 {
-    Texture = _RenderDerivatives_Warping;
+    Texture = _RenderCopy_Warping;
     AddressU = MIRROR;
     AddressV = MIRROR;
 };
@@ -162,9 +161,9 @@ sampler2D _SampleOpticalFlow
     AddressV = MIRROR;
 };
 
-sampler2D _SampleCopy
+sampler2D _SampleFrame
 {
-    Texture = _RenderCopy_Warping;
+    Texture = _RenderFrame_Warping;
     SRGBTexture = TRUE;
     AddressU = MIRROR;
     AddressV = MIRROR;
@@ -234,7 +233,7 @@ void VerticalBlurVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITIO
 
 void DerivativesVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD0, inout float4 Offsets : TEXCOORD1)
 {
-    const float2 PixelSize = 0.5 / ISIZE;
+    const float2 PixelSize = 1.0 / ISIZE;
     const float4 PixelOffset = float4(PixelSize, -PixelSize);
     PostProcessVS(ID, Position, TexCoord);
     Offsets = TexCoord.xyxy + PixelOffset;
@@ -270,25 +269,25 @@ void NormalizePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out
 void BlitPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0)
 {
     OutputColor0.x = tex2D(_SampleBuffer, TexCoord).x;
-    OutputColor0.y = tex2D(_SampleInfo1, TexCoord).x;
+    OutputColor0.y = tex2D(_SampleCopy, TexCoord).x;
 }
 
 void HorizontalBlurPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets[7] : TEXCOORD1, out float OutputColor0 : SV_TARGET0)
 {
-    OutputColor0 = Blur1D(_SampleInfo0, TexCoord, Offsets).x;
+    OutputColor0 = Blur1D(_SampleData0, TexCoord, Offsets).x;
 }
 
 void VerticalBlurPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets[7] : TEXCOORD1, out float2 OutputColor0 : SV_TARGET0)
 {
-    OutputColor0 = Blur1D(_SampleInfo1, TexCoord, Offsets).x;
+    OutputColor0 = Blur1D(_SampleData1, TexCoord, Offsets).x;
 }
 
-void DeriviativesPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets : TEXCOORD1, out float2 OutputColor0 : SV_TARGET0, out float OutputColor1 : SV_TARGET1)
+void DerivativesPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets : TEXCOORD1, out float2 OutputColor0 : SV_TARGET0, out float2 OutputColor1 : SV_TARGET1)
 {
-    float2 Sample0 = tex2D(_SampleInfo0, Offsets.zy).xy; // (-x, +y)
-    float2 Sample1 = tex2D(_SampleInfo0, Offsets.xy).xy; // (+x, +y)
-    float2 Sample2 = tex2D(_SampleInfo0, Offsets.zw).xy; // (-x, -y)
-    float2 Sample3 = tex2D(_SampleInfo0, Offsets.xw).xy; // (+x, -y)
+    float2 Sample0 = tex2D(_SampleData0, Offsets.zy).xy; // (-x, +y)
+    float2 Sample1 = tex2D(_SampleData0, Offsets.xy).xy; // (+x, +y)
+    float2 Sample2 = tex2D(_SampleData0, Offsets.zw).xy; // (-x, -y)
+    float2 Sample3 = tex2D(_SampleData0, Offsets.xw).xy; // (+x, -y)
     float4 DerivativeX;
     DerivativeX.xy = Sample1 - Sample0;
     DerivativeX.zw = Sample3 - Sample2;
@@ -297,7 +296,7 @@ void DeriviativesPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, 
     DerivativeY.zw = Sample1 - Sample3;
     OutputColor0.x = dot(DerivativeX, 0.25);
     OutputColor0.y = dot(DerivativeY, 0.25);
-    OutputColor1 = tex2D(_SampleInfo0, TexCoord).x;
+    OutputColor1 = tex2D(_SampleData0, TexCoord).x;
 }
 
 void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
@@ -309,9 +308,9 @@ void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, o
     for(float i = PyramidLevels; i >= 0; i--)
     {
         float4 CalculateUV = float4(TexCoord, 0.0, i);
-        float2 Frame = tex2Dlod(_SampleInfo0, CalculateUV).xy;
+        float2 Frame = tex2Dlod(_SampleData0, CalculateUV).xy;
         float3 Derivatives;
-        Derivatives.xy = tex2Dlod(_SampleDerivatives, CalculateUV).xy;
+        Derivatives.xy = tex2Dlod(_SampleData1, CalculateUV).xy;
         Derivatives.z = Frame.x - Frame.y;
 
         float Linear = dot(Derivatives.xy, Flow) + Derivatives.z;
@@ -320,6 +319,16 @@ void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, o
     }
 
     OutputColor0 = float4(Flow.xy * _Scale, 0.0, _Blend);
+}
+
+void PPHorizontalBlurPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets[7] : TEXCOORD1, out float2 OutputColor0 : SV_TARGET0)
+{
+    OutputColor0 = Blur1D(_SampleOpticalFlow, TexCoord, Offsets).xy;
+}
+
+void PPVerticalBlurPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets[7] : TEXCOORD1, out float2 OutputColor0 : SV_TARGET0)
+{
+    OutputColor0 = Blur1D(_SampleData0, TexCoord, Offsets).xy;
 }
 
 float RandomNoise(float2 uv)
@@ -332,10 +341,10 @@ void WarpPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out floa
 {
     const float AspectRatio = BUFFER_WIDTH / BUFFER_HEIGHT;
     const float2 PixelSize = rcp(ISIZE) * AspectRatio;
-    float2 pFlow = tex2Dlod(_SampleOpticalFlow, float4(TexCoord, 0.0, _Detail)).xy;
+    float2 pFlow = tex2Dlod(_SampleData1, float4(TexCoord, 0.0, _Detail)).xy;
     pFlow = (_Noise) ? pFlow * RandomNoise(Position.xy + pFlow) : pFlow;
     float4 ForwardCompensation = tex2D(_SampleColor, TexCoord + pFlow * PixelSize);
-    float4 BackwardCompensation = tex2D(_SampleCopy, TexCoord - pFlow * PixelSize);
+    float4 BackwardCompensation = tex2D(_SampleFrame, TexCoord - pFlow * PixelSize);
     OutputColor0 = lerp(ForwardCompensation, BackwardCompensation, _Average);
 }
 
@@ -357,30 +366,31 @@ technique cWarping
     {
         VertexShader = PostProcessVS;
         PixelShader = BlitPS;
-        RenderTarget0 = _RenderInfo0_Warping;
+        RenderTarget0 = _RenderData0_Warping;
     }
 
     pass
     {
         VertexShader = HorizontalBlurVS;
         PixelShader = HorizontalBlurPS;
-        RenderTarget0 = _RenderInfo1_Warping;
+        RenderTarget0 = _RenderData1_Warping;
+        RenderTargetWriteMask = 1;
     }
 
     pass
     {
         VertexShader = VerticalBlurVS;
         PixelShader = VerticalBlurPS;
-        RenderTarget0 = _RenderInfo0_Warping;
+        RenderTarget0 = _RenderData0_Warping;
         RenderTargetWriteMask = 1;
     }
 
     pass
     {
         VertexShader = DerivativesVS;
-        PixelShader = DeriviativesPS;
-        RenderTarget0 = _RenderDerivatives_Warping;
-        RenderTarget1 = _RenderInfo1_Warping;
+        PixelShader = DerivativesPS;
+        RenderTarget0 = _RenderData1_Warping;
+        RenderTarget1 = _RenderCopy_Warping;
     }
 
     pass
@@ -397,6 +407,20 @@ technique cWarping
 
     pass
     {
+        VertexShader = HorizontalBlurVS;
+        PixelShader = PPHorizontalBlurPS;
+        RenderTarget0 = _RenderData0_Warping;
+    }
+
+    pass
+    {
+        VertexShader = VerticalBlurVS;
+        PixelShader = PPVerticalBlurPS;
+        RenderTarget0 = _RenderData1_Warping;
+    }
+
+    pass
+    {
         VertexShader = PostProcessVS;
         PixelShader = WarpPS;
         SRGBWriteEnable = TRUE;
@@ -406,7 +430,7 @@ technique cWarping
     {
         VertexShader = PostProcessVS;
         PixelShader = CopyPS;
-        RenderTarget = _RenderCopy_Warping;
+        RenderTarget = _RenderFrame_Warping;
         SRGBWriteEnable = TRUE;
     }
 }
