@@ -188,23 +188,19 @@ float Gaussian1D(const int Position)
     return Output * exp(-0.5 * Position * Position / (Sigma * Sigma));
 }
 
-float2 OutputWeights(const float Index)
+float3 OutputWeights(const float Index)
 {
-    float2 Weights;
-    Weights[0] = Gaussian1D(Index);
-    Weights[1] = Gaussian1D(Index + 1.0);
-    return Weights;
+    float Weight0 = Gaussian1D(Index);
+    float Weight1 = Gaussian1D(Index + 1.0);
+    float LinearWeight = Weight0 + Weight1;
+    return float3(Weight0, Weight1, LinearWeight);
 }
 
 float2 OutputOffsets(const float Index)
 {
-    float2 Weights = OutputWeights(Index);
-    float WeightL = Weights[0] + Weights[1];
-    const float2 Offsets = float2(Index, Index + 1.0);
-    float2 Output;
-    Output[0] = dot(Offsets, Weights) / WeightL;
-    Output[1] = -Output[0]; // store negatives here
-    return Output;
+    float3 Weights = OutputWeights(Index);
+    float Offset = dot(float2(Index, Index + 1.0), Weights.xy) / Weights.z;
+    return float2(Offset, -Offset);
 }
 
 void HorizontalBlurVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD0, inout float4 Offsets[7] : TEXCOORD1)
@@ -248,11 +244,10 @@ float4 Blur1D(sampler2D Source, float2 TexCoord, float4 Offsets[7])
 
     [unroll] for(int i = 0; i < 7; i ++)
     {
-        const float2 Weights = OutputWeights(i * 2 + 1);
-        const float WeightL = Weights[0] + Weights[1];
-        Output += tex2D(Source, Offsets[i].xy) * WeightL;
-        Output += tex2D(Source, Offsets[i].zw) * WeightL;
-        Total += 2.0 * WeightL;
+        const float LinearWeight = OutputWeights(i * 2 + 1).z;
+        Output += tex2D(Source, Offsets[i].xy) * LinearWeight;
+        Output += tex2D(Source, Offsets[i].zw) * LinearWeight;
+        Total += 2.0 * LinearWeight;
     }
 
     return Output / Total;
