@@ -77,7 +77,7 @@ texture2D _RenderBuffer
     MipLevels = RSIZE;
 };
 
-texture2D _RenderData0_Interpolate
+texture2D _RenderData0
 {
     Width = ISIZE;
     Height = ISIZE;
@@ -85,7 +85,7 @@ texture2D _RenderData0_Interpolate
     MipLevels = 8;
 };
 
-texture2D _RenderData1_Interpolate
+texture2D _RenderData1
 {
     Width = ISIZE;
     Height = ISIZE;
@@ -130,14 +130,14 @@ sampler2D _SampleBuffer
 
 sampler2D _SampleData0
 {
-    Texture = _RenderData0_Interpolate;
+    Texture = _RenderData0;
     AddressU = MIRROR;
     AddressV = MIRROR;
 };
 
 sampler2D _SampleData1
 {
-    Texture = _RenderData1_Interpolate;
+    Texture = _RenderData1;
     AddressU = MIRROR;
     AddressV = MIRROR;
 };
@@ -372,14 +372,14 @@ technique cInterpolate
     {
         VertexShader = PostProcessVS;
         PixelShader = BlitPS;
-        RenderTarget0 = _RenderData0_Interpolate;
+        RenderTarget0 = _RenderData0;
     }
 
     pass
     {
         VertexShader = HorizontalBlurVS;
         PixelShader = HorizontalBlurPS;
-        RenderTarget0 = _RenderData1_Interpolate;
+        RenderTarget0 = _RenderData1;
         RenderTargetWriteMask = 1;
     }
 
@@ -387,7 +387,7 @@ technique cInterpolate
     {
         VertexShader = VerticalBlurVS;
         PixelShader = VerticalBlurPS;
-        RenderTarget0 = _RenderData0_Interpolate;
+        RenderTarget0 = _RenderData0;
         RenderTargetWriteMask = 1;
     }
 
@@ -395,7 +395,7 @@ technique cInterpolate
     {
         VertexShader = DerivativesVS;
         PixelShader = DerivativesPS;
-        RenderTarget0 = _RenderData1_Interpolate;
+        RenderTarget0 = _RenderData1;
         RenderTarget1 = _RenderCopy_Interpolate;
     }
 
@@ -415,14 +415,14 @@ technique cInterpolate
     {
         VertexShader = HorizontalBlurVS;
         PixelShader = PPHorizontalBlurPS;
-        RenderTarget0 = _RenderData0_Interpolate;
+        RenderTarget0 = _RenderData0;
     }
 
     pass
     {
         VertexShader = VerticalBlurVS;
         PixelShader = PPVerticalBlurPS;
-        RenderTarget0 = _RenderData1_Interpolate;
+        RenderTarget0 = _RenderData1;
     }
 
     pass

@@ -60,7 +60,7 @@ texture2D _RenderBuffer
     MipLevels = RSIZE;
 };
 
-texture2D _RenderData0_MotionBlur
+texture2D _RenderData0
 {
     Width = ISIZE;
     Height = ISIZE;
@@ -68,7 +68,7 @@ texture2D _RenderData0_MotionBlur
     MipLevels = 8;
 };
 
-texture2D _RenderData1_MotionBlur
+texture2D _RenderData1
 {
     Width = ISIZE;
     Height = ISIZE;
@@ -105,14 +105,14 @@ sampler2D _SampleBuffer
 
 sampler2D _SampleData0
 {
-    Texture = _RenderData0_MotionBlur;
+    Texture = _RenderData0;
     AddressU = MIRROR;
     AddressV = MIRROR;
 };
 
 sampler2D _SampleData1
 {
-    Texture = _RenderData1_MotionBlur;
+    Texture = _RenderData1;
     AddressU = MIRROR;
     AddressV = MIRROR;
 };
@@ -325,14 +325,14 @@ technique cMotionBlur
     {
         VertexShader = PostProcessVS;
         PixelShader = BlitPS;
-        RenderTarget0 = _RenderData0_MotionBlur;
+        RenderTarget0 = _RenderData0;
     }
 
     pass
     {
         VertexShader = HorizontalBlurVS;
         PixelShader = HorizontalBlurPS;
-        RenderTarget0 = _RenderData1_MotionBlur;
+        RenderTarget0 = _RenderData1;
         RenderTargetWriteMask = 1;
     }
 
@@ -340,7 +340,7 @@ technique cMotionBlur
     {
         VertexShader = VerticalBlurVS;
         PixelShader = VerticalBlurPS;
-        RenderTarget0 = _RenderData0_MotionBlur;
+        RenderTarget0 = _RenderData0;
         RenderTargetWriteMask = 1;
     }
 
@@ -348,7 +348,7 @@ technique cMotionBlur
     {
         VertexShader = DerivativesVS;
         PixelShader = DerivativesPS;
-        RenderTarget0 = _RenderData1_MotionBlur;
+        RenderTarget0 = _RenderData1;
         RenderTarget1 = _RenderCopy_MotionBlur;
     }
 
@@ -368,14 +368,14 @@ technique cMotionBlur
     {
         VertexShader = HorizontalBlurVS;
         PixelShader = PPHorizontalBlurPS;
-        RenderTarget0 = _RenderData0_MotionBlur;
+        RenderTarget0 = _RenderData0;
     }
 
     pass
     {
         VertexShader = VerticalBlurVS;
         PixelShader = PPVerticalBlurPS;
-        RenderTarget0 = _RenderData1_MotionBlur;
+        RenderTarget0 = _RenderData1;
     }
 
     pass
