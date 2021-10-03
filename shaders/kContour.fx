@@ -53,7 +53,7 @@ uniform float4 _BackColor <
 
 uniform int _Select <
     ui_type = "combo";
-    ui_items = " Fwidth\0 Laplacian\0 Sobel\0 Prewitt\0 Robert\0 Scharr\0 Kayyali\0 Kroon\0 None\0";
+    ui_items = " Fwidth\0 Laplacian\0 Sobel\0 Prewitt\0 Robert\0 Scharr\0 Kayyali\0 Kroon\0 FastSobel\0 None\0";
     ui_label = "Method";
     ui_tooltip = "Select Edge Detection";
 > = 0;
@@ -78,14 +78,17 @@ void PostProcessVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION
     Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
 
-void ContourVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float4 TexCoord[3] : TEXCOORD0)
+void ContourVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float4 TexCoord[4] : TEXCOORD0)
 {
     float2 TexCoord0;
     PostProcessVS(ID, Position, TexCoord0);
     const float2 PixelSize = 1.0 / float2(BUFFER_WIDTH, BUFFER_HEIGHT);
+    const float2 PixelSize1 = 0.5 / float2(BUFFER_WIDTH, BUFFER_HEIGHT);
+    const float4 PixelOffset = float4(PixelSize1, -PixelSize1);
     TexCoord[0] = TexCoord0.xyyy + float4(-PixelSize.x, +PixelSize.y, 0.0, -PixelSize.y);
     TexCoord[1] = TexCoord0.xyyy + float4(0.0, +PixelSize.y, 0.0, -PixelSize.y);
     TexCoord[2] = TexCoord0.xyyy + float4(+PixelSize.x, +PixelSize.y, 0.0, -PixelSize.y);
+    TexCoord[3] = TexCoord0.xyxy + PixelOffset;
 }
 
 float Magnitude(float3 X, float3 Y)
@@ -99,7 +102,7 @@ float3 NormalizeColor(float3 Color)
     float NBright = max(max(NColor.r, NColor.g), NColor.b);
     return (_NormalizeInput) ? NColor / NBright : Color;
 }
-void ContourPS(float4 Position : SV_POSITION, float4 TexCoord[3] : TEXCOORD0, out float3 OutputColor0 : SV_TARGET0)
+void ContourPS(float4 Position : SV_POSITION, float4 TexCoord[4] : TEXCOORD0, out float3 OutputColor0 : SV_TARGET0)
 {
     /*
         A0 B0 C0
@@ -183,6 +186,15 @@ void ContourPS(float4 Position : SV_POSITION, float4 TexCoord[3] : TEXCOORD0, ou
             _Iy += C2 * -17.0;
             Edge = Magnitude(_Ix, _Iy);
             break;
+        case 8: // FastSobel
+			float3 Sample0 = NormalizeColor(tex2D(_SampleColor, TexCoord[3].zy).rgb) * 2.0; // (-x, +y)
+			float3 Sample1 = NormalizeColor(tex2D(_SampleColor, TexCoord[3].xy).rgb) * 2.0; // (+x, +y)
+			float3 Sample2 = NormalizeColor(tex2D(_SampleColor, TexCoord[3].zw).rgb) * 2.0; // (-x, -y)
+			float3 Sample3 = NormalizeColor(tex2D(_SampleColor, TexCoord[3].xw).rgb) * 2.0; // (+x, -y)
+			float3 _ddx = -(Sample2 + Sample0) + (Sample3 + Sample1);
+			float3 _ddy = -(Sample2 + Sample3) + (Sample0 + Sample1);
+			Edge = Magnitude(_ddx, _ddy);
+			break;
         default:
             Edge = tex2D(_SampleColor, TexCoord[1].xz).rgb;
             break;

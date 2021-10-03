@@ -117,7 +117,7 @@ uniform float _BlendFactor <
 #define LOG2(x)       (CONST_LOG2((BIT16_LOG2(x) >> 1) + 1))
 #define RMAX(x, y)     x ^ ((x ^ y) & -(x < y)) // max(x, y)
 
-#define DSIZE uint2(BUFFER_WIDTH, BUFFER_HEIGHT)
+#define DSIZE uint2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2)
 #define RSIZE LOG2(RMAX(DSIZE.x, DSIZE.y)) + 1
 
 texture2D _RenderColor : COLOR;
@@ -230,6 +230,14 @@ void PostProcessVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION
     Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
 
+void DerivativesVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD0, inout float4 Offsets : TEXCOORD1)
+{
+    const float2 PixelSize = 0.5 / DSIZE;
+    const float4 PixelOffset = float4(PixelSize, -PixelSize);
+    PostProcessVS(ID, Position, TexCoord);
+    Offsets = TexCoord.xyxy + PixelOffset;
+}
+
 /* [Pixel Shaders ] */
 
 void ConvertPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0)
@@ -243,23 +251,18 @@ void ConvertPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out f
     OutputColor0.y = tex2D(_SampleCurrentBuffer, TexCoord).x;
 }
 
-void FilterPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float OutputColor0 : SV_TARGET0, out float2 ColorOutput1 : SV_TARGET1)
+void DerivativesPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets : TEXCOORD1, out float OutputColor0 : SV_TARGET0, out float2 OutputColor1 : SV_TARGET1)
 {
-    const float2 PixelSize = 0.5 / tex2Dsize(_SamplePreviousBuffer, 0.0);
-    float2 Sample0 = tex2D(_SamplePreviousBuffer, TexCoord + float2(-PixelSize.x, +PixelSize.y)).xy;
-    float2 Sample1 = tex2D(_SamplePreviousBuffer, TexCoord + float2(+PixelSize.x, +PixelSize.y)).xy;
-    float2 Sample2 = tex2D(_SamplePreviousBuffer, TexCoord + float2(-PixelSize.x, -PixelSize.y)).xy;
-    float2 Sample3 = tex2D(_SamplePreviousBuffer, TexCoord + float2(+PixelSize.x, -PixelSize.y)).xy;
-    float4 DerivativesX;
-    DerivativesX.xy = Sample1 - Sample0;
-    DerivativesX.zw = Sample3 - Sample2;
-    float4 DerivativesY;
-    DerivativesY.xy = Sample0 - Sample2;
-    DerivativesY.zw = Sample1 - Sample3;
-
+    float2 Sample0 = tex2D(_SamplePreviousBuffer, Offsets.zy).xy; // (-x, +y)
+    float2 Sample1 = tex2D(_SamplePreviousBuffer, Offsets.xy).xy; // (+x, +y)
+    float2 Sample2 = tex2D(_SamplePreviousBuffer, Offsets.zw).xy; // (-x, -y)
+    float2 Sample3 = tex2D(_SamplePreviousBuffer, Offsets.xw).xy; // (+x, -y)
+    float2 _ddx = -(Sample2 + Sample0) + (Sample3 + Sample1);
+    float2 _ddy = -(Sample2 + Sample3) + (Sample0 + Sample1);
+    OutputColor1.x = dot(_ddx, 1.0);
+    OutputColor1.y = dot(_ddy, 1.0);
+    OutputColor1 *= 0.25;
     OutputColor0 = tex2D(_SamplePreviousBuffer, TexCoord).x;
-    ColorOutput1.x = dot(DerivativesX, 0.25);
-    ColorOutput1.y = dot(DerivativesY, 0.25);
 }
 
 /*
@@ -393,8 +396,8 @@ technique KinoDatamosh
 
     pass
     {
-        VertexShader = PostProcessVS;
-        PixelShader = FilterPS;
+        VertexShader = DerivativesVS;
+        PixelShader = DerivativesPS;
         RenderTarget0 = _RenderCurrentBuffer;
         RenderTarget1 = _RenderDataMoshDerivatives;
     }

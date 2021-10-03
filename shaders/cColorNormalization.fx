@@ -30,7 +30,7 @@ void PostProcessVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION
 void NormalizationPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float3 OutputColor0 : SV_TARGET0)
 {
     float3 Color = tex2D(_SampleColor, TexCoord).rgb;
-    [branch] switch(_Select)
+    switch(_Select)
     {
         case 0:
             OutputColor0 = normalize(Color);

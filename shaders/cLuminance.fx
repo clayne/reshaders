@@ -29,7 +29,7 @@ void PostProcessVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION
 void LuminancePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
     float4 Color = tex2D(_SampleColor, TexCoord);
-    [branch] switch(_Select)
+    switch(_Select)
     {
         case 0:
             OutputColor0 = dot(Color.rgb, 1.0 / 3.0);

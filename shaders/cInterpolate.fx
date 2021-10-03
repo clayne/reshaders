@@ -37,12 +37,6 @@ uniform float _Average <
     ui_max = 1.0;
 > = 0.0;
 
-uniform bool _Debug <
-    ui_type = "radio";
-    ui_label = "Debug";
-    ui_tooltip = "Show optical flow results";
-> = false;
-
 uniform bool _Lerp <
     ui_type = "radio";
     ui_label = "Lerp interpolation";
@@ -224,7 +218,7 @@ void VerticalBlurVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITIO
 
 void DerivativesVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD0, inout float4 Offsets : TEXCOORD1)
 {
-    const float2 PixelSize = 1.0 / ISIZE;
+    const float2 PixelSize = 0.5 / ISIZE;
     const float4 PixelOffset = float4(PixelSize, -PixelSize);
     PostProcessVS(ID, Position, TexCoord);
     Offsets = TexCoord.xyxy + PixelOffset;
@@ -278,14 +272,11 @@ void DerivativesPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, f
     float2 Sample1 = tex2D(_SampleData0, Offsets.xy).xy; // (+x, +y)
     float2 Sample2 = tex2D(_SampleData0, Offsets.zw).xy; // (-x, -y)
     float2 Sample3 = tex2D(_SampleData0, Offsets.xw).xy; // (+x, -y)
-    float4 DerivativeX;
-    DerivativeX.xy = Sample1 - Sample0;
-    DerivativeX.zw = Sample3 - Sample2;
-    float4 DerivativeY;
-    DerivativeY.xy = Sample0 - Sample2;
-    DerivativeY.zw = Sample1 - Sample3;
-    OutputColor0.x = dot(DerivativeX, 0.25);
-    OutputColor0.y = dot(DerivativeY, 0.25);
+    float2 _ddx = -(Sample2 + Sample0) + (Sample3 + Sample1);
+    float2 _ddy = -(Sample2 + Sample3) + (Sample0 + Sample1);
+    OutputColor0.x = dot(_ddx, 1.0);
+    OutputColor0.y = dot(_ddy, 1.0);
+    OutputColor0 *= 0.25;
     OutputColor1 = tex2D(_SampleData0, TexCoord).x;
 }
 
@@ -350,8 +341,7 @@ void InterpolatePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, o
     }
 
     float4 Average = lerp(Reference, Source, _Average);
-    float4 Output = (_Lerp) ? lerp(FCompensation, BCompensation, Average) : Median3(FCompensation, BCompensation, Average);
-    OutputColor0 = (_Debug) ? float4(MotionVectors, 1.0, 1.0) : Output;
+    OutputColor0 = (_Lerp) ? lerp(FCompensation, BCompensation, Average) : Median3(FCompensation, BCompensation, Average);
 }
 
 void CopyPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
