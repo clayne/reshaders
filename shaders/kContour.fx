@@ -187,13 +187,13 @@ void ContourPS(float4 Position : SV_POSITION, float4 TexCoord[4] : TEXCOORD0, ou
             Edge = Magnitude(_Ix, _Iy);
             break;
         case 8: // FastSobel
-			float3 Sample0 = NormalizeColor(tex2D(_SampleColor, TexCoord[3].zy).rgb) * 2.0; // (-x, +y)
-			float3 Sample1 = NormalizeColor(tex2D(_SampleColor, TexCoord[3].xy).rgb) * 2.0; // (+x, +y)
-			float3 Sample2 = NormalizeColor(tex2D(_SampleColor, TexCoord[3].zw).rgb) * 2.0; // (-x, -y)
-			float3 Sample3 = NormalizeColor(tex2D(_SampleColor, TexCoord[3].xw).rgb) * 2.0; // (+x, -y)
+			float3 Sample0 = NormalizeColor(tex2D(_SampleColor, TexCoord[3].zy).rgb); // (-x, +y)
+			float3 Sample1 = NormalizeColor(tex2D(_SampleColor, TexCoord[3].xy).rgb); // (+x, +y)
+			float3 Sample2 = NormalizeColor(tex2D(_SampleColor, TexCoord[3].zw).rgb); // (-x, -y)
+			float3 Sample3 = NormalizeColor(tex2D(_SampleColor, TexCoord[3].xw).rgb); // (+x, -y)
 			float3 _ddx = -(Sample2 + Sample0) + (Sample3 + Sample1);
 			float3 _ddy = -(Sample2 + Sample3) + (Sample0 + Sample1);
-			Edge = Magnitude(_ddx, _ddy);
+			Edge = Magnitude(_ddx * 4.0, _ddy * 4.0);
 			break;
         default:
             Edge = tex2D(_SampleColor, TexCoord[1].xz).rgb;

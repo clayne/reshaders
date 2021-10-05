@@ -274,29 +274,28 @@ void DerivativesPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, f
     float2 Sample3 = tex2D(_SampleData0, Offsets.xw).xy; // (+x, -y)
     float2 _ddx = -(Sample2 + Sample0) + (Sample3 + Sample1);
     float2 _ddy = -(Sample2 + Sample3) + (Sample0 + Sample1);
-    OutputColor0.x = dot(_ddx, 1.0);
-    OutputColor0.y = dot(_ddy, 1.0);
-    OutputColor0 *= 0.25;
+    OutputColor0.x = dot(_ddx, 0.5);
+    OutputColor0.y = dot(_ddy, 0.5);
     OutputColor1 = tex2D(_SampleData0, TexCoord).x;
 }
 
 void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    const float PyramidLevels = ceil(log2(ISIZE)) - 0.5;
+    float Levels = ceil(log2(ISIZE)) - 0.5;
     const float Lamdba = max(4.0 * pow(_Constraint * 1e-3, 2.0), 1e-10);
     float2 Flow = 0.0;
 
-    for(float i = PyramidLevels; i >= 0; i--)
+    while(Levels >= 0.0)
     {
-        float4 CalculateUV = float4(TexCoord, 0.0, i);
+        float4 CalculateUV = float4(TexCoord, 0.0, Levels);
         float2 Frame = tex2Dlod(_SampleData0, CalculateUV).xy;
-        float3 Derivatives;
-        Derivatives.xy = tex2Dlod(_SampleData1, CalculateUV).xy;
-        Derivatives.z = Frame.x - Frame.y;
+        float2 _Ixy = tex2Dlod(_SampleData1, CalculateUV).xy;
+        float _It = Frame.x - Frame.y;
 
-        float Linear = dot(Derivatives.xy, Flow) + Derivatives.z;
-        float Smoothness = rcp(dot(Derivatives.xy, Derivatives.xy) + Lamdba);
-        Flow = Flow - ((Derivatives.xy * Linear) * Smoothness);
+        float Linear = dot(_Ixy, Flow) + _It;
+        float Smoothness = rcp(dot(_Ixy, _Ixy) + Lamdba);
+        Flow = Flow - ((_Ixy * Linear) * Smoothness);
+        Levels = Levels - 1.0;
     }
 
     OutputColor0 = float4(Flow.xy, 0.0, _Blend);

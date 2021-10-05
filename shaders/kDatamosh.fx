@@ -259,9 +259,8 @@ void DerivativesPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, f
     float2 Sample3 = tex2D(_SamplePreviousBuffer, Offsets.xw).xy; // (+x, -y)
     float2 _ddx = -(Sample2 + Sample0) + (Sample3 + Sample1);
     float2 _ddy = -(Sample2 + Sample3) + (Sample0 + Sample1);
-    OutputColor1.x = dot(_ddx, 1.0);
-    OutputColor1.y = dot(_ddy, 1.0);
-    OutputColor1 *= 0.25;
+    OutputColor1.x = dot(_ddx, 0.5);
+    OutputColor1.y = dot(_ddy, 0.5);
     OutputColor0 = tex2D(_SamplePreviousBuffer, TexCoord).x;
 }
 
@@ -277,21 +276,21 @@ void DerivativesPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, f
 void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
     const float Lambda = max(4.0 * pow(_Constraint * 1e-2, 2.0), 1e-10);
-    const float PyramidLevels = (RSIZE - 1) - 0.5;
+    float Levels = (RSIZE - 1) - 0.5;
     float2 Flow = 0.0;
 
-    for(float i = PyramidLevels; i >= 0; i--)
+    while(Levels >= 0)
     {
-        float4 CalculateUV = float4(TexCoord, 0.0, i);
+        float4 CalculateUV = float4(TexCoord, 0.0, Levels);
         float CurrentFrame = tex2Dlod(_SampleCurrentBuffer, CalculateUV).x;
         float PreviousFrame = tex2Dlod(_SamplePreviousBuffer, CalculateUV).y;
-        float3 Derivatives;
-        Derivatives.xy = tex2Dlod(_SampleDerivatives, CalculateUV).xy;
-        Derivatives.z = CurrentFrame - PreviousFrame;
+        float2 _Ixy = tex2Dlod(_SampleDerivatives, CalculateUV).xy;
+        float _It = CurrentFrame - PreviousFrame;
 
-        float Linear = dot(Derivatives.xy, Flow) + Derivatives.z;
-        float Smoothness = rcp(dot(Derivatives.xy, Derivatives.xy) + Lambda);
-        Flow = Flow - ((Derivatives.xy * Linear) * Smoothness);
+        float Linear = dot(_Ixy, Flow) + _It;
+        float Smoothness = rcp(dot(_Ixy, _Ixy) + Lambda);
+        Flow = Flow - ((_Ixy * Linear) * Smoothness);
+        Levels = Levels - 1.0;
     }
 
     OutputColor0 = float4(Flow.xy, 0.0, _BlendFactor);
