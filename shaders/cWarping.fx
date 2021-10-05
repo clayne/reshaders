@@ -309,7 +309,7 @@ void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, o
         Levels = Levels - 1.0;
     }
 
-    OutputColor0 = float4(Flow.xy, 0.0, _Blend);
+    OutputColor0 = float4(Flow.xy * _Scale, 0.0, _Blend);
 }
 
 void PPHorizontalBlurPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets[7] : TEXCOORD1, out float2 OutputColor0 : SV_TARGET0)
