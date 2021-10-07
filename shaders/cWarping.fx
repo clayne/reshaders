@@ -305,11 +305,11 @@ void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, o
 
         float Linear = dot(_Ixy, Flow) + _It;
         float Smoothness = rcp(dot(_Ixy, _Ixy) + Lamdba);
-        Flow = Flow - ((_Ixy * Linear) * Smoothness);
+        Flow -= ((_Ixy * Linear) * Smoothness);
         Levels = Levels - 1.0;
     }
 
-    OutputColor0 = float4(Flow.xy * _Scale, 0.0, _Blend);
+    OutputColor0 = float4(Flow.xy, 0.0, _Blend);
 }
 
 void PPHorizontalBlurPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets[7] : TEXCOORD1, out float2 OutputColor0 : SV_TARGET0)
@@ -332,7 +332,7 @@ void WarpPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out floa
 {
     const float AspectRatio = BUFFER_WIDTH / BUFFER_HEIGHT;
     const float2 PixelSize = rcp(ISIZE) * AspectRatio;
-    float2 pFlow = tex2Dlod(_SampleData1, float4(TexCoord, 0.0, _Detail)).xy;
+    float2 pFlow = tex2Dlod(_SampleData1, float4(TexCoord, 0.0, _Detail)).xy * _Scale;
     pFlow = (_Noise) ? pFlow * RandomNoise(Position.xy + pFlow) : pFlow;
     float4 ForwardCompensation = tex2D(_SampleColor, TexCoord + pFlow * PixelSize);
     float4 BackwardCompensation = tex2D(_SampleFrame, TexCoord - pFlow * PixelSize);

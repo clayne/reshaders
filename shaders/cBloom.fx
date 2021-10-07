@@ -50,70 +50,51 @@ sampler2D _SampleBloom8 { Texture = _RenderBloom8; };
     [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare] [MIT]
 */
 
-void PostProcessVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD0)
+#define VSINPUT in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION
+
+void PostProcessVS(VSINPUT, inout float2 TexCoord : TEXCOORD0)
 {
     TexCoord.x = (ID == 2) ? 2.0 : 0.0;
     TexCoord.y = (ID == 1) ? 2.0 : 0.0;
     Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
 
-struct v2fd
+void DownsampleVS(VSINPUT, inout float4 TexCoord[4] : TEXCOORD0, float Factor)
 {
-    float4 vpos : SV_Position;
-    float4 uOffset0 : TEXCOORD0; // Inner quad
-    float4 uOffset1 : TEXCOORD1; // Outer quad
-    float4 uOffset2 : TEXCOORD2; // Horizontal
-    float4 uOffset3 : TEXCOORD3; // Vertical
-};
-
-v2fd DownsampleVS(uint id, float uFact)
-{
-    v2fd output;
-    float2 coord;
-    PostProcessVS(id, output.vpos, coord);
-    const float2 psize = rcp(float2(BUFFER_WIDTH, BUFFER_HEIGHT) / exp2(uFact));
-    output.uOffset0 = coord.xyxy + float4(-1.0, -1.0, 1.0, 1.0) * psize.xyxy;
-    output.uOffset1 = coord.xyxy + float4(-2.0, -2.0, 2.0, 2.0) * psize.xyxy;
-    output.uOffset2 = coord.xxxy + float4(-2.0,  0.0, 2.0, 0.0) * psize.xxxy;
-    output.uOffset3 = coord.yyyx + float4(-2.0,  0.0, 2.0, 0.0) * psize.yyyx;
-    return output;
+    float2 TexCoord0;
+    PostProcessVS(ID, Position, TexCoord0);
+    const float2 pSize = rcp(float2(BUFFER_WIDTH, BUFFER_HEIGHT) / exp2(Factor));
+    TexCoord[0] = TexCoord0.xyxy + float4(-1.0, -1.0, 1.0, 1.0) * pSize.xyxy; // Quad
+    TexCoord[1] = TexCoord0.xyyy + float4(-2.0, 2.0, 0.0, -2.0) * pSize.xyyy; // Left column
+    TexCoord[2] = TexCoord0.xyyy + float4(0.0, 2.0, 0.0, -2.0) * pSize.xyyy; // Center column
+    TexCoord[3] = TexCoord0.xyyy + float4(2.0, 2.0, 0.0, -2.0) * pSize.xyyy; // Right column
 }
 
-struct v2fu
+void UpsampleVS(VSINPUT, inout float4 TexCoord[3] : TEXCOORD0, float Factor)
 {
-    float4 vpos : SV_Position;
-    float4 uOffset0 : TEXCOORD0; // Center taps
-    float4 uOffset1 : TEXCOORD1; // Verizontal Taps
-    float4 uOffset2 : TEXCOORD2; // Hortical Taps
-};
-
-v2fu UpsampleVS(uint id, float uFact)
-{
-    v2fu output;
-    float2 coord;
-    PostProcessVS(id, output.vpos, coord);
-    const float2 psize = rcp(float2(BUFFER_WIDTH, BUFFER_HEIGHT) / exp2(uFact));
-    output.uOffset0 = coord.xyxy + float4(-1.0, -1.0, 1.0, 1.0) * psize.xyxy;
-    output.uOffset1 = coord.xxxy + float4(-1.0,  0.0, 1.0, 0.0) * psize.xxxy;
-    output.uOffset2 = coord.yyyx + float4(-1.0,  0.0, 1.0, 0.0) * psize.yyyx;
-    return output;
+    float2 TexCoord0;
+    PostProcessVS(ID, Position, TexCoord0);
+    const float2 pSize = rcp(float2(BUFFER_WIDTH, BUFFER_HEIGHT) / exp2(Factor));
+    TexCoord[0] = TexCoord0.xyyy + float4(-1.0, 1.0, 0.0, -1.0) * pSize.xyyy; // Left column
+    TexCoord[1] = TexCoord0.xyyy + float4(0.0, 1.0, 0.0, -1.0) * pSize.xyyy; // Center column
+    TexCoord[2] = TexCoord0.xyyy + float4(1.0, 1.0, 0.0, -1.0) * pSize.xyyy; // Right column
 }
 
-v2fd DownsampleVS1(uint id : SV_VertexID) { return DownsampleVS(id, 1.0); }
-v2fd DownsampleVS2(uint id : SV_VertexID) { return DownsampleVS(id, 2.0); }
-v2fd DownsampleVS3(uint id : SV_VertexID) { return DownsampleVS(id, 3.0); }
-v2fd DownsampleVS4(uint id : SV_VertexID) { return DownsampleVS(id, 4.0); }
-v2fd DownsampleVS5(uint id : SV_VertexID) { return DownsampleVS(id, 5.0); }
-v2fd DownsampleVS6(uint id : SV_VertexID) { return DownsampleVS(id, 6.0); }
-v2fd DownsampleVS7(uint id : SV_VertexID) { return DownsampleVS(id, 7.0); }
+void DownsampleVS1(VSINPUT, inout float4 TexCoord[4] : TEXCOORD0) { DownsampleVS(ID, Position, TexCoord, 1.0); }
+void DownsampleVS2(VSINPUT, inout float4 TexCoord[4] : TEXCOORD0) { DownsampleVS(ID, Position, TexCoord, 2.0); }
+void DownsampleVS3(VSINPUT, inout float4 TexCoord[4] : TEXCOORD0) { DownsampleVS(ID, Position, TexCoord, 3.0); }
+void DownsampleVS4(VSINPUT, inout float4 TexCoord[4] : TEXCOORD0) { DownsampleVS(ID, Position, TexCoord, 4.0); }
+void DownsampleVS5(VSINPUT, inout float4 TexCoord[4] : TEXCOORD0) { DownsampleVS(ID, Position, TexCoord, 5.0); }
+void DownsampleVS6(VSINPUT, inout float4 TexCoord[4] : TEXCOORD0) { DownsampleVS(ID, Position, TexCoord, 6.0); }
+void DownsampleVS7(VSINPUT, inout float4 TexCoord[4] : TEXCOORD0) { DownsampleVS(ID, Position, TexCoord, 7.0); }
 
-v2fu UpsampleVS8(uint id : SV_VertexID) { return UpsampleVS(id, 8.0); }
-v2fu UpsampleVS7(uint id : SV_VertexID) { return UpsampleVS(id, 7.0); }
-v2fu UpsampleVS6(uint id : SV_VertexID) { return UpsampleVS(id, 6.0); }
-v2fu UpsampleVS5(uint id : SV_VertexID) { return UpsampleVS(id, 5.0); }
-v2fu UpsampleVS4(uint id : SV_VertexID) { return UpsampleVS(id, 4.0); }
-v2fu UpsampleVS3(uint id : SV_VertexID) { return UpsampleVS(id, 3.0); }
-v2fu UpsampleVS2(uint id : SV_VertexID) { return UpsampleVS(id, 2.0); }
+void UpsampleVS8(VSINPUT, inout float4 TexCoord[3] : TEXCOORD0) { UpsampleVS(ID, Position, TexCoord, 8.0); }
+void UpsampleVS7(VSINPUT, inout float4 TexCoord[3] : TEXCOORD0) { UpsampleVS(ID, Position, TexCoord, 7.0); }
+void UpsampleVS6(VSINPUT, inout float4 TexCoord[3] : TEXCOORD0) { UpsampleVS(ID, Position, TexCoord, 6.0); }
+void UpsampleVS5(VSINPUT, inout float4 TexCoord[3] : TEXCOORD0) { UpsampleVS(ID, Position, TexCoord, 5.0); }
+void UpsampleVS4(VSINPUT, inout float4 TexCoord[3] : TEXCOORD0) { UpsampleVS(ID, Position, TexCoord, 4.0); }
+void UpsampleVS3(VSINPUT, inout float4 TexCoord[3] : TEXCOORD0) { UpsampleVS(ID, Position, TexCoord, 3.0); }
+void UpsampleVS2(VSINPUT, inout float4 TexCoord[3] : TEXCOORD0) { UpsampleVS(ID, Position, TexCoord, 2.0); }
 
 /*
     [ Pixel Shaders ]
@@ -121,52 +102,67 @@ v2fu UpsampleVS2(uint id : SV_VertexID) { return UpsampleVS(id, 2.0); }
     Tonemap - [https://github.com/TheRealMJP/BakingLab] [MIT]
 */
 
-float4 DownsamplePS(sampler2D Source, v2fd input)
+float4 DownsamplePS(sampler2D Source, float4 TexCoord[4])
 {
-    float4 A0 = tex2D(Source, input.uOffset0.xy); // (-1.0, -1.0)
-    float4 A1 = tex2D(Source, input.uOffset0.zw); // ( 1.0,  1.0)
-    float4 A2 = tex2D(Source, input.uOffset0.xw); // (-1.0,  1.0)
-    float4 A3 = tex2D(Source, input.uOffset0.zy); // ( 1.0, -1.0)
+    /*
+        A0    B0    C0
+           D0    D1
+        A1    B1    C1
+           D2    D3
+        A2    B2    C2
+    */
 
-    float4 B0 = tex2D(Source, input.uOffset1.xy); // (-2.0, -2.0)
-    float4 B1 = tex2D(Source, input.uOffset1.zw); // ( 2.0,  2.0)
-    float4 B2 = tex2D(Source, input.uOffset1.xw); // (-2.0,  2.0)
-    float4 B3 = tex2D(Source, input.uOffset1.zy); // ( 2.0, -2.0)
+    float4 D0 = tex2D(Source, TexCoord[0].xw);
+    float4 D1 = tex2D(Source, TexCoord[0].zw);
+    float4 D2 = tex2D(Source, TexCoord[0].xy);
+    float4 D3 = tex2D(Source, TexCoord[0].zy);
 
-    float4 C0 = tex2D(Source, input.uOffset2.xw); // (-2.0, 0.0)
-    float4 C1 = tex2D(Source, input.uOffset2.yw); // ( 0.0, 0.0)
-    float4 C2 = tex2D(Source, input.uOffset2.zw); // ( 2.0, 0.0)
+    float4 A0 = tex2D(Source, TexCoord[1].xy);
+    float4 A1 = tex2D(Source, TexCoord[1].xz);
+    float4 A2 = tex2D(Source, TexCoord[1].xw);
 
-    float4 D0 = tex2D(Source, input.uOffset3.wx); // (0.0, -2.0)
-    float4 D1 = tex2D(Source, input.uOffset3.wz); // (0.0,  2.0)
+    float4 B0 = tex2D(Source, TexCoord[2].xy);
+    float4 B1 = tex2D(Source, TexCoord[2].xz);
+    float4 B2 = tex2D(Source, TexCoord[2].xw);
+
+    float4 C0 = tex2D(Source, TexCoord[3].xy);
+    float4 C1 = tex2D(Source, TexCoord[3].xz);
+    float4 C2 = tex2D(Source, TexCoord[3].xw);
 
     float4 Output;
-    const float2 Weight = float2(0.5, 0.125) / 4.0;
-    Output  = (A0 + A1 + A2 + A3) * Weight.x; // Center quad
-    Output += (B2 + D1 + C0 + C1) * Weight.y; // Top - left quad
-    Output += (D1 + B1 + C1 + C2) * Weight.y; // Top - right quad
-    Output += (C1 + C2 + D0 + B3) * Weight.y; // Bottom - right quad
-    Output += (C0 + C1 + B0 + D0) * Weight.y; // Bottom - left quad
+    const float2 Weights = float2(0.5, 0.125) / 4.0;
+    Output += (D0 + D1 + D2 + D3) * Weights.x;
+    Output += (A0 + B0 + A1 + B1) * Weights.y;
+    Output += (B0 + C0 + B1 + C1) * Weights.y;
+    Output += (A1 + B1 + A2 + B2) * Weights.y;
+    Output += (B1 + C1 + B2 + C2) * Weights.y;
     return Output;
 }
 
-float4 UpsamplePS(sampler2D Source, v2fu input)
+float4 UpsamplePS(sampler2D Source, float4 TexCoord[3])
 {
-    float4 A0 = tex2D(Source, input.uOffset0.xy); // (-1.0, -1.0)
-    float4 A1 = tex2D(Source, input.uOffset0.zw); // ( 1.0,  1.0)
-    float4 A2 = tex2D(Source, input.uOffset0.xw); // (-1.0,  1.0)
-    float4 A3 = tex2D(Source, input.uOffset0.zy); // ( 1.0, -1.0)
-    float4 C0 = tex2D(Source, input.uOffset1.yw); // ( 0.0,  0.0)
-    float4 B0 = tex2D(Source, input.uOffset1.xw); // (-1.0,  0.0)
-    float4 B1 = tex2D(Source, input.uOffset1.zw); // ( 1.0,  0.0)
-    float4 B2 = tex2D(Source, input.uOffset2.wx); // ( 0.0,  1.0)
-    float4 B3 = tex2D(Source, input.uOffset2.wz); // ( 0.0,  1.0)
+    /*
+        A0 B0 C0
+        A1 B1 C1
+        A2 B2 C2
+    */
+
+    float4 A0 = tex2D(Source, TexCoord[0].xy);
+    float4 A1 = tex2D(Source, TexCoord[0].xz);
+    float4 A2 = tex2D(Source, TexCoord[0].xw);
+
+    float4 B0 = tex2D(Source, TexCoord[1].xy);
+    float4 B1 = tex2D(Source, TexCoord[1].xz);
+    float4 B2 = tex2D(Source, TexCoord[1].xw);
+
+    float4 C0 = tex2D(Source, TexCoord[2].xy);
+    float4 C1 = tex2D(Source, TexCoord[2].xz);
+    float4 C2 = tex2D(Source, TexCoord[2].xw);
 
     float4 Output;
-    const float3 Weights = float3(1.0, 2.0, 4.0);
-    Output  = (A0 + A1 + A2 + A3) * Weights.x;
-    Output += (B0 + B1 + B2 + B3) * Weights.y;
-    Output += C0 * Weights.z;
+    Output  = (A0 + C0 + A2 + C2) * 1.0;
+    Output += (A1 + B0 + C1 + B2) * 2.0;
+    Output += B1 * 4.0;
     return Output / 16.0;
 }
 
@@ -182,7 +178,9 @@ void PrefilterPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out
     ResponseCurve = Curve.z * ResponseCurve * ResponseCurve;
 
     // Combine and apply the brightness response curve
-    OutputColor0 = Color * max(ResponseCurve, Brightness - _Threshold) / max(Brightness, 1e-10);
+    Color = Color * max(ResponseCurve, Brightness - _Threshold) / max(Brightness, 1e-10);
+    Brightness = max(max(Color.r, Color.g), Color.b);
+    OutputColor0 = saturate(lerp(Brightness, Color.rgb, _Saturation));
 }
 
 // sRGB => XYZ => D65_2_D60 => AP1 => RRT_SAT
@@ -206,27 +204,27 @@ float3 RRTAndODTFit(float3 v)
     return a / b;
 }
 
-float4 DownsamplePS1(v2fd input) : SV_Target { return DownsamplePS(_SampleBloom1, input); }
-float4 DownsamplePS2(v2fd input) : SV_Target { return DownsamplePS(_SampleBloom2, input); }
-float4 DownsamplePS3(v2fd input) : SV_Target { return DownsamplePS(_SampleBloom3, input); }
-float4 DownsamplePS4(v2fd input) : SV_Target { return DownsamplePS(_SampleBloom4, input); }
-float4 DownsamplePS5(v2fd input) : SV_Target { return DownsamplePS(_SampleBloom5, input); }
-float4 DownsamplePS6(v2fd input) : SV_Target { return DownsamplePS(_SampleBloom6, input); }
-float4 DownsamplePS7(v2fd input) : SV_Target { return DownsamplePS(_SampleBloom7, input); }
+#define PSINPUT(i) float4 Position : SV_POSITION, float4 TexCoord[i] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0
 
-float4 UpsamplePS8(v2fu input) : SV_Target { return UpsamplePS(_SampleBloom8, input); }
-float4 UpsamplePS7(v2fu input) : SV_Target { return UpsamplePS(_SampleBloom7, input); }
-float4 UpsamplePS6(v2fu input) : SV_Target { return UpsamplePS(_SampleBloom6, input); }
-float4 UpsamplePS5(v2fu input) : SV_Target { return UpsamplePS(_SampleBloom5, input); }
-float4 UpsamplePS4(v2fu input) : SV_Target { return UpsamplePS(_SampleBloom4, input); }
-float4 UpsamplePS3(v2fu input) : SV_Target { return UpsamplePS(_SampleBloom3, input); }
-float4 UpsamplePS2(v2fu input) : SV_Target { return UpsamplePS(_SampleBloom2, input); }
+void DownsamplePS1(PSINPUT(4)) { OutputColor0 = DownsamplePS(_SampleBloom1, TexCoord); }
+void DownsamplePS2(PSINPUT(4)) { OutputColor0 = DownsamplePS(_SampleBloom2, TexCoord); }
+void DownsamplePS3(PSINPUT(4)) { OutputColor0 = DownsamplePS(_SampleBloom3, TexCoord); }
+void DownsamplePS4(PSINPUT(4)) { OutputColor0 = DownsamplePS(_SampleBloom4, TexCoord); }
+void DownsamplePS5(PSINPUT(4)) { OutputColor0 = DownsamplePS(_SampleBloom5, TexCoord); }
+void DownsamplePS6(PSINPUT(4)) { OutputColor0 = DownsamplePS(_SampleBloom6, TexCoord); }
+void DownsamplePS7(PSINPUT(4)) { OutputColor0 = DownsamplePS(_SampleBloom7, TexCoord); }
+
+void UpsamplePS8(PSINPUT(3)) { OutputColor0 = UpsamplePS(_SampleBloom8, TexCoord); }
+void UpsamplePS7(PSINPUT(3)) { OutputColor0 = UpsamplePS(_SampleBloom7, TexCoord); }
+void UpsamplePS6(PSINPUT(3)) { OutputColor0 = UpsamplePS(_SampleBloom6, TexCoord); }
+void UpsamplePS5(PSINPUT(3)) { OutputColor0 = UpsamplePS(_SampleBloom5, TexCoord); }
+void UpsamplePS4(PSINPUT(3)) { OutputColor0 = UpsamplePS(_SampleBloom4, TexCoord); }
+void UpsamplePS3(PSINPUT(3)) { OutputColor0 = UpsamplePS(_SampleBloom3, TexCoord); }
+void UpsamplePS2(PSINPUT(3)) { OutputColor0 = UpsamplePS(_SampleBloom2, TexCoord); }
 
 void CompositePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
     float4 Src = tex2D(_SampleBloom1, TexCoord);
-    float Brightness = max(max(Src.r, Src.g), Src.b);
-    Src = saturate(lerp(Brightness, Src.rgb, _Saturation));
     Src *= _Intensity;
     Src = mul(ACESInputMat, Src.rgb);
     Src = RRTAndODTFit(Src.rgb);

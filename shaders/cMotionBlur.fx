@@ -267,7 +267,7 @@ void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, o
 
         float Linear = dot(_Ixy, Flow) + _It;
         float Smoothness = rcp(dot(_Ixy, _Ixy) + Lamdba);
-        Flow = Flow - ((_Ixy * Linear) * Smoothness);
+        Flow -= ((_Ixy * Linear) * Smoothness);
         Levels = Levels - 1.0;
     }
 
