@@ -8,7 +8,7 @@
 
         We can apply this logic to shader programming by setting up:
             1.  The 2 players (textures)
-                - One texture will be the hitter (texture we sample), the other the receiver (texture we write to)
+                - One texture will be the hitter (texture we sample from), the other the receiver (texture we write to)
                 - The roles for both textures will switch at each pass
             2. The ball (Pixel shader)
 
