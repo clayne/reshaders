@@ -1,6 +1,34 @@
 
 /*
     Ping-Pong gaussian blur shader, for BlueSkyDefender
+
+    Why is this method called ping-ponging?
+        Answer: https://diplomacy.state.gov/u-s-diplomacy-stories/ping-pong-diplomacy/
+                The game of ping-pong involves two players hitting a ball back-and-forth
+
+        We can apply this logic to shader programming by setting up:
+            1.  The 2 players (textures)
+                - One texture will be the hitter (texture we sample), the other the receiver (texture we write to)
+                - The roles for both textures will switch at each pass
+            2. The ball (Pixel shader)
+
+    This shader's technique is an example of the 2 steps above:
+        Prelude1: Set up the players (_RenderBufferA and _RenderBufferB)
+        StartGame: Simply copy the texture to a downscaled buffer (no blur here for performance reasons)
+        PingPong1: _RenderBufferA hits (HorizontalBlurPS0) to _RenderBufferB
+        PingPong2: _RenderBufferB hits (VerticalBlurPS0) to _RenderBufferA
+        PingPong3: _RenderBufferA hits (HorizontalBlurPS1) to _RenderBufferB
+        PingPong4: _RenderBufferB hits (VerticalBlurPS1) to _RenderBufferA
+        Endgame: Display the texture to properly interpolate the downsampled texels;
+
+    "Why two textures? Can't we just read and write to one texture"?
+        Unfortunately GPUs do not work that way. We cannot sample from and write to memory at the same time
+
+    NOTE:
+        Be cautious when pingponging in shaders that use BlendOps or involve temporal accumulation.
+        Therefore, I recommend you to enable ClearRenderTargets as a sanity check.
+        In addition, you may need to use use RenderTargetWriteMask if you're pingponging using textures that stores
+        components that do not need pingponging (see my motion shaders as an example of this)
 */
 
 uniform int _Radius <
@@ -99,7 +127,7 @@ void OutputPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out fl
 
 technique cPingPong
 {
-    pass
+    pass StartGame
     {
         VertexShader = PostProcessVS;
         PixelShader = BlitPS;
@@ -107,7 +135,7 @@ technique cPingPong
         SRGBWriteEnable = TRUE;
     }
 
-    pass
+    pass PingPong1
     {
         VertexShader = PostProcessVS;
         PixelShader = HorizontalBlurPS0;
@@ -115,7 +143,7 @@ technique cPingPong
         SRGBWriteEnable = TRUE;
     }
 
-    pass
+    pass PingPong2
     {
         VertexShader = PostProcessVS;
         PixelShader = VerticalBlurPS0;
@@ -123,7 +151,7 @@ technique cPingPong
         SRGBWriteEnable = TRUE;
     }
 
-    pass
+    pass PingPong3
     {
         VertexShader = PostProcessVS;
         PixelShader = HorizontalBlurPS1;
@@ -131,7 +159,7 @@ technique cPingPong
         SRGBWriteEnable = TRUE;
     }
 
-    pass
+    pass PingPong4
     {
         VertexShader = PostProcessVS;
         PixelShader = VerticalBlurPS1;
@@ -139,7 +167,7 @@ technique cPingPong
         SRGBWriteEnable = TRUE;
     }
 
-    pass
+    pass Endgame
     {
         VertexShader = PostProcessVS;
         PixelShader = OutputPS;
