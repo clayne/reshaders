@@ -63,7 +63,7 @@ void DownsampleVS(VSINPUT, inout float4 TexCoord[4] : TEXCOORD0, float Factor)
 {
     float2 TexCoord0;
     PostProcessVS(ID, Position, TexCoord0);
-    const float2 pSize = rcp(float2(BUFFER_WIDTH, BUFFER_HEIGHT) / exp2(Factor));
+    const float2 pSize = 1.0 / ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -Factor);
     TexCoord[0] = TexCoord0.xyxy + float4(-1.0, -1.0, 1.0, 1.0) * pSize.xyxy; // Quad
     TexCoord[1] = TexCoord0.xyyy + float4(-2.0, 2.0, 0.0, -2.0) * pSize.xyyy; // Left column
     TexCoord[2] = TexCoord0.xyyy + float4(0.0, 2.0, 0.0, -2.0) * pSize.xyyy; // Center column
@@ -74,7 +74,7 @@ void UpsampleVS(VSINPUT, inout float4 TexCoord[3] : TEXCOORD0, float Factor)
 {
     float2 TexCoord0;
     PostProcessVS(ID, Position, TexCoord0);
-    const float2 pSize = rcp(float2(BUFFER_WIDTH, BUFFER_HEIGHT) / exp2(Factor));
+    const float2 pSize = 1.0 / ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -Factor);
     TexCoord[0] = TexCoord0.xyyy + float4(-1.0, 1.0, 0.0, -1.0) * pSize.xyyy; // Left column
     TexCoord[1] = TexCoord0.xyyy + float4(0.0, 1.0, 0.0, -1.0) * pSize.xyyy; // Center column
     TexCoord[2] = TexCoord0.xyyy + float4(1.0, 1.0, 0.0, -1.0) * pSize.xyyy; // Right column
