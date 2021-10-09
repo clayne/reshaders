@@ -7,22 +7,21 @@
                 The game of ping-pong involves two players hitting a ball back-and-forth
 
         We can apply this logic to shader programming by setting up:
-            1.  The 2 players (textures)
+            1. The 2 players (textures)
                 - One texture will be the hitter (texture we sample from), the other the receiver (texture we write to)
                 - The roles for both textures will switch at each pass
-            2. The ball (Pixel shader)
+            2. The ball (the texels in the pixel shader)
+            3. The way the player hits the ball (PixelShader)
 
     This shader's technique is an example of the 2 steps above:
-        Pregame: Set up the players (_RenderBufferA and _RenderBufferB)
-        StartGame: Simply copy the texture to a downscaled buffer (no blur here for performance reasons)
+        Pregame: Set up 2 players (_RenderBufferA and _RenderBufferB)
         PingPong1: _RenderBufferA hits (HorizontalBlurPS0) to _RenderBufferB
         PingPong2: _RenderBufferB hits (VerticalBlurPS0) to _RenderBufferA
         PingPong3: _RenderBufferA hits (HorizontalBlurPS1) to _RenderBufferB
         PingPong4: _RenderBufferB hits (VerticalBlurPS1) to _RenderBufferA
-        Endgame: Display the texture to properly interpolate the downsampled texels;
 
     "Why two textures? Can't we just read and write to one texture"?
-        Unfortunately GPUs do not work that way. We cannot sample from and write to memory at the same time
+        Unfortunately we cannot sample from and to memory at the same time
 
     NOTE:
         Be cautious when pingponging in shaders that use BlendOps or involve temporal accumulation.
@@ -127,7 +126,7 @@ void OutputPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out fl
 
 technique cPingPong
 {
-    pass StartGame
+    pass
     {
         VertexShader = PostProcessVS;
         PixelShader = BlitPS;
@@ -167,7 +166,7 @@ technique cPingPong
         SRGBWriteEnable = TRUE;
     }
 
-    pass Endgame
+    pass
     {
         VertexShader = PostProcessVS;
         PixelShader = OutputPS;
