@@ -275,9 +275,7 @@ void DerivativesPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, f
 
 void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    const float Lambda = max(4.0 * pow(_Constraint * 1e-2, 2.0), 1e-10);
     float Levels = (RSIZE - 1) - 0.5;
-    float2 Flow = 0.0;
 
     while(Levels >= 0)
     {
@@ -287,13 +285,13 @@ void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, o
         float2 _Ixy = tex2Dlod(_SampleDerivatives, CalculateUV).xy;
         float _It = CurrentFrame - PreviousFrame;
 
-        float Linear = dot(_Ixy, Flow) + _It;
-        float Smoothness = rcp(dot(_Ixy, _Ixy) + Lambda);
-        Flow -= ((_Ixy * Linear) * Smoothness);
+        float Linear = dot(_Ixy, OutputColor0.xy) + _It;
+        float Smoothness = rcp(dot(_Ixy, _Ixy) + max(_Constraint, 1e-10));
+        OutputColor0.xy -= ((_Ixy * Linear) * Smoothness);
         Levels = Levels - 1.0;
     }
 
-    OutputColor0 = float4(Flow.xy, 0.0, _BlendFactor);
+    OutputColor0 = float4(OutputColor0.xy, 0.0, _BlendFactor);
 }
 
 float RandomNoise(float2 TexCoord)
