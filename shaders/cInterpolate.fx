@@ -263,7 +263,7 @@ void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, o
     int MaxLevel = ceil(log2(_DATASIZE));
     const float Lamdba = max(4.0 * pow(_Constraint * 1e-3, 2.0), 1e-10);
 
-    while(MaxLevel >= 0.0)
+    while(MaxLevel >= 0)
     {
         const float2 ScaleSize = 1.0 / ldexp(_DATASIZE, -MaxLevel);
         float2 A = tex2Dlod(_SampleData0, float4(TexCoord + float2(-0.5, +0.5) * ScaleSize, 0.0, MaxLevel)).xy;
@@ -273,13 +273,13 @@ void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, o
 
         float3 _I;
         _I.x = dot((-A + -C) + (B + D), 0.5);
-        _I.y = dot((-C + -D) + (A + B), 0.5);
+        _I.y = dot((C + D) + (-A + -B), 0.5);
         _I.z = dot(A + B + C + D, float2(0.25, -0.25));
 
         float Linear = dot(_I.xy, OutputColor0.xy) + _I.z;
         float Smoothness = rcp(dot(_I.xy, _I.xy) + Lamdba);
         OutputColor0.xy -= ((_I.xy * Linear) * Smoothness);
-        MaxLevel = MaxLevel - 1.0;
+        MaxLevel = MaxLevel - 1;
     }
 
     OutputColor0 = float4(OutputColor0.xy, 0.0, _Blend);
