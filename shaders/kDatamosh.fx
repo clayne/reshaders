@@ -275,6 +275,7 @@ void DerivativesPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, f
 
 void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
+    const float Lambda = max(4.0 * pow(_Constraint * 1e-2, 2.0), 1e-10);
     float Levels = (RSIZE - 1) - 0.5;
 
     while(Levels >= 0)
@@ -286,7 +287,7 @@ void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, o
         float _It = CurrentFrame - PreviousFrame;
 
         float Linear = dot(_Ixy, OutputColor0.xy) + _It;
-        float Smoothness = rcp(dot(_Ixy, _Ixy) + max(_Constraint, 1e-10));
+        float Smoothness = rcp(dot(_Ixy, _Ixy) + max(Lambda, 1e-10));
         OutputColor0.xy -= ((_Ixy * Linear) * Smoothness);
         Levels = Levels - 1.0;
     }

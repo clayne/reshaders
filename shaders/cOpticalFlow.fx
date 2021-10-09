@@ -41,38 +41,38 @@ uniform bool _Normal <
 #define LOG2(x)       (CONST_LOG2((BIT16_LOG2(x) >> 1) + 1))
 #define RMAX(x, y)     x ^ ((x ^ y) & -(x < y)) // max(x, y)
 
-#define _DATASIZE uint2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2)
-#define _MIPLEVELS LOG2(RMAX(_DATASIZE.x, _DATASIZE.y)) + 1
+#define _SIZE uint2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2)
+#define _MIPS LOG2(RMAX(_SIZE.x, _SIZE.y)) + 1
 
 texture2D _RenderColor : COLOR;
 
 texture2D _RenderData0_HornSchunck
 {
-    Width = _DATASIZE.x;
-    Height = _DATASIZE.y;
+    Width = _SIZE.x;
+    Height = _SIZE.y;
     Format = RG16F;
-    MipLevels = _MIPLEVELS;
+    MipLevels = _MIPS;
 };
 
 texture2D _RenderData1_HornSchunck
 {
-    Width = _DATASIZE.x;
-    Height = _DATASIZE.y;
+    Width = _SIZE.x;
+    Height = _SIZE.y;
     Format = RG16F;
-    MipLevels = _MIPLEVELS;
+    MipLevels = _MIPS;
 };
 
 texture2D _RenderCopy_HornSchunck
 {
-    Width = _DATASIZE.x;
-    Height = _DATASIZE.y;
+    Width = _SIZE.x;
+    Height = _SIZE.y;
     Format = R16F;
 };
 
 texture2D _RenderOpticalFlow_HornSchunck
 {
-    Width = _DATASIZE.x;
-    Height = _DATASIZE.y;
+    Width = _SIZE.x;
+    Height = _SIZE.y;
     Format = RG16F;
 };
 
@@ -126,7 +126,7 @@ float Gaussian1D(const int Position)
     const float Sigma = KernelSize / 3.0;
     const float Pi = 3.1415926535897932384626433832795f;
     float Output = rsqrt(2.0 * Pi * (Sigma * Sigma));
-    return Output * exp(-0.5 * Position * Position / (Sigma * Sigma));
+    return Output * exp(-(Position * Position) / (2.0 * (Sigma * Sigma)));
 }
 
 float3 OutputWeights(const float Index)
@@ -147,7 +147,7 @@ float2 OutputOffsets(const float Index)
 void HorizontalBlurVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD0, inout float4 Offsets[7] : TEXCOORD1)
 {
     PostProcessVS(ID, Position, TexCoord);
-    const float2 Direction = float2(1.0 / _DATASIZE.x, 0.0);
+    const float2 Direction = float2(1.0 / _SIZE.x, 0.0);
 
     [unroll] for(int i = 0; i < 7; i++)
     {
@@ -159,13 +159,21 @@ void HorizontalBlurVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSIT
 void VerticalBlurVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD0, inout float4 Offsets[7] : TEXCOORD1)
 {
     PostProcessVS(ID, Position, TexCoord);
-    const float2 Direction = float2(0.0, 1.0 / _DATASIZE.y);
+    const float2 Direction = float2(0.0, 1.0 / _SIZE.y);
 
     [unroll] for(int i = 0; i < 7; i++)
     {
         const float2 LinearOffset = OutputOffsets(i * 2 + 1);
         Offsets[i] = TexCoord.xyxy + LinearOffset.xxyy * Direction.xyxy;
     }
+}
+
+void DerivativesVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD0, inout float4 Offsets : TEXCOORD1)
+{
+    const float2 PixelSize = 0.5 / _SIZE;
+    const float4 PixelOffset = float4(PixelSize, -PixelSize);
+    PostProcessVS(ID, Position, TexCoord);
+    Offsets = TexCoord.xyxy + PixelOffset;
 }
 
 /* [ Pixel Shaders ] */
@@ -200,38 +208,46 @@ void HorizontalBlurPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0
     OutputColor0 = Blur1D(_SampleData0, TexCoord, Offsets).x;
 }
 
-void VerticalBlurPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets[7] : TEXCOORD1, out float2 OutputColor0 : SV_TARGET0)
+void VerticalBlurPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets[7] : TEXCOORD1, out float OutputColor0 : SV_TARGET0, out float OutputColor1 : SV_TARGET1)
 {
     OutputColor0 = Blur1D(_SampleData1, TexCoord, Offsets).x;
+    OutputColor1 = OutputColor0;
 }
 
-void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0, out float4 OutputColor1 : SV_TARGET1)
+void DerivativesPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets : TEXCOORD1, out float2 OutputColor0 : SV_TARGET0)
 {
-    int MaxLevel = _MIPLEVELS;
+    float2 Sample0 = tex2D(_SampleData0, Offsets.zy).xy; // (-x, +y)
+    float2 Sample1 = tex2D(_SampleData0, Offsets.xy).xy; // (+x, +y)
+    float2 Sample2 = tex2D(_SampleData0, Offsets.zw).xy; // (-x, -y)
+    float2 Sample3 = tex2D(_SampleData0, Offsets.xw).xy; // (+x, -y)
+    float2 _ddx = -(Sample2 + Sample0) + (Sample3 + Sample1);
+    float2 _ddy = -(Sample2 + Sample3) + (Sample0 + Sample1);
+    OutputColor0.x = dot(_ddx, 0.5);
+    OutputColor0.y = dot(_ddy, 0.5);
+}
+
+void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+{
+    float Levels = ceil(_MIPS - 1) - 0.5;
     const float Lamdba = max(4.0 * pow(_Constraint * 1e-3, 2.0), 1e-10);
+    float2 Flow = 0.0;
 
-    while(MaxLevel >= 0)
+    while(Levels >= 0.0)
     {
-        const float2 ScaleSize = 1.0 / ldexp(_DATASIZE, -MaxLevel);
-        float2 A = tex2Dlod(_SampleData0, float4(TexCoord + float2(-0.5, +0.5) * ScaleSize, 0.0, MaxLevel)).xy;
-        float2 B = tex2Dlod(_SampleData0, float4(TexCoord + float2(+0.5, +0.5) * ScaleSize, 0.0, MaxLevel)).xy;
-        float2 C = tex2Dlod(_SampleData0, float4(TexCoord + float2(-0.5, -0.5) * ScaleSize, 0.0, MaxLevel)).xy;
-        float2 D = tex2Dlod(_SampleData0, float4(TexCoord + float2(+0.5, -0.5) * ScaleSize, 0.0, MaxLevel)).xy;
+        float4 CalculateUV = float4(TexCoord, 0.0, Levels);
+        float2 Frame = tex2Dlod(_SampleData0, CalculateUV).xy;
+        float2 _Ixy = tex2Dlod(_SampleData1, CalculateUV).xy;
+        float _It = Frame.x - Frame.y;
 
-        float3 _I;
-        _I.x = dot((-A + -C) + (B + D), 0.5);
-        _I.y = dot((-C + -D) + (A + B), 0.5);
-        _I.z = dot(A + B + C + D, float2(0.25, -0.25));
-
-        float Linear = dot(_I.xy, OutputColor0.xy) + _I.z;
-        float Smoothness = rcp(dot(_I.xy, _I.xy) + Lamdba);
-        OutputColor0.xy -= ((_I.xy * Linear) * Smoothness);
-        MaxLevel = MaxLevel - 1;
+        float Linear = dot(_Ixy, Flow) + _It;
+        float Smoothness = rcp(dot(_Ixy, _Ixy) + Lamdba);
+        Flow -= ((_Ixy * Linear) * Smoothness);
+        Levels = Levels - 1.0;
     }
 
-    OutputColor0 = float4(OutputColor0.xy, 0.0, _Blend);
-    OutputColor1 = float4(tex2D(_SampleData0, TexCoord).xxx, 0.0);
+    OutputColor0 = float4(Flow.xy, 0.0, _Blend);
 }
+
 void PPHorizontalBlurPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets[7] : TEXCOORD1, out float2 OutputColor0 : SV_TARGET0)
 {
     OutputColor0 = Blur1D(_SampleOpticalFlow, TexCoord, Offsets).xy;
@@ -350,7 +366,15 @@ technique cHornSchunck
         VertexShader = VerticalBlurVS;
         PixelShader = VerticalBlurPS;
         RenderTarget0 = _RenderData0_HornSchunck;
+        RenderTarget1 = _RenderCopy_HornSchunck;
         RenderTargetWriteMask = 1;
+    }
+
+    pass
+    {
+        VertexShader = DerivativesVS;
+        PixelShader = DerivativesPS;
+        RenderTarget0 = _RenderData1_HornSchunck;
     }
 
     pass
@@ -358,7 +382,6 @@ technique cHornSchunck
         VertexShader = PostProcessVS;
         PixelShader = OpticalFlowPS;
         RenderTarget0 = _RenderOpticalFlow_HornSchunck;
-        RenderTarget1 = _RenderCopy_HornSchunck;
         ClearRenderTargets = FALSE;
         BlendEnable = TRUE;
         BlendOp = ADD;
