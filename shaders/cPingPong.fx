@@ -13,7 +13,7 @@
             2. The ball (Pixel shader)
 
     This shader's technique is an example of the 2 steps above:
-        Prelude1: Set up the players (_RenderBufferA and _RenderBufferB)
+        Pregame: Set up the players (_RenderBufferA and _RenderBufferB)
         StartGame: Simply copy the texture to a downscaled buffer (no blur here for performance reasons)
         PingPong1: _RenderBufferA hits (HorizontalBlurPS0) to _RenderBufferB
         PingPong2: _RenderBufferB hits (VerticalBlurPS0) to _RenderBufferA
