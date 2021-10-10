@@ -35,6 +35,10 @@ uniform int _Radius <
     ui_type = "drag";
 > = 1.0;
 
+#ifndef ENABLE_PINGPONG
+    #define ENABLE_PINGPONG 1
+#endif
+
 texture2D _RenderColor : COLOR;
 
 texture2D _RenderBufferA
@@ -150,21 +154,24 @@ technique cPingPong
         SRGBWriteEnable = TRUE;
     }
 
-    pass PingPong3
-    {
-        VertexShader = PostProcessVS;
-        PixelShader = HorizontalBlurPS1;
-        RenderTarget0 = _RenderBufferB;
-        SRGBWriteEnable = TRUE;
-    }
+    #if ENABLE_PINGPONG
+        pass PingPong3
+        {
+            VertexShader = PostProcessVS;
+            PixelShader = HorizontalBlurPS1;
+            RenderTarget0 = _RenderBufferB;
+            SRGBWriteEnable = TRUE;
+        }
 
-    pass PingPong4
-    {
-        VertexShader = PostProcessVS;
-        PixelShader = VerticalBlurPS1;
-        RenderTarget0 = _RenderBufferA;
-        SRGBWriteEnable = TRUE;
-    }
+
+        pass PingPong4
+        {
+            VertexShader = PostProcessVS;
+            PixelShader = VerticalBlurPS1;
+            RenderTarget0 = _RenderBufferA;
+            SRGBWriteEnable = TRUE;
+        }
+    #endif
 
     pass
     {

@@ -236,7 +236,7 @@ void CompositePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out
 
 technique cBloom
 {
-    #define blend(i, j, k) BlendEnable = TRUE; BlendOp = i; SrcBlend = j; DestBlend = k
+    #define BLEND(i, j, k) BlendEnable = TRUE; BlendOp = i; SrcBlend = j; DestBlend = k
     pass { VertexShader = PostProcessVS; PixelShader = PrefilterPS; RenderTarget = _RenderBloom1; }
     pass { VertexShader = DownsampleVS1; PixelShader = DownsamplePS1; RenderTarget = _RenderBloom2; }
     pass { VertexShader = DownsampleVS2; PixelShader = DownsamplePS2; RenderTarget = _RenderBloom3; }
@@ -245,12 +245,12 @@ technique cBloom
     pass { VertexShader = DownsampleVS5; PixelShader = DownsamplePS5; RenderTarget = _RenderBloom6; }
     pass { VertexShader = DownsampleVS6; PixelShader = DownsamplePS6; RenderTarget = _RenderBloom7; }
     pass { VertexShader = DownsampleVS7; PixelShader = DownsamplePS7; RenderTarget = _RenderBloom8; }
-    pass { VertexShader = UpsampleVS8; PixelShader = UpsamplePS8; RenderTarget = _RenderBloom7; blend(ADD, ONE, ONE); }
-    pass { VertexShader = UpsampleVS7; PixelShader = UpsamplePS7; RenderTarget = _RenderBloom6; blend(ADD, ONE, ONE); }
-    pass { VertexShader = UpsampleVS6; PixelShader = UpsamplePS6; RenderTarget = _RenderBloom5; blend(ADD, ONE, ONE); }
-    pass { VertexShader = UpsampleVS5; PixelShader = UpsamplePS5; RenderTarget = _RenderBloom4; blend(ADD, ONE, ONE); }
-    pass { VertexShader = UpsampleVS4; PixelShader = UpsamplePS4; RenderTarget = _RenderBloom3; blend(ADD, ONE, ONE); }
-    pass { VertexShader = UpsampleVS3; PixelShader = UpsamplePS3; RenderTarget = _RenderBloom2; blend(ADD, ONE, ONE); }
+    pass { VertexShader = UpsampleVS8; PixelShader = UpsamplePS8; RenderTarget = _RenderBloom7; BLEND(ADD, ONE, ONE); }
+    pass { VertexShader = UpsampleVS7; PixelShader = UpsamplePS7; RenderTarget = _RenderBloom6; BLEND(ADD, ONE, ONE); }
+    pass { VertexShader = UpsampleVS6; PixelShader = UpsamplePS6; RenderTarget = _RenderBloom5; BLEND(ADD, ONE, ONE); }
+    pass { VertexShader = UpsampleVS5; PixelShader = UpsamplePS5; RenderTarget = _RenderBloom4; BLEND(ADD, ONE, ONE); }
+    pass { VertexShader = UpsampleVS4; PixelShader = UpsamplePS4; RenderTarget = _RenderBloom3; BLEND(ADD, ONE, ONE); }
+    pass { VertexShader = UpsampleVS3; PixelShader = UpsamplePS3; RenderTarget = _RenderBloom2; BLEND(ADD, ONE, ONE); }
     pass { VertexShader = UpsampleVS2; PixelShader = UpsamplePS2; RenderTarget = _RenderBloom1; }
-    pass { VertexShader = PostProcessVS; PixelShader = CompositePS; blend(ADD, ONE, INVSRCCOLOR); SRGBWriteEnable = TRUE; }
+    pass { VertexShader = PostProcessVS; PixelShader = CompositePS; BLEND(ADD, ONE, INVSRCCOLOR); SRGBWriteEnable = TRUE; }
 }
