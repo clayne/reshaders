@@ -11,7 +11,7 @@ uniform float _Scale <
     ui_type = "drag";
     ui_label = "Flow Scale";
     ui_tooltip = "Higher = More motion blur";
-> = 3.0;
+> = 2.0;
 
 uniform float _Constraint <
     ui_type = "drag";
@@ -256,7 +256,6 @@ void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, o
 {
     float Levels = ceil(log2(_DATASIZE)) - 0.5;
     const float Lamdba = max(4.0 * pow(_Constraint * 1e-3, 2.0), 1e-10);
-    float2 Flow = 0.0;
 
     while(Levels >= 0.0)
     {
@@ -265,13 +264,12 @@ void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, o
         float2 _Ixy = tex2Dlod(_SampleData1, CalculateUV).xy;
         float _It = Frame.x - Frame.y;
 
-        float Linear = dot(_Ixy, Flow) + _It;
-        float Smoothness = rcp(dot(_Ixy, _Ixy) + Lamdba);
-        Flow -= ((_Ixy * Linear) * Smoothness);
+        float2 OpticalFlow = _Ixy * (dot(_Ixy, OutputColor0.xy) + _It);
+        OutputColor0.xy -= (OpticalFlow / (dot(_Ixy, _Ixy) + Lamdba));
         Levels = Levels - 1.0;
     }
 
-    OutputColor0 = float4(Flow.xy, 0.0, _Blend);
+    OutputColor0 = float4(OutputColor0.xy, 0.0, _Blend);
 }
 
 void PPHorizontalBlurPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets[7] : TEXCOORD1, out float2 OutputColor0 : SV_TARGET0)
