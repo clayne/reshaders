@@ -1,9 +1,9 @@
 
 /*
-    Frame blending without blendops
+    Frame blending through BlendOps
 */
 
-uniform float _Blend <
+uniform float _BlendFactor <
     ui_label = "Blend Factor";
     ui_type = "slider";
     ui_min = 0.0;
@@ -39,39 +39,37 @@ void PostProcessVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION
     Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
 
-
 /* [Pixel Shaders] */
-
-// Execute the blending first (the pframe will initially be 0)
 
 void BlendPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    float4 CurrentFrame = tex2D(_SampleColor, TexCoord);
-    float4 PreviousFrame = tex2D(_SampleCopy, TexCoord);
-    OutputColor0 = lerp(CurrentFrame, PreviousFrame, _Blend);
+    OutputColor0 = float4(tex2D(_SampleColor, TexCoord).rgb, _BlendFactor);
 }
 
-// Save the results generated from ps_blend() into a texture to use later
-
-void CopyPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+void DisplayPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    OutputColor0 = tex2D(_SampleColor, TexCoord);
+    OutputColor0 = tex2D(_SampleCopy, TexCoord);
 }
 
-technique cBlending
+technique cFrameBlending
 {
     pass
     {
         VertexShader = PostProcessVS;
         PixelShader = BlendPS;
+        RenderTarget0 = _RenderCopy;
+        ClearRenderTargets = FALSE;
+        BlendEnable = TRUE;
+        BlendOp = ADD;
+        SrcBlend = INVSRCALPHA;
+        DestBlend = SRCALPHA;
         SRGBWriteEnable = TRUE;
     }
 
     pass
     {
         VertexShader = PostProcessVS;
-        PixelShader = CopyPS;
-        RenderTarget = _RenderCopy;
+        PixelShader = DisplayPS;
         SRGBWriteEnable = TRUE;
     }
 }
