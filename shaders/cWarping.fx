@@ -227,12 +227,13 @@ void VerticalBlurVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITIO
     }
 }
 
-void DerivativesVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD0, inout float4 Offsets : TEXCOORD1)
+void DerivativesVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float4 Offsets : TEXCOORD0)
 {
     const float2 PixelSize = 0.5 / _DATASIZE;
     const float4 PixelOffset = float4(PixelSize, -PixelSize);
-    PostProcessVS(ID, Position, TexCoord);
-    Offsets = TexCoord.xyxy + PixelOffset;
+    float2 TexCoord0;
+    PostProcessVS(ID, Position, TexCoord0);
+    Offsets = TexCoord0.xyxy + PixelOffset;
 }
 
 /* [ Pixel Shaders ] */
@@ -278,7 +279,7 @@ void VerticalBlurPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, 
     OutputColor1 = OutputColor0;
 }
 
-void DerivativesPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets : TEXCOORD1, out float2 OutputColor0 : SV_TARGET0)
+void DerivativesPS(float4 Position : SV_POSITION, float4 Offsets : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0)
 {
     float2 Sample0 = tex2D(_SampleData0, Offsets.zy).xy; // (-x, +y)
     float2 Sample1 = tex2D(_SampleData0, Offsets.xy).xy; // (+x, +y)
