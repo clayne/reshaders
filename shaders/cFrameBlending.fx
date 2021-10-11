@@ -27,7 +27,6 @@ sampler2D _SampleColor
 sampler2D _SampleCopy
 {
     Texture = _RenderCopy;
-    SRGBTexture = TRUE;
 };
 
 /* [Vertex Shaders] */
@@ -63,7 +62,6 @@ technique cFrameBlending
         BlendOp = ADD;
         SrcBlend = INVSRCALPHA;
         DestBlend = SRCALPHA;
-        SRGBWriteEnable = TRUE;
     }
 
     pass
