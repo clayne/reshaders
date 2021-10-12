@@ -98,9 +98,9 @@ uniform float _BlendFactor <
 #endif
 
 #if LINEAR_SAMPLING == 1
-    #define MFILTER MinFilter = LINEAR; MagFilter = LINEAR
+    #define _FILTER LINEAR
 #else
-    #define MFILTER MinFilter = POINT; MagFilter = POINT
+    #define _FILTER POINT
 #endif
 
 #define CONST_LOG2(x) (\
@@ -117,51 +117,51 @@ uniform float _BlendFactor <
 #define LOG2(x)       (CONST_LOG2((BIT16_LOG2(x) >> 1) + 1))
 #define RMAX(x, y)     x ^ ((x ^ y) & -(x < y)) // max(x, y)
 
-#define DSIZE uint2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2)
-#define RSIZE LOG2(RMAX(DSIZE.x, DSIZE.y)) + 1
+#define _HALFSIZE uint2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2)
+#define _MIPLEVELS LOG2(RMAX(_HALFSIZE.x, _HALFSIZE.y)) + 1
 
 texture2D _RenderColor : COLOR;
 
-texture2D _RenderPreviousBuffer
+texture2D _RenderFrame0
 {
-    Width = DSIZE.x;
-    Height = DSIZE.y;
-    Format = RG16F;
-    MipLevels = RSIZE;
-};
-
-texture2D _RenderCurrentBuffer
-{
-    Width = DSIZE.x;
-    Height = DSIZE.y;
+    Width = _HALFSIZE.x;
+    Height = _HALFSIZE.y;
     Format = R16F;
-    MipLevels = RSIZE;
+    MipLevels = _MIPLEVELS;
 };
 
-texture2D _RenderDataMoshDerivatives
+texture2D _RenderDerivatives_Datamosh
 {
-    Width = DSIZE.x;
-    Height = DSIZE.y;
+    Width = _HALFSIZE.x;
+    Height = _HALFSIZE.y;
     Format = RG16F;
-    MipLevels = RSIZE;
+    MipLevels = _MIPLEVELS;
 };
 
-texture2D _RenderDataMoshOpticalFlow
+texture2D _RenderOpticalFlow_Datamosh
 {
-    Width = DSIZE.x;
-    Height = DSIZE.y;
+    Width = _HALFSIZE.x;
+    Height = _HALFSIZE.y;
     Format = RG16F;
-    MipLevels = RSIZE;
+    MipLevels = _MIPLEVELS;
 };
 
 texture2D _RenderAccumulation
 {
-    Width = DSIZE.x;
-    Height = DSIZE.y;
+    Width = _HALFSIZE.x;
+    Height = _HALFSIZE.y;
     Format = R16F;
 };
 
-texture2D _RenderCopy
+texture2D _RenderFrame1
+{
+    Width = _HALFSIZE.x;
+    Height = _HALFSIZE.y;
+    Format = R16F;
+    MipLevels = _MIPLEVELS;
+};
+
+texture2D _RenderFeedback
 {
     Width = BUFFER_WIDTH;
     Height = BUFFER_HEIGHT;
@@ -176,31 +176,25 @@ sampler2D _SampleColor
     SRGBTexture = TRUE;
 };
 
-sampler2D _SamplePreviousBuffer
+sampler2D _SampleFrame0
 {
-    Texture = _RenderPreviousBuffer;
-    AddressU = MIRROR;
-    AddressV = MIRROR;
-};
-
-sampler2D _SampleCurrentBuffer
-{
-    Texture = _RenderCurrentBuffer;
+    Texture = _RenderFrame0;
     AddressU = MIRROR;
     AddressV = MIRROR;
 };
 
 sampler2D _SampleDerivatives
 {
-    Texture = _RenderDataMoshDerivatives;
+    Texture = _RenderDerivatives_Datamosh;
     AddressU = MIRROR;
     AddressV = MIRROR;
 };
 
 sampler2D _SampleOpticalFlow
 {
-    Texture = _RenderDataMoshOpticalFlow;
-    MFILTER;
+    Texture = _RenderOpticalFlow_Datamosh;
+    MinFilter = _FILTER;
+    MagFilter = _FILTER;
     AddressU = MIRROR;
     AddressV = MIRROR;
 };
@@ -208,14 +202,22 @@ sampler2D _SampleOpticalFlow
 sampler2D _SampleAccumulation
 {
     Texture = _RenderAccumulation;
-    MFILTER;
+    MinFilter = _FILTER;
+    MagFilter = _FILTER;
     AddressU = MIRROR;
     AddressV = MIRROR;
 };
 
-sampler2D _SampleCopy
+sampler2D _SampleFrame1
 {
-    Texture = _RenderCopy;
+    Texture = _RenderFrame1;
+    AddressU = MIRROR;
+    AddressV = MIRROR;
+};
+
+sampler2D _SampleFeedback
+{
+    Texture = _RenderFeedback;
     AddressU = MIRROR;
     AddressV = MIRROR;
     SRGBTexture = TRUE;
@@ -232,7 +234,7 @@ void PostProcessVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION
 
 void DerivativesVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD0, inout float4 Offsets : TEXCOORD1)
 {
-    const float2 PixelSize = 0.5 / DSIZE;
+    const float2 PixelSize = 0.5 / _HALFSIZE;
     const float4 PixelOffset = float4(PixelSize, -PixelSize);
     PostProcessVS(ID, Position, TexCoord);
     Offsets = TexCoord.xyxy + PixelOffset;
@@ -240,28 +242,27 @@ void DerivativesVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION
 
 /* [Pixel Shaders ] */
 
-void ConvertPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0)
+void ConvertPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float OutputColor0 : SV_TARGET0)
 {
-    // r0.x = normalize current frame
-    // r0.y = copy normalized frame from last run
     float3 Color = max(tex2D(_SampleColor, TexCoord).rgb, 1e-7);
     Color /= dot(Color, 1.0);
     Color /= max(max(Color.r, Color.g), Color.b);
-    OutputColor0.x = dot(Color, 1.0 / 3.0);
-    OutputColor0.y = tex2D(_SampleCurrentBuffer, TexCoord).x;
+    OutputColor0 = dot(Color, 1.0 / 3.0);
 }
 
-void DerivativesPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets : TEXCOORD1, out float OutputColor0 : SV_TARGET0, out float2 OutputColor1 : SV_TARGET1)
+void DerivativesPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets : TEXCOORD1, out float2 OutputColor0 : SV_TARGET0)
 {
-    float2 Sample0 = tex2D(_SamplePreviousBuffer, Offsets.zy).xy; // (-x, +y)
-    float2 Sample1 = tex2D(_SamplePreviousBuffer, Offsets.xy).xy; // (+x, +y)
-    float2 Sample2 = tex2D(_SamplePreviousBuffer, Offsets.zw).xy; // (-x, -y)
-    float2 Sample3 = tex2D(_SamplePreviousBuffer, Offsets.xw).xy; // (+x, -y)
-    float2 _ddx = -(Sample2 + Sample0) + (Sample3 + Sample1);
-    float2 _ddy = -(Sample2 + Sample3) + (Sample0 + Sample1);
-    OutputColor1.x = dot(_ddx, 0.5);
-    OutputColor1.y = dot(_ddy, 0.5);
-    OutputColor0 = tex2D(_SamplePreviousBuffer, TexCoord).x;
+    float2 Sample0, Sample1, Sample2, Sample3;
+    Sample0[0] = tex2D(_SampleFrame0, Offsets.zy).x; // (-x, +y)
+    Sample0[1] = tex2D(_SampleFrame1, Offsets.zy).x; // (-x, +y)
+    Sample1[0] = tex2D(_SampleFrame0, Offsets.xy).x; // (+x, +y)
+    Sample1[1] = tex2D(_SampleFrame1, Offsets.xy).x; // (+x, +y)
+    Sample2[0] = tex2D(_SampleFrame0, Offsets.zw).x; // (-x, -y)
+    Sample2[1] = tex2D(_SampleFrame1, Offsets.zw).x; // (-x, -y)
+    Sample3[0] = tex2D(_SampleFrame0, Offsets.xw).x; // (+x, -y)
+    Sample3[1] = tex2D(_SampleFrame1, Offsets.xw).x; // (+x, -y)
+    OutputColor0.x = dot(-(Sample2 + Sample0) + (Sample3 + Sample1), 0.5);
+    OutputColor0.y = dot(-(Sample2 + Sample3) + (Sample0 + Sample1), 0.5);
 }
 
 /*
@@ -276,13 +277,13 @@ void DerivativesPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, f
 void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
     const float Lambda = max(4.0 * pow(_Constraint * 1e-2, 2.0), 1e-10);
-    float Levels = (RSIZE - 1) - 0.5;
+    float Levels = (_MIPLEVELS - 1) - 0.5;
 
     while(Levels >= 0)
     {
         float4 CalculateUV = float4(TexCoord, 0.0, Levels);
-        float CurrentFrame = tex2Dlod(_SampleCurrentBuffer, CalculateUV).x;
-        float PreviousFrame = tex2Dlod(_SamplePreviousBuffer, CalculateUV).y;
+        float CurrentFrame = tex2Dlod(_SampleFrame0, CalculateUV).x;
+        float PreviousFrame = tex2Dlod(_SampleFrame1, CalculateUV).x;
         float2 _Ixy = tex2Dlod(_SampleDerivatives, CalculateUV).xy;
         float _It = CurrentFrame - PreviousFrame;
 
@@ -301,7 +302,7 @@ float RandomNoise(float2 TexCoord)
     return frac(43758.5453 * sin(f));
 }
 
-void AccumulatePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+void AccumulatePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0, out float4 OutputColor1 : SV_TARGET1)
 {
     float Quality = 1.0 - _Entropy;
     float2 Time = float2(_Time, 0.0);
@@ -317,7 +318,7 @@ void AccumulatePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, ou
     MotionVector *= _Scale;
 
     // Normalized screen space -> Pixel coordinates
-    MotionVector = MotionVector * (DSIZE / 2);
+    MotionVector = MotionVector * _HALFSIZE;
 
     // Small random displacement (diffusion)
     MotionVector += (Random.xy - 0.5)  * _Diffusion;
@@ -345,17 +346,19 @@ void AccumulatePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, ou
         OutputColor0.rgb = UpdateAccumulation;
         OutputColor0.a = 1.0;
     }
+
+    OutputColor1 = float4(tex2D(_SampleFrame0, TexCoord).rgb, 0.0);
 }
 
 void OutputPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    const float2 DisplacementTexel = 1.0 / (DSIZE.xy / 2.0);
+    const float2 DisplacementTexel = 1.0 / _HALFSIZE;
     const float Quality = 1.0 - _Entropy;
 
     float2 MotionVectors = tex2Dlod(_SampleOpticalFlow, float4(TexCoord, 0.0, _Detail)).xy * DisplacementTexel;
     float4 Source = tex2D(_SampleColor, TexCoord); // Color from the original image
     float Displacement = tex2D(_SampleAccumulation, TexCoord).r; // Displacement vector
-    float4 Working = tex2D(_SampleCopy, TexCoord - MotionVectors * 0.98);
+    float4 Working = tex2D(_SampleFeedback, TexCoord - MotionVectors * 0.98);
 
     // Generate some pseudo random numbers.
     float RandomMotion = RandomNoise(TexCoord + length(MotionVectors));
@@ -378,9 +381,9 @@ void OutputPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out fl
     OutputColor0 = lerp(Working, Source, ConditionalWeight);
 }
 
-void CopyPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+void BlitPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    OutputColor0 = float4(tex2D(_SampleColor, TexCoord).rgb, 1.0);
+    OutputColor0 = tex2D(_SampleColor, TexCoord);
 }
 
 technique KinoDatamosh
@@ -389,15 +392,14 @@ technique KinoDatamosh
     {
         VertexShader = PostProcessVS;
         PixelShader = ConvertPS;
-        RenderTarget0 = _RenderPreviousBuffer;
+        RenderTarget0 = _RenderFrame0;
     }
 
     pass
     {
         VertexShader = DerivativesVS;
         PixelShader = DerivativesPS;
-        RenderTarget0 = _RenderCurrentBuffer;
-        RenderTarget1 = _RenderDataMoshDerivatives;
+        RenderTarget0 = _RenderDerivatives_Datamosh;
     }
 
     /*
@@ -418,7 +420,7 @@ technique KinoDatamosh
     {
         VertexShader = PostProcessVS;
         PixelShader = OpticalFlowPS;
-        RenderTarget0 = _RenderDataMoshOpticalFlow;
+        RenderTarget0 = _RenderOpticalFlow_Datamosh;
         ClearRenderTargets = FALSE;
         BlendEnable = TRUE;
         BlendOp = ADD;
@@ -451,6 +453,7 @@ technique KinoDatamosh
         VertexShader = PostProcessVS;
         PixelShader = AccumulatePS;
         RenderTarget0 = _RenderAccumulation;
+        RenderTarget1 = _RenderFrame1;
         ClearRenderTargets = FALSE;
         BlendEnable = TRUE;
         BlendOp = ADD;
@@ -468,8 +471,8 @@ technique KinoDatamosh
     pass
     {
         VertexShader = PostProcessVS;
-        PixelShader = CopyPS;
-        RenderTarget = _RenderCopy;
+        PixelShader = BlitPS;
+        RenderTarget = _RenderFeedback;
         SRGBWriteEnable = TRUE;
     }
 }
