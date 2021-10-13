@@ -31,9 +31,9 @@
 */
 
 uniform int _Radius <
-    ui_min = 0.0;
+    ui_min = 1;
     ui_type = "drag";
-> = 1.0;
+> = 1;
 
 #ifndef ENABLE_PINGPONG
     #define ENABLE_PINGPONG 1

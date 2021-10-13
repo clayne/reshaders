@@ -216,7 +216,7 @@ float4 Blur1D(sampler2D Source, float2 TexCoord, float4 Offsets[7])
     return Output / Total;
 }
 
-void NormalizePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0)
+void NormalizePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float OutputColor0 : SV_TARGET0)
 {
     float3 Color = max(1e-7, tex2D(_SampleColor, TexCoord).rgb);
     Color /= dot(Color, 1.0);
