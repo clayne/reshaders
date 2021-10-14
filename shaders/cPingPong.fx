@@ -41,6 +41,12 @@ uniform int _Radius <
 
 texture2D _RenderColor : COLOR;
 
+sampler2D _SampleColor
+{
+    Texture = _RenderColor;
+    SRGBTexture = TRUE;
+};
+
 texture2D _RenderBufferA
 {
     Width = BUFFER_WIDTH / 2;
@@ -48,23 +54,17 @@ texture2D _RenderBufferA
     Format = RGBA8;
 };
 
+sampler2D _SampleBufferA
+{
+    Texture = _RenderBufferA;
+    SRGBTexture = TRUE;
+};
+
 texture2D _RenderBufferB
 {
     Width = BUFFER_WIDTH / 2;
     Height = BUFFER_HEIGHT / 2;
     Format = RGBA8;
-};
-
-sampler2D _SampleColor
-{
-    Texture = _RenderColor;
-    SRGBTexture = TRUE;
-};
-
-sampler2D _SampleBufferA
-{
-    Texture = _RenderBufferA;
-    SRGBTexture = TRUE;
 };
 
 sampler2D _SampleBufferB
@@ -84,7 +84,7 @@ void PostProcessVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION
 
 /* [ Pixel Shaders ] */
 
-float4 Blur1D(sampler2D Source, float2 TexCoord, const float2 Direction)
+float4 GaussianBlur(sampler2D Source, float2 TexCoord, const float2 Direction)
 {
     float4 Output;
     const float2 PixelSize = (1.0 / float2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2)) * Direction;
@@ -105,22 +105,22 @@ void BlitPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out floa
 
 void HorizontalBlurPS0(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    OutputColor0 = Blur1D(_SampleBufferA, TexCoord, float2(1.0, 0.0));
+    OutputColor0 = GaussianBlur(_SampleBufferA, TexCoord, float2(1.0, 0.0));
 }
 
 void VerticalBlurPS0(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    OutputColor0 = Blur1D(_SampleBufferB, TexCoord, float2(0.0, 1.0));
+    OutputColor0 = GaussianBlur(_SampleBufferB, TexCoord, float2(0.0, 1.0));
 }
 
 void HorizontalBlurPS1(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    OutputColor0 = Blur1D(_SampleBufferA, TexCoord, float2(1.0, 0.0));
+    OutputColor0 = GaussianBlur(_SampleBufferA, TexCoord, float2(1.0, 0.0));
 }
 
 void VerticalBlurPS1(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    OutputColor0 = Blur1D(_SampleBufferB, TexCoord, float2(0.0, 1.0));
+    OutputColor0 = GaussianBlur(_SampleBufferB, TexCoord, float2(0.0, 1.0));
 }
 
 void OutputPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)

@@ -12,16 +12,16 @@ uniform float _BlendFactor <
 
 texture2D _RenderColor : COLOR;
 
-texture2D _RenderCopy
-{
-    Width = BUFFER_WIDTH;
-    Height = BUFFER_HEIGHT;
-};
-
 sampler2D _SampleColor
 {
     Texture = _RenderColor;
     SRGBTexture = TRUE;
+};
+
+texture2D _RenderCopy
+{
+    Width = BUFFER_WIDTH;
+    Height = BUFFER_HEIGHT;
 };
 
 sampler2D _SampleCopy

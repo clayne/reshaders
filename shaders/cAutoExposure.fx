@@ -22,18 +22,18 @@ uniform float _ManualBias <
 
 texture2D _RenderColor : COLOR;
 
+sampler2D _SampleColor
+{
+    Texture = _RenderColor;
+    SRGBTexture = TRUE;
+};
+
 texture2D _RenderLumaLOD
 {
     Width = 256;
     Height = 256;
     MipLevels = 9;
     Format = R16F;
-};
-
-sampler2D _SampleColor
-{
-    Texture = _RenderColor;
-    SRGBTexture = TRUE;
 };
 
 sampler2D _SampleLumaLOD

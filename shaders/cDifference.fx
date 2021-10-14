@@ -35,19 +35,19 @@ uniform float _Weight <
 
 texture2D _RenderColor : COLOR;
 
+sampler2D _SampleColor
+{
+    Texture = _RenderColor;
+    AddressU = MIRROR;
+    AddressV = MIRROR;
+};
+
 texture2D _RenderLOD  < pooled = false; >
 {
     Width = DSIZE.x;
     Height = DSIZE.y;
     MipLevels = RMIPS;
     Format = RGBA8;
-};
-
-sampler2D _SampleColor
-{
-    Texture = _RenderColor;
-    AddressU = MIRROR;
-    AddressV = MIRROR;
 };
 
 sampler2D _SampleLOD

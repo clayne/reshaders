@@ -28,20 +28,20 @@ uniform int _Shape <
 
 texture2D _RenderColor : COLOR;
 
-texture2D _RenderMosaicLOD < pooled = false; >
-{
-    Width = BUFFER_WIDTH;
-    Height = BUFFER_HEIGHT;
-    MipLevels = RMIPS;
-    Format = RGBA8;
-};
-
 sampler2D _SampleColor
 {
     Texture = _RenderColor;
     AddressU = MIRROR;
     AddressV = MIRROR;
     SRGBTexture = TRUE;
+};
+
+texture2D _RenderMosaicLOD < pooled = false; >
+{
+    Width = BUFFER_WIDTH;
+    Height = BUFFER_HEIGHT;
+    MipLevels = RMIPS;
+    Format = RGBA8;
 };
 
 sampler2D _SampleMosaicLOD

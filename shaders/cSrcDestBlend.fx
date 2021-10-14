@@ -7,17 +7,17 @@ uniform int _Blend <
 
 texture2D _RenderColor : COLOR;
 
+sampler2D _SampleColor
+{
+    Texture = _RenderColor;
+    SRGBTexture = TRUE;
+};
+
 texture2D _RenderFrame
 {
     Width = BUFFER_WIDTH;
     Height = BUFFER_HEIGHT;
     Format = RGBA8;
-};
-
-sampler2D _SampleColor
-{
-    Texture = _RenderColor;
-    SRGBTexture = TRUE;
 };
 
 sampler2D _SampleFrame

@@ -30,70 +30,25 @@ uniform float _Detail <
     ui_type = "drag";
     ui_label = "Mipmap Bias";
     ui_tooltip = "Higher = Less spatial noise";
-> = 4.5;
-
-#define CONST_LOG2(x) (\
-    (uint((x)  & 0xAAAAAAAA) != 0) | \
-    (uint(((x) & 0xFFFF0000) != 0) << 4) | \
-    (uint(((x) & 0xFF00FF00) != 0) << 3) | \
-    (uint(((x) & 0xF0F0F0F0) != 0) << 2) | \
-    (uint(((x) & 0xCCCCCCCC) != 0) << 1))
-
-#define BIT2_LOG2(x)  ((x) | (x) >> 1)
-#define BIT4_LOG2(x)  (BIT2_LOG2(x) | BIT2_LOG2(x) >> 2)
-#define BIT8_LOG2(x)  (BIT4_LOG2(x) | BIT4_LOG2(x) >> 4)
-#define BIT16_LOG2(x) (BIT8_LOG2(x) | BIT8_LOG2(x) >> 8)
-#define LOG2(x)       (CONST_LOG2((BIT16_LOG2(x) >> 1) + 1))
-#define RMAX(x, y)     x ^ ((x ^ y) & -(x < y)) // max(x, y)
+> = 2.5;
 
 #define _HALFSIZE uint2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2)
-#define _MIPLEVELS LOG2(RMAX(_HALFSIZE.x, _HALFSIZE.y)) + 1
-#define _DATASIZE 128.0
+#define _BUFFERSIZE uint2(_HALFSIZE / 8)
 
 texture2D _RenderColor : COLOR;
+
+sampler2D _SampleColor
+{
+    Texture = _RenderColor;
+    SRGBTexture = TRUE;
+};
 
 texture2D _RenderBuffer
 {
     Width = _HALFSIZE.x;
     Height = _HALFSIZE.y;
     Format = R16F;
-    MipLevels = _MIPLEVELS;
-};
-
-texture2D _RenderData0
-{
-    Width = _DATASIZE;
-    Height = _DATASIZE;
-    Format = RG16F;
-    MipLevels = 8;
-};
-
-texture2D _RenderData1
-{
-    Width = _DATASIZE;
-    Height = _DATASIZE;
-    Format = RG16F;
-    MipLevels = 8;
-};
-
-texture2D _RenderCopy_MotionBlur
-{
-    Width = _DATASIZE;
-    Height = _DATASIZE;
-    Format = R16F;
-};
-
-texture2D _RenderOpticalFlow_MotionBlur
-{
-    Width = _DATASIZE;
-    Height = _DATASIZE;
-    Format = RG16F;
-};
-
-sampler2D _SampleColor
-{
-    Texture = _RenderColor;
-    SRGBTexture = TRUE;
+    MipLevels = 3;
 };
 
 sampler2D _SampleBuffer
@@ -103,11 +58,27 @@ sampler2D _SampleBuffer
     AddressV = MIRROR;
 };
 
+texture2D _RenderData0
+{
+    Width = _BUFFERSIZE.x;
+    Height = _BUFFERSIZE.y;
+    Format = RG16F;
+    MipLevels = 6;
+};
+
 sampler2D _SampleData0
 {
     Texture = _RenderData0;
     AddressU = MIRROR;
     AddressV = MIRROR;
+};
+
+texture2D _RenderData1
+{
+    Width = _BUFFERSIZE.x;
+    Height = _BUFFERSIZE.y;
+    Format = RG16F;
+    MipLevels = 6;
 };
 
 sampler2D _SampleData1
@@ -117,11 +88,25 @@ sampler2D _SampleData1
     AddressV = MIRROR;
 };
 
+texture2D _RenderCopy_MotionBlur
+{
+    Width = _BUFFERSIZE.x;
+    Height = _BUFFERSIZE.y;
+    Format = R16F;
+};
+
 sampler2D _SampleCopy
 {
     Texture = _RenderCopy_MotionBlur;
     AddressU = MIRROR;
     AddressV = MIRROR;
+};
+
+texture2D _RenderOpticalFlow_MotionBlur
+{
+    Width = _BUFFERSIZE.x;
+    Height = _BUFFERSIZE.y;
+    Format = RG16F;
 };
 
 sampler2D _SampleOpticalFlow
@@ -142,7 +127,7 @@ void PostProcessVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION
 
 static const float KernelSize = 14;
 
-float Gaussian1D(const int Position)
+float GaussianWeight(const int Position)
 {
     const float Sigma = KernelSize / 3.0;
     const float Pi = 3.1415926535897932384626433832795f;
@@ -152,8 +137,8 @@ float Gaussian1D(const int Position)
 
 float3 OutputWeights(const float Index)
 {
-    float Weight0 = Gaussian1D(Index);
-    float Weight1 = Gaussian1D(Index + 1.0);
+    float Weight0 = GaussianWeight(Index);
+    float Weight1 = GaussianWeight(Index + 1.0);
     float LinearWeight = Weight0 + Weight1;
     return float3(Weight0, Weight1, LinearWeight);
 }
@@ -168,7 +153,7 @@ float2 OutputOffsets(const float Index)
 void HorizontalBlurVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD0, inout float4 Offsets[7] : TEXCOORD1)
 {
     PostProcessVS(ID, Position, TexCoord);
-    const float2 Direction = float2(1.0 / _DATASIZE, 0.0);
+    const float2 Direction = float2(1.0 / _BUFFERSIZE.x, 0.0);
 
     [unroll] for(int i = 0; i < 7; i++)
     {
@@ -180,7 +165,7 @@ void HorizontalBlurVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSIT
 void VerticalBlurVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD0, inout float4 Offsets[7] : TEXCOORD1)
 {
     PostProcessVS(ID, Position, TexCoord);
-    const float2 Direction = float2(0.0, 1.0 / _DATASIZE);
+    const float2 Direction = float2(0.0, 1.0 / _BUFFERSIZE.y);
 
     [unroll] for(int i = 0; i < 7; i++)
     {
@@ -191,7 +176,7 @@ void VerticalBlurVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITIO
 
 void DerivativesVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float4 Offsets : TEXCOORD0)
 {
-    const float2 PixelSize = 0.5 / _DATASIZE;
+    const float2 PixelSize = 0.5 / _BUFFERSIZE;
     const float4 PixelOffset = float4(PixelSize, -PixelSize);
     float2 TexCoord0;
     PostProcessVS(ID, Position, TexCoord0);
@@ -200,10 +185,10 @@ void DerivativesVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION
 
 /* [ Pixel Shaders ] */
 
-float4 Blur1D(sampler2D Source, float2 TexCoord, float4 Offsets[7])
+float4 GaussianBlur(sampler2D Source, float2 TexCoord, float4 Offsets[7])
 {
-    float Total = Gaussian1D(0.0);
-    float4 Output = tex2D(Source, TexCoord) * Gaussian1D(0.0);
+    float Total = GaussianWeight(0.0);
+    float4 Output = tex2D(Source, TexCoord) * GaussianWeight(0.0);
 
     [unroll] for(int i = 0; i < 7; i ++)
     {
@@ -232,12 +217,12 @@ void BlitPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out floa
 
 void HorizontalBlurPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets[7] : TEXCOORD1, out float OutputColor0 : SV_TARGET0)
 {
-    OutputColor0 = Blur1D(_SampleData0, TexCoord, Offsets).x;
+    OutputColor0 = GaussianBlur(_SampleData0, TexCoord, Offsets).x;
 }
 
 void VerticalBlurPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets[7] : TEXCOORD1, out float OutputColor0 : SV_TARGET0, out float OutputColor1 : SV_TARGET1)
 {
-    OutputColor0 = Blur1D(_SampleData1, TexCoord, Offsets).x;
+    OutputColor0 = GaussianBlur(_SampleData1, TexCoord, Offsets).x;
     OutputColor1 = OutputColor0;
 }
 
@@ -255,7 +240,7 @@ void DerivativesPS(float4 Position : SV_POSITION, float4 Offsets : TEXCOORD0, ou
 
 void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    float Levels = ceil(log2(_DATASIZE)) - 0.5;
+    float Levels = 5 - 0.5;
     const float Lamdba = max(4.0 * pow(_Constraint * 1e-3, 2.0), 1e-10);
 
     while(Levels >= 0.0)
@@ -275,12 +260,12 @@ void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, o
 
 void PPHorizontalBlurPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets[7] : TEXCOORD1, out float2 OutputColor0 : SV_TARGET0)
 {
-    OutputColor0 = Blur1D(_SampleOpticalFlow, TexCoord, Offsets).xy;
+    OutputColor0 = GaussianBlur(_SampleOpticalFlow, TexCoord, Offsets).xy;
 }
 
 void PPVerticalBlurPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets[7] : TEXCOORD1, out float2 OutputColor0 : SV_TARGET0)
 {
-    OutputColor0 = Blur1D(_SampleData0, TexCoord, Offsets).xy;
+    OutputColor0 = GaussianBlur(_SampleData0, TexCoord, Offsets).xy;
 }
 
 float Noise(float2 vpos)
@@ -291,10 +276,9 @@ float Noise(float2 vpos)
 void OutputPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target)
 {
     float4 Blur;
-    const float AspectRatio = BUFFER_WIDTH / BUFFER_HEIGHT;
     const float Samples = 1.0 / (8.0 - 1.0);
     float2 Flow = tex2Dlod(_SampleData1, float4(TexCoord, 0.0, _Detail)).xy;
-    Flow = Flow * rcp(_DATASIZE) * AspectRatio;
+    Flow = Flow * rcp(_BUFFERSIZE);
     Flow *= _Scale;
 
     for(int k = 0; k < 9; k++)
