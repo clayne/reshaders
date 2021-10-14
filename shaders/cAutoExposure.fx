@@ -38,8 +38,8 @@ texture2D _RenderColor : COLOR;
 
 texture2D _RenderLumaLOD
 {
-    Width = BUFFER_WIDTH;
-    Height = BUFFER_HEIGHT;
+    Width = BUFFER_WIDTH / 2;
+    Height = BUFFER_HEIGHT / 2;
     MipLevels = LOG2(RMAX(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2)) + 1;
     Format = R16F;
 };
