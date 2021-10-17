@@ -320,20 +320,20 @@ void AccumulatePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, ou
     Random.z = RandomNoise(TexCoord.yx - Time.xx);
 
     // Motion vector
-    float2 MotionVector = tex2Dlod(_SampleOpticalFlow, float4(TexCoord, 0.0, _Detail)).xy;
-    MotionVector *= _Scale;
+    float2 MotionVectors = tex2Dlod(_SampleOpticalFlow, float4(TexCoord, 0.0, _Detail)).xy;
+    MotionVectors *= _Scale;
 
     // Normalized screen space -> Pixel coordinates
-    MotionVector = MotionVector * _HALFSIZE;
+    MotionVectors = MotionVectors * _HALFSIZE;
 
     // Small random displacement (diffusion)
-    MotionVector += (Random.xy - 0.5)  * _Diffusion;
+    MotionVectors += (Random.xy - 0.5)  * _Diffusion;
 
     // Pixel perfect snapping
-    MotionVector = round(MotionVector);
+    MotionVectors = round(MotionVectors);
 
     // Accumulates the amount of motion.
-    float MotionVectorLength = length(MotionVector);
+    float MotionVectorLength = length(MotionVectors);
 
     // - Simple update
     float UpdateAccumulation = min(MotionVectorLength, _BlockSize) * 0.005;
@@ -347,7 +347,9 @@ void AccumulatePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, ou
     {
         OutputColor0.rgb = ResetAccumulation;
         OutputColor0.a = 0.0;
-    } else {
+    }
+    else
+    {
         // This should work given law of addition
         OutputColor0.rgb = UpdateAccumulation;
         OutputColor0.a = 1.0;
@@ -361,7 +363,28 @@ void OutputPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out fl
     const float2 DisplacementTexel = 1.0 / _HALFSIZE;
     const float Quality = 1.0 - _Entropy;
 
+    // Random numbers
+    float2 Time = float2(_Time, 0.0);
+    float3 Random;
+    Random.x = RandomNoise(TexCoord.xy + Time.xy);
+    Random.y = RandomNoise(TexCoord.xy + Time.yx);
+    Random.z = RandomNoise(TexCoord.yx - Time.xx);
+
     float2 MotionVectors = tex2Dlod(_SampleOpticalFlow, float4(TexCoord, 0.0, _Detail)).xy * DisplacementTexel;
+    MotionVectors *= _Scale;
+
+    // Normalized screen space -> Pixel coordinates
+    MotionVectors = MotionVectors * float2(BUFFER_WIDTH, BUFFER_HEIGHT);
+
+    // Small random displacement (diffusion)
+    MotionVectors += (Random.xy - 0.5)  * _Diffusion;
+
+    // Pixel perfect snapping
+    MotionVectors = round(MotionVectors);
+
+    // Pixel coordinates -> Normalized screen space
+    MotionVectors *= (float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT) - 1.0);
+
     float4 Source = tex2D(_SampleColor, TexCoord); // Color from the original image
     float Displacement = tex2D(_SampleAccumulation, TexCoord).r; // Displacement vector
     float4 Working = tex2D(_SampleFeedback, TexCoord - MotionVectors * 0.98);

@@ -27,22 +27,22 @@ uniform float _Intensity <
 texture2D _RenderColor : COLOR;
 sampler2D _SampleColor { Texture = _RenderColor; SRGBTexture = TRUE; };
 
-texture2D _RenderBloom1 { Width = BUFFER_WIDTH / 2;   Height = BUFFER_HEIGHT / 2;   Format = RGBA16F; };
+texture2D _RenderBloom1 { Width = BUFFER_WIDTH / 2; Height = BUFFER_HEIGHT / 2; Format = RGBA16F; };
 sampler2D _SampleBloom1 { Texture = _RenderBloom1; };
 
-texture2D _RenderBloom2 { Width = BUFFER_WIDTH / 4;   Height = BUFFER_HEIGHT / 4;   Format = RGBA16F; };
+texture2D _RenderBloom2 { Width = BUFFER_WIDTH / 4; Height = BUFFER_HEIGHT / 4; Format = RGBA16F; };
 sampler2D _SampleBloom2 { Texture = _RenderBloom2; };
 
-texture2D _RenderBloom3 { Width = BUFFER_WIDTH / 8;   Height = BUFFER_HEIGHT / 8;   Format = RGBA16F; };
+texture2D _RenderBloom3 { Width = BUFFER_WIDTH / 8; Height = BUFFER_HEIGHT / 8; Format = RGBA16F; };
 sampler2D _SampleBloom3 { Texture = _RenderBloom3; };
 
-texture2D _RenderBloom4 { Width = BUFFER_WIDTH / 16;  Height = BUFFER_HEIGHT / 16;  Format = RGBA16F; };
+texture2D _RenderBloom4 { Width = BUFFER_WIDTH / 16; Height = BUFFER_HEIGHT / 16; Format = RGBA16F; };
 sampler2D _SampleBloom4 { Texture = _RenderBloom4; };
 
-texture2D _RenderBloom5 { Width = BUFFER_WIDTH / 32;  Height = BUFFER_HEIGHT / 32;  Format = RGBA16F; };
+texture2D _RenderBloom5 { Width = BUFFER_WIDTH / 32; Height = BUFFER_HEIGHT / 32; Format = RGBA16F; };
 sampler2D _SampleBloom5 { Texture = _RenderBloom5; };
 
-texture2D _RenderBloom6 { Width = BUFFER_WIDTH / 64;  Height = BUFFER_HEIGHT / 64;  Format = RGBA16F; };
+texture2D _RenderBloom6 { Width = BUFFER_WIDTH / 64; Height = BUFFER_HEIGHT / 64; Format = RGBA16F; };
 sampler2D _SampleBloom6 { Texture = _RenderBloom6; };
 
 texture2D _RenderBloom7 { Width = BUFFER_WIDTH / 128; Height = BUFFER_HEIGHT / 128; Format = RGBA16F; };

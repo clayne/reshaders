@@ -76,7 +76,7 @@ void MosaicPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out fl
     float2 BlockCoord, MosaicCoord;
     float MaxRadius = max(_Radius.x, _Radius.y);
 
-    [branch] switch(_Shape)
+    switch(_Shape)
     {
         // Circle https://www.shadertoy.com/view/4d2SWy
         case 0:
@@ -92,7 +92,7 @@ void MosaicPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out fl
             break;
         // Triangle https://www.shadertoy.com/view/4d2SWy
         case 1:
-        	const float MaxLODLevel = log2(max(BUFFER_WIDTH, BUFFER_HEIGHT)) - log2(MaxRadius);
+        	const float MaxLODLevel = log2(sqrt((BUFFER_WIDTH * BUFFER_HEIGHT) / (_Radius.x * _Radius.y)));
             const float2 Divisor = 1.0 / (2.0 * _Radius);
             BlockCoord = floor(TexCoord * _Radius) / _Radius;
             TexCoord -= BlockCoord;
@@ -100,7 +100,7 @@ void MosaicPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out fl
             float2 Composite;
             Composite.x = step(1.0 - TexCoord.y, TexCoord.x);
             Composite.y = step(TexCoord.x, TexCoord.y);
-            OutputColor0 = tex2Dlod(_SampleMosaicLOD, float4(BlockCoord + Composite * Divisor, 0.0, MaxLODLevel - 1));
+            OutputColor0 = tex2Dlod(_SampleMosaicLOD, float4(BlockCoord + Composite * Divisor, 0.0, MaxLODLevel - 1.0));
             break;
         default:
             BlockCoord = round(FragCoord / MaxRadius) * MaxRadius;

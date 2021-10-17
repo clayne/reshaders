@@ -11,7 +11,7 @@ uniform float _Scale <
     ui_type = "drag";
     ui_label = "Flow Scale";
     ui_tooltip = "Higher = More motion blur";
-> = 2.0;
+> = 4.0;
 
 uniform float _Constraint <
     ui_type = "drag";
@@ -232,8 +232,8 @@ void DerivativesPS(float4 Position : SV_POSITION, float4 Offsets : TEXCOORD0, ou
     float2 Sample1 = tex2D(_SampleData0, Offsets.xy).xy; // (+x, +y)
     float2 Sample2 = tex2D(_SampleData0, Offsets.zw).xy; // (-x, -y)
     float2 Sample3 = tex2D(_SampleData0, Offsets.xw).xy; // (+x, -y)
-    float2 _ddx = -(Sample2 + Sample0) + (Sample3 + Sample1);
-    float2 _ddy = -(Sample2 + Sample3) + (Sample0 + Sample1);
+    float2 _ddx = (-Sample2 + -Sample0) + (Sample3 + Sample1);
+    float2 _ddy = (Sample2 + Sample3) + (-Sample0 + -Sample1);
     OutputColor0.x = dot(_ddx, 0.5);
     OutputColor0.y = dot(_ddy, 0.5);
 }
@@ -268,27 +268,22 @@ void PPVerticalBlurPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0
     OutputColor0 = GaussianBlur(_SampleData0, TexCoord, Offsets).xy;
 }
 
-float Noise(float2 vpos)
-{
-    return frac(52.9829189 * frac(dot(vpos.xy, float2(0.06711056, 0.00583715))));
-}
-
 void OutputPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target)
 {
-    float4 Blur;
-    const float Samples = 1.0 / (8.0 - 1.0);
-    float2 Flow = tex2Dlod(_SampleData1, float4(TexCoord, 0.0, _Detail)).xy;
-    Flow = Flow * rcp(_BUFFERSIZE);
-    Flow *= _Scale;
+    const int Samples = 4;
+    float Noise = frac(52.9829189 * frac(dot(Position.xy, float2(0.06711056, 0.00583715))));
+    float2 Velocity = tex2Dlod(_SampleData1, float4(TexCoord, 0.0, _Detail)).xy;
+    float2 TexelSize = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
+    TexCoord *= float2(BUFFER_WIDTH, BUFFER_HEIGHT);
 
-    for(int k = 0; k < 9; k++)
+    for(int k = 0; k < Samples; ++k)
     {
-        float2 CalculatePosition = (Noise(Position.xy) + k) * Samples - 0.5;
-        float4 Color = tex2D(_SampleColor, Flow * CalculatePosition + TexCoord);
-        Blur = lerp(Blur, Color, rcp(float(k) + 1));
+        float2 Offset = Velocity * (Noise + k);
+        OutputColor0 += tex2D(_SampleColor, (TexCoord + Offset * _Scale) * TexelSize);
+        OutputColor0 += tex2D(_SampleColor, (TexCoord - Offset * _Scale) * TexelSize);
     }
 
-    OutputColor0 = Blur;
+    OutputColor0 /= (Samples * 2);
 }
 
 technique cMotionBlur
