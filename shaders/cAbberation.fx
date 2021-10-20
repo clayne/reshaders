@@ -21,7 +21,7 @@ sampler2D _SampleColor
 
     QUESTION: "Why do we have to divide our shifting value with screensize?"
     ANSWER: Texture coordinates in window-space is between 0.0 - 1.0.
-            Thus, TexCoord + 1.0 moves the texture to the window's other side, rendering it out of sight
+            Thus, just doing TexCoord + 1.0 moves the texture to the window's other sides, rendering it out of sight
 */
 
 void PostProcessVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD)
