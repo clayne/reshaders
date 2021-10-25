@@ -240,18 +240,20 @@ void DerivativesPS(float4 Position : SV_POSITION, float4 Offsets : TEXCOORD0, ou
 
 void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    float Levels = 5 - 0.5;
-    const float Lamdba = max(4.0 * pow(_Constraint * 1e-3, 2.0), 1e-10);
+	const float MaxLevel = 5.0 - 0.5;
+    float Levels = 5.0 - 0.5;
 
     while(Levels >= 0.0)
     {
+        const float Lambda = (_Constraint * 1e-4) / pow(4.0, MaxLevel - Levels);
         float4 CalculateUV = float4(TexCoord, 0.0, Levels);
         float2 Frame = tex2Dlod(_SampleData0, CalculateUV).xy;
         float2 _Ixy = tex2Dlod(_SampleData1, CalculateUV).xy;
         float _It = Frame.x - Frame.y;
 
         float2 OpticalFlow = _Ixy * (dot(_Ixy, OutputColor0.xy) + _It);
-        OutputColor0.xy -= (OpticalFlow / (dot(_Ixy, _Ixy) + Lamdba));
+        float2 OutputFlow = OutputColor0.xy - (OpticalFlow / (dot(_Ixy, _Ixy) + Lambda));
+        OutputColor0.xy = (Levels != 0) ? OutputFlow + OutputColor0.xy : OutputFlow;
         Levels = Levels - 1.0;
     }
 
@@ -272,15 +274,13 @@ void OutputPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out fl
 {
     const int Samples = 4;
     float Noise = frac(52.9829189 * frac(dot(Position.xy, float2(0.06711056, 0.00583715))));
-    float2 Velocity = tex2Dlod(_SampleData1, float4(TexCoord, 0.0, _Detail)).xy;
-    float2 TexelSize = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
-    TexCoord *= float2(BUFFER_WIDTH, BUFFER_HEIGHT);
+    float2 Velocity = (tex2Dlod(_SampleData1, float4(TexCoord, 0.0, _Detail)).xy / _BUFFERSIZE) * _Scale;
 
     for(int k = 0; k < Samples; ++k)
     {
         float2 Offset = Velocity * (Noise + k);
-        OutputColor0 += tex2D(_SampleColor, (TexCoord + Offset * _Scale) * TexelSize);
-        OutputColor0 += tex2D(_SampleColor, (TexCoord - Offset * _Scale) * TexelSize);
+        OutputColor0 += tex2D(_SampleColor, (TexCoord + Offset));
+        OutputColor0 += tex2D(_SampleColor, (TexCoord - Offset));
     }
 
     OutputColor0 /= (Samples * 2);

@@ -282,24 +282,27 @@ void DerivativesPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, f
 
 void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    const float Lambda = max(4.0 * pow(_Constraint * 1e-2, 2.0), 1e-10);
-    float Levels = (_MIPLEVELS - 1) - 0.5;
+	const float MaxLevel = (_MIPLEVELS - 1);
+    float Level = (_MIPLEVELS - 1);
+    float2 OutputFlow;
 
-    while(Levels >= 0)
+    while(Level >= 0)
     {
-        float4 CalculateUV = float4(TexCoord, 0.0, Levels);
+   	 const float Lambda = 1e-1 * 1e+3 / pow(4.0, MaxLevel - Level);
+        float4 CalculateUV = float4(TexCoord, 0.0, Level);
         float CurrentFrame = tex2Dlod(_SampleFrame0, CalculateUV).x;
         float PreviousFrame = tex2Dlod(_SampleFrame1, CalculateUV).x;
         float2 _Ixy = tex2Dlod(_SampleDerivatives, CalculateUV).xy;
         float _It = CurrentFrame - PreviousFrame;
 
-        float Linear = dot(_Ixy, OutputColor0.xy) + _It;
-        float Smoothness = rcp(dot(_Ixy, _Ixy) + max(Lambda, 1e-10));
-        OutputColor0.xy -= ((_Ixy * Linear) * Smoothness);
-        Levels = Levels - 1.0;
+        float Linear = dot(_Ixy, OutputFlow.xy) + _It;
+        float Smoothness = rcp(dot(_Ixy, _Ixy) + Lambda);
+        float2 CurrentFlow = OutputFlow - ((_Ixy * Linear) * Smoothness);
+        OutputFlow = (Level != 0) ? CurrentFlow + OutputFlow : CurrentFlow;
+        Level = Level - 1.0;
     }
 
-    OutputColor0 = float4(OutputColor0.xy, 0.0, _BlendFactor);
+    OutputColor0 = float4(OutputFlow.xy, 0.0, _BlendFactor);
 }
 
 float RandomNoise(float2 TexCoord)
@@ -387,7 +390,7 @@ void OutputPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out fl
 
     float4 Source = tex2D(_SampleColor, TexCoord); // Color from the original image
     float Displacement = tex2D(_SampleAccumulation, TexCoord).r; // Displacement vector
-    float4 Working = tex2D(_SampleFeedback, TexCoord - MotionVectors * 0.98);
+    float4 Working = tex2D(_SampleFeedback, TexCoord - MotionVectors);
 
     // Generate some pseudo random numbers.
     float RandomMotion = RandomNoise(TexCoord + length(MotionVectors));

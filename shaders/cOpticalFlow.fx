@@ -1,15 +1,18 @@
 
-uniform float _Constraint <
-    ui_type = "drag";
-    ui_label = "Constraint";
-    ui_tooltip = "Higher = Smoother flow";
-> = 1.0;
+/*
+    Uniforms
+        https://github.com/diwi/PixelFlow/blob/master/src/com/thomasdiewald/pixelflow/java/imageprocessing/DwOpticalFlow.java#L230
+    Vertex Shader
+        https://github.com/diwi/PixelFlow/blob/master/src/com/thomasdiewald/pixelflow/glsl/OpticalFlow/renderVelocityStreams.vert
+    Pixel Shader
+        https://github.com/diwi/PixelFlow/blob/master/src/com/thomasdiewald/pixelflow/glsl/OpticalFlow/renderVelocityStreams.frag
+*/
 
 uniform float _Blend <
-    ui_type = "drag";
-    ui_label = "Temporal Blending";
-    ui_tooltip = "Higher = Less temporal noise";
-    ui_max = 0.5;
+    ui_type = "slider";
+    ui_label = "Blending";
+    ui_min = 0.0;
+    ui_max = 1.0;
 > = 0.25;
 
 uniform float _Detail <
@@ -21,14 +24,26 @@ uniform float _Detail <
 uniform bool _Normal <
     ui_label = "Lines Normal Direction";
     ui_tooltip = "Normal to velocity direction";
+    ui_type = "radio";
 > = true;
+
+#define SCREEN_SIZE uint2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2)
+#define PIXEL_SIZE uint2(1 / SCREEN_SIZE)
 
 #ifndef RENDER_VELOCITY_STREAMS
     #define RENDER_VELOCITY_STREAMS 1
 #endif
 
-#define _HALFSIZE uint2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2)
-#define _BUFFERSIZE uint2(_HALFSIZE / 8)
+#ifndef VERTEX_SPACING
+    #define VERTEX_SPACING 10
+#endif
+
+#define LINES_X uint(BUFFER_WIDTH / VERTEX_SPACING)
+#define LINES_Y uint(BUFFER_HEIGHT / VERTEX_SPACING)
+#define NUM_LINES (LINES_X * LINES_Y)
+#define SPACE_X (BUFFER_WIDTH / LINES_X)
+#define SPACE_Y (BUFFER_HEIGHT / LINES_Y)
+#define VELOCITY_SCALE (SPACE_X + SPACE_Y) * 1
 
 texture2D _RenderColor : COLOR;
 
@@ -38,77 +53,54 @@ sampler2D _SampleColor
     SRGBTexture = TRUE;
 };
 
-texture2D _RenderBuffer
+texture2D _RenderData0_HS
 {
-    Width = _HALFSIZE.x;
-    Height = _HALFSIZE.y;
-    Format = R16F;
-    MipLevels = 3;
-};
-
-sampler2D _SampleBuffer
-{
-    Texture = _RenderBuffer;
-    AddressU = MIRROR;
-    AddressV = MIRROR;
-};
-
-texture2D _RenderData0
-{
-    Width = _BUFFERSIZE.x;
-    Height = _BUFFERSIZE.y;
+    Width = BUFFER_WIDTH / 2;
+    Height = BUFFER_HEIGHT / 2;
     Format = RG16F;
-    MipLevels = 6;
+    MipLevels = 8;
 };
 
 sampler2D _SampleData0
 {
-    Texture = _RenderData0;
-    AddressU = MIRROR;
-    AddressV = MIRROR;
+    Texture = _RenderData0_HS;
 };
 
-texture2D _RenderData1
+texture2D _RenderData1_HS
 {
-    Width = _BUFFERSIZE.x;
-    Height = _BUFFERSIZE.y;
+    Width = BUFFER_WIDTH / 2;
+    Height = BUFFER_HEIGHT / 2;
     Format = RG16F;
-    MipLevels = 6;
+    MipLevels = 8;
 };
 
 sampler2D _SampleData1
 {
-    Texture = _RenderData1;
-    AddressU = MIRROR;
-    AddressV = MIRROR;
+    Texture = _RenderData1_HS;
 };
 
-texture2D _RenderCopy_MotionBlur
+texture2D _RenderCopy_HS
 {
-    Width = _BUFFERSIZE.x;
-    Height = _BUFFERSIZE.y;
+    Width = BUFFER_WIDTH / 2;
+    Height = BUFFER_HEIGHT / 2;
     Format = R16F;
 };
 
 sampler2D _SampleCopy
 {
-    Texture = _RenderCopy_MotionBlur;
-    AddressU = MIRROR;
-    AddressV = MIRROR;
+    Texture = _RenderCopy_HS;
 };
 
-texture2D _RenderOpticalFlow_MotionBlur
+texture2D _RenderOpticalFlow_HS
 {
-    Width = _BUFFERSIZE.x;
-    Height = _BUFFERSIZE.y;
+    Width = BUFFER_WIDTH / 2;
+    Height = BUFFER_HEIGHT / 2;
     Format = RG16F;
 };
 
 sampler2D _SampleOpticalFlow
 {
-    Texture = _RenderOpticalFlow_MotionBlur;
-    AddressU = MIRROR;
-    AddressV = MIRROR;
+    Texture = _RenderOpticalFlow_HS;
 };
 
 /* [Vertex Shaders] */
@@ -117,7 +109,7 @@ void PostProcessVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION
 {
     TexCoord.x = (ID == 2) ? 2.0 : 0.0;
     TexCoord.y = (ID == 1) ? 2.0 : 0.0;
-    Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    Position = TexCoord.xyxy * float4(2.0, -2.0, 0.0, 0.0) + float4(-1.0, 1.0, 0.0, 1.0);
 }
 
 static const float KernelSize = 14;
@@ -148,7 +140,7 @@ float2 OutputOffsets(const float Index)
 void HorizontalBlurVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD0, inout float4 Offsets[7] : TEXCOORD1)
 {
     PostProcessVS(ID, Position, TexCoord);
-    const float2 Direction = float2(1.0 / _BUFFERSIZE.x, 0.0);
+    const float2 Direction = float2(1.0 / (BUFFER_WIDTH / 2.0), 0.0);
 
     [unroll] for(int i = 0; i < 7; i++)
     {
@@ -160,7 +152,7 @@ void HorizontalBlurVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSIT
 void VerticalBlurVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD0, inout float4 Offsets[7] : TEXCOORD1)
 {
     PostProcessVS(ID, Position, TexCoord);
-    const float2 Direction = float2(0.0, 1.0 / _BUFFERSIZE.y);
+    const float2 Direction = float2(0.0, 1.0 / (BUFFER_HEIGHT / 2.0));
 
     [unroll] for(int i = 0; i < 7; i++)
     {
@@ -171,23 +163,12 @@ void VerticalBlurVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITIO
 
 void DerivativesVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float4 Offsets : TEXCOORD0)
 {
-    const float2 PixelSize = 0.5 / _BUFFERSIZE;
+    const float2 PixelSize = 0.5 / (float2(BUFFER_WIDTH, BUFFER_HEIGHT) / 2.0);
     const float4 PixelOffset = float4(PixelSize, -PixelSize);
     float2 TexCoord0;
     PostProcessVS(ID, Position, TexCoord0);
     Offsets = TexCoord0.xyxy + PixelOffset;
 }
-
-#ifndef VERTEX_SPACING
-    #define VERTEX_SPACING 10
-#endif
-
-#define LINES_X uint(BUFFER_WIDTH / VERTEX_SPACING)
-#define LINES_Y uint(BUFFER_HEIGHT / VERTEX_SPACING)
-#define NUM_LINES (LINES_X * LINES_Y)
-#define SPACE_X (BUFFER_WIDTH / LINES_X)
-#define SPACE_Y (BUFFER_HEIGHT / LINES_Y)
-#define VELOCITY_SCALE (SPACE_X + SPACE_Y) * 1
 
 void VelocityStreamsVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 Velocity : TEXCOORD0)
 {
@@ -226,7 +207,9 @@ void VelocityStreamsVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSI
         Direction *= 0.5;
         float2 DirectionNormal = float2(Direction.y, -Direction.x);
         VertexPosition = Origin + Direction - DirectionNormal + DirectionNormal * VertexID * 2;
-    } else {
+    }
+    else
+    {
         // lines,in velocity direction
         VertexPosition = Origin + Direction * VertexID;
     }
@@ -236,7 +219,7 @@ void VelocityStreamsVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSI
     Position = float4(VertexPositionNormal * 2.0 - 1.0, 0.0, 1.0); // ndc: [-1, +1]
 }
 
-/* [ Pixel Shaders ] */
+/* [Pixel Shaders] */
 
 float4 GaussianBlur(sampler2D Source, float2 TexCoord, float4 Offsets[7])
 {
@@ -254,28 +237,23 @@ float4 GaussianBlur(sampler2D Source, float2 TexCoord, float4 Offsets[7])
     return Output / Total;
 }
 
-void NormalizePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float OutputColor0 : SV_TARGET0)
-{
-    float3 Color = max(1e-7, tex2D(_SampleColor, TexCoord).rgb);
-    Color /= dot(Color, 1.0);
-    Color /= max(max(Color.r, Color.g), Color.b);
-    OutputColor0 = dot(Color, 1.0 / 3.0);
-}
-
 void BlitPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0)
 {
-    OutputColor0.x = tex2D(_SampleBuffer, TexCoord).x;
+    float3 Color = tex2D(_SampleColor, TexCoord).rgb;
+    float3 NColor = Color / dot(Color, 1.0);
+    NColor /= max(max(NColor.r, NColor.g), NColor.b);
+    OutputColor0.x = dot(NColor, 1.0 / 3.0);
     OutputColor0.y = tex2D(_SampleCopy, TexCoord).x;
 }
 
-void HorizontalBlurPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets[7] : TEXCOORD1, out float OutputColor0 : SV_TARGET0)
+void HorizontalBlurPS0(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets[7] : TEXCOORD1, out float4 OutputColor0 : SV_TARGET0)
 {
-    OutputColor0 = GaussianBlur(_SampleData0, TexCoord, Offsets).x;
+    OutputColor0 = GaussianBlur(_SampleData0, TexCoord, Offsets);
 }
 
-void VerticalBlurPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets[7] : TEXCOORD1, out float OutputColor0 : SV_TARGET0, out float OutputColor1 : SV_TARGET1)
+void VerticalBlurPS0(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets[7] : TEXCOORD1, out float4 OutputColor0 : SV_TARGET0, out float4 OutputColor1 : SV_TARGET1)
 {
-    OutputColor0 = GaussianBlur(_SampleData1, TexCoord, Offsets).x;
+    OutputColor0 = GaussianBlur(_SampleData1, TexCoord, Offsets);
     OutputColor1 = OutputColor0;
 }
 
@@ -285,48 +263,45 @@ void DerivativesPS(float4 Position : SV_POSITION, float4 Offsets : TEXCOORD0, ou
     float2 Sample1 = tex2D(_SampleData0, Offsets.xy).xy; // (+x, +y)
     float2 Sample2 = tex2D(_SampleData0, Offsets.zw).xy; // (-x, -y)
     float2 Sample3 = tex2D(_SampleData0, Offsets.xw).xy; // (+x, -y)
-    float2 _ddx = -(Sample2 + Sample0) + (Sample3 + Sample1);
-    float2 _ddy = -(Sample2 + Sample3) + (Sample0 + Sample1);
+    float2 _ddx = (-Sample2 + -Sample0) + (Sample3 + Sample1);
+    float2 _ddy = (Sample2 + Sample3) + (-Sample0 + -Sample1);
     OutputColor0.x = dot(_ddx, 0.5);
     OutputColor0.y = dot(_ddy, 0.5);
 }
 
-void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+void DifferencePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    float Levels = 5 - 0.5;
-    const float Lamdba = max(4.0 * pow(_Constraint * 1e-3, 2.0), 1e-10);
+    float MaxLevel = 7.0 - 0.5;
+    float Level = 7.0 - 0.5;
+    float2 OutputFlow = 0.0;
 
-    while(Levels >= 0.0)
+    while(Level >= 0)
     {
-        float4 CalculateUV = float4(TexCoord, 0.0, Levels);
+        const float Lambda = 1e-3 / pow(4.0, MaxLevel - Level);
+        float4 CalculateUV = float4(TexCoord, 0.0, Level);
         float2 Frame = tex2Dlod(_SampleData0, CalculateUV).xy;
         float2 _Ixy = tex2Dlod(_SampleData1, CalculateUV).xy;
         float _It = Frame.x - Frame.y;
 
-        float2 OpticalFlow = _Ixy * (dot(_Ixy, OutputColor0.xy) + _It);
-        OutputColor0.xy -= (OpticalFlow / (dot(_Ixy, _Ixy) + Lamdba));
-        Levels = Levels - 1.0;
+        float Jacobi = _Ixy * (dot(_Ixy, OutputFlow) + _It);
+        float2 Equation = OutputFlow - (Jacobi / (dot(_Ixy, _Ixy) + Lambda));
+        OutputFlow = (Level != 0) ? Equation + OutputFlow : Equation;
+        Level = Level - 1;
     }
 
-    OutputColor0 = float4(OutputColor0.xy, 0.0, _Blend);
+    OutputColor0.rgb = OutputFlow;
+    OutputColor0.a = _Blend;
 }
 
-void PPHorizontalBlurPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets[7] : TEXCOORD1, out float2 OutputColor0 : SV_TARGET0)
+void HorizontalBlurPS1(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets[7] : TEXCOORD1, out float4 OutputColor0 : SV_TARGET0)
 {
-    OutputColor0 = GaussianBlur(_SampleOpticalFlow, TexCoord, Offsets).xy;
+    OutputColor0 = GaussianBlur(_SampleOpticalFlow, TexCoord, Offsets);
 }
 
-void PPVerticalBlurPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets[7] : TEXCOORD1, out float2 OutputColor0 : SV_TARGET0)
+void VerticalBlurPS1(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets[7] : TEXCOORD1, out float4 OutputColor0 : SV_TARGET0)
 {
-    OutputColor0 = GaussianBlur(_SampleData0, TexCoord, Offsets).xy;
+    OutputColor0 = GaussianBlur(_SampleData0, TexCoord, Offsets);
 }
-
-/*
-    Uniforms: https://github.com/diwi/PixelFlow/blob/master/src/com/thomasdiewald/pixelflow/java/imageprocessing/DwOpticalFlow.java#L230
-    Vertex Shader : https://github.com/diwi/PixelFlow/blob/master/src/com/thomasdiewald/pixelflow/glsl/OpticalFlow/renderVelocityStreams.vert
-    Pixel Shader : https://github.com/diwi/PixelFlow/blob/master/src/com/thomasdiewald/pixelflow/glsl/OpticalFlow/renderVelocityStreams.frag
-*/
-
 
 void VelocityShadingPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target)
 {
@@ -345,36 +320,29 @@ void VelocityStreamsPS(float4 Position : SV_POSITION, float2 Velocity : TEXCOORD
     OutputColor0.a = 1.0;
 }
 
-technique cHornSchunck
+technique cOpticalFlow
 {
     pass
     {
         VertexShader = PostProcessVS;
-        PixelShader = NormalizePS;
-        RenderTarget0 = _RenderBuffer;
-    }
-
-    pass
-    {
-        VertexShader = PostProcessVS;
         PixelShader = BlitPS;
-        RenderTarget0 = _RenderData0;
+        RenderTarget0 = _RenderData0_HS;
     }
 
     pass
     {
         VertexShader = HorizontalBlurVS;
-        PixelShader = HorizontalBlurPS;
-        RenderTarget0 = _RenderData1;
+        PixelShader = HorizontalBlurPS0;
+        RenderTarget0 = _RenderData1_HS;
         RenderTargetWriteMask = 1;
     }
 
     pass
     {
         VertexShader = VerticalBlurVS;
-        PixelShader = VerticalBlurPS;
-        RenderTarget0 = _RenderData0;
-        RenderTarget1 = _RenderCopy_MotionBlur;
+        PixelShader = VerticalBlurPS0;
+        RenderTarget0 = _RenderData0_HS;
+        RenderTarget1 = _RenderCopy_HS;
         RenderTargetWriteMask = 1;
     }
 
@@ -382,14 +350,14 @@ technique cHornSchunck
     {
         VertexShader = DerivativesVS;
         PixelShader = DerivativesPS;
-        RenderTarget0 = _RenderData1;
+        RenderTarget0 = _RenderData1_HS;
     }
 
     pass
     {
         VertexShader = PostProcessVS;
-        PixelShader = OpticalFlowPS;
-        RenderTarget0 = _RenderOpticalFlow_MotionBlur;
+        PixelShader = DifferencePS;
+        RenderTarget0 = _RenderOpticalFlow_HS;
         ClearRenderTargets = FALSE;
         BlendEnable = TRUE;
         BlendOp = ADD;
@@ -400,15 +368,15 @@ technique cHornSchunck
     pass
     {
         VertexShader = HorizontalBlurVS;
-        PixelShader = PPHorizontalBlurPS;
-        RenderTarget0 = _RenderData0;
+        PixelShader = HorizontalBlurPS1;
+        RenderTarget0 = _RenderData0_HS;
     }
 
     pass
     {
         VertexShader = VerticalBlurVS;
-        PixelShader = PPVerticalBlurPS;
-        RenderTarget0 = _RenderData1;
+        PixelShader = VerticalBlurPS1;
+        RenderTarget0 = _RenderData1_HS;
     }
 
     #if RENDER_VELOCITY_STREAMS
@@ -418,6 +386,7 @@ technique cHornSchunck
             VertexCount = NUM_LINES * 2;
             VertexShader = VelocityStreamsVS;
             PixelShader = VelocityStreamsPS;
+            ClearRenderTargets = FALSE;
             BlendEnable = TRUE;
             BlendOp = ADD;
             SrcBlend = SRCALPHA;

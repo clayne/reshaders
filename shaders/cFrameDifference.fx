@@ -37,20 +37,19 @@ texture2D _RenderCurrent_FrameDifference
 {
     Width = BUFFER_WIDTH;
     Height = BUFFER_HEIGHT;
-    Format = RGBA8;
+    Format = R8;
 };
 
 sampler2D _SampleCurrent
 {
     Texture = _RenderCurrent_FrameDifference;
-    SRGBTexture = TRUE;
 };
 
 texture2D _RenderDifference
 {
     Width = BUFFER_WIDTH;
     Height = BUFFER_HEIGHT;
-    Format = R16F;
+    Format = R8;
 };
 
 sampler2D _SampleDifference
@@ -62,13 +61,12 @@ texture2D _RenderPrevious_FrameDifference
 {
     Width = BUFFER_WIDTH;
     Height = BUFFER_HEIGHT;
-    Format = RGBA8;
+    Format = R8;
 };
 
 sampler2D _SamplePrevious
 {
     Texture = _RenderPrevious_FrameDifference;
-    SRGBTexture = TRUE;
 };
 
 /* [Vertex Shaders] */
@@ -84,17 +82,17 @@ void PostProcessVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION
 
 void BlitPS0(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    OutputColor0 = tex2D(_SampleColor, TexCoord);
+    float3 Color = tex2D(_SampleColor, TexCoord).rgb;
+    float3 NColor = Color / dot(Color, 1.0);
+    NColor /= max(max(NColor.r, NColor.g), NColor.b);
+    OutputColor0 = (_NormalizeInput) ? dot(NColor, 1.0 / 3.0) : dot(Color, 1.0 / 3.0);
 }
 
 void DifferencePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    const float Weight = _Weight * 1e-2;
-    float3 Current = tex2D(_SampleCurrent, TexCoord).rgb;
-    float3 Previous = tex2D(_SamplePrevious, TexCoord).rgb;
-    OutputColor0.rgb = (_NormalizeInput) ? normalize(Current) - normalize(Previous) : Current - Previous;
-    OutputColor0.rgb *= rsqrt(dot(OutputColor0.rgb, OutputColor0.rgb) + Weight);
-    OutputColor0.rgb = _Scale * dot(abs(OutputColor0.rgb), 1.0 / 3.0);
+    float Current = tex2D(_SampleCurrent, TexCoord).x;
+    float Previous = tex2D(_SamplePrevious, TexCoord).x;
+    OutputColor0.rgb = abs(Current - Previous) * _Weight;
     OutputColor0.a = _Blend;
 }
 
@@ -115,7 +113,6 @@ technique cFrameDifference
         VertexShader = PostProcessVS;
         PixelShader = BlitPS0;
         RenderTarget0 = _RenderCurrent_FrameDifference;
-        SRGBWriteEnable = TRUE;
     }
 
     pass
@@ -142,6 +139,5 @@ technique cFrameDifference
         VertexShader = PostProcessVS;
         PixelShader = BlitPS1;
         RenderTarget0 = _RenderPrevious_FrameDifference;
-        SRGBWriteEnable = TRUE;
     }
 }

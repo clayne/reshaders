@@ -83,11 +83,10 @@ void ContourVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, in
     float2 TexCoord0;
     PostProcessVS(ID, Position, TexCoord0);
     const float2 PixelSize = 1.0 / float2(BUFFER_WIDTH, BUFFER_HEIGHT);
-    const float2 PixelSize1 = 0.5 / float2(BUFFER_WIDTH, BUFFER_HEIGHT);
     TexCoord[0] = TexCoord0.xyyy + float4(-PixelSize.x, +PixelSize.y, 0.0, -PixelSize.y);
     TexCoord[1] = TexCoord0.xyyy + float4(0.0, +PixelSize.y, 0.0, -PixelSize.y);
     TexCoord[2] = TexCoord0.xyyy + float4(+PixelSize.x, +PixelSize.y, 0.0, -PixelSize.y);
-    TexCoord[3] = TexCoord0.xyxy +  float4(PixelSize1, -PixelSize1);
+    TexCoord[3] = TexCoord0.xyxy + float4(PixelSize, -PixelSize) * 0.5;
 }
 
 float Magnitude(float3 X, float3 Y)
@@ -135,8 +134,8 @@ void ContourPS(float4 Position : SV_POSITION, float4 TexCoord[4] : TEXCOORD0, ou
             Edge = length(Edge) / sqrt(3.0);
             break;
         case 2: // Sobel
-            _Ix = (-A0 + ((-A1 * 2.0) - A2)) + (C0 + (C1 * 2.0) + C2);
-            _Iy = (-A0 + ((-B0 * 2.0) - C0)) + (A2 + (B2 * 2.0) + C2);
+            _Ix = (-A0 + ((-A1 * 2.0) + -A2)) + (C0 + (C1 * 2.0) + C2);
+            _Iy = (-A0 + ((-B0 * 2.0) + -C0)) + (A2 + (B2 * 2.0) + C2);
             Edge = Magnitude(_Ix, _Iy);
             break;
         case 3: // Prewitt
@@ -190,8 +189,8 @@ void ContourPS(float4 Position : SV_POSITION, float4 TexCoord[4] : TEXCOORD0, ou
             float3 Sample1 = NormalizeColor(tex2D(_SampleColor, TexCoord[3].xy).rgb); // (+x, +y)
             float3 Sample2 = NormalizeColor(tex2D(_SampleColor, TexCoord[3].zw).rgb); // (-x, -y)
             float3 Sample3 = NormalizeColor(tex2D(_SampleColor, TexCoord[3].xw).rgb); // (+x, -y)
-            float3 _ddx = -(Sample2 + Sample0) + (Sample3 + Sample1);
-            float3 _ddy = -(Sample2 + Sample3) + (Sample0 + Sample1);
+            float3 _ddx = (-Sample2 + -Sample0) + (Sample3 + Sample1);
+            float3 _ddy = (Sample2 + Sample3) + (-Sample0 + -Sample1);
             Edge = Magnitude(_ddx * 4.0, _ddy * 4.0);
             break;
         default:
