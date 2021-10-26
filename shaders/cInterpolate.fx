@@ -259,34 +259,46 @@ void DerivativesPS(float4 Position : SV_POSITION, float4 Offsets : TEXCOORD0, ou
     float2 Sample1 = tex2D(_SampleData0, Offsets.xy).xy; // (+x, +y)
     float2 Sample2 = tex2D(_SampleData0, Offsets.zw).xy; // (-x, -y)
     float2 Sample3 = tex2D(_SampleData0, Offsets.xw).xy; // (+x, -y)
-    float2 _ddx = -(Sample2 + Sample0) + (Sample3 + Sample1);
-    float2 _ddy = -(Sample2 + Sample3) + (Sample0 + Sample1);
+    float2 _ddx = (-Sample2 + -Sample0) + (Sample3 + Sample1);
+    float2 _ddy = (Sample2 + Sample3) + (-Sample0 + -Sample1);
     OutputColor0.x = dot(_ddx, 0.5);
     OutputColor0.y = dot(_ddy, 0.5);
 }
 
-void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+float2 GaussSeidel(float4 _I, float Levels, float2 InitialFlow)
 {
-	const float MaxLevel = 5.0 - 0.5;
-    float Levels = 5.0 - 0.5;
+    float2 Output = InitialFlow;
 
     while(Levels >= 0.0)
     {
-        const float Lambda = (_Constraint * 1e-3) / pow(4.0, MaxLevel - Levels);
-        float4 CalculateUV = float4(TexCoord, 0.0, Levels);
-        float2 Frame = tex2Dlod(_SampleData0, CalculateUV).xy;
-        float2 _Ixy = tex2Dlod(_SampleData1, CalculateUV).xy;
-        float _It = Frame.x - Frame.y;
-
-        float2 OpticalFlow = _Ixy * (dot(_Ixy, OutputColor0.xy) + _It);
-        float2 OutputFlow = OutputColor0.xy - (OpticalFlow / (dot(_Ixy, _Ixy) + Lambda));
-        OutputColor0.xy = (Levels != 0) ? OutputFlow + OutputColor0.xy : OutputFlow;
+        Output.x -= ((_I.x * (dot(_I.xy, Output.xy) + _I.z)) * _I.w);
+        Output.y -= ((_I.y * (dot(_I.xy, Output.xy) + _I.z)) * _I.w);
         Levels = Levels - 1.0;
     }
 
-    OutputColor0 = float4(OutputColor0.xy, 0.0, _Blend);
+    return Output;
 }
 
+void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+{
+    float MaxLevel = 5.0 - 0.5;
+    float2 OutputFlow = 0.0;
+
+    for(float Level = MaxLevel; Level >= 0.0; Level--)
+    {
+        const float Lambda = (_Constraint * 1e-5) / pow(4.0, MaxLevel - Level);
+        float4 CalculateUV = float4(TexCoord, 0.0, Level);
+        float2 Frame = tex2Dlod(_SampleData0, CalculateUV).xy;
+        float4 _I;
+        _I.xy = tex2Dlod(_SampleData1, CalculateUV).xy;
+        _I.z = Frame.x - Frame.y;
+        _I.w = 1.0 / (dot(_I.xy, _I.xy) + Lambda);
+        OutputFlow.xy = GaussSeidel(_I, Level, OutputFlow.xy);
+    }
+
+    OutputColor0.rgb = OutputFlow;
+    OutputColor0.a = _Blend;
+}
 void PPHorizontalBlurPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets[7] : TEXCOORD1, out float2 OutputColor0 : SV_TARGET0)
 {
     OutputColor0 = GaussianBlur(_SampleOpticalFlow, TexCoord, Offsets).xy;

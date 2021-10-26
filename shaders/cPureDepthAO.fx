@@ -13,7 +13,6 @@
 uniform float _TotalStrength <
     ui_type = "drag";
     ui_min = 0.0;
-    ui_max = 1.0;
     ui_label = "Total Strength";
     ui_category = "Ambient Occlusion";
 > = 1.0;
@@ -21,7 +20,6 @@ uniform float _TotalStrength <
 uniform float _Base <
     ui_type = "drag";
     ui_min = 0.0;
-    ui_max = 1.0;
     ui_label = "Base Amount";
     ui_category = "Ambient Occlusion";
 > = 0.0;
@@ -29,7 +27,6 @@ uniform float _Base <
 uniform float _Area <
     ui_type = "drag";
     ui_min = 0.0;
-    ui_max = 1.0;
     ui_label = "Area Amount";
     ui_category = "Ambient Occlusion";
 > = 1.0;
@@ -37,7 +34,6 @@ uniform float _Area <
 uniform float _Falloff <
     ui_type = "drag";
     ui_min = 0.0;
-    ui_max = 1.0;
     ui_label = "Falloff Amount";
     ui_category = "Ambient Occlusion";
 > = 0.001;
@@ -45,7 +41,6 @@ uniform float _Falloff <
 uniform float _Radius <
     ui_type = "drag";
     ui_min = 0.0;
-    ui_max = 1.0;
     ui_label = "Radius Amount";
     ui_category = "Ambient Occlusion";
 > = 0.007;
@@ -53,7 +48,6 @@ uniform float _Radius <
 uniform float _DepthMapAdjust <
     ui_type = "drag";
     ui_min = 0.0;
-    ui_max = 1.0;
     ui_label = "Depth Map Adjustment";
     ui_tooltip = "This allows for you to adjust the DM precision.\n"
                  "Adjust this to keep it as low as possible.\n"
@@ -63,7 +57,7 @@ uniform float _DepthMapAdjust <
 
 uniform int _Debug <
     ui_type = "combo";
-    ui_items = "Off\0Depth\0AO\0Direction\0";
+    ui_items = "Off\0Depth\0AO\0Occlusion\0Direction\0";
     ui_label = "Debug View";
     ui_tooltip = "View Debug Buffers.";
     ui_category = "Debug Buffer";
@@ -81,7 +75,7 @@ texture2D _RenderOcclusion
 {
     Width = BUFFER_WIDTH / 2;
     Height = BUFFER_HEIGHT / 2;
-    MipLevels = 3;
+    MipLevels = 2;
     Format = R16F;
 };
 
@@ -92,8 +86,8 @@ sampler2D _SampleOcclusion
 
 texture2D _RenderData0_Depth
 {
-    Width = BUFFER_WIDTH / 8;
-    Height = BUFFER_HEIGHT / 8;
+    Width = BUFFER_WIDTH / 4;
+    Height = BUFFER_HEIGHT / 4;
     Format = R16F;
 };
 
@@ -106,8 +100,8 @@ sampler2D _SampleData0
 
 texture2D _RenderData1_Depth
 {
-    Width = BUFFER_WIDTH / 8;
-    Height = BUFFER_HEIGHT / 8;
+    Width = BUFFER_WIDTH / 4;
+    Height = BUFFER_HEIGHT / 4;
     Format = R16F;
 };
 
@@ -123,7 +117,7 @@ sampler2D _SampleData1
 float2 DepthMap(float2 TexCoord)
 {
     float ZBuffer = ReShade::GetLinearizedDepth(TexCoord).x;
-    ZBuffer /= _DepthMapAdjust;
+    //ZBuffer /= _DepthMapAdjust;
     return float2(ZBuffer, smoothstep(-1.0, 1.0, ZBuffer));
 }
 
@@ -146,6 +140,13 @@ float3 NormalFromDepth(float2 TexCoord)
     TODO: Use Vogel sphere disc for dynamic samples
     http://blog.marmakoide.org/?p=1
 */
+
+float Interleaved_Gradient_Noise(float2 TC)
+{   //Magic Numbers
+    float3 MNums = float3(0.06711056, 0.00583715, 52.9829189);
+    return frac(MNums.z * frac(dot(TC,MNums.xy)) );
+}
+
 void GradientNoise(float2 Position, float Seed, inout float Noise)
 {
     const float Pi = 3.1415926535 * 1e-1;
@@ -154,6 +155,12 @@ void GradientNoise(float2 Position, float Seed, inout float Noise)
     float2 Parameter1 = Position * ((Seed + 20.0) + GoldenRatio);
     float2 Parameter2 = float2(GoldenRatio, Pi);
     Noise = frac(tan(distance(Parameter1, Parameter2)) * SquareRoot2);
+}
+
+float2 Rotate2D( float2 r, float l )
+{   float2 Directions;
+    sincos(l,Directions[0],Directions[1]);//same as float2(cos(l),sin(l))
+    return float2( dot( r, float2(Directions[1], -Directions[0]) ), dot( r, Directions.xy ) );
 }
 
 void OcclusionPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
@@ -171,20 +178,18 @@ void OcclusionPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out
         float3( 0.0352,-0.0631, 0.5460), float3(-0.4776, 0.2847,-0.0271)
     };
 
-    float3 Random;
-    GradientNoise(Position.xy, 1.0, Random.x);
-    GradientNoise(Position.xy, 2.0, Random.y);
-    GradientNoise(Position.xy, 3.0, Random.z);
+    float2 FragPosition = (TexCoord * float2(BUFFER_WIDTH, BUFFER_HEIGHT));
+    float Random = Interleaved_Gradient_Noise(FragPosition.xy);
 
     float Depth = DepthMap(TexCoord.xy).x;
     float3 ScreenPosition = float3(TexCoord.xy, Depth);
     float3 Normal = NormalFromDepth(TexCoord);
-    float RadiusDepth = _Radius / Depth;
+    float RadiusDepth = _Radius / DepthMap(TexCoord.xy).y;
     float Occlusion = 0.0;
 
     for(int i = 0; i < Samples; i++)
     {
-        float3 Ray = RadiusDepth * reflect(Sample_Sphere[i], Random);
+        float3 Ray = 0.03 * RadiusDepth * reflect(Sample_Sphere[i], normalize(Rotate2D(Sample_Sphere[i], Random).xyy)) / RadiusDepth;
         float3 Hemi_Ray = ScreenPosition + sign(dot(Ray, Normal)) * Ray;
         float OcclusionDepth = DepthMap(saturate(Hemi_Ray.xy)).x;
         float Difference = Depth - OcclusionDepth;
@@ -207,7 +212,7 @@ float GaussianWeight(const int Position)
 
 float GaussianBlur(sampler2D Source, float2 TexCoord, float2 Direction)
 {
-    const float2 ScreenSize = float2(BUFFER_WIDTH, BUFFER_HEIGHT) / 8.0;
+    const float2 ScreenSize = float2(BUFFER_WIDTH, BUFFER_HEIGHT) / 4.0;
     const float2 PixelSize = 1.0 / ScreenSize;
     float TotalWeight = GaussianWeight(0.0);
     float Output = tex2D(Source, TexCoord).x * TotalWeight;
@@ -246,6 +251,7 @@ void VerticalBlurPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, 
 
 void ImagePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float3 OutputColor0 : SV_TARGET0)
 {
+
     switch(_Debug)
     {
         case 0:
@@ -257,8 +263,11 @@ void ImagePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out flo
         case 2:
             OutputColor0 = tex2D(_SampleData0, TexCoord).x;
             break;
+        case 3:
+            OutputColor0 = tex2D(_SampleOcclusion, TexCoord).x;
+            break;
         default:
-            NormalFromDepth(TexCoord);
+            OutputColor0 = NormalFromDepth(TexCoord);
             break;
     }
 }

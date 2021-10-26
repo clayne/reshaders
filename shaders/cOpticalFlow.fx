@@ -15,6 +15,12 @@ uniform float _Blend <
     ui_max = 1.0;
 > = 0.25;
 
+uniform float _Constraint <
+    ui_type = "drag";
+    ui_label = "Constraint";
+    ui_tooltip = "Higher = Smoother flow";
+> = 2.0;
+
 uniform float _Detail <
     ui_type = "drag";
     ui_label = "Mipmap Bias";
@@ -263,30 +269,35 @@ void DerivativesPS(float4 Position : SV_POSITION, float4 Offsets : TEXCOORD0, ou
     float2 Sample1 = tex2D(_SampleData0, Offsets.xy).xy; // (+x, +y)
     float2 Sample2 = tex2D(_SampleData0, Offsets.zw).xy; // (-x, -y)
     float2 Sample3 = tex2D(_SampleData0, Offsets.xw).xy; // (+x, -y)
-    float2 _ddx = (-Sample2 + -Sample0) + (Sample3 + Sample1);
-    float2 _ddy = (Sample2 + Sample3) + (-Sample0 + -Sample1);
-    OutputColor0.x = dot(_ddx, 0.5);
-    OutputColor0.y = dot(_ddy, 0.5);
+    OutputColor0.x = dot((-Sample2 + -Sample0) + (Sample3 + Sample1), 0.5);
+    OutputColor0.y = dot((Sample2 + Sample3) + (-Sample0 + -Sample1), 0.5);
 }
 
-void DifferencePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+void GaussSeidel(float4 I, float Levels, inout float2 OpticalFlow)
+{
+    while(Levels >= 0.0)
+    {
+        OpticalFlow.x -= ((I.x * (dot(I.xy, OpticalFlow.xy) + I.z)) * I.w);
+        OpticalFlow.y -= ((I.y * (dot(I.xy, OpticalFlow.xy) + I.z)) * I.w);
+        Levels = Levels - 1.0;
+    }
+}
+
+void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
     float MaxLevel = 7.0 - 0.5;
-    float Level = 7.0 - 0.5;
     float2 OutputFlow = 0.0;
 
-    while(Level >= 0)
+    [unroll] for(float Level = MaxLevel; Level > 0.0; Level--)
     {
-        const float Lambda = 1e-3 / pow(4.0, MaxLevel - Level);
-        float4 CalculateUV = float4(TexCoord, 0.0, Level);
-        float2 Frame = tex2Dlod(_SampleData0, CalculateUV).xy;
-        float2 _Ixy = tex2Dlod(_SampleData1, CalculateUV).xy;
-        float _It = Frame.x - Frame.y;
-
-        float Jacobi = _Ixy * (dot(_Ixy, OutputFlow) + _It);
-        float2 Equation = OutputFlow - (Jacobi / (dot(_Ixy, _Ixy) + Lambda));
-        OutputFlow = (Level != 0) ? Equation + OutputFlow : Equation;
-        Level = Level - 1;
+        const float Lambda = (_Constraint * 1e-3) / pow(4.0, MaxLevel - Level);
+        float4 LevelCoord = float4(TexCoord, 0.0, Level);
+        float2 Frame = tex2Dlod(_SampleData0, LevelCoord).xy;
+        float4 I;
+        I.xy = tex2Dlod(_SampleData1, LevelCoord).xy;
+        I.z = Frame.x - Frame.y;
+        I.w = 1.0 / (dot(I.xy, I.xy) + Lambda);
+        GaussSeidel(I, Level, OutputFlow.xy);
     }
 
     OutputColor0.rgb = OutputFlow;
@@ -356,7 +367,7 @@ technique cOpticalFlow
     pass
     {
         VertexShader = PostProcessVS;
-        PixelShader = DifferencePS;
+        PixelShader = OpticalFlowPS;
         RenderTarget0 = _RenderOpticalFlow_HS;
         ClearRenderTargets = FALSE;
         BlendEnable = TRUE;
