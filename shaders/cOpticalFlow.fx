@@ -245,7 +245,7 @@ float4 GaussianBlur(sampler2D Source, float2 TexCoord, float4 Offsets[7])
 
 void BlitPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0)
 {
-    float3 Color = tex2D(_SampleColor, TexCoord).rgb;
+    float3 Color = max(tex2D(_SampleColor, TexCoord).rgb, 1e-7);
     float3 NColor = Color / dot(Color, 1.0);
     NColor /= max(max(NColor.r, NColor.g), NColor.b);
     OutputColor0.x = dot(NColor, 1.0 / 3.0);
@@ -273,34 +273,39 @@ void DerivativesPS(float4 Position : SV_POSITION, float4 Offsets : TEXCOORD0, ou
     OutputColor0.y = dot((Sample2 + Sample3) + (-Sample0 + -Sample1), 0.5);
 }
 
-void GaussSeidel(float4 I, float Levels, inout float2 OpticalFlow)
+float2 OpticalFlow(float2 TexCoord, float Level, inout float2 OpticalFlow)
 {
-    while(Levels >= 0.0)
+    const float MaxLevel = 6.5;
+    const float Lambda = (_Constraint * 1e-5) * 1e+3 / pow(4.0, MaxLevel - Level);
+    const float BufferPixels = (BUFFER_WIDTH / 2) * (BUFFER_HEIGHT / 2);
+    float Iterations = log2(BufferPixels / ldexp(BufferPixels, -Level));
+
+    float4 LevelCoord = float4(TexCoord, 0.0, Level);
+    float2 SampleFrame = tex2Dlod(_SampleData0, LevelCoord).xy;
+    float4 I;
+    I.xy = tex2Dlod(_SampleData1, LevelCoord).xy;
+    I.z = SampleFrame.x - SampleFrame.y;
+    I.w = 1.0 / (dot(I.xy, I.xy) + Lambda);
+
+    [unroll] for(int i = 0; i <= Iterations; i++)
     {
         OpticalFlow.x -= ((I.x * (dot(I.xy, OpticalFlow.xy) + I.z)) * I.w);
         OpticalFlow.y -= ((I.y * (dot(I.xy, OpticalFlow.xy) + I.z)) * I.w);
-        Levels = Levels - 1.0;
     }
+
+    return OpticalFlow;
 }
 
 void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    float MaxLevel = 7.0 - 0.5;
-    float2 OutputFlow = 0.0;
-
-    [unroll] for(float Level = MaxLevel; Level > 0.0; Level--)
-    {
-        const float Lambda = (_Constraint * 1e-3) / pow(4.0, MaxLevel - Level);
-        float4 LevelCoord = float4(TexCoord, 0.0, Level);
-        float2 Frame = tex2Dlod(_SampleData0, LevelCoord).xy;
-        float4 I;
-        I.xy = tex2Dlod(_SampleData1, LevelCoord).xy;
-        I.z = Frame.x - Frame.y;
-        I.w = 1.0 / (dot(I.xy, I.xy) + Lambda);
-        GaussSeidel(I, Level, OutputFlow.xy);
-    }
-
-    OutputColor0.rgb = OutputFlow;
+    OutputColor0 = 0.0;
+    OutputColor0.xy += OpticalFlow(TexCoord, 6.5, OutputColor0.xy);
+    OutputColor0.xy += OpticalFlow(TexCoord, 5.5, OutputColor0.xy);
+    OutputColor0.xy += OpticalFlow(TexCoord, 4.5, OutputColor0.xy);
+    OutputColor0.xy += OpticalFlow(TexCoord, 3.5, OutputColor0.xy);
+    OutputColor0.xy += OpticalFlow(TexCoord, 2.5, OutputColor0.xy);
+    OutputColor0.xy += OpticalFlow(TexCoord, 1.5, OutputColor0.xy);
+    OutputColor0.xy = OpticalFlow(TexCoord, 0.5, OutputColor0.xy);
     OutputColor0.a = _Blend;
 }
 

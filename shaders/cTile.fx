@@ -27,11 +27,11 @@ void TileVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout
     TexCoord.y = (ID == 1) ? 2.0 : 0.0;
     Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 
-    const float2 screensize = float2(BUFFER_WIDTH, BUFFER_HEIGHT);
+    const float2 ScreeSize = float2(BUFFER_WIDTH, BUFFER_HEIGHT);
     TexCoord -= 0.5;
     TexCoord += TexCoord + float2(_Center.x, -_Center.y);
-    float2 Scaling = TexCoord * screensize * (_Scale * 0.01);
-    TexCoord = floor(Scaling) / screensize;
+    float2 Scaling = TexCoord * ScreeSize * (_Scale * 1e-2);
+    TexCoord = floor(Scaling) / ScreeSize;
     TexCoord += 0.5;
 }
 

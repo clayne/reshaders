@@ -28,13 +28,13 @@ void ShardVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inou
 
 void ShardPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offset : TEXCOORD1, out float4 OutputColor0 : SV_TARGET0)
 {
-    float4 uOriginal = tex2D(_SampleColor, TexCoord);
-    float4 uBlur;
-    uBlur += tex2D(_SampleColor, Offset.xw) * 0.25;
-    uBlur += tex2D(_SampleColor, Offset.zw) * 0.25;
-    uBlur += tex2D(_SampleColor, Offset.xy) * 0.25;
-    uBlur += tex2D(_SampleColor, Offset.zy) * 0.25;
-    OutputColor0 = uOriginal + (uOriginal - uBlur) * _Weight;
+    float4 OriginalSample = tex2D(_SampleColor, TexCoord);
+    float4 BlurSample;
+    BlurSample += tex2D(_SampleColor, Offset.xw) * 0.25;
+    BlurSample += tex2D(_SampleColor, Offset.zw) * 0.25;
+    BlurSample += tex2D(_SampleColor, Offset.xy) * 0.25;
+    BlurSample += tex2D(_SampleColor, Offset.zy) * 0.25;
+    OutputColor0 = OriginalSample + (OriginalSample - BlurSample) * _Weight;
 }
 
 technique cShard

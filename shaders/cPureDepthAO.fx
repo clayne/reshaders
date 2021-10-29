@@ -159,8 +159,8 @@ void GradientNoise(float2 Position, float Seed, inout float Noise)
 
 float2 Rotate2D( float2 r, float l )
 {   float2 Directions;
-    sincos(l,Directions[0],Directions[1]);//same as float2(cos(l),sin(l))
-    return float2( dot( r, float2(Directions[1], -Directions[0]) ), dot( r, Directions.xy ) );
+    sincos(l,Directions[0],Directions[1]);
+    return float2(dot(r, float2(Directions[1], -Directions[0])), dot(r, Directions.xy));
 }
 
 void OcclusionPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
@@ -189,7 +189,7 @@ void OcclusionPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out
 
     for(int i = 0; i < Samples; i++)
     {
-        float3 Ray = 0.03 * RadiusDepth * reflect(Sample_Sphere[i], normalize(Rotate2D(Sample_Sphere[i], Random).xyy)) / RadiusDepth;
+        float3 Ray = 0.03 * RadiusDepth * reflect(Sample_Sphere[i], normalize(Rotate2D(Sample_Sphere[i].xy, Random).xyy)) / RadiusDepth;
         float3 Hemi_Ray = ScreenPosition + sign(dot(Ray, Normal)) * Ray;
         float OcclusionDepth = DepthMap(saturate(Hemi_Ray.xy)).x;
         float Difference = Depth - OcclusionDepth;

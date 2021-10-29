@@ -8,14 +8,7 @@ uniform float _Blend <
 
 uniform float _Weight <
     ui_type = "slider";
-    ui_label = "Thresholding";
-    ui_min = 0.0;
-    ui_max = 2.0;
-> = 1.0;
-
-uniform float _Scale <
-    ui_type = "slider";
-    ui_label = "Scaling";
+    ui_label = "Weight";
     ui_min = 0.0;
     ui_max = 2.0;
 > = 1.0;

@@ -70,7 +70,7 @@ void BlitPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out floa
 
 void MosaicPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    float2 FragCoord = TexCoord * float2(BUFFER_WIDTH, BUFFER_HEIGHT);
+    float2 PixelPosition = TexCoord * float2(BUFFER_WIDTH, BUFFER_HEIGHT);
     const float2 ScreenSize = float2(BUFFER_WIDTH, BUFFER_HEIGHT);
     float2 PixelSize = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
     float2 BlockCoord, MosaicCoord;
@@ -80,19 +80,20 @@ void MosaicPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out fl
     {
         // Circle https://www.shadertoy.com/view/4d2SWy
         case 0:
-            BlockCoord = floor(FragCoord / MaxRadius) * MaxRadius;
+            BlockCoord = floor(PixelPosition / MaxRadius) * MaxRadius;
             MosaicCoord = BlockCoord * PixelSize;
             float4 Color = tex2Dlod(_SampleMosaicLOD, float4(MosaicCoord, 0.0, log2(MaxRadius) - 1.0));
 
-            float2 Offset = FragCoord - BlockCoord;
+            float2 Offset = PixelPosition - BlockCoord;
             float2 Center = MaxRadius / 2.0;
             float Length = distance(Center, Offset);
             float Circle = 1.0 - smoothstep(-2.0 , 0.0, Length - Center.x);
             OutputColor0 = Color * Circle;
+            //OutputColor0 = MosaicCoord;
             break;
         // Triangle https://www.shadertoy.com/view/4d2SWy
         case 1:
-        	const float MaxLODLevel = log2(sqrt((BUFFER_WIDTH * BUFFER_HEIGHT) / (_Radius.x * _Radius.y)));
+            const float MaxLODLevel = log2(sqrt((BUFFER_WIDTH * BUFFER_HEIGHT) / (_Radius.x * _Radius.y)));
             const float2 Divisor = 1.0 / (2.0 * _Radius);
             BlockCoord = floor(TexCoord * _Radius) / _Radius;
             TexCoord -= BlockCoord;
@@ -103,7 +104,7 @@ void MosaicPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out fl
             OutputColor0 = tex2Dlod(_SampleMosaicLOD, float4(BlockCoord + Composite * Divisor, 0.0, MaxLODLevel - 1.0));
             break;
         default:
-            BlockCoord = round(FragCoord / MaxRadius) * MaxRadius;
+            BlockCoord = round(PixelPosition / MaxRadius) * MaxRadius;
             MosaicCoord = BlockCoord * PixelSize;
             OutputColor0 = tex2Dlod(_SampleMosaicLOD, float4(MosaicCoord, 0.0, log2(MaxRadius) - 1.0));
             break;

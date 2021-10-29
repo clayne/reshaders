@@ -143,7 +143,7 @@ float4 DownsamplePS(sampler2D Source, float4 TexCoord[4])
     Output += (B0 + C0 + B1 + C1) * Weights.y;
     Output += (A1 + B1 + A2 + B2) * Weights.y;
     Output += (B1 + C1 + B2 + C2) * Weights.y;
-    return Output;
+    return float4(Output.rgb, 1.0);
 }
 
 float4 UpsamplePS(sampler2D Source, float4 TexCoord[3])
@@ -188,6 +188,7 @@ void PrefilterPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out
     Color = Color * max(ResponseCurve, Brightness - _Threshold) / max(Brightness, 1e-10);
     Brightness = max(max(Color.r, Color.g), Color.b);
     OutputColor0 = saturate(lerp(Brightness, Color.rgb, _Saturation));
+    OutputColor0.a = 1.0;
 }
 
 // sRGB => XYZ => D65_2_D60 => AP1 => RRT_SAT

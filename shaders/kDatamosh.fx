@@ -109,22 +109,7 @@ uniform float _BlendFactor <
     #define _FILTER POINT
 #endif
 
-#define CONST_LOG2(x) (\
-    (uint((x)  & 0xAAAAAAAA) != 0) | \
-    (uint(((x) & 0xFFFF0000) != 0) << 4) | \
-    (uint(((x) & 0xFF00FF00) != 0) << 3) | \
-    (uint(((x) & 0xF0F0F0F0) != 0) << 2) | \
-    (uint(((x) & 0xCCCCCCCC) != 0) << 1))
-
-#define BIT2_LOG2(x)  ((x) | (x) >> 1)
-#define BIT4_LOG2(x)  (BIT2_LOG2(x) | BIT2_LOG2(x) >> 2)
-#define BIT8_LOG2(x)  (BIT4_LOG2(x) | BIT4_LOG2(x) >> 4)
-#define BIT16_LOG2(x) (BIT8_LOG2(x) | BIT8_LOG2(x) >> 8)
-#define LOG2(x)       (CONST_LOG2((BIT16_LOG2(x) >> 1) + 1))
-#define RMAX(x, y)     x ^ ((x ^ y) & -(x < y)) // max(x, y)
-
 #define _HALFSIZE uint2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2)
-#define _MIPLEVELS LOG2(RMAX(_HALFSIZE.x, _HALFSIZE.y)) + 1
 
 texture2D _RenderColor : COLOR;
 
@@ -141,7 +126,7 @@ texture2D _RenderFrame0
     Width = _HALFSIZE.x;
     Height = _HALFSIZE.y;
     Format = R16F;
-    MipLevels = _MIPLEVELS;
+    MipLevels = 8;
 };
 
 sampler2D _SampleFrame0
@@ -156,7 +141,7 @@ texture2D _RenderDerivatives_Datamosh
     Width = _HALFSIZE.x;
     Height = _HALFSIZE.y;
     Format = RG16F;
-    MipLevels = _MIPLEVELS;
+    MipLevels = 8;
 };
 
 sampler2D _SampleDerivatives
@@ -171,7 +156,7 @@ texture2D _RenderOpticalFlow_Datamosh
     Width = _HALFSIZE.x;
     Height = _HALFSIZE.y;
     Format = RG16F;
-    MipLevels = _MIPLEVELS;
+    MipLevels = 8;
 };
 
 sampler2D _SampleOpticalFlow
@@ -204,7 +189,7 @@ texture2D _RenderFrame1
     Width = _HALFSIZE.x;
     Height = _HALFSIZE.y;
     Format = R16F;
-    MipLevels = _MIPLEVELS;
+    MipLevels = 8;
 };
 
 sampler2D _SampleFrame1
@@ -280,29 +265,57 @@ void DerivativesPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, f
     - Repeat until full resolution level of original frames is reached
 */
 
-void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+float2 GaussSeidel(float4 _I, float Levels, float2 InitialFlow)
 {
-	const float MaxLevel = (_MIPLEVELS - 1);
-    float Level = (_MIPLEVELS - 1);
-    float2 OutputFlow;
+    float2 Output = InitialFlow;
 
-    while(Level >= 0)
+    while(Levels >= 0.0)
     {
-   	 const float Lambda = 1e-1 * 1e+3 / pow(4.0, MaxLevel - Level);
-        float4 CalculateUV = float4(TexCoord, 0.0, Level);
-        float CurrentFrame = tex2Dlod(_SampleFrame0, CalculateUV).x;
-        float PreviousFrame = tex2Dlod(_SampleFrame1, CalculateUV).x;
-        float2 _Ixy = tex2Dlod(_SampleDerivatives, CalculateUV).xy;
-        float _It = CurrentFrame - PreviousFrame;
-
-        float Linear = dot(_Ixy, OutputFlow.xy) + _It;
-        float Smoothness = rcp(dot(_Ixy, _Ixy) + Lambda);
-        float2 CurrentFlow = OutputFlow - ((_Ixy * Linear) * Smoothness);
-        OutputFlow = (Level != 0) ? CurrentFlow + OutputFlow : CurrentFlow;
-        Level = Level - 1.0;
+        Output.x -= ((_I.x * (dot(_I.xy, Output.xy) + _I.z)) * _I.w);
+        Output.y -= ((_I.y * (dot(_I.xy, Output.xy) + _I.z)) * _I.w);
+        Levels = Levels - 1.0;
     }
 
-    OutputColor0 = float4(OutputFlow.xy, 0.0, _BlendFactor);
+    return Output;
+}
+
+float2 OpticalFlow(float2 TexCoord, float Level, inout float2 OpticalFlow)
+{
+    const float MaxLevel = 7.5;
+    const float Lambda = (_Constraint * 1e-5) * 1e+3 / pow(4.0, MaxLevel - Level);
+    const float BufferPixels = (BUFFER_WIDTH / 2) * (BUFFER_HEIGHT / 2);
+    float Iterations = log2(BufferPixels / ldexp(BufferPixels, -Level));
+
+    float4 LevelCoord = float4(TexCoord, 0.0, Level);
+    float SampleFrameC = tex2Dlod(_SampleFrame0, LevelCoord).x;
+    float SampleFrameP = tex2Dlod(_SampleFrame1, LevelCoord).x;
+
+    float4 I;
+    I.xy = tex2Dlod(_SampleDerivatives, LevelCoord).xy;
+    I.z = SampleFrameC - SampleFrameP;
+    I.w = 1.0 / (dot(I.xy, I.xy) + Lambda);
+
+    [unroll] for(int i = 0; i <= Iterations; i++)
+    {
+        OpticalFlow.x -= ((I.x * (dot(I.xy, OpticalFlow.xy) + I.z)) * I.w);
+        OpticalFlow.y -= ((I.y * (dot(I.xy, OpticalFlow.xy) + I.z)) * I.w);
+    }
+
+    return OpticalFlow;
+}
+
+void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+{
+    OutputColor0 = 0.0;
+    OutputColor0.xy += OpticalFlow(TexCoord, 7.5, OutputColor0.xy);
+    OutputColor0.xy += OpticalFlow(TexCoord, 6.5, OutputColor0.xy);
+    OutputColor0.xy += OpticalFlow(TexCoord, 5.5, OutputColor0.xy);
+    OutputColor0.xy += OpticalFlow(TexCoord, 4.5, OutputColor0.xy);
+    OutputColor0.xy += OpticalFlow(TexCoord, 3.5, OutputColor0.xy);
+    OutputColor0.xy += OpticalFlow(TexCoord, 2.5, OutputColor0.xy);
+    OutputColor0.xy += OpticalFlow(TexCoord, 1.5, OutputColor0.xy);
+    OutputColor0.xy = OpticalFlow(TexCoord, 0.5, OutputColor0.xy);
+    OutputColor0.a = _BlendFactor;
 }
 
 float RandomNoise(float2 TexCoord)
@@ -324,7 +337,6 @@ void AccumulatePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, ou
 
     // Motion vector
     float2 MotionVectors = tex2Dlod(_SampleOpticalFlow, float4(TexCoord, 0.0, _Detail)).xy;
-    MotionVectors *= _Scale;
 
     // Normalized screen space -> Pixel coordinates
     MotionVectors = MotionVectors * _HALFSIZE;
@@ -375,18 +387,6 @@ void OutputPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out fl
 
     float2 MotionVectors = tex2Dlod(_SampleOpticalFlow, float4(TexCoord, 0.0, _Detail)).xy * DisplacementTexel;
     MotionVectors *= _Scale;
-
-    // Normalized screen space -> Pixel coordinates
-    MotionVectors = MotionVectors * float2(BUFFER_WIDTH, BUFFER_HEIGHT);
-
-    // Small random displacement (diffusion)
-    MotionVectors += (Random.xy - 0.5)  * _Diffusion;
-
-    // Pixel perfect snapping
-    MotionVectors = round(MotionVectors);
-
-    // Pixel coordinates -> Normalized screen space
-    MotionVectors *= (float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT) - 1.0);
 
     float4 Source = tex2D(_SampleColor, TexCoord); // Color from the original image
     float Displacement = tex2D(_SampleAccumulation, TexCoord).r; // Displacement vector

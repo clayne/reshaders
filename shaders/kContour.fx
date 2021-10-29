@@ -184,7 +184,7 @@ void ContourPS(float4 Position : SV_POSITION, float4 TexCoord[4] : TEXCOORD0, ou
             _Iy += C2 * -17.0;
             Edge = Magnitude(_Ix, _Iy);
             break;
-        case 8: // FastSobel
+        case 8: // Fast Sobel
             float3 Sample0 = NormalizeColor(tex2D(_SampleColor, TexCoord[3].zy).rgb); // (-x, +y)
             float3 Sample1 = NormalizeColor(tex2D(_SampleColor, TexCoord[3].xy).rgb); // (+x, +y)
             float3 Sample2 = NormalizeColor(tex2D(_SampleColor, TexCoord[3].zw).rgb); // (-x, -y)

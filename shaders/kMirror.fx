@@ -66,8 +66,7 @@ void MirrorPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD, out flo
     // Angular repeating.
     Phi += _Offset;
     Phi = Phi - _Divisor * floor(Phi / _Divisor);
-
-    if(_Symmetry) { Phi = min(Phi, _Divisor - Phi); }
+    Phi = (_Symmetry) ? min(Phi, _Divisor - Phi) : Phi;
     Phi += _Roll - _Offset;
 
     // Convert back to the texture coordinate.
@@ -76,7 +75,6 @@ void MirrorPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD, out flo
 
     // Reflection at the border of the screen.
     TexCoord = max(min(TexCoord, 2.0 - TexCoord), -TexCoord);
-
     OutputColor0 = tex2D(_SampleColor, TexCoord);
 }
 
