@@ -237,7 +237,7 @@ float2 OpticalFlow(float2 TexCoord, float Level, inout float2 OutputFlow)
     const float MaxLevel = 4.5;
     const float Lambda = (_Constraint * 1e-5) * 1e+3 / pow(4.0, MaxLevel - Level);
     const float BufferPixels = (BUFFER_WIDTH / 2) * (BUFFER_HEIGHT / 2);
-    const float Iterations = log2(BufferPixels / ldexp(BufferPixels, -Level));
+    const float Iterations = exp2(exp(1.0));
 
     float4 LevelCoord = float4(TexCoord, 0.0, Level);
     float2 SampleFrame = tex2Dlod(_SampleData1, LevelCoord).xy;

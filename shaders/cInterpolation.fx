@@ -19,7 +19,7 @@ uniform float _Detail <
     ui_max = 8.0;
 > = 2.5;
 
-#define BUFFER_SIZE uint2(BUFFER_WIDTH / 16, BUFFER_HEIGHT / 16)
+#define BUFFER_SIZE uint2(BUFFER_WIDTH / 8, BUFFER_HEIGHT / 8)
 
 texture2D _RenderColor : COLOR;
 
@@ -34,7 +34,7 @@ texture2D _RenderFrame0_Interpolation
     Width = BUFFER_WIDTH;
     Height = BUFFER_HEIGHT;
     Format = RGBA8;
-    MipLevels = 4;
+    MipLevels = 3;
 };
 
 sampler2D _SampleFrame0
@@ -43,7 +43,7 @@ sampler2D _SampleFrame0
     SRGBTexture = TRUE;
 };
 
-texture2D _RenderData0
+texture2D _RenderData0_Interpolation
 {
     Width = BUFFER_SIZE.x;
     Height = BUFFER_SIZE.y;
@@ -53,10 +53,10 @@ texture2D _RenderData0
 
 sampler2D _SampleData0
 {
-    Texture = _RenderData0;
+    Texture = _RenderData0_Interpolation;
 };
 
-texture2D _RenderData1
+texture2D _RenderData1_Interpolation
 {
     Width = BUFFER_SIZE.x;
     Height = BUFFER_SIZE.y;
@@ -66,14 +66,7 @@ texture2D _RenderData1
 
 sampler2D _SampleData1
 {
-    Texture = _RenderData1;
-};
-
-sampler2D _SampleVectors
-{
-    Texture = _RenderData1;
-    MinFilter = POINT;
-    MagFilter = POINT;
+    Texture = _RenderData1_Interpolation;
 };
 
 texture2D _RenderCopy_Interpolation
@@ -237,9 +230,9 @@ void DerivativesPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, f
 float2 OpticalFlow(float2 TexCoord, float Level, inout float2 OutputFlow)
 {
     const float MaxLevel = 4.5;
-    const float Lambda = (_Constraint * 1e-5) * 1e+3 / pow(4.0, MaxLevel - Level);
+    const float Lambda = (_Constraint * 1e-6) * 1e+3 / pow(4.0, MaxLevel - Level);
     const float BufferPixels = (BUFFER_WIDTH / 2) * (BUFFER_HEIGHT / 2);
-    const float Iterations = log2(BufferPixels / ldexp(BufferPixels, -Level));
+    const float Iterations = exp2(exp(1.0)); //log2(BufferPixels / ldexp(BufferPixels, -Level));
 
     float4 LevelCoord = float4(TexCoord, 0.0, Level);
     float2 SampleFrame = tex2Dlod(_SampleData0, LevelCoord).xy;
@@ -284,7 +277,7 @@ float4 Median(float4 A, float4 B, float4 C)
 
 void InterpolatePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    float2 MotionVectors = tex2Dlod(_SampleVectors, float4(TexCoord, 0.0, _Detail)).xy / (BUFFER_SIZE / exp2(_Detail));
+    float2 MotionVectors = tex2Dlod(_SampleData1, float4(TexCoord, 0.0, _Detail)).xy / (BUFFER_SIZE / exp2(_Detail));
     float4 FrameF = tex2D(_SampleFrame1, TexCoord + MotionVectors);
     float4 FrameB = tex2D(_SampleFrame0, TexCoord - MotionVectors);
     float4 FrameP = tex2D(_SampleFrame1, TexCoord);
@@ -312,28 +305,28 @@ technique cInterpolation
     {
         VertexShader = PostProcessVS;
         PixelShader = NormalizePS;
-        RenderTarget0 = _RenderData0;
+        RenderTarget0 = _RenderData0_Interpolation;
     }
 
     pass
     {
         VertexShader = HorizontalBlurVS;
         PixelShader = HorizontalBlurPS0;
-        RenderTarget0 = _RenderData1;
+        RenderTarget0 = _RenderData1_Interpolation;
     }
 
     pass
     {
         VertexShader = VerticalBlurVS;
         PixelShader = VerticalBlurPS0;
-        RenderTarget0 = _RenderData0;
+        RenderTarget0 = _RenderData0_Interpolation;
     }
 
     pass
     {
         VertexShader = DerivativesVS;
         PixelShader = DerivativesPS;
-        RenderTarget0 = _RenderData1;
+        RenderTarget0 = _RenderData1_Interpolation;
         RenderTarget1 = _RenderCopy_Interpolation;
     }
 
@@ -353,14 +346,14 @@ technique cInterpolation
     {
         VertexShader = HorizontalBlurVS;
         PixelShader = HorizontalBlurPS1;
-        RenderTarget0 = _RenderData0;
+        RenderTarget0 = _RenderData0_Interpolation;
     }
 
     pass
     {
         VertexShader = VerticalBlurVS;
         PixelShader = VerticalBlurPS1;
-        RenderTarget0 = _RenderData1;
+        RenderTarget0 = _RenderData1_Interpolation;
     }
 
     pass
