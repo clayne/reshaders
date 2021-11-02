@@ -276,9 +276,8 @@ void DerivativesPS(float4 Position : SV_POSITION, float4 Offsets : TEXCOORD0, ou
 float2 OpticalFlow(float2 TexCoord, float Level, inout float2 OpticalFlow)
 {
     const float MaxLevel = 6.5;
-    const float Lambda = (_Constraint * 1e-5) * 1e+3 / pow(4.0, MaxLevel - Level);
-    const float BufferPixels = (BUFFER_WIDTH / 2) * (BUFFER_HEIGHT / 2);
-    const float Iterations = exp2(exp(1.0));
+    const float Lambda = (_Constraint * 1e-3) / pow(4.0, MaxLevel - Level);
+    const float Iterations = (MaxLevel * MaxLevel) * rsqrt(MaxLevel);
 
     float4 LevelCoord = float4(TexCoord, 0.0, Level);
     float2 SampleFrame = tex2Dlod(_SampleData0, LevelCoord).xy;
@@ -298,15 +297,15 @@ float2 OpticalFlow(float2 TexCoord, float Level, inout float2 OpticalFlow)
 
 void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    OutputColor0 = 0.0;
-    OutputColor0.xy += OpticalFlow(TexCoord, 6.5, OutputColor0.xy);
-    OutputColor0.xy += OpticalFlow(TexCoord, 5.5, OutputColor0.xy);
-    OutputColor0.xy += OpticalFlow(TexCoord, 4.5, OutputColor0.xy);
-    OutputColor0.xy += OpticalFlow(TexCoord, 3.5, OutputColor0.xy);
-    OutputColor0.xy += OpticalFlow(TexCoord, 2.5, OutputColor0.xy);
-    OutputColor0.xy += OpticalFlow(TexCoord, 1.5, OutputColor0.xy);
+    OutputColor0.xy = 0.0;
+    OutputColor0.xy = OpticalFlow(TexCoord, 6.5, OutputColor0.xy);
+    OutputColor0.xy = OpticalFlow(TexCoord, 5.5, OutputColor0.xy);
+    OutputColor0.xy = OpticalFlow(TexCoord, 4.5, OutputColor0.xy);
+    OutputColor0.xy = OpticalFlow(TexCoord, 3.5, OutputColor0.xy);
+    OutputColor0.xy = OpticalFlow(TexCoord, 2.5, OutputColor0.xy);
+    OutputColor0.xy = OpticalFlow(TexCoord, 1.5, OutputColor0.xy);
     OutputColor0.xy = OpticalFlow(TexCoord, 0.5, OutputColor0.xy);
-    OutputColor0.a = _Blend;
+    OutputColor0.ba = _Blend;
 }
 
 void HorizontalBlurPS1(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets[7] : TEXCOORD1, out float4 OutputColor0 : SV_TARGET0)

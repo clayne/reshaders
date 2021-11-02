@@ -214,7 +214,7 @@ void VerticalBlurPS0(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0,
     OutputColor0.y = tex2D(_SampleCopy, TexCoord).x; // Store previous blurred image before it gets overwritten!
 }
 
-void DerivativesPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets : TEXCOORD1, out float2 OutputColor0 : SV_TARGET0, out float OutputColor1 : SV_TARGET1)
+void DerivativesPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets : TEXCOORD1, out float2 OutputColor0 : SV_TARGET0, out float2 OutputColor1 : SV_TARGET1)
 {
     float2 Sample0 = tex2D(_SampleData0, Offsets.zy).xy; // (-x, +y)
     float2 Sample1 = tex2D(_SampleData0, Offsets.xy).xy; // (+x, +y)
@@ -230,9 +230,8 @@ void DerivativesPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, f
 float2 OpticalFlow(float2 TexCoord, float Level, inout float2 OutputFlow)
 {
     const float MaxLevel = 4.5;
-    const float Lambda = (_Constraint * 1e-6) * 1e+3 / pow(4.0, MaxLevel - Level);
-    const float BufferPixels = (BUFFER_WIDTH / 2) * (BUFFER_HEIGHT / 2);
-    const float Iterations = exp2(exp(1.0)); //log2(BufferPixels / ldexp(BufferPixels, -Level));
+    const float Lambda = (_Constraint * 1e-7) / pow(4.0, MaxLevel - Level);
+    const float Iterations = (MaxLevel * MaxLevel) * rsqrt(MaxLevel);
 
     float4 LevelCoord = float4(TexCoord, 0.0, Level);
     float2 SampleFrame = tex2Dlod(_SampleData0, LevelCoord).xy;
@@ -253,10 +252,10 @@ float2 OpticalFlow(float2 TexCoord, float Level, inout float2 OutputFlow)
 void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
     OutputColor0 = 0.0;
-    OutputColor0.xy += OpticalFlow(TexCoord, 4.5, OutputColor0.xy);
-    OutputColor0.xy += OpticalFlow(TexCoord, 3.5, OutputColor0.xy);
-    OutputColor0.xy += OpticalFlow(TexCoord, 2.5, OutputColor0.xy);
-    OutputColor0.xy += OpticalFlow(TexCoord, 1.5, OutputColor0.xy);
+    OutputColor0.xy = OpticalFlow(TexCoord, 4.5, OutputColor0.xy);
+    OutputColor0.xy = OpticalFlow(TexCoord, 3.5, OutputColor0.xy);
+    OutputColor0.xy = OpticalFlow(TexCoord, 2.5, OutputColor0.xy);
+    OutputColor0.xy = OpticalFlow(TexCoord, 1.5, OutputColor0.xy);
     OutputColor0.xy = OpticalFlow(TexCoord, 0.5, OutputColor0.xy);
     OutputColor0.a = _Blend;
 }
@@ -277,13 +276,18 @@ float4 Median(float4 A, float4 B, float4 C)
 
 void InterpolatePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    float2 MotionVectors = tex2Dlod(_SampleData1, float4(TexCoord, 0.0, _Detail)).xy / (BUFFER_SIZE / exp2(_Detail));
+    float2 MotionVectors = tex2Dlod(_SampleData1, float4(TexCoord, 0.0, _Detail)).xy / BUFFER_SIZE;
+    float MaskLength = length(MotionVectors);
     float4 FrameF = tex2D(_SampleFrame1, TexCoord + MotionVectors);
     float4 FrameB = tex2D(_SampleFrame0, TexCoord - MotionVectors);
     float4 FrameP = tex2D(_SampleFrame1, TexCoord);
     float4 FrameC = tex2D(_SampleFrame0, TexCoord);
-    float4 FrameL = lerp(FrameC, FrameP, 0.5);
-    OutputColor0 = Median(FrameL, FrameF, FrameB);
+    float4 Lerp0 = lerp(FrameF, FrameB, MaskLength);
+    float4 Lerp1 = lerp(FrameB, FrameF, MaskLength);
+    float4 Frame0 = lerp(FrameP, FrameC, MaskLength);
+    float4 Frame1 = lerp(FrameC, FrameP, MaskLength);
+    float4 FrameA = lerp(Frame0, Frame1, 0.5);
+    OutputColor0 = Median(FrameA, Lerp1, Lerp0);
 }
 
 void BlitPS1(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)

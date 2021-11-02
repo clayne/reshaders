@@ -54,15 +54,6 @@ float MipLODLevel(float2 TexCoord, float2 InputSize, float Bias)
     return max(log2(Product) * 0.5 + Bias, 0.0);
 }
 
-// Function inspired by http://web.cse.ohio-state.edu/~crawfis.3/cse781/Readings/MipMapLevels-Blog.html
-float MipLODLevel3(float2 InputSize, float2 OutputSize, float Bias)
-{
-    float InputPixels = InputSize.x * InputSize.y;
-    float OutputPixels = OutputSize.x * OutputSize.y;
-    float MipLevel = (log2(InputPixels / OutputPixels) * 0.5);
-    return max(MipLevel + Bias, 0.0);
-}
-
 void BlitPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
     OutputColor0 = tex2D(_SampleColor, TexCoord);
@@ -71,11 +62,8 @@ void BlitPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out floa
 void MipLevelPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
     float2 InputSize = float2(BUFFER_WIDTH, BUFFER_HEIGHT) / 2.0;
-    float2 InputSize2 = float2(BUFFER_WIDTH, BUFFER_HEIGHT) / 16.0;
     float MipLevel = MipLODLevel(TexCoord, InputSize, 0.0);
-    float MipLevel1 = MipLODLevel3(InputSize, InputSize2, 0.0);
     OutputColor0 = tex2Dlod(_SampleMipMaps, float4(TexCoord, 0.0, MipLevel));
-    //OutputColor0 = tex2D(_SampleMipMaps, TexCoord);
 }
 
 void ImagePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
