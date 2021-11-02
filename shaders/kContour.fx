@@ -100,6 +100,7 @@ float3 NormalizeColor(float3 Color)
     float NBright = max(max(NColor.r, NColor.g), NColor.b);
     return (_NormalizeInput) ? NColor / NBright : Color;
 }
+
 void ContourPS(float4 Position : SV_POSITION, float4 TexCoord[4] : TEXCOORD0, out float3 OutputColor0 : SV_TARGET0)
 {
     /*
