@@ -58,10 +58,16 @@ uniform int _Select <
     ui_tooltip = "Select Edge Detection";
 > = 0;
 
-uniform bool _NormalizeInput <
-    ui_label = "Normalize Color Input";
+uniform bool _NormalizeOutput <
+    ui_label = "Normalize Output";
     ui_type = "radio";
-> = false;
+> = true;
+
+uniform float _NormalWeight <
+    ui_label = "Normal Weight";
+    ui_type = "drag";
+    ui_min = 0.0;
+> = 0.1;
 
 texture2D _RenderColor : COLOR;
 
@@ -94,11 +100,9 @@ float Magnitude(float3 X, float3 Y)
     return sqrt(dot(X, X) + dot(Y, Y));
 }
 
-float3 NormalizeColor(float3 Color)
+float3 NormalizeValue(float3 Input)
 {
-    float3 NColor = Color / dot(Color, 1.0);
-    float NBright = max(max(NColor.r, NColor.g), NColor.b);
-    return (_NormalizeInput) ? NColor / NBright : Color;
+    return (_NormalizeOutput) ? Input * rsqrt(dot(Input, Input) + _NormalWeight) : Input;
 }
 
 void ContourPS(float4 Position : SV_POSITION, float4 TexCoord[4] : TEXCOORD0, out float3 OutputColor0 : SV_TARGET0)
@@ -109,90 +113,92 @@ void ContourPS(float4 Position : SV_POSITION, float4 TexCoord[4] : TEXCOORD0, ou
         A2 B2 C2
     */
 
-    float3 A0 = NormalizeColor(tex2D(_SampleColor, TexCoord[0].xy).rgb);
-    float3 A1 = NormalizeColor(tex2D(_SampleColor, TexCoord[0].xz).rgb);
-    float3 A2 = NormalizeColor(tex2D(_SampleColor, TexCoord[0].xw).rgb);
+    float3 A0 = tex2D(_SampleColor, TexCoord[0].xy).rgb;
+    float3 A1 = tex2D(_SampleColor, TexCoord[0].xz).rgb;
+    float3 A2 = tex2D(_SampleColor, TexCoord[0].xw).rgb;
 
-    float3 B0 = NormalizeColor(tex2D(_SampleColor, TexCoord[1].xy).rgb);
-    float3 B1 = NormalizeColor(tex2D(_SampleColor, TexCoord[1].xz).rgb);
-    float3 B2 = NormalizeColor(tex2D(_SampleColor, TexCoord[1].xw).rgb);
+    float3 B0 = tex2D(_SampleColor, TexCoord[1].xy).rgb;
+    float3 B1 = tex2D(_SampleColor, TexCoord[1].xz).rgb;
+    float3 B2 = tex2D(_SampleColor, TexCoord[1].xw).rgb;
 
-    float3 C0 = NormalizeColor(tex2D(_SampleColor, TexCoord[2].xy).rgb);
-    float3 C1 = NormalizeColor(tex2D(_SampleColor, TexCoord[2].xz).rgb);
-    float3 C2 = NormalizeColor(tex2D(_SampleColor, TexCoord[2].xw).rgb);
+    float3 C0 = tex2D(_SampleColor, TexCoord[2].xy).rgb;
+    float3 C1 = tex2D(_SampleColor, TexCoord[2].xz).rgb;
+    float3 C2 = tex2D(_SampleColor, TexCoord[2].xw).rgb;
 
-    float3 _Ix, _Iy, Edge;
+    float3 Ix, Iy, Edge;
 
     switch(_Select)
     {
         case 0: // fwidth()
-            _Ix = ddx(B1);
-            _Iy = ddy(B1);
-            Edge = Magnitude(_Ix, _Iy);
+            Ix = NormalizeValue(ddx(B1));
+            Iy = NormalizeValue(ddy(B1));
+            Edge = Magnitude(Ix, Iy);
             break;
         case 1: // Laplacian
             Edge = (A1 + C1 + B0 + B2) + (B1 * -4.0);
+            Edge = NormalizeValue(Edge);
             Edge = length(Edge) / sqrt(3.0);
             break;
         case 2: // Sobel
-            _Ix = (-A0 + ((-A1 * 2.0) + -A2)) + (C0 + (C1 * 2.0) + C2);
-            _Iy = (-A0 + ((-B0 * 2.0) + -C0)) + (A2 + (B2 * 2.0) + C2);
-            Edge = Magnitude(_Ix, _Iy);
+            Ix = (-A0 + ((-A1 * 2.0) + -A2)) + (C0 + (C1 * 2.0) + C2);
+            Iy = (-A0 + ((-B0 * 2.0) + -C0)) + (A2 + (B2 * 2.0) + C2);
+            Edge = Magnitude(NormalizeValue(Ix), NormalizeValue(Iy));
             break;
         case 3: // Prewitt
-            _Ix = (-A0 - A1 - A2) + (C0 + C1 + C2);
-            _Iy = (-A0 - B0 - C0) + (A2 + B2 + C2);
-            Edge = Magnitude(_Ix, _Iy);
+            Ix = (-A0 - A1 - A2) + (C0 + C1 + C2);
+            Iy = (-A0 - B0 - C0) + (A2 + B2 + C2);
+            Edge = Magnitude(NormalizeValue(Ix), NormalizeValue(Iy));
             break;
         case 4: // Robert's Cross
-            _Ix = C0 - B1;
-            _Iy = B0 - C1;
-            Edge = Magnitude(_Ix, _Iy);
+            Ix = C0 - B1;
+            Iy = B0 - C1;
+            Edge = Magnitude(NormalizeValue(Ix), NormalizeValue(Iy));
             break;
         case 5: // Scharr
-            _Ix += A0 * -3.0;
-            _Ix += A1 * -10.0;
-            _Ix += A2 * -3.0;
-            _Ix += C0 * 3.0;
-            _Ix += C1 * 10.0;
-            _Ix += C2 * 3.0;
+            Ix += A0 * -3.0;
+            Ix += A1 * -10.0;
+            Ix += A2 * -3.0;
+            Ix += C0 * 3.0;
+            Ix += C1 * 10.0;
+            Ix += C2 * 3.0;
 
-            _Iy += A0 * 3.0;
-            _Iy += B0 * 10.0;
-            _Iy += C0 * 3.0;
-            _Iy += A2 * -3.0;
-            _Iy += B2 * -10.0;
-            _Iy += C2 * -3.0;
-            Edge = Magnitude(_Ix, _Iy);
+            Iy += A0 * 3.0;
+            Iy += B0 * 10.0;
+            Iy += C0 * 3.0;
+            Iy += A2 * -3.0;
+            Iy += B2 * -10.0;
+            Iy += C2 * -3.0;
+            Edge = Magnitude(NormalizeValue(Ix), NormalizeValue(Iy));
             break;
         case 6: // Kayyali
             float3 Cross = (A0 * 6.0) + (C0 * -6.0) + (A2 * -6.0) + (C2 * 6.0);
+            Cross = NormalizeValue(Cross);
             Edge = Magnitude(Cross, -Cross);
             break;
         case 7: // Kroon
-            _Ix += A0 * -17.0;
-            _Ix += A1 * -61.0;
-            _Ix += A2 * -17.0;
-            _Ix += C0 * 17.0;
-            _Ix += C1 * 61.0;
-            _Ix += C2 * 17.0;
+            Ix += A0 * -17.0;
+            Ix += A1 * -61.0;
+            Ix += A2 * -17.0;
+            Ix += C0 * 17.0;
+            Ix += C1 * 61.0;
+            Ix += C2 * 17.0;
 
-            _Iy += A0 * 17.0;
-            _Iy += B0 * 61.0;
-            _Iy += C0 * 17.0;
-            _Iy += A2 * -17.0;
-            _Iy += B2 * -61.0;
-            _Iy += C2 * -17.0;
-            Edge = Magnitude(_Ix, _Iy);
+            Iy += A0 * 17.0;
+            Iy += B0 * 61.0;
+            Iy += C0 * 17.0;
+            Iy += A2 * -17.0;
+            Iy += B2 * -61.0;
+            Iy += C2 * -17.0;
+            Edge = Magnitude(NormalizeValue(Ix), NormalizeValue(Iy));
             break;
         case 8: // Fast Sobel
-            float3 Sample0 = NormalizeColor(tex2D(_SampleColor, TexCoord[3].zy).rgb); // (-x, +y)
-            float3 Sample1 = NormalizeColor(tex2D(_SampleColor, TexCoord[3].xy).rgb); // (+x, +y)
-            float3 Sample2 = NormalizeColor(tex2D(_SampleColor, TexCoord[3].zw).rgb); // (-x, -y)
-            float3 Sample3 = NormalizeColor(tex2D(_SampleColor, TexCoord[3].xw).rgb); // (+x, -y)
-            float3 _ddx = (-Sample2 + -Sample0) + (Sample3 + Sample1);
-            float3 _ddy = (Sample2 + Sample3) + (-Sample0 + -Sample1);
-            Edge = Magnitude(_ddx * 4.0, _ddy * 4.0);
+            float3 Sample0 = tex2D(_SampleColor, TexCoord[3].zy).rgb; // (-x, +y)
+            float3 Sample1 = tex2D(_SampleColor, TexCoord[3].xy).rgb; // (+x, +y)
+            float3 Sample2 = tex2D(_SampleColor, TexCoord[3].zw).rgb; // (-x, -y)
+            float3 Sample3 = tex2D(_SampleColor, TexCoord[3].xw).rgb; // (+x, -y)
+            Ix = ((-Sample2 + -Sample0) + (Sample3 + Sample1)) * 4.0;
+            Iy = ((Sample2 + Sample3) + (-Sample0 + -Sample1)) * 4.0;
+            Edge = Magnitude(NormalizeValue(Ix), NormalizeValue(Iy));
             break;
         default:
             Edge = tex2D(_SampleColor, TexCoord[1].xz).rgb;
