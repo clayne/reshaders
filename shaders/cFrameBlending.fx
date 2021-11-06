@@ -29,6 +29,9 @@ texture2D _RenderCopy
 sampler2D _SampleCopy
 {
     Texture = _RenderCopy;
+    #if BUFFER_COLOR_BIT_DEPTH == 8
+        SRGBTexture = TRUE;
+    #endif
 };
 
 /* [Vertex Shaders] */
@@ -64,6 +67,9 @@ technique cFrameBlending
         BlendOp = ADD;
         SrcBlend = INVSRCALPHA;
         DestBlend = SRCALPHA;
+        #if BUFFER_COLOR_BIT_DEPTH == 8
+            SRGBWriteEnable = TRUE;
+        #endif
     }
 
     pass
