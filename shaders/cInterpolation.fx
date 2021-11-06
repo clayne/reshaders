@@ -26,7 +26,9 @@ texture2D _RenderColor : COLOR;
 sampler2D _SampleColor
 {
     Texture = _RenderColor;
-    SRGBTexture = TRUE;
+    #if BUFFER_COLOR_BIT_DEPTH == 8
+        SRGBTexture = TRUE;
+    #endif
 };
 
 texture2D _RenderFrame0_Interpolation
@@ -244,7 +246,7 @@ float2 OpticalFlow(float2 TexCoord, float Level, inout float2 OutputFlow)
     {
         OutputFlow.x -= ((I.x * (dot(I.xy, OutputFlow.xy) + I.z)) * I.w);
         OutputFlow.y -= ((I.y * (dot(I.xy, OutputFlow.xy) + I.z)) * I.w);
-    }
+    }  
 
     return OutputFlow;
 }
@@ -372,6 +374,8 @@ technique cInterpolation
         VertexShader = PostProcessVS;
         PixelShader = BlitPS1;
         RenderTarget = _RenderFrame1_Interpolation;
-        SRGBWriteEnable = TRUE;
+        #if BUFFER_COLOR_BIT_DEPTH == 8
+            SRGBWriteEnable = TRUE;
+        #endif
     }
 }

@@ -27,6 +27,8 @@ technique cColorBlendOp
         BlendOp = ADD;
         SrcBlend = DESTCOLOR;
         DestBlend = SRCALPHA;
-        SRGBWriteEnable = TRUE;
+        #if BUFFER_COLOR_BIT_DEPTH == 8
+            SRGBWriteEnable = TRUE;
+        #endif
     }
 }

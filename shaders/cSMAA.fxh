@@ -69,15 +69,6 @@
 #define SMAA_SEARCHTEX_PACKED_SIZE float2(64.0, 16.0)
 #define SMAA_CORNER_ROUNDING_NORM (float(SMAA_CORNER_ROUNDING) / 100.0)
 
-
-
-
-
-
-
-
-
-
 /* Misc functions */
 
 /* Conditional move: */
@@ -124,19 +115,9 @@ float SMAASearchLength( sampler2D searchTex, float2 e, float offset)
 }
 
 
-
-
-
-
-
-
-
-
 /* Horizontal/vertical search functions for the 2nd pass. */
 
-float SMAASearchXLeft(
-    sampler2D edgesTex, sampler2D searchTex,
-    float2 texcoord, float end)
+float SMAASearchXLeft(sampler2D edgesTex, sampler2D searchTex, float2 texcoord, float end)
 {
     /*
         @PSEUDO_GATHER4
@@ -158,9 +139,7 @@ float SMAASearchXLeft(
     return mad(SMAA_RT_METRICS.x, offset, texcoord.x);
 }
 
-float SMAASearchXRight(
-    sampler2D edgesTex, sampler2D searchTex,
-    float2 texcoord, float end)
+float SMAASearchXRight(sampler2D edgesTex, sampler2D searchTex, float2 texcoord, float end)
 {
     float2 e = float2(0.0, 1.0);
     while (texcoord.x < end &&
@@ -173,9 +152,7 @@ float SMAASearchXRight(
     return mad(-SMAA_RT_METRICS.x, offset, texcoord.x);
 }
 
-float SMAASearchYUp(
-    sampler2D edgesTex, sampler2D searchTex,
-    float2 texcoord, float end)
+float SMAASearchYUp(sampler2D edgesTex, sampler2D searchTex, float2 texcoord, float end)
 {
     float2 e = float2(1.0, 0.0);
     while (texcoord.y > end &&
@@ -188,9 +165,7 @@ float SMAASearchYUp(
     return mad(SMAA_RT_METRICS.y, offset, texcoord.y);
 }
 
-float SMAASearchYDown(
-    sampler2D edgesTex, sampler2D searchTex,
-    float2 texcoord, float end)
+float SMAASearchYDown(sampler2D edgesTex, sampler2D searchTex, float2 texcoord, float end)
 {
     float2 e = float2(1.0, 0.0);
     while (texcoord.y < end &&
@@ -208,9 +183,7 @@ float SMAASearchYDown(
     at each side of current edge?
 */
 
-float2 SMAAArea(
-    sampler2D areaTex,
-    float2 dist, float e1, float e2, float offset)
+float2 SMAAArea(sampler2D areaTex, float2 dist, float e1, float e2, float offset)
 {
     // Rounding prevents precision errors of bilinear filtering:
     float2 texcoord = mad(float2(SMAA_AREATEX_MAX_DISTANCE, SMAA_AREATEX_MAX_DISTANCE), round(4.0 * float2(e1, e2)), dist);

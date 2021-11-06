@@ -4,7 +4,9 @@ texture2D _RenderColor : COLOR;
 sampler2D _SampleColor
 {
     Texture = _RenderColor;
-    SRGBTexture = TRUE;
+    #if BUFFER_COLOR_BIT_DEPTH == 8
+        SRGBTexture = TRUE;
+    #endif
 };
 
 texture2D _RenderMipMaps
@@ -18,7 +20,9 @@ texture2D _RenderMipMaps
 sampler2D _SampleMipMaps
 {
     Texture = _RenderMipMaps;
-    SRGBTexture = TRUE;
+    #if BUFFER_COLOR_BIT_DEPTH == 8
+        SRGBTexture = TRUE;
+    #endif
 };
 
 texture2D _RenderImage
@@ -31,7 +35,9 @@ texture2D _RenderImage
 sampler2D _SampleImage
 {
     Texture = _RenderImage;
-    SRGBTexture = TRUE;
+    #if BUFFER_COLOR_BIT_DEPTH == 8
+        SRGBTexture = TRUE;
+    #endif
 };
 
 /* [Vertex Shaders] */
@@ -78,7 +84,9 @@ technique cMipLevels
         VertexShader = PostProcessVS;
         PixelShader = BlitPS;
         RenderTarget0 = _RenderMipMaps;
-        SRGBWriteEnable = TRUE;
+        #if BUFFER_COLOR_BIT_DEPTH == 8
+            SRGBWriteEnable = TRUE;
+        #endif
     }
 
     pass
@@ -86,13 +94,17 @@ technique cMipLevels
         VertexShader = PostProcessVS;
         PixelShader = MipLevelPS;
         RenderTarget0 = _RenderImage;
-        SRGBWriteEnable = TRUE;
+        #if BUFFER_COLOR_BIT_DEPTH == 8
+            SRGBWriteEnable = TRUE;
+        #endif
     }
 
     pass
     {
         VertexShader = PostProcessVS;
         PixelShader = ImagePS;
-        SRGBWriteEnable = TRUE;
+        #if BUFFER_COLOR_BIT_DEPTH == 8
+            SRGBWriteEnable = TRUE;
+        #endif
     }
 }

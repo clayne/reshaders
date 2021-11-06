@@ -10,7 +10,9 @@ texture2D _RenderColor : COLOR;
 sampler2D _SampleColor
 {
     Texture = _RenderColor;
-    SRGBTexture = TRUE;
+    #if BUFFER_COLOR_BIT_DEPTH == 8
+        SRGBTexture = TRUE;
+    #endif
 };
 
 /* [Vertex Shaders] */
@@ -49,6 +51,8 @@ technique cTonemap
     {
         VertexShader = PostProcessVS;
         PixelShader = TonemapPS;
-        SRGBWriteEnable = TRUE;
+        #if BUFFER_COLOR_BIT_DEPTH == 8
+            SRGBWriteEnable = TRUE;
+        #endif
     }
 }

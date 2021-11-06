@@ -43,18 +43,20 @@ float4 VignettePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0) : 
     return GaussianWeight(Noise, _Variance) * _Intensity;
 }
 
-technique cGrain
+technique cFilmGrain
 {
     pass
     {
         VertexShader = PostProcessVS;
         PixelShader = VignettePS;
-        SRGBWriteEnable = TRUE;
         // (Shader[Src] * SrcBlend) + (Buffer[Dest] * DestBlend)
         // This shader: (Shader[Src] * (1.0 - Buffer[Dest])) + Buffer[Dest]
         BlendEnable = TRUE;
         BlendOp = ADD;
         SrcBlend = INVDESTCOLOR;
         DestBlend = ONE;
+        #if BUFFER_COLOR_BIT_DEPTH == 8
+            SRGBWriteEnable = TRUE;
+        #endif
     }
 }

@@ -12,7 +12,9 @@ texture2D _RenderColor : COLOR;
 sampler2D _SampleColor
 {
     Texture = _RenderColor;
-    SRGBTexture = TRUE;
+    #if BUFFER_COLOR_BIT_DEPTH == 8
+        SRGBTexture = TRUE;
+    #endif
 };
 
 void PostProcessVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD)
@@ -46,6 +48,8 @@ technique cAbberation
     {
         VertexShader = PostProcessVS;
         PixelShader = AbberationPS;
-        SRGBWriteEnable = TRUE;
+        #if BUFFER_COLOR_BIT_DEPTH == 8
+            SRGBWriteEnable = TRUE;
+        #endif
     }
 }

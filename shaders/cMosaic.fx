@@ -10,22 +10,6 @@ uniform int _Shape <
     ui_max = 2;
 > = 0;
 
-#define CONST_LOG2(x) (\
-    (uint((x)  & 0xAAAAAAAA) != 0) | \
-    (uint(((x) & 0xFFFF0000) != 0) << 4) | \
-    (uint(((x) & 0xFF00FF00) != 0) << 3) | \
-    (uint(((x) & 0xF0F0F0F0) != 0) << 2) | \
-    (uint(((x) & 0xCCCCCCCC) != 0) << 1))
-
-#define BIT2_LOG2(x)  ((x) | (x) >> 1)
-#define BIT4_LOG2(x)  (BIT2_LOG2(x) | BIT2_LOG2(x) >> 2)
-#define BIT8_LOG2(x)  (BIT4_LOG2(x) | BIT4_LOG2(x) >> 4)
-#define BIT16_LOG2(x) (BIT8_LOG2(x) | BIT8_LOG2(x) >> 8)
-#define LOG2(x)       (CONST_LOG2((BIT16_LOG2(x) >> 1) + 1))
-#define RMAX(x, y)     x ^ ((x ^ y) & -(x < y)) // max(x, y)
-
-#define RMIPS LOG2(RMAX(BUFFER_WIDTH, BUFFER_HEIGHT)) + 1
-
 texture2D _RenderColor : COLOR;
 
 sampler2D _SampleColor
@@ -33,14 +17,16 @@ sampler2D _SampleColor
     Texture = _RenderColor;
     AddressU = MIRROR;
     AddressV = MIRROR;
-    SRGBTexture = TRUE;
+    #if BUFFER_COLOR_BIT_DEPTH == 8
+        SRGBTexture = TRUE;
+    #endif
 };
 
-texture2D _RenderMosaicLOD < pooled = false; >
+texture2D _RenderMosaicLOD
 {
     Width = BUFFER_WIDTH;
     Height = BUFFER_HEIGHT;
-    MipLevels = RMIPS;
+    MipLevels = 9;
     Format = RGBA8;
 };
 
@@ -49,7 +35,9 @@ sampler2D _SampleMosaicLOD
     Texture = _RenderMosaicLOD;
     AddressU = MIRROR;
     AddressV = MIRROR;
-    SRGBTexture = TRUE;
+    #if BUFFER_COLOR_BIT_DEPTH == 8
+        SRGBTexture = TRUE;
+    #endif
 };
 
 /* [Vertex Shaders] */
@@ -118,13 +106,17 @@ technique cMosaic
         VertexShader = PostProcessVS;
         PixelShader = BlitPS;
         RenderTarget0 = _RenderMosaicLOD;
-        SRGBWriteEnable = TRUE;
+        #if BUFFER_COLOR_BIT_DEPTH == 8
+            SRGBWriteEnable = TRUE;
+        #endif
     }
 
     pass
     {
         VertexShader = PostProcessVS;
         PixelShader = MosaicPS;
-        SRGBWriteEnable = TRUE;
+        #if BUFFER_COLOR_BIT_DEPTH == 8
+            SRGBWriteEnable = TRUE;
+        #endif
     }
 }

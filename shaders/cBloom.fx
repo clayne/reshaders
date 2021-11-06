@@ -34,7 +34,10 @@ texture2D _RenderColor : COLOR;
 
 sampler2D _SampleColor
 {
-    Texture = _RenderColor; SRGBTexture = TRUE;
+    Texture = _RenderColor;
+    #if BUFFER_COLOR_BIT_DEPTH == 8
+        SRGBTexture = TRUE;
+    #endif
 };
 
 texture2D _RenderBloom1
@@ -576,6 +579,8 @@ technique cBloom
         BlendOp = ADD;
         SrcBlend = ONE;
         DestBlend = INVSRCCOLOR;
-        SRGBWriteEnable = TRUE;
+        #if BUFFER_COLOR_BIT_DEPTH == 8
+            SRGBWriteEnable = TRUE;
+        #endif
     }
 }

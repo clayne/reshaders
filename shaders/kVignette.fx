@@ -55,11 +55,13 @@ technique KinoVignette
     {
         VertexShader = PostProcessVS;
         PixelShader = VignettePS;
-        SRGBWriteEnable = TRUE;
         // Multiplication blend mode
         BlendEnable = TRUE;
         BlendOp = ADD;
         SrcBlend = DESTCOLOR;
         DestBlend = ZERO;
+        #if BUFFER_COLOR_BIT_DEPTH == 8
+            SRGBWriteEnable = TRUE;
+        #endif
     }
 }

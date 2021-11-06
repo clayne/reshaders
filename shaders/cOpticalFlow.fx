@@ -56,7 +56,9 @@ texture2D _RenderColor : COLOR;
 sampler2D _SampleColor
 {
     Texture = _RenderColor;
-    SRGBTexture = TRUE;
+    #if BUFFER_COLOR_BIT_DEPTH == 8
+        SRGBTexture = TRUE;
+    #endif
 };
 
 texture2D _RenderData0_HS
@@ -408,13 +410,18 @@ technique cOpticalFlow
             DestBlend = INVSRCALPHA;
             SrcBlendAlpha = ONE;
             DestBlendAlpha = ONE;
+            #if BUFFER_COLOR_BIT_DEPTH == 8
+                SRGBWriteEnable = TRUE;
+            #endif
         }
     #else
         pass
         {
             VertexShader = PostProcessVS;
             PixelShader = VelocityShadingPS;
-            SRGBWriteEnable = TRUE;
+            #if BUFFER_COLOR_BIT_DEPTH == 8
+                SRGBWriteEnable = TRUE;
+            #endif
         }
     #endif
 }

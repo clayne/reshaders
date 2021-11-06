@@ -44,7 +44,9 @@ texture2D _RenderColor : COLOR;
 sampler2D _SampleColor
 {
     Texture = _RenderColor;
-    SRGBTexture = TRUE;
+    #if BUFFER_COLOR_BIT_DEPTH == 8
+        SRGBTexture = TRUE;
+    #endif
 };
 
 texture2D _RenderBufferA
@@ -57,7 +59,9 @@ texture2D _RenderBufferA
 sampler2D _SampleBufferA
 {
     Texture = _RenderBufferA;
-    SRGBTexture = TRUE;
+    #if BUFFER_COLOR_BIT_DEPTH == 8
+        SRGBTexture = TRUE;
+    #endif
 };
 
 texture2D _RenderBufferB
@@ -70,7 +74,9 @@ texture2D _RenderBufferB
 sampler2D _SampleBufferB
 {
     Texture = _RenderBufferB;
-    SRGBTexture = TRUE;
+    #if BUFFER_COLOR_BIT_DEPTH == 8
+        SRGBTexture = TRUE;
+    #endif
 };
 
 /* [Vertex Shaders] */
@@ -135,7 +141,9 @@ technique cPingPong
         VertexShader = PostProcessVS;
         PixelShader = BlitPS;
         RenderTarget0 = _RenderBufferA;
-        SRGBWriteEnable = TRUE;
+        #if BUFFER_COLOR_BIT_DEPTH == 8
+            SRGBWriteEnable = TRUE;
+        #endif
     }
 
     pass PingPong1
@@ -143,7 +151,9 @@ technique cPingPong
         VertexShader = PostProcessVS;
         PixelShader = HorizontalBlurPS0;
         RenderTarget0 = _RenderBufferB;
-        SRGBWriteEnable = TRUE;
+        #if BUFFER_COLOR_BIT_DEPTH == 8
+            SRGBWriteEnable = TRUE;
+        #endif
     }
 
     pass PingPong2
@@ -151,7 +161,9 @@ technique cPingPong
         VertexShader = PostProcessVS;
         PixelShader = VerticalBlurPS0;
         RenderTarget0 = _RenderBufferA;
-        SRGBWriteEnable = TRUE;
+        #if BUFFER_COLOR_BIT_DEPTH == 8
+            SRGBWriteEnable = TRUE;
+        #endif
     }
 
     #if ENABLE_PINGPONG
@@ -160,7 +172,9 @@ technique cPingPong
             VertexShader = PostProcessVS;
             PixelShader = HorizontalBlurPS1;
             RenderTarget0 = _RenderBufferB;
-            SRGBWriteEnable = TRUE;
+            #if BUFFER_COLOR_BIT_DEPTH == 8
+                SRGBWriteEnable = TRUE;
+            #endif
         }
 
 
@@ -169,7 +183,9 @@ technique cPingPong
             VertexShader = PostProcessVS;
             PixelShader = VerticalBlurPS1;
             RenderTarget0 = _RenderBufferA;
-            SRGBWriteEnable = TRUE;
+            #if BUFFER_COLOR_BIT_DEPTH == 8
+                SRGBWriteEnable = TRUE;
+            #endif
         }
     #endif
 
@@ -177,6 +193,8 @@ technique cPingPong
     {
         VertexShader = PostProcessVS;
         PixelShader = OutputPS;
-        SRGBWriteEnable = TRUE;
+        #if BUFFER_COLOR_BIT_DEPTH == 8
+            SRGBWriteEnable = TRUE;
+        #endif
     }
 }

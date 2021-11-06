@@ -118,7 +118,9 @@ sampler2D _SampleColor
     Texture = _RenderColor;
     AddressU = MIRROR;
     AddressV = MIRROR;
-    SRGBTexture = TRUE;
+    #if BUFFER_COLOR_BIT_DEPTH == 8
+        SRGBTexture = TRUE;
+    #endif
 };
 
 texture2D _RenderFrame0
@@ -211,7 +213,9 @@ sampler2D _SampleFeedback
     Texture = _RenderFeedback;
     AddressU = MIRROR;
     AddressV = MIRROR;
-    SRGBTexture = TRUE;
+    #if BUFFER_COLOR_BIT_DEPTH == 8
+        SRGBTexture = TRUE;
+    #endif
 };
 
 /* [Vertex Shaders] */
@@ -497,7 +501,9 @@ technique KinoDatamosh
     {
         VertexShader = PostProcessVS;
         PixelShader = OutputPS;
-        SRGBWriteEnable = TRUE;
+        #if BUFFER_COLOR_BIT_DEPTH == 8
+            SRGBWriteEnable = TRUE;
+        #endif
     }
 
     pass
@@ -505,6 +511,8 @@ technique KinoDatamosh
         VertexShader = PostProcessVS;
         PixelShader = BlitPS;
         RenderTarget = _RenderFeedback;
-        SRGBWriteEnable = TRUE;
+        #if BUFFER_COLOR_BIT_DEPTH == 8
+            SRGBWriteEnable = TRUE;
+        #endif
     }
 }

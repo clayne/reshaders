@@ -10,19 +10,65 @@
 #define dTex(a, b, c) Width = ##a; Height = ##b; Format = ##c
 
 texture2D colorTex : COLOR;
-sampler2D colorLinearSampler { Texture = colorTex; SRGBTexture = TRUE; };
 
-texture2D edgesTex < pooled = true; > { dTex(BUFFER_WIDTH, BUFFER_HEIGHT, RG8); };
-sampler2D edgesSampler { Texture = edgesTex; };
+sampler2D colorLinearSampler
+{
+    Texture = colorTex;
+    #if BUFFER_COLOR_BIT_DEPTH == 8
+        SRGBTexture = TRUE;
+    #endif
+};
 
-texture2D blendTex < pooled = true; > { dTex(BUFFER_WIDTH, BUFFER_HEIGHT, RGBA8); };
-sampler2D blendSampler { Texture = blendTex; };
+texture2D edgesTex < pooled = true; >
+{
+    Width = BUFFER_WIDTH;
+    Height = BUFFER_HEIGHT;
+    Format = RG8;
+};
 
-texture2D areaTex < source = "AreaTex.dds"; > { dTex(160, 560, RG8); };
-sampler2D areaSampler { Texture = areaTex; };
+sampler2D edgesSampler
+{
+    Texture = edgesTex;
+};
 
-texture2D searchTex < source = "SearchTex.dds"; > { dTex(64, 16, R8); };
-sampler2D searchSampler { Texture = searchTex; MipFilter = Point; MinFilter = Point; MagFilter = Point; };
+texture2D blendTex < pooled = true; >
+{
+    Width = BUFFER_WIDTH;
+    Height = BUFFER_HEIGHT;
+    Format = RGBA8;
+};
+
+sampler2D blendSampler
+{
+    Texture = blendTex;
+};
+
+texture2D areaTex < source = "AreaTex.dds"; >
+{
+    Width = 160;
+    Height = 560;
+    Format = RG8;
+};
+
+sampler2D areaSampler
+{
+    Texture = areaTex;
+};
+
+texture2D searchTex < source = "SearchTex.dds"; >
+{
+    Width = 64;
+    Height = 16;
+    Format = R8;
+};
+
+sampler2D searchSampler
+{
+    Texture = searchTex;
+    MipFilter = Point;
+    MinFilter = Point;
+    MagFilter = Point;
+};
 
 /*
     Color Edge Detection Pixel Shaders (First Pass)
@@ -252,9 +298,12 @@ float4 SMAANeighborhoodBlendingWrapPS(v2f_3 input) : SV_Target
     // Is there any blending weight with a value greater than 0.0?
 
     [branch]
-    if (dot(a, float4(1.0, 1.0, 1.0, 1.0)) < 1e-5) {
+    if (dot(a, float4(1.0, 1.0, 1.0, 1.0)) < 1e-5)
+    {
         return tex2Dlod(colorLinearSampler, input.uv0.xyxy);
-    } else {
+    } 
+    else 
+    {
         bool h = max(a.x, a.z) > max(a.y, a.w); // max(horizontal) > max(vertical)
 
         // Calculate the blending offsets:
@@ -304,6 +353,8 @@ technique SMAA
         VertexShader = SMAANeighborhoodBlendingWrapVS;
         PixelShader = SMAANeighborhoodBlendingWrapPS;
         StencilEnable = FALSE;
-        SRGBWriteEnable = TRUE;
+        #if BUFFER_COLOR_BIT_DEPTH == 8
+            SRGBWriteEnable = TRUE;
+        #endif
     }
 }

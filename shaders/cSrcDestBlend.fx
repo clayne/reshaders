@@ -10,7 +10,9 @@ texture2D _RenderColor : COLOR;
 sampler2D _SampleColor
 {
     Texture = _RenderColor;
-    SRGBTexture = TRUE;
+    #if BUFFER_COLOR_BIT_DEPTH == 8
+        SRGBTexture = TRUE;
+    #endif
 };
 
 texture2D _RenderFrame
@@ -23,7 +25,9 @@ texture2D _RenderFrame
 sampler2D _SampleFrame
 {
     Texture = _RenderFrame;
-    SRGBTexture = TRUE;
+    #if BUFFER_COLOR_BIT_DEPTH == 8
+        SRGBTexture = TRUE;
+    #endif
 };
 
 /* [Vertex Shaders] */
@@ -80,7 +84,9 @@ technique cCopyBuffer
         VertexShader = PostProcessVS;
         PixelShader = BlitPS;
         RenderTarget0 = _RenderFrame;
-        SRGBWriteEnable = TRUE;
+        #if BUFFER_COLOR_BIT_DEPTH == 8
+            SRGBWriteEnable = TRUE;
+        #endif
     }
 }
 
@@ -90,6 +96,8 @@ technique cBlendBuffer
     {
         VertexShader = PostProcessVS;
         PixelShader = BlendPS;
-        SRGBWriteEnable = TRUE;
+        #if BUFFER_COLOR_BIT_DEPTH == 8
+            SRGBWriteEnable = TRUE;
+        #endif
     }
 }

@@ -18,7 +18,9 @@ sampler2D _SampleColor
     Texture = _RenderColor;
     AddressU = MIRROR;
     AddressV = MIRROR;
-    SRGBTexture = TRUE;
+    #if BUFFER_COLOR_BIT_DEPTH == 8
+        SRGBTexture = TRUE;
+    #endif
 };
 
 void TileVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD0)
@@ -46,6 +48,8 @@ technique cTiles
     {
         VertexShader = TileVS;
         PixelShader = TilePS;
-        SRGBWriteEnable = TRUE;
+        #if BUFFER_COLOR_BIT_DEPTH == 8
+            SRGBWriteEnable = TRUE;
+        #endif
     }
 }
