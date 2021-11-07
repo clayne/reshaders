@@ -231,12 +231,12 @@ void DerivativesPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, f
 
 void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    const float MaxLevel = 4.5;
+    const float MaxLevel = 6.5;
     OutputColor0.xy = 0.0;
 
     for(float Level = MaxLevel; Level > 0.0; Level--)
     {
-        const float Lambda = (_Constraint * 1e-7) / pow(4.0, MaxLevel - Level);
+        const float Lambda = (_Constraint * 1e-2) / pow(4.0, MaxLevel - Level);
         float4 LevelCoord = float4(TexCoord, 0.0, Level);
 
         float2 SampleFrame = tex2Dlod(_SampleData0, LevelCoord).xy;
@@ -245,8 +245,8 @@ void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, o
         I.z = SampleFrame.x - SampleFrame.y;
         I.w = 1.0 / (dot(I.xy, I.xy) + Lambda);
 
-        OutputColor0.x -= ((I.x * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w);
-        OutputColor0.y -= ((I.y * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w);
+        OutputColor0.x += (OutputColor0.x - (I.x * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w);
+        OutputColor0.y += (OutputColor0.y - (I.y * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w);
     }
 
     OutputColor0.ba = _Blend;
@@ -274,8 +274,11 @@ void InterpolatePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, o
     float4 FrameB = tex2D(_SampleFrame0, TexCoord - MotionVectors);
     float4 FrameP = tex2D(_SampleFrame1, TexCoord);
     float4 FrameC = tex2D(_SampleFrame0, TexCoord);
-    float4 FrameA = lerp(FrameP, FrameC, 100/256);
-    OutputColor0 = Median(FrameA, FrameF, FrameB);
+    float4 Frame0 = lerp(FrameP, FrameC, MaskLength);
+    float4 Frame1 = lerp(FrameC, FrameP, MaskLength);
+    float4 Frame2 = lerp(FrameF, FrameB, MaskLength);
+    float4 Frame3 = lerp(FrameB, FrameF, MaskLength);
+    OutputColor0 = Median(lerp(Frame0, Frame1, 0.5), Frame2, Frame3);
 }
 
 void BlitPS1(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)

@@ -11,13 +11,13 @@ uniform float _Scale <
     ui_type = "drag";
     ui_label = "Flow Scale";
     ui_tooltip = "Higher = More motion blur";
-> = 0.5;
+> = 0.25;
 
 uniform float _Constraint <
     ui_type = "drag";
     ui_label = "Constraint";
     ui_tooltip = "Higher = Smoother flow";
-> = 0.25;
+> = 1.0;
 
 uniform float _Blend <
     ui_type = "drag";
@@ -241,7 +241,7 @@ void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, o
 
     for(float Level = MaxLevel; Level > 0.0; Level--)
     {
-        const float Lambda = (_Constraint * 1e-7) / pow(4.0, MaxLevel - Level);
+        const float Lambda = (_Constraint * 1e-3) / pow(4.0, MaxLevel - Level);
         float4 LevelCoord = float4(TexCoord, 0.0, Level);
 
         float2 SampleFrame = tex2Dlod(_SampleData1, LevelCoord).xy;
@@ -250,8 +250,8 @@ void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, o
         I.z = SampleFrame.x - SampleFrame.y;
         I.w = 1.0 / (dot(I.xy, I.xy) + Lambda);
 
-        OutputColor0.x -= ((I.x * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w);
-        OutputColor0.y -= ((I.y * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w);
+        OutputColor0.x += (OutputColor0.x - (I.x * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w);
+        OutputColor0.y += (OutputColor0.y - (I.y * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w);
     }
 
     OutputColor0.ba = _Blend;

@@ -290,7 +290,7 @@ void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, o
 
     for(float Level = MaxLevel; Level > 0; Level--)
     {
-        const float Lambda = (_Constraint * 1e-7) / pow(4.0, MaxLevel - Level);
+        const float Lambda = (_Constraint * 1e-2) / pow(4.0, MaxLevel - Level);
         float4 LevelCoord = float4(TexCoord, 0.0, Level);
         float SampleFrameC = tex2Dlod(_SampleFrame0, LevelCoord).x;
         float SampleFrameP = tex2Dlod(_SampleFrame1, LevelCoord).x;
@@ -300,8 +300,8 @@ void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, o
         I.z = SampleFrameC - SampleFrameP;
         I.w = 1.0 / (dot(I.xy, I.xy) + Lambda);
 
-        OutputColor0.x -= ((I.x * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w);
-        OutputColor0.y -= ((I.y * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w);
+        OutputColor0.x += (OutputColor0.x - (I.x * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w);
+        OutputColor0.y += (OutputColor0.y - (I.y * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w);
     }
 
     OutputColor0.a = _BlendFactor;
