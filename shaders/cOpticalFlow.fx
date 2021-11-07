@@ -311,16 +311,17 @@ void VerticalBlurPS1(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0,
 void VelocityShadingPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target)
 {
     float2 Velocity = tex2Dlod(_SampleData1, float4(TexCoord, 0.0, _Detail)).xy;
-    OutputColor0.rg = normalize(Velocity) * 0.5 + 0.5;
-    OutputColor0.b = 0.5 * (2.0 - (dot(OutputColor0.rg, 1.0)));
+    float VelocityLength = saturate(rsqrt(dot(Velocity, Velocity))) + 1e-4;
+    OutputColor0.rg = (Velocity * VelocityLength) * 0.5 + 0.5;
+    OutputColor0.b = -dot(OutputColor0.rg, 1.0) * 0.5 + 1.0;
     OutputColor0.a = 1.0;
 }
 
 void VelocityStreamsPS(float4 Position : SV_POSITION, float2 Velocity : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
     float Length = length(Velocity) * VELOCITY_SCALE * 0.05;
-    OutputColor0.rg = 0.5 * (1.0 + Velocity.xy / (Length + 1e-4));
-    OutputColor0.b = 0.5 * (2.0 - dot(OutputColor0.rg, 1.0));
+    OutputColor0.rg = (Velocity.xy / Length) * 0.5 + 0.5;
+    OutputColor0.b = -dot(OutputColor0.rg, 1.0) * 0.5 + 1.0;
     OutputColor0.a = 1.0;
 }
 
