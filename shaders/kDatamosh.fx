@@ -283,42 +283,27 @@ float2 GaussSeidel(float4 _I, float Levels, float2 InitialFlow)
     return Output;
 }
 
-float2 OpticalFlow(float2 TexCoord, float Level, inout float2 OpticalFlow)
-{
-    const float MaxLevel = 7.5;
-    const float Lambda = (_Constraint * 1e-5) * 1e+3 / pow(4.0, MaxLevel - Level);
-    const float BufferPixels = (BUFFER_WIDTH / 2) * (BUFFER_HEIGHT / 2);
-    float Iterations = log2(BufferPixels / ldexp(BufferPixels, -Level));
-
-    float4 LevelCoord = float4(TexCoord, 0.0, Level);
-    float SampleFrameC = tex2Dlod(_SampleFrame0, LevelCoord).x;
-    float SampleFrameP = tex2Dlod(_SampleFrame1, LevelCoord).x;
-
-    float4 I;
-    I.xy = tex2Dlod(_SampleDerivatives, LevelCoord).xy;
-    I.z = SampleFrameC - SampleFrameP;
-    I.w = 1.0 / (dot(I.xy, I.xy) + Lambda);
-
-    [unroll] for(int i = 0; i <= Iterations; i++)
-    {
-        OpticalFlow.x -= ((I.x * (dot(I.xy, OpticalFlow.xy) + I.z)) * I.w);
-        OpticalFlow.y -= ((I.y * (dot(I.xy, OpticalFlow.xy) + I.z)) * I.w);
-    }
-
-    return OpticalFlow;
-}
-
 void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
     OutputColor0 = 0.0;
-    OutputColor0.xy += OpticalFlow(TexCoord, 7.5, OutputColor0.xy);
-    OutputColor0.xy += OpticalFlow(TexCoord, 6.5, OutputColor0.xy);
-    OutputColor0.xy += OpticalFlow(TexCoord, 5.5, OutputColor0.xy);
-    OutputColor0.xy += OpticalFlow(TexCoord, 4.5, OutputColor0.xy);
-    OutputColor0.xy += OpticalFlow(TexCoord, 3.5, OutputColor0.xy);
-    OutputColor0.xy += OpticalFlow(TexCoord, 2.5, OutputColor0.xy);
-    OutputColor0.xy += OpticalFlow(TexCoord, 1.5, OutputColor0.xy);
-    OutputColor0.xy = OpticalFlow(TexCoord, 0.5, OutputColor0.xy);
+    const float MaxLevel = 7.5;
+
+    for(float Level = MaxLevel; Level > 0; Level--)
+    {
+        const float Lambda = (_Constraint * 1e-7) / pow(4.0, MaxLevel - Level);
+        float4 LevelCoord = float4(TexCoord, 0.0, Level);
+        float SampleFrameC = tex2Dlod(_SampleFrame0, LevelCoord).x;
+        float SampleFrameP = tex2Dlod(_SampleFrame1, LevelCoord).x;
+
+        float4 I;
+        I.xy = tex2Dlod(_SampleDerivatives, LevelCoord).xy;
+        I.z = SampleFrameC - SampleFrameP;
+        I.w = 1.0 / (dot(I.xy, I.xy) + Lambda);
+
+        OutputColor0.x -= ((I.x * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w);
+        OutputColor0.y -= ((I.y * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w);
+    }
+
     OutputColor0.a = _BlendFactor;
 }
 

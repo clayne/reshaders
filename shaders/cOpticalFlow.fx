@@ -275,38 +275,26 @@ void DerivativesPS(float4 Position : SV_POSITION, float4 Offsets : TEXCOORD0, ou
     OutputColor0.y = dot((Sample2 + Sample3) + (-Sample0 + -Sample1), 0.5);
 }
 
-float2 OpticalFlow(float2 TexCoord, float Level, inout float2 OpticalFlow)
-{
-    const float MaxLevel = 6.5;
-    const float Lambda = (_Constraint * 1e-3) / pow(4.0, MaxLevel - Level);
-    const float Iterations = (MaxLevel * MaxLevel) * rsqrt(MaxLevel);
-
-    float4 LevelCoord = float4(TexCoord, 0.0, Level);
-    float2 SampleFrame = tex2Dlod(_SampleData0, LevelCoord).xy;
-    float4 I;
-    I.xy = tex2Dlod(_SampleData1, LevelCoord).xy;
-    I.z = SampleFrame.x - SampleFrame.y;
-    I.w = 1.0 / (dot(I.xy, I.xy) + Lambda);
-
-    [unroll] for(int i = 0; i <= Iterations; i++)
-    {
-        OpticalFlow.x -= ((I.x * (dot(I.xy, OpticalFlow.xy) + I.z)) * I.w);
-        OpticalFlow.y -= ((I.y * (dot(I.xy, OpticalFlow.xy) + I.z)) * I.w);
-    }
-
-    return OpticalFlow;
-}
-
 void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
+    const float MaxLevel = 6.5;
     OutputColor0.xy = 0.0;
-    OutputColor0.xy = OpticalFlow(TexCoord, 6.5, OutputColor0.xy);
-    OutputColor0.xy = OpticalFlow(TexCoord, 5.5, OutputColor0.xy);
-    OutputColor0.xy = OpticalFlow(TexCoord, 4.5, OutputColor0.xy);
-    OutputColor0.xy = OpticalFlow(TexCoord, 3.5, OutputColor0.xy);
-    OutputColor0.xy = OpticalFlow(TexCoord, 2.5, OutputColor0.xy);
-    OutputColor0.xy = OpticalFlow(TexCoord, 1.5, OutputColor0.xy);
-    OutputColor0.xy = OpticalFlow(TexCoord, 0.5, OutputColor0.xy);
+
+    for(float Level = MaxLevel; Level > 0.0; Level--)
+    {
+        const float Lambda = (_Constraint * 1e-5) / pow(4.0, MaxLevel - Level);
+        float4 LevelCoord = float4(TexCoord, 0.0, Level);
+
+        float2 SampleFrame = tex2Dlod(_SampleData0, LevelCoord).xy;
+        float4 I;
+        I.xy = tex2Dlod(_SampleData1, LevelCoord).xy;
+        I.z = SampleFrame.x - SampleFrame.y;
+        I.w = 1.0 / (dot(I.xy, I.xy) + Lambda);
+
+        OutputColor0.x -= ((I.x * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w);
+        OutputColor0.y -= ((I.y * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w);
+    }
+
     OutputColor0.ba = _Blend;
 }
 
@@ -323,9 +311,8 @@ void VerticalBlurPS1(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0,
 void VelocityShadingPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target)
 {
     float2 Velocity = tex2Dlod(_SampleData1, float4(TexCoord, 0.0, _Detail)).xy;
-    float VelocityLength = saturate(rsqrt(dot(Velocity, Velocity))) + 1e-4;
-    OutputColor0.rg = 0.5 * (1.0 + Velocity.xy * VelocityLength);
-    OutputColor0.b = 0.5 * (2.0 - (OutputColor0.r + OutputColor0.g));
+    OutputColor0.rg = normalize(Velocity) * 0.5 + 0.5;
+    OutputColor0.b = 0.5 * (2.0 - (dot(OutputColor0.rg, 1.0)));
     OutputColor0.a = 1.0;
 }
 

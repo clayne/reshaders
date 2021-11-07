@@ -234,37 +234,27 @@ void DerivativesPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, f
     OutputColor1 = tex2D(_SampleData1, TexCoord).x;
 }
 
-float2 OpticalFlow(float2 TexCoord, float Level, inout float2 OutputFlow)
-{
-    const float MaxLevel = 4.5;
-    const float Lambda = (_Constraint * 1e-7) / pow(4.0, MaxLevel - Level);
-    const float Iterations = (MaxLevel * MaxLevel) * rsqrt(MaxLevel);
-
-    float4 LevelCoord = float4(TexCoord, 0.0, Level);
-    float2 SampleFrame = tex2Dlod(_SampleData1, LevelCoord).xy;
-    float4 I;
-    I.xy = tex2Dlod(_SampleData0, LevelCoord).xy;
-    I.z = SampleFrame.x - SampleFrame.y;
-    I.w = 1.0 / (dot(I.xy, I.xy) + Lambda);
-
-    [unroll] for(int i = 0; i <= Iterations; i++);
-    {
-        OutputFlow.x -= ((I.x * (dot(I.xy, OutputFlow.xy) + I.z)) * I.w);
-        OutputFlow.y -= ((I.y * (dot(I.xy, OutputFlow.xy) + I.z)) * I.w);
-    }
-
-    return OutputFlow;
-}
-
 void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    OutputColor0 = 0.0;
-    OutputColor0.xy = OpticalFlow(TexCoord, 4.5, OutputColor0.xy);
-    OutputColor0.xy = OpticalFlow(TexCoord, 3.5, OutputColor0.xy);
-    OutputColor0.xy = OpticalFlow(TexCoord, 2.5, OutputColor0.xy);
-    OutputColor0.xy = OpticalFlow(TexCoord, 1.5, OutputColor0.xy);
-    OutputColor0.xy = OpticalFlow(TexCoord, 0.5, OutputColor0.xy);
-    OutputColor0.a = _Blend;
+    const float MaxLevel = 4.5;
+    OutputColor0.xy = 0.0;
+
+    for(float Level = MaxLevel; Level > 0.0; Level--)
+    {
+        const float Lambda = (_Constraint * 1e-7) / pow(4.0, MaxLevel - Level);
+        float4 LevelCoord = float4(TexCoord, 0.0, Level);
+
+        float2 SampleFrame = tex2Dlod(_SampleData1, LevelCoord).xy;
+        float4 I;
+        I.xy = tex2Dlod(_SampleData0, LevelCoord).xy;
+        I.z = SampleFrame.x - SampleFrame.y;
+        I.w = 1.0 / (dot(I.xy, I.xy) + Lambda);
+
+        OutputColor0.x -= ((I.x * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w);
+        OutputColor0.y -= ((I.y * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w);
+    }
+
+    OutputColor0.ba = _Blend;
 }
 
 void PPHorizontalBlurPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets[7] : TEXCOORD1, out float2 OutputColor0 : SV_TARGET0)
