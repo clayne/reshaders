@@ -11,7 +11,7 @@ uniform float _Scale <
     ui_type = "drag";
     ui_label = "Flow Scale";
     ui_tooltip = "Higher = More motion blur";
-> = 0.25;
+> = 1.0;
 
 uniform float _Constraint <
     ui_type = "drag";
@@ -250,8 +250,8 @@ void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, o
         I.z = SampleFrame.x - SampleFrame.y;
         I.w = 1.0 / (dot(I.xy, I.xy) + Lambda);
 
-        OutputColor0.x += (OutputColor0.x - (I.x * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w);
-        OutputColor0.y += (OutputColor0.y - (I.y * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w);
+        OutputColor0.x = lerp(OutputColor0.x, OutputColor0.x - (I.x * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w, 1.5);
+        OutputColor0.y = lerp(OutputColor0.y, OutputColor0.y - (I.y * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w, 1.5);
     }
 
     OutputColor0.ba = _Blend;

@@ -280,9 +280,9 @@ void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, o
     const float MaxLevel = 6.5;
     OutputColor0.xy = 0.0;
 
-    for(float Level = MaxLevel; Level > 0.0; Level--)
+    [unroll] for(float Level = MaxLevel; Level > 0.0; Level--)
     {
-        const float Lambda = (_Constraint * 1e-3) / pow(4.0, MaxLevel - Level);
+        const float Lambda = (_Constraint * 1e-5) / pow(4.0, MaxLevel - Level);
         float4 LevelCoord = float4(TexCoord, 0.0, Level);
 
         float2 SampleFrame = tex2Dlod(_SampleData0, LevelCoord).xy;
@@ -291,8 +291,8 @@ void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, o
         I.z = SampleFrame.x - SampleFrame.y;
         I.w = 1.0 / (dot(I.xy, I.xy) + Lambda);
 
-        OutputColor0.x += (OutputColor0.x - (I.x * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w);
-        OutputColor0.y += (OutputColor0.y - (I.y * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w);
+        OutputColor0.x = lerp(OutputColor0.x, OutputColor0.x - (I.x * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w, 1.5);
+        OutputColor0.y = lerp(OutputColor0.y, OutputColor0.y - (I.y * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w, 1.5);
     }
 
     OutputColor0.ba = _Blend;
