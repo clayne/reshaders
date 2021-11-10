@@ -51,7 +51,7 @@ void LuminancePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out
     }
 }
 
-technique cGrayScale
+technique cLuminance
 {
     pass
     {
