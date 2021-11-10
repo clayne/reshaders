@@ -326,15 +326,10 @@ void AccumulatePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, ou
 
     // Motion vector
     float2 MotionVectors = tex2Dlod(_SampleOpticalFlow, float4(TexCoord, 0.0, _Detail)).xy;
-
-    // Normalized screen space -> Pixel coordinates
-    MotionVectors = MotionVectors * _HALFSIZE;
-
-    // Small random displacement (diffusion)
-    MotionVectors += (Random.xy - 0.5)  * _Diffusion;
-
-    // Pixel perfect snapping
-    MotionVectors = round(MotionVectors);
+    MotionVectors *= _Scale;
+    MotionVectors = MotionVectors * _HALFSIZE; // Normalized screen space -> Pixel coordinates
+    MotionVectors += (Random.xy - 0.5)  * _Diffusion; // Small random displacement (diffusion)
+    MotionVectors = round(MotionVectors); // Pixel perfect snapping
 
     // Accumulates the amount of motion.
     float MotionVectorLength = length(MotionVectors);
@@ -374,12 +369,17 @@ void OutputPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out fl
     Random.y = RandomNoise(TexCoord.xy + Time.yx);
     Random.z = RandomNoise(TexCoord.yx - Time.xx);
 
-    float2 MotionVectors = tex2Dlod(_SampleOpticalFlow, float4(TexCoord, 0.0, _Detail)).xy * DisplacementTexel;
+    float2 MotionVectors = tex2Dlod(_SampleOpticalFlow, float4(TexCoord, 0.0, _Detail)).xy;
     MotionVectors *= _Scale;
 
     float4 Source = tex2D(_SampleColor, TexCoord); // Color from the original image
     float Displacement = tex2D(_SampleAccumulation, TexCoord).r; // Displacement vector
-    float4 Working = tex2D(_SampleFeedback, TexCoord - MotionVectors);
+    float4 Working = tex2D(_SampleFeedback, TexCoord - MotionVectors * DisplacementTexel);
+
+	MotionVectors *= float2(BUFFER_WIDTH, BUFFER_HEIGHT); // Normalized screen space -> Pixel coordinates
+	MotionVectors += (Random.xy - 0.5) * _Diffusion; // Small random displacement (diffusion)
+	MotionVectors = round(MotionVectors); // Pixel perfect snapping
+	MotionVectors *= (float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT) - 1.0); // Pixel coordinates -> Normalized screen space
 
     // Generate some pseudo random numbers.
     float RandomMotion = RandomNoise(TexCoord + length(MotionVectors));

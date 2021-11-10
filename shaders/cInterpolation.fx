@@ -269,16 +269,12 @@ float4 Median(float4 A, float4 B, float4 C)
 void InterpolatePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
     float2 MotionVectors = tex2Dlod(_SampleData1, float4(TexCoord, 0.0, _Detail)).xy / BUFFER_SIZE;
-    float MaskLength = length(MotionVectors);
     float4 FrameF = tex2D(_SampleFrame1, TexCoord + MotionVectors);
     float4 FrameB = tex2D(_SampleFrame0, TexCoord - MotionVectors);
     float4 FrameP = tex2D(_SampleFrame1, TexCoord);
     float4 FrameC = tex2D(_SampleFrame0, TexCoord);
-    float4 Frame0 = lerp(FrameP, FrameC, MaskLength);
-    float4 Frame1 = lerp(FrameC, FrameP, MaskLength);
-    float4 Frame2 = lerp(FrameF, FrameB, MaskLength);
-    float4 Frame3 = lerp(FrameB, FrameF, MaskLength);
-    OutputColor0 = Median(lerp(Frame0, Frame1, 0.5), Frame2, Frame3);
+    float4 FrameA = lerp(FrameC, FrameP, 100.0 / 256.0);
+    OutputColor0 = Median(FrameA, FrameF, FrameB);
 }
 
 void BlitPS1(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
