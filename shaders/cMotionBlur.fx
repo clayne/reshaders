@@ -46,7 +46,7 @@ uniform bool _FrameRateScaling <
 > = false;
 
 uniform float _TargetFrameRate <
-    ui_type = "radio";
+    ui_type = "drag";
     ui_label = "Target Frame-Rate";
     ui_tooltip = "Targeted frame-rate";
 > = 60.00;
