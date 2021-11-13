@@ -7,30 +7,51 @@
     - Lord of Lunacy, KingEric1992, and Marty McFly for power of 2 function
 */
 
-uniform float _Scale <
-    ui_type = "drag";
-    ui_label = "Flow Scale";
-    ui_tooltip = "Higher = More motion blur";
-> = 1.0;
-
 uniform float _Constraint <
-    ui_type = "drag";
+    ui_type = "slider";
     ui_label = "Constraint";
     ui_tooltip = "Higher = Smoother flow";
+    ui_min = 0.0;
+    ui_max = 10.0;
 > = 1.0;
 
+uniform float _Scale <
+    ui_type = "slider";
+    ui_label = "Flow Scale";
+    ui_tooltip = "Higher = More motion blur";
+    ui_min = 0.0;
+    ui_max = 10.0;
+> = 1.0;
+
+uniform float _Detail <
+    ui_type = "slider";
+    ui_label = "Mipmap Bias";
+    ui_tooltip = "Higher = Less spatial noise";
+    ui_min = 0.0;
+    ui_max = 5.0;
+> = 3.5;
+
 uniform float _Blend <
-    ui_type = "drag";
+    ui_type = "slider";
     ui_label = "Temporal Blending";
     ui_tooltip = "Higher = Less temporal noise";
+    ui_min = 0.0;
     ui_max = 0.5;
 > = 0.25;
 
-uniform float _Detail <
-    ui_type = "drag";
-    ui_label = "Mipmap Bias";
-    ui_tooltip = "Higher = Less spatial noise";
-> = 3.5;
+uniform bool _FrameRateScaling <
+    ui_type = "radio";
+    ui_label = "Frame-Rate Scaling";
+    ui_tooltip = "Enables frame-rate scaling";
+> = false;
+
+uniform float _TargetFrameRate <
+    ui_type = "radio";
+    ui_label = "Target Frame-Rate";
+    ui_tooltip = "Targeted frame-rate";
+> = 60.00;
+
+uniform float _FrameTime < source = "frametime"; >;
 
 #define _HALFSIZE uint2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2)
 #define _BUFFERSIZE uint2(_HALFSIZE / 4)
@@ -271,7 +292,9 @@ void OutputPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out fl
 {
     const int Samples = 4;
     float Noise = frac(52.9829189 * frac(dot(Position.xy, float2(0.06711056, 0.00583715))));
+    float FrameTimeRatio = _TargetFrameRate / (1e+3 / _FrameTime);
     float2 Velocity = (tex2Dlod(_SampleData1, float4(TexCoord, 0.0, _Detail)).xy / _BUFFERSIZE) * _Scale;
+    Velocity /= (_FrameRateScaling) ? FrameTimeRatio : 1.0;
 
     for(int k = 0; k < Samples; ++k)
     {
