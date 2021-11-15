@@ -19,7 +19,7 @@ uniform float _Detail <
     ui_max = 8.0;
 > = 2.5;
 
-#define BUFFER_SIZE uint2(BUFFER_WIDTH / 8, BUFFER_HEIGHT / 8)
+#define BUFFER_SIZE uint2(128, 128)
 
 texture2D _RenderColor : COLOR;
 
@@ -36,7 +36,7 @@ texture2D _RenderFrame0_Interpolation
     Width = BUFFER_WIDTH;
     Height = BUFFER_HEIGHT;
     Format = RGBA8;
-    MipLevels = 3;
+    MipLevels = 8;
 };
 
 sampler2D _SampleFrame0
@@ -50,7 +50,7 @@ texture2D _RenderData0_Interpolation
     Width = BUFFER_SIZE.x;
     Height = BUFFER_SIZE.y;
     Format = RG16F;
-    MipLevels = 6;
+    MipLevels = 8;
 };
 
 sampler2D _SampleData0
@@ -63,7 +63,7 @@ texture2D _RenderData1_Interpolation
     Width = BUFFER_SIZE.x;
     Height = BUFFER_SIZE.y;
     Format = RG16F;
-    MipLevels = 6;
+    MipLevels = 8;
 };
 
 sampler2D _SampleData1

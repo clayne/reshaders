@@ -54,7 +54,7 @@ uniform float _TargetFrameRate <
 uniform float _FrameTime < source = "frametime"; >;
 
 #define _HALFSIZE uint2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2)
-#define _BUFFERSIZE uint2(_HALFSIZE / 4)
+#define _BUFFERSIZE uint2(128, 128)
 
 texture2D _RenderColor : COLOR;
 
@@ -71,7 +71,7 @@ texture2D _RenderBuffer
     Width = _HALFSIZE.x;
     Height = _HALFSIZE.y;
     Format = R16F;
-    MipLevels = 3;
+    MipLevels = 8;
 };
 
 sampler2D _SampleBuffer
@@ -86,7 +86,7 @@ texture2D _RenderData0
     Width = _BUFFERSIZE.x;
     Height = _BUFFERSIZE.y;
     Format = RG16F;
-    MipLevels = 6;
+    MipLevels = 8;
 };
 
 sampler2D _SampleData0
@@ -101,7 +101,7 @@ texture2D _RenderData1
     Width = _BUFFERSIZE.x;
     Height = _BUFFERSIZE.y;
     Format = RG16F;
-    MipLevels = 6;
+    MipLevels = 8;
 };
 
 sampler2D _SampleData1
@@ -257,7 +257,7 @@ void DerivativesPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, f
 
 void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    const float MaxLevel = 4.5;
+    const float MaxLevel = 6.5;
     OutputColor0.xy = 0.0;
 
     for(float Level = MaxLevel; Level > 0.0; Level--)
