@@ -286,7 +286,7 @@ float2 GaussSeidel(float4 _I, float Levels, float2 InitialFlow)
 void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
     OutputColor0 = 0.0;
-    const float MaxLevel = 7.5;
+    const float MaxLevel = 6.5;
 
     for(float Level = MaxLevel; Level > 0; Level--)
     {
@@ -300,8 +300,10 @@ void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, o
         I.z = SampleFrameC - SampleFrameP;
         I.w = 1.0 / (dot(I.xy, I.xy) + Lambda);
 
-        OutputColor0.x = lerp(OutputColor0.x, OutputColor0.x - (I.x * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w, 1.5);
-        OutputColor0.y = lerp(OutputColor0.y, OutputColor0.y - (I.y * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w, 1.5);
+		OutputColor0.x = lerp(OutputColor0.x, OutputColor0.x - (I.x * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w, 1.5);
+		OutputColor0.x = lerp(OutputColor0.x - (I.x * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w, OutputColor0.x, 1.5);
+		OutputColor0.y = lerp(OutputColor0.y, OutputColor0.y - (I.y * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w, 1.5);
+		OutputColor0.y = lerp(OutputColor0.y - (I.y * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w, OutputColor0.y, 1.5);
     }
 
     OutputColor0.a = _BlendFactor;

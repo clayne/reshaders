@@ -200,9 +200,7 @@ void BlitPS0(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out flo
 void NormalizePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float OutputColor0 : SV_TARGET0)
 {
     float3 Color = max(tex2D(_SampleFrame0, TexCoord).rgb, 1e-7);
-    Color /= dot(Color, 1.0);
-    Color /= max(max(Color.r, Color.g), Color.b);
-    OutputColor0 = dot(Color, 1.0 / 3.0);
+    OutputColor0 = dot(Color.xy / dot(Color, 1.0), 0.5);
 }
 
 void HorizontalBlurPS0(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets[7] : TEXCOORD1, out float OutputColor0 : SV_TARGET0)
@@ -246,7 +244,9 @@ void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, o
         I.w = 1.0 / (dot(I.xy, I.xy) + Lambda);
 
         OutputColor0.x = lerp(OutputColor0.x, OutputColor0.x - (I.x * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w, 1.5);
+        OutputColor0.x = lerp(OutputColor0.x - (I.x * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w, OutputColor0.x, 1.5);
         OutputColor0.y = lerp(OutputColor0.y, OutputColor0.y - (I.y * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w, 1.5);
+        OutputColor0.y = lerp(OutputColor0.y - (I.y * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w, OutputColor0.y, 1.5);
     }
 
     OutputColor0.ba = _Blend;
