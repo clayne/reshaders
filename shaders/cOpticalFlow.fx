@@ -250,7 +250,8 @@ float4 GaussianBlur(sampler2D Source, float2 TexCoord, float4 Offsets[7])
 void BlitPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0)
 {
     float3 Color = max(tex2D(_SampleColor, TexCoord).rgb, 1e-7);
-    OutputColor0 = dot(Color.xy / dot(Color, 1.0), 0.5);
+    Color /= dot(Color, 1.0);
+    OutputColor0.x = max(max(Color.r, Color.g), Color.b);
     OutputColor0.y = tex2D(_SampleCopy, TexCoord).x;
 }
 
