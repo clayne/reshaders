@@ -1,4 +1,9 @@
 
+/*
+    Quasi frame-rate interpolation shader
+        Note: Make better masking
+*/
+
 uniform float _Blend <
     ui_type = "drag";
     ui_label = "Temporal Blending";
@@ -256,6 +261,7 @@ void HorizontalBlurPS1(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD
 {
     OutputColor0 = GaussianBlur(_SampleOpticalFlow, TexCoord, Offsets).xy;
 }
+
 void VerticalBlurPS1(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets[7] : TEXCOORD1, out float2 OutputColor0 : SV_TARGET0)
 {
     OutputColor0 = GaussianBlur(_SampleData0, TexCoord, Offsets).xy;

@@ -4,7 +4,6 @@
     Special Thanks to
     - MartinBFFan and Pao on Discord for reporting bugs
     - BSD for bug propaganda and helping to solve my issue
-    - Lord of Lunacy, KingEric1992, and Marty McFly for power of 2 function
 */
 
 uniform float _Constraint <
@@ -243,7 +242,9 @@ void HorizontalBlurPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0
 void VerticalBlurPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets[7] : TEXCOORD1, out float OutputColor0 : SV_TARGET0, out float OutputColor1 : SV_TARGET1)
 {
     OutputColor0 = GaussianBlur(_SampleData1, TexCoord, Offsets).x;
-    OutputColor1 = OutputColor0.x; // Store previous blurred image before it gets overwritten!
+
+    // Store blurred image for the next before we overwrite the rendertarget!
+    OutputColor1 = OutputColor0.x;
 }
 
 void DerivativesPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets : TEXCOORD1, out float2 OutputColor0 : SV_TARGET0)

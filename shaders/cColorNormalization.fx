@@ -1,5 +1,9 @@
 
-// The various types of color normalization via http://jamie-wong.com/post/color/
+/*
+    The various types of color normalization
+        Learn more
+            http://jamie-wong.com/post/color/
+*/
 
 uniform int _Select <
     ui_type = "combo";

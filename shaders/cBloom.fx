@@ -1,4 +1,14 @@
 
+/*
+    Dual-filtering bloom
+        Kernels
+            http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare
+        Thresholding
+            https://github.com/keijiro/Kino [MIT]
+        Tonemap
+            https://github.com/TheRealMJP/BakingLab [MIT]
+*/
+
 uniform float _Threshold <
     ui_type = "drag";
     ui_min = 0.0;
@@ -136,11 +146,7 @@ sampler2D _SampleBloom8
     Texture = _RenderBloom8;
 };
 
-/*
-    [ Vertex Shaders ]
-    Dual Filtering Algorithm
-    [http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare] [MIT]
-*/
+/* [ Vertex Shaders ] */
 
 void PostProcessVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD0)
 {
@@ -154,10 +160,14 @@ void DownsampleVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION,
     float2 TexCoord0;
     PostProcessVS(ID, Position, TexCoord0);
     const float2 pSize = 1.0 / ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -Factor);
-    TexCoord[0] = TexCoord0.xyxy + float4(-1.0, -1.0, 1.0, 1.0) * pSize.xyxy; // Quad
-    TexCoord[1] = TexCoord0.xyyy + float4(-2.0, 2.0, 0.0, -2.0) * pSize.xyyy; // Left column
-    TexCoord[2] = TexCoord0.xyyy + float4(0.0, 2.0, 0.0, -2.0) * pSize.xyyy; // Center column
-    TexCoord[3] = TexCoord0.xyyy + float4(2.0, 2.0, 0.0, -2.0) * pSize.xyyy; // Right column
+    // Quadrant
+    TexCoord[0] = TexCoord0.xyxy + float4(-1.0, -1.0, 1.0, 1.0) * pSize.xyxy;
+    // Left column
+    TexCoord[1] = TexCoord0.xyyy + float4(-2.0, 2.0, 0.0, -2.0) * pSize.xyyy;
+    // Center column
+    TexCoord[2] = TexCoord0.xyyy + float4(0.0, 2.0, 0.0, -2.0) * pSize.xyyy;
+    // Right column
+    TexCoord[3] = TexCoord0.xyyy + float4(2.0, 2.0, 0.0, -2.0) * pSize.xyyy;
 }
 
 void UpsampleVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float4 TexCoord[3] : TEXCOORD0, float Factor)
@@ -165,9 +175,12 @@ void UpsampleVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, i
     float2 TexCoord0;
     PostProcessVS(ID, Position, TexCoord0);
     const float2 pSize = 1.0 / ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -Factor);
-    TexCoord[0] = TexCoord0.xyyy + float4(-1.0, 1.0, 0.0, -1.0) * pSize.xyyy; // Left column
-    TexCoord[1] = TexCoord0.xyyy + float4(0.0, 1.0, 0.0, -1.0) * pSize.xyyy; // Center column
-    TexCoord[2] = TexCoord0.xyyy + float4(1.0, 1.0, 0.0, -1.0) * pSize.xyyy; // Right column
+    // Left column
+    TexCoord[0] = TexCoord0.xyyy + float4(-1.0, 1.0, 0.0, -1.0) * pSize.xyyy;
+    // Center column
+    TexCoord[1] = TexCoord0.xyyy + float4(0.0, 1.0, 0.0, -1.0) * pSize.xyyy;
+    // Right column
+    TexCoord[2] = TexCoord0.xyyy + float4(1.0, 1.0, 0.0, -1.0) * pSize.xyyy;
 }
 
 void DownsampleVS1(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float4 TexCoord[4] : TEXCOORD0)
@@ -240,11 +253,7 @@ void UpsampleVS2(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, 
     UpsampleVS(ID, Position, TexCoord, 2.0);
 }
 
-/*
-    [ Pixel Shaders ]
-    Thresholding - [https://github.com/keijiro/Kino] [MIT]
-    Tonemap - [https://github.com/TheRealMJP/BakingLab] [MIT]
-*/
+/* [Pixel Shaders] */
 
 float4 DownsamplePS(sampler2D Source, float4 TexCoord[4])
 {
@@ -280,7 +289,7 @@ float4 DownsamplePS(sampler2D Source, float4 TexCoord[4])
     Output += (B0 + C0 + B1 + C1) * Weights.y;
     Output += (A1 + B1 + A2 + B2) * Weights.y;
     Output += (B1 + C1 + B2 + C2) * Weights.y;
-    return float4(Output.rgb, 1.0);
+    return Output;
 }
 
 float4 UpsamplePS(sampler2D Source, float4 TexCoord[3])
@@ -325,6 +334,8 @@ void PrefilterPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out
     Color = Color * max(ResponseCurve, Brightness - _Threshold) / max(Brightness, 1e-10);
     Brightness = max(max(Color.r, Color.g), Color.b);
     OutputColor0 = saturate(lerp(Brightness, Color.rgb, _Saturation)) * _ColorShift;
+
+    // Set alpha to 1.0 so we can see the complete results in ReShade's statistics
     OutputColor0.a = 1.0;
 }
 

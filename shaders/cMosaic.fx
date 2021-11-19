@@ -1,4 +1,12 @@
 
+/*
+    Various mosaic shaders
+        Circle mosaic
+            https://www.shadertoy.com/view/3sVcRh
+        Triangle mosaic
+            https://www.shadertoy.com/view/4d2SWy
+*/
+
 uniform int2 _Radius <
     ui_type = "drag";
     ui_label = "Mosaic Radius";
@@ -66,7 +74,6 @@ void MosaicPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out fl
 
     switch(_Shape)
     {
-        // Circle https://www.shadertoy.com/view/4d2SWy
         case 0:
             BlockCoord = floor(PixelPosition / MaxRadius) * MaxRadius;
             MosaicCoord = BlockCoord * PixelSize;
@@ -77,9 +84,7 @@ void MosaicPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out fl
             float Length = distance(Center, Offset);
             float Circle = 1.0 - smoothstep(-2.0 , 0.0, Length - Center.x);
             OutputColor0 = Color * Circle;
-            //OutputColor0 = MosaicCoord;
             break;
-        // Triangle https://www.shadertoy.com/view/4d2SWy
         case 1:
             const float MaxLODLevel = log2(sqrt((BUFFER_WIDTH * BUFFER_HEIGHT) / (_Radius.x * _Radius.y)));
             const float2 Divisor = 1.0 / (2.0 * _Radius);

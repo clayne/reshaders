@@ -178,52 +178,52 @@ void DerivativesVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION
     Offsets = TexCoord0.xyxy + PixelOffset;
 }
 
-void VelocityStreamsVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 Velocity : TEXCOORD0)
+void VelocityStreamsVS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float2 Velocity : TEXCOORD0)
 {
-    // get line index / vertex index
-    int LineID = ID / 2;
-    int VertexID  = ID % 2; // either 0 (line-start) or 1 (line-end)
+    int LineID = ID / 2; // Line Index
+    int VertexID = ID % 2; // Vertex Index within the line (0 = start, 1 = end)
 
-    // get position (xy)
+    // Get Row (x) and Column (y) position
     int Row = LineID / LINES_X;
     int Column = LineID - LINES_X * Row;
 
-    // compute origin (line-start)
+    // Compute origin (line-start)
     const float2 Spacing = float2(SPACE_X, SPACE_Y);
     float2 Offset = Spacing * 0.5;
     float2 Origin = Offset + float2(Column, Row) * Spacing;
 
-    // get velocity from texture at origin location
-    const float2 wh_rcp = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
-    Velocity = tex2Dlod(_SampleData1, float4(Origin.x * wh_rcp.x, 1.0 - Origin.y * wh_rcp.y, 0.0, _Detail)).xy;
+    // Get velocity from texture at origin location
+    const float2 PixelSize = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
+    float2 VelocityCoord = float2(0.0, -1.0) + Origin * PixelSize;
+    Velocity = tex2Dlod(_SampleData1, float4(VelocityCoord, 0.0, _Detail)).xy;
 
-    // SCALE velocity
+    // Scale velocity
     float2 Direction = Velocity * VELOCITY_SCALE;
 
     float Length = length(Direction + 1e-5);
     Direction = Direction / sqrt(Length * 0.1);
 
-    // for fragmentshader ... coloring
+    // Color for fragmentshader
     Velocity = Direction * 0.2;
 
-    // compute current vertex position (based on vtx_id)
-    float2 VertexPosition = (0.0);
+    // Compute current vertex position (based on VertexID)
+    float2 VertexPosition = 0.0;
 
     if(_Normal)
     {
-        // lines, normal to velocity direction
+        // Lines: Normal to velocity direction
         Direction *= 0.5;
         float2 DirectionNormal = float2(Direction.y, -Direction.x);
         VertexPosition = Origin + Direction - DirectionNormal + DirectionNormal * VertexID * 2;
     }
     else
     {
-        // lines,in velocity direction
+        // Lines: Velocity direction
         VertexPosition = Origin + Direction * VertexID;
     }
 
-    // finish vertex coordinate
-    float2 VertexPositionNormal = (VertexPosition + 0.5) * wh_rcp; // [0, 1]
+    // Finish vertex position
+    float2 VertexPositionNormal = (VertexPosition + 0.5) * PixelSize; // [0, 1]
     Position = float4(VertexPositionNormal * 2.0 - 1.0, 0.0, 1.0); // ndc: [-1, +1]
 }
 

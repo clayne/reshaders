@@ -17,6 +17,8 @@ sampler2D _SampleColor
     #endif
 };
 
+/* [Vertex Shaders] */
+
 void PostProcessVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD)
 {
     TexCoord.x = (ID == 2) ? 2.0 : 0.0;
@@ -25,6 +27,8 @@ void PostProcessVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION
 }
 
 /*
+    [Pixel Shaders]
+
     NOTE: PixelSize = 1.0 / screensize
     TexCoord + _ShiftRed * pixelsize == TexCoord + _ShiftRed / screensize
 
@@ -36,9 +40,13 @@ void PostProcessVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION
 void AbberationPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
     const float2 PixelSize = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
-    OutputColor0.r = tex2D(_SampleColor, TexCoord + _ShiftRed * PixelSize).r; // shifted red channel
-    OutputColor0.g = tex2D(_SampleColor, TexCoord).g; // center green channel
-    OutputColor0.b = tex2D(_SampleColor, TexCoord + _ShiftBlue * PixelSize).b; // shifted blue channel
+    // Shift red channel
+    OutputColor0.r = tex2D(_SampleColor, TexCoord + _ShiftRed * PixelSize).r;
+    // Keep green channel to the center
+    OutputColor0.g = tex2D(_SampleColor, TexCoord).g;
+    // Shift blue channel
+    OutputColor0.b = tex2D(_SampleColor, TexCoord + _ShiftBlue * PixelSize).b;
+    // Write alpha value
     OutputColor0.a = 1.0;
 }
 

@@ -2,10 +2,11 @@
 /*
     Work In-Progress
     Pure Depth Ambient Occlusion
-    Source http://theorangeduck.com/page/pure-depth-ssao
 
+    Source
+        http://theorangeduck.com/page/pure-depth-ssao
     Original Port by Jose Negrete AKA BlueSkyDefender
-    https://github.com/BlueSkyDefender/Depth3D
+        https://github.com/BlueSkyDefender/Depth3D
 */
 
 #include "ReShade.fxh"

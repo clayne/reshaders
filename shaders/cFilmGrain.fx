@@ -1,5 +1,7 @@
 
 /*
+    FilmGrain without texture fetches
+
     "Well ill believe it when i see it."
     Yoinked code by Luluco250 (RIP) [https://www.shadertoy.com/view/4t2fRz] [MIT]
 */

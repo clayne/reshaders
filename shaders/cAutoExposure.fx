@@ -43,6 +43,8 @@ sampler2D _SampleLumaLOD
     Texture = _RenderLumaLOD;
 };
 
+/* [Vertex Shaders] */
+
 void PostProcessVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD)
 {
     TexCoord.x = (ID == 2) ? 2.0 : 0.0;
@@ -50,19 +52,25 @@ void PostProcessVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION
     Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
 
+/* [Pixel Shaders] */
+
 void BlitPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
     float4 Color = tex2D(_SampleColor, TexCoord);
+
+    // OutputColor.rgb = Output the highest brightness out of red/green/blue component
+    // OutputColor.a = Output the weight for temporal blending
     OutputColor0 = float4(max(Color.r, max(Color.g, Color.b)).rrr, _TimeRate);
 }
 
 void ExposurePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
+    // Average Luma = Average value (1x1) for all of the pixels
     float AverageLuma = tex2Dlod(_SampleLumaLOD, float4(TexCoord, 0.0, 8.0)).r;
     float4 Color = tex2D(_SampleColor, TexCoord);
 
-    // KeyValue represents an exposure compensation curve
-    // From https://knarkowicz.wordpress.com/2016/01/09/automatic-exposure/
+    // KeyValue is an exposure compensation curve
+    // Source: https://knarkowicz.wordpress.com/2016/01/09/automatic-exposure/
     float KeyValue = 1.03 - (2.0 / (log10(AverageLuma + 1.0) + 2.0));
     float ExposureValue = log2(KeyValue / AverageLuma) + _ManualBias;
     OutputColor0 = Color * exp2(ExposureValue);

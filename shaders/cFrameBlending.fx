@@ -47,11 +47,13 @@ void PostProcessVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION
 
 void BlendPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
+    // Copy backbuffer to a that continuously blends with its previous result 
     OutputColor0 = float4(tex2D(_SampleColor, TexCoord).rgb, _BlendFactor);
 }
 
 void DisplayPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
+    // Display the buffer
     OutputColor0 = tex2D(_SampleCopy, TexCoord);
 }
 

@@ -6,14 +6,14 @@
         Answer: https://diplomacy.state.gov/u-s-diplomacy-stories/ping-pong-diplomacy/
                 The game of ping-pong involves two players hitting a ball back-and-forth
 
-        We can apply this logic to shader programming by setting up:
+        We can apply this logic to shader programming by setting up
             1. The 2 players (textures)
                 - One texture will be the hitter (texture we sample from), the other the receiver (texture we write to)
                 - The roles for both textures will switch at each pass
             2. The ball (the texels in the pixel shader)
             3. The way the player hits the ball (PixelShader)
 
-    This shader's technique is an example of the 2 steps above:
+    This shader's technique is an example of the 2 steps above
         Pregame: Set up 2 players (_RenderBufferA and _RenderBufferB)
         PingPong1: _RenderBufferA hits (HorizontalBlurPS0) to _RenderBufferB
         PingPong2: _RenderBufferB hits (VerticalBlurPS0) to _RenderBufferA
@@ -23,7 +23,7 @@
     "Why two textures? Can't we just read and write to one texture"?
         Unfortunately we cannot sample from and to memory at the same time
 
-    NOTE:
+    NOTES
         Be cautious when pingponging in shaders that use BlendOps or involve temporal accumulation.
         Therefore, I recommend you to enable ClearRenderTargets as a sanity check.
         In addition, you may need to use use RenderTargetWriteMask if you're pingponging using textures that stores
