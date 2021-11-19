@@ -194,7 +194,9 @@ void VelocityStreamsVS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITI
 
     // Get velocity from texture at origin location
     const float2 PixelSize = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
-    float2 VelocityCoord = float2(0.0, -1.0) + Origin * PixelSize;
+    float2 VelocityCoord;
+    VelocityCoord.x = Origin.x * PixelSize.x;
+    VelocityCoord.y = 1.0 - Origin.y * PixelSize.y;
     Velocity = tex2Dlod(_SampleData1, float4(VelocityCoord, 0.0, _Detail)).xy;
 
     // Scale velocity
