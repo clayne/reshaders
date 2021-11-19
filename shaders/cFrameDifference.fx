@@ -79,8 +79,7 @@ void BlitPS0(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out flo
 {
     float3 Color = tex2D(_SampleColor, TexCoord).rgb;
     float3 NColor = Color / dot(Color, 1.0);
-    NColor /= max(max(NColor.r, NColor.g), NColor.b);
-    OutputColor0 = (_NormalizeInput) ? dot(NColor, 1.0 / 3.0) : dot(Color, 1.0 / 3.0);
+    OutputColor0 = (_NormalizeInput) ? max(max(NColor.r, NColor.g), NColor.b) : max(max(Color.r, Color.g), Color.b);
 }
 
 void DifferencePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)

@@ -241,8 +241,7 @@ void ConvertPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out f
 {
     float3 Color = max(tex2D(_SampleColor, TexCoord).rgb, 1e-7);
     Color /= dot(Color, 1.0);
-    Color /= max(max(Color.r, Color.g), Color.b);
-    OutputColor0 = dot(Color, 1.0 / 3.0);
+    OutputColor0 = max(max(Color.r, Color.g), Color.b);
 }
 
 void DerivativesPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets : TEXCOORD1, out float2 OutputColor0 : SV_TARGET0)
@@ -268,20 +267,6 @@ void DerivativesPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, f
       lower level (of higher resolution)
     - Repeat until full resolution level of original frames is reached
 */
-
-float2 GaussSeidel(float4 _I, float Levels, float2 InitialFlow)
-{
-    float2 Output = InitialFlow;
-
-    while(Levels >= 0.0)
-    {
-        Output.x -= ((_I.x * (dot(_I.xy, Output.xy) + _I.z)) * _I.w);
-        Output.y -= ((_I.y * (dot(_I.xy, Output.xy) + _I.z)) * _I.w);
-        Levels = Levels - 1.0;
-    }
-
-    return Output;
-}
 
 void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {

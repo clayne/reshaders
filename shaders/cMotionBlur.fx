@@ -27,7 +27,7 @@ uniform float _Detail <
     ui_label = "Mipmap Bias";
     ui_tooltip = "Higher = Less spatial noise";
     ui_min = 0.0;
-    ui_max = 4.0;
+    ui_max = 7.0;
 > = 3.5;
 
 uniform float _Blend <
@@ -225,7 +225,8 @@ float4 GaussianBlur(sampler2D Source, float2 TexCoord, float4 Offsets[7])
 void NormalizePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float OutputColor0 : SV_TARGET0)
 {
     float3 Color = max(1e-7, tex2D(_SampleColor, TexCoord).rgb);
-    OutputColor0 = dot(Color.xy / dot(Color, 1.0), 0.5);
+    Color /= dot(Color, 1.0);
+    OutputColor0 = max(max(Color.r, Color.g), Color.b);
 }
 
 void BlitPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0)
