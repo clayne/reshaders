@@ -11,15 +11,15 @@ uniform float _Constraint <
     ui_label = "Constraint";
     ui_tooltip = "Higher = Smoother flow";
     ui_min = 0.0;
-    ui_max = 10.0;
-> = 1.0;
+    ui_max = 1.0;
+> = 0.5;
 
 uniform float _Scale <
     ui_type = "slider";
     ui_label = "Flow Scale";
     ui_tooltip = "Higher = More motion blur";
     ui_min = 0.0;
-    ui_max = 10.0;
+    ui_max = 2.0;
 > = 1.0;
 
 uniform float _Detail <
@@ -267,7 +267,7 @@ void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, o
 
     for(float Level = MaxLevel; Level > 0.0; Level--)
     {
-        const float Lambda = (_Constraint * 1e-3) / pow(4.0, MaxLevel - Level);
+        const float Lambda = ldexp(_Constraint * 1e-3, Level - MaxLevel);
         float4 LevelCoord = float4(TexCoord, 0.0, Level);
 
         float2 SampleFrame = tex2Dlod(_SampleData0, LevelCoord).xy;

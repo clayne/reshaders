@@ -275,7 +275,7 @@ void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, o
 
     for(float Level = MaxLevel; Level > 0; Level--)
     {
-        const float Lambda = (_Constraint * 1e-3) / pow(4.0, MaxLevel - Level);
+        const float Lambda = ldexp(_Constraint * 1e-5, Level - MaxLevel);
         float4 LevelCoord = float4(TexCoord, 0.0, Level);
         float SampleFrameC = tex2Dlod(_SampleFrame0, LevelCoord).x;
         float SampleFrameP = tex2Dlod(_SampleFrame1, LevelCoord).x;
@@ -285,10 +285,10 @@ void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, o
         I.z = SampleFrameC - SampleFrameP;
         I.w = 1.0 / (dot(I.xy, I.xy) + Lambda);
 
-		OutputColor0.x = lerp(OutputColor0.x, OutputColor0.x - (I.x * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w, 1.5);
-		OutputColor0.x = lerp(OutputColor0.x - (I.x * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w, OutputColor0.x, 1.5);
-		OutputColor0.y = lerp(OutputColor0.y, OutputColor0.y - (I.y * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w, 1.5);
-		OutputColor0.y = lerp(OutputColor0.y - (I.y * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w, OutputColor0.y, 1.5);
+        OutputColor0.x = lerp(OutputColor0.x, OutputColor0.x - (I.x * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w, 1.5);
+        OutputColor0.x = lerp(OutputColor0.x - (I.x * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w, OutputColor0.x, 1.5);
+        OutputColor0.y = lerp(OutputColor0.y, OutputColor0.y - (I.y * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w, 1.5);
+        OutputColor0.y = lerp(OutputColor0.y - (I.y * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w, OutputColor0.y, 1.5);
     }
 
     OutputColor0.a = _BlendFactor;
@@ -363,10 +363,10 @@ void OutputPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out fl
     float Displacement = tex2D(_SampleAccumulation, TexCoord).r; // Displacement vector
     float4 Working = tex2D(_SampleFeedback, TexCoord - MotionVectors * DisplacementTexel);
 
-	MotionVectors *= float2(BUFFER_WIDTH, BUFFER_HEIGHT); // Normalized screen space -> Pixel coordinates
-	MotionVectors += (Random.xy - 0.5) * _Diffusion; // Small random displacement (diffusion)
-	MotionVectors = round(MotionVectors); // Pixel perfect snapping
-	MotionVectors *= (float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT) - 1.0); // Pixel coordinates -> Normalized screen space
+    MotionVectors *= float2(BUFFER_WIDTH, BUFFER_HEIGHT); // Normalized screen space -> Pixel coordinates
+    MotionVectors += (Random.xy - 0.5) * _Diffusion; // Small random displacement (diffusion)
+    MotionVectors = round(MotionVectors); // Pixel perfect snapping
+    MotionVectors *= (float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT) - 1.0); // Pixel coordinates -> Normalized screen space
 
     // Generate some pseudo random numbers.
     float RandomMotion = RandomNoise(TexCoord + length(MotionVectors));

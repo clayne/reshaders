@@ -19,7 +19,7 @@ uniform float _Constraint <
     ui_type = "drag";
     ui_label = "Constraint";
     ui_tooltip = "Higher = Smoother flow";
-> = 1.0;
+> = 0.5;
 
 uniform float _Detail <
     ui_type = "drag";
@@ -283,9 +283,8 @@ void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, o
 
     [unroll] for(float Level = MaxLevel; Level > 0.0; Level--)
     {
-        const float Lambda = (_Constraint * 1e-5) / pow(4.0, MaxLevel - Level);
+        const float Lambda = ldexp(_Constraint * 1e-5, Level - MaxLevel);
         float4 LevelCoord = float4(TexCoord, 0.0, Level);
-
         float2 SampleFrame = tex2Dlod(_SampleData0, LevelCoord).xy;
         float4 I;
         I.xy = tex2Dlod(_SampleData1, LevelCoord).xy;

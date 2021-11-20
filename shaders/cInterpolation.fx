@@ -5,24 +5,25 @@
 */
 
 uniform float _Blend <
-    ui_type = "drag";
+    ui_type = "slider";
     ui_label = "Temporal Blending";
     ui_tooltip = "Higher = Less temporal noise";
-    ui_max = 0.5;
+    ui_min = 0.0;
+    ui_max = 1.0;
 > = 0.25;
 
 uniform float _Constraint <
-    ui_type = "drag";
+    ui_type = "slider";
     ui_label = "Constraint";
     ui_tooltip = "Higher = Smoother flow";
-> = 1.0;
+> = 0.5;
 
 uniform float _Detail <
-    ui_type = "drag";
+    ui_type = "slider";
     ui_label = "Mipmap Bias";
     ui_tooltip = "Higher = Less spatial noise";
-    ui_max = 8.0;
-> = 2.5;
+    ui_max = 7.0;
+> = 0.0;
 
 #define BUFFER_SIZE uint2(128, 128)
 
@@ -240,7 +241,7 @@ void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, o
 
     [unroll] for(float Level = MaxLevel; Level > 0.0; Level--)
     {
-        const float Lambda = (_Constraint * 1e-5) / pow(4.0, MaxLevel - Level);
+        const float Lambda = ldexp(_Constraint * 1e-3, Level - MaxLevel);
         float4 LevelCoord = float4(TexCoord, 0.0, Level);
 
         float2 SampleFrame = tex2Dlod(_SampleData0, LevelCoord).xy;
