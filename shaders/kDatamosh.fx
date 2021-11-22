@@ -273,7 +273,7 @@ void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, o
     OutputColor0 = 0.0;
     const float MaxLevel = 6.5;
 
-    for(float Level = MaxLevel; Level > 0; Level--)
+    for(float Level = MaxLevel; Level > 0.0; Level--)
     {
         const float Lambda = ldexp(_Constraint * 1e-5, Level - MaxLevel);
         float4 LevelCoord = float4(TexCoord, 0.0, Level);
