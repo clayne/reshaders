@@ -207,7 +207,7 @@ void NormalizePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out
 {
     float3 Color = max(tex2D(_SampleFrame0, TexCoord).rgb, 1e-7);
     Color /= dot(Color, 1.0);
-    OutputColor0.x = max(max(Color.r, Color.g), Color.b);
+    OutputColor0.x = length(Color);
 }
 
 void HorizontalBlurPS0(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets[7] : TEXCOORD1, out float OutputColor0 : SV_TARGET0)
