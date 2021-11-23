@@ -12,7 +12,7 @@ uniform float _Constraint <
     ui_tooltip = "Higher = Smoother flow";
     ui_min = 0.0;
     ui_max = 1.0;
-> = 0.5;
+> = 0.1;
 
 uniform float _Scale <
     ui_type = "slider";

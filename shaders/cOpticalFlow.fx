@@ -19,7 +19,7 @@ uniform float _Constraint <
     ui_type = "drag";
     ui_label = "Constraint";
     ui_tooltip = "Higher = Smoother flow";
-> = 0.5;
+> = 0.1;
 
 uniform float _Detail <
     ui_type = "drag";
@@ -313,7 +313,7 @@ void VerticalBlurPS1(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0,
 void VelocityShadingPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target)
 {
     float2 Velocity = tex2Dlod(_SampleData1, float4(TexCoord, 0.0, _Detail)).xy;
-    float VelocityLength = saturate(rsqrt(dot(Velocity, Velocity))) + 1e-4;
+    float VelocityLength = saturate(rsqrt(dot(Velocity, Velocity)));
     OutputColor0.rg = (Velocity * VelocityLength) * 0.5 + 0.5;
     OutputColor0.b = -dot(OutputColor0.rg, 1.0) * 0.5 + 1.0;
     OutputColor0.a = 1.0;

@@ -16,7 +16,7 @@ uniform float _Constraint <
     ui_type = "slider";
     ui_label = "Constraint";
     ui_tooltip = "Higher = Smoother flow";
-> = 0.5;
+> = 0.1;
 
 uniform float _Detail <
     ui_type = "slider";
