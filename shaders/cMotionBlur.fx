@@ -226,7 +226,7 @@ void NormalizePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out
 {
     float3 Color = max(1e-7, tex2D(_SampleColor, TexCoord).rgb);
     Color /= dot(Color, 1.0);
-    OutputColor0 = max(max(Color.r, Color.g), Color.b);
+    OutputColor0 = length(Color.xyz);
 }
 
 void BlitPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0)

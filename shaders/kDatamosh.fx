@@ -241,7 +241,7 @@ void ConvertPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out f
 {
     float3 Color = max(tex2D(_SampleColor, TexCoord).rgb, 1e-7);
     Color /= dot(Color, 1.0);
-    OutputColor0 = max(max(Color.r, Color.g), Color.b);
+    OutputColor0 = length(Color);
 }
 
 void DerivativesPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets : TEXCOORD1, out float2 OutputColor0 : SV_TARGET0)

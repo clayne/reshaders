@@ -251,7 +251,7 @@ void BlitPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out floa
 {
     float3 Color = max(tex2D(_SampleColor, TexCoord).rgb, 1e-7);
     Color /= dot(Color, 1.0);
-    OutputColor0.x = max(max(Color.r, Color.g), Color.b);
+    OutputColor0.x = length(Color);
     OutputColor0.y = tex2D(_SampleCopy, TexCoord).x;
 }
 
