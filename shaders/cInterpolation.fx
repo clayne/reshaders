@@ -125,51 +125,44 @@ void PostProcessVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION
 
 static const float KernelSize = 14;
 
-float GaussianWeight(const int Position)
+float GaussianWeight(const int PixelPosition)
 {
     const float Sigma = KernelSize / 3.0;
     const float Pi = 3.1415926535897932384626433832795f;
     float Output = rsqrt(2.0 * Pi * (Sigma * Sigma));
-    return Output * exp(-(Position * Position) / (2.0 * (Sigma * Sigma)));
+    return Output * exp(-(PixelPosition * PixelPosition) / (2.0 * (Sigma * Sigma)));
 }
 
-float3 OutputWeights(const float Index)
+void OutputOffsets(in float2 TexCoord, inout float4 Offsets[7], float2 Direction)
 {
-    float Weight0 = GaussianWeight(Index);
-    float Weight1 = GaussianWeight(Index + 1.0);
-    float LinearWeight = Weight0 + Weight1;
-    return float3(Weight0, Weight1, LinearWeight);
-}
+    int OutputIndex = 0;
+    float PixelIndex = 1.0;
 
-float2 OutputOffsets(const float Index)
-{
-    float3 Weights = OutputWeights(Index);
-    float Offset = dot(float2(Index, Index + 1.0), Weights.xy) / Weights.z;
-    return float2(Offset, -Offset);
+    while(OutputIndex < 7)
+    {
+        float Offset1 = PixelIndex;
+        float Offset2 = PixelIndex + 1.0;
+        float Weight1 = GaussianWeight(Offset1);
+        float Weight2 = GaussianWeight(Offset2);
+        float WeightL = Weight1 + Weight2;
+        float Offset = ((Offset1 * Weight1) + (Offset2 * Weight2)) / WeightL;
+        Offsets[OutputIndex] = TexCoord.xyxy + float2(Offset, -Offset).xxyy * Direction.xyxy;
+
+        OutputIndex += 1;
+        PixelIndex += 2.0;
+    }
 }
 
 void HorizontalBlurVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD0, inout float4 Offsets[7] : TEXCOORD1)
 {
     PostProcessVS(ID, Position, TexCoord);
-    const float2 Direction = float2(1.0 / BUFFER_SIZE.x, 0.0);
-
-    [unroll] for(int i = 0; i < 7; i++)
-    {
-        const float2 LinearOffset = OutputOffsets(i * 2 + 1);
-        Offsets[i] = TexCoord.xyxy + LinearOffset.xxyy * Direction.xyxy;
-    }
+    OutputOffsets(TexCoord, Offsets, float2(1.0 / BUFFER_SIZE.x, 0.0));
 }
 
 void VerticalBlurVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD0, inout float4 Offsets[7] : TEXCOORD1)
 {
     PostProcessVS(ID, Position, TexCoord);
-    const float2 Direction = float2(0.0, 1.0 / BUFFER_SIZE.y);
-
-    [unroll] for(int i = 0; i < 7; i++)
-    {
-        const float2 LinearOffset = OutputOffsets(i * 2 + 1);
-        Offsets[i] = TexCoord.xyxy + LinearOffset.xxyy * Direction.xyxy;
-    }
+    OutputOffsets(TexCoord, Offsets, float2(0.0, 1.0 / BUFFER_SIZE.y));
 }
 
 void DerivativesVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD0, inout float4 Offsets : TEXCOORD1)
@@ -187,12 +180,21 @@ float4 GaussianBlur(sampler2D Source, float2 TexCoord, float4 Offsets[7])
     float Total = GaussianWeight(0.0);
     float4 Output = tex2D(Source, TexCoord) * GaussianWeight(0.0);
 
-    [unroll] for(int i = 0; i < 7; i ++)
+    int Index = 0;
+    float PixelIndex = 1.0;
+
+    while(Index < 7)
     {
-        const float LinearWeight = OutputWeights(i * 2 + 1).z;
-        Output += tex2D(Source, Offsets[i].xy) * LinearWeight;
-        Output += tex2D(Source, Offsets[i].zw) * LinearWeight;
-        Total += 2.0 * LinearWeight;
+        float Offset1 = PixelIndex;
+        float Offset2 = PixelIndex + 1.0;
+        float Weight1 = GaussianWeight(Offset1);
+        float Weight2 = GaussianWeight(Offset2);
+        float WeightL = Weight1 + Weight2;
+        Output += tex2D(Source, Offsets[Index].xy) * WeightL;
+        Output += tex2D(Source, Offsets[Index].zw) * WeightL;
+        Total += 2.0 * WeightL;
+        Index += 1.0;
+        PixelIndex += 2.0;
     }
 
     return Output / Total;
@@ -206,8 +208,8 @@ void BlitPS0(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out flo
 void NormalizePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float OutputColor0 : SV_TARGET0)
 {
     float3 Color = max(tex2D(_SampleFrame0, TexCoord).rgb, 1e-7);
-    Color /= dot(Color, 1.0);
-    OutputColor0.x = length(Color);
+    Color = normalize(Color);
+    OutputColor0.x = max(max(Color.r, Color.g), Color.b);
 }
 
 void HorizontalBlurPS0(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets[7] : TEXCOORD1, out float OutputColor0 : SV_TARGET0)
@@ -281,7 +283,7 @@ void InterpolatePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, o
     float4 FrameB = tex2D(_SampleFrame0, TexCoord - MotionVectors);
     float4 FrameP = tex2D(_SampleFrame1, TexCoord);
     float4 FrameC = tex2D(_SampleFrame0, TexCoord);
-    float4 FrameA = lerp(FrameC, FrameP, 100.0 / 256.0);
+    float4 FrameA = lerp(FrameC, FrameP, 64.0 / 256.0);
     OutputColor0 = Median(FrameA, FrameF, FrameB);
 }
 

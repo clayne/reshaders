@@ -19,7 +19,7 @@ uniform float _Constraint <
     ui_type = "drag";
     ui_label = "Constraint";
     ui_tooltip = "Higher = Smoother flow";
-> = 0.1;
+> = 0.5;
 
 uniform float _Detail <
     ui_type = "drag";
@@ -130,48 +130,41 @@ float GaussianWeight(const int Position)
     return Output * exp(-(Position * Position) / (2.0 * (Sigma * Sigma)));
 }
 
-float3 OutputWeights(const float Index)
+void OutputOffsets(in float2 TexCoord, inout float4 Offsets[7], float2 Direction)
 {
-    float Weight0 = GaussianWeight(Index);
-    float Weight1 = GaussianWeight(Index + 1.0);
-    float LinearWeight = Weight0 + Weight1;
-    return float3(Weight0, Weight1, LinearWeight);
-}
+    int OutputIndex = 0;
+    float PixelIndex = 1.0;
 
-float2 OutputOffsets(const float Index)
-{
-    float3 Weights = OutputWeights(Index);
-    float Offset = dot(float2(Index, Index + 1.0), Weights.xy) / Weights.z;
-    return float2(Offset, -Offset);
+    while(OutputIndex < 7)
+    {
+        float Offset1 = PixelIndex;
+        float Offset2 = PixelIndex + 1.0;
+        float Weight1 = GaussianWeight(Offset1);
+        float Weight2 = GaussianWeight(Offset2);
+        float WeightL = Weight1 + Weight2;
+        float Offset = ((Offset1 * Weight1) + (Offset2 * Weight2)) / WeightL;
+        Offsets[OutputIndex] = TexCoord.xyxy + float2(Offset, -Offset).xxyy * Direction.xyxy;
+
+        OutputIndex += 1;
+        PixelIndex += 2.0;
+    }
 }
 
 void HorizontalBlurVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD0, inout float4 Offsets[7] : TEXCOORD1)
 {
     PostProcessVS(ID, Position, TexCoord);
-    const float2 Direction = float2(1.0 / (BUFFER_WIDTH / 2.0), 0.0);
-
-    [unroll] for(int i = 0; i < 7; i++)
-    {
-        const float2 LinearOffset = OutputOffsets(i * 2 + 1);
-        Offsets[i] = TexCoord.xyxy + LinearOffset.xxyy * Direction.xyxy;
-    }
+    OutputOffsets(TexCoord, Offsets, float2(1.0 / SCREEN_SIZE.x, 0.0));
 }
 
 void VerticalBlurVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD0, inout float4 Offsets[7] : TEXCOORD1)
 {
     PostProcessVS(ID, Position, TexCoord);
-    const float2 Direction = float2(0.0, 1.0 / (BUFFER_HEIGHT / 2.0));
-
-    [unroll] for(int i = 0; i < 7; i++)
-    {
-        const float2 LinearOffset = OutputOffsets(i * 2 + 1);
-        Offsets[i] = TexCoord.xyxy + LinearOffset.xxyy * Direction.xyxy;
-    }
+    OutputOffsets(TexCoord, Offsets, float2(0.0, 1.0 / SCREEN_SIZE.y));
 }
 
 void DerivativesVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float4 Offsets : TEXCOORD0)
 {
-    const float2 PixelSize = 0.5 / (float2(BUFFER_WIDTH, BUFFER_HEIGHT) / 2.0);
+    const float2 PixelSize = 0.5 / SCREEN_SIZE.xy;
     const float4 PixelOffset = float4(PixelSize, -PixelSize);
     float2 TexCoord0;
     PostProcessVS(ID, Position, TexCoord0);
@@ -236,22 +229,32 @@ float4 GaussianBlur(sampler2D Source, float2 TexCoord, float4 Offsets[7])
     float Total = GaussianWeight(0.0);
     float4 Output = tex2D(Source, TexCoord) * GaussianWeight(0.0);
 
-    [unroll] for(int i = 0; i < 7; i ++)
+    int Index = 0;
+    float PixelIndex = 1.0;
+
+    while(Index < 7)
     {
-        const float LinearWeight = OutputWeights(i * 2 + 1).z;
-        Output += tex2D(Source, Offsets[i].xy) * LinearWeight;
-        Output += tex2D(Source, Offsets[i].zw) * LinearWeight;
-        Total += 2.0 * LinearWeight;
+        float Offset1 = PixelIndex;
+        float Offset2 = PixelIndex + 1.0;
+        float Weight1 = GaussianWeight(Offset1);
+        float Weight2 = GaussianWeight(Offset2);
+        float WeightL = Weight1 + Weight2;
+        Output += tex2D(Source, Offsets[Index].xy) * WeightL;
+        Output += tex2D(Source, Offsets[Index].zw) * WeightL;
+        Total += 2.0 * WeightL;
+        Index += 1.0;
+        PixelIndex += 2.0;
     }
 
     return Output / Total;
 }
 
+
 void BlitPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0)
 {
     float3 Color = max(tex2D(_SampleColor, TexCoord).rgb, 1e-7);
-    Color /= dot(Color, 1.0);
-    OutputColor0.x = length(Color);
+    Color = normalize(Color);
+    OutputColor0 = max(max(Color.x, Color.y), Color.z);
     OutputColor0.y = tex2D(_SampleCopy, TexCoord).x;
 }
 

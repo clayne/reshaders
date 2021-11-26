@@ -8,11 +8,11 @@
 
 uniform float _Constraint <
     ui_type = "slider";
-    ui_label = "Constraint";
+    ui_label = "Flow Smoothness";
     ui_tooltip = "Higher = Smoother flow";
     ui_min = 0.0;
-    ui_max = 1.0;
-> = 0.1;
+    ui_max = 2.0;
+> = 1.0;
 
 uniform float _Scale <
     ui_type = "slider";
@@ -52,8 +52,8 @@ uniform float _TargetFrameRate <
 
 uniform float _FrameTime < source = "frametime"; >;
 
-#define _HALFSIZE uint2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2)
-#define _BUFFERSIZE uint2(128, 128)
+#define HALF_SIZE uint2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2)
+#define BUFFER_SIZE uint2(128, 128)
 
 texture2D _RenderColor : COLOR;
 
@@ -67,8 +67,8 @@ sampler2D _SampleColor
 
 texture2D _RenderBuffer
 {
-    Width = _HALFSIZE.x;
-    Height = _HALFSIZE.y;
+    Width = HALF_SIZE.x;
+    Height = HALF_SIZE.y;
     Format = R16F;
     MipLevels = 8;
 };
@@ -82,8 +82,8 @@ sampler2D _SampleBuffer
 
 texture2D _RenderData0
 {
-    Width = _BUFFERSIZE.x;
-    Height = _BUFFERSIZE.y;
+    Width = BUFFER_SIZE.x;
+    Height = BUFFER_SIZE.y;
     Format = RG16F;
     MipLevels = 8;
 };
@@ -97,8 +97,8 @@ sampler2D _SampleData0
 
 texture2D _RenderData1
 {
-    Width = _BUFFERSIZE.x;
-    Height = _BUFFERSIZE.y;
+    Width = BUFFER_SIZE.x;
+    Height = BUFFER_SIZE.y;
     Format = RG16F;
     MipLevels = 8;
 };
@@ -112,8 +112,8 @@ sampler2D _SampleData1
 
 texture2D _RenderCopy_MotionBlur
 {
-    Width = _BUFFERSIZE.x;
-    Height = _BUFFERSIZE.y;
+    Width = BUFFER_SIZE.x;
+    Height = BUFFER_SIZE.y;
     Format = R16F;
 };
 
@@ -126,8 +126,8 @@ sampler2D _SampleCopy
 
 texture2D _RenderOpticalFlow_MotionBlur
 {
-    Width = _BUFFERSIZE.x;
-    Height = _BUFFERSIZE.y;
+    Width = BUFFER_SIZE.x;
+    Height = BUFFER_SIZE.y;
     Format = RG16F;
 };
 
@@ -157,48 +157,41 @@ float GaussianWeight(const int Position)
     return Output * exp(-(Position * Position) / (2.0 * (Sigma * Sigma)));
 }
 
-float3 OutputWeights(const float Index)
+void OutputOffsets(in float2 TexCoord, inout float4 Offsets[7], float2 Direction)
 {
-    float Weight0 = GaussianWeight(Index);
-    float Weight1 = GaussianWeight(Index + 1.0);
-    float LinearWeight = Weight0 + Weight1;
-    return float3(Weight0, Weight1, LinearWeight);
-}
+    int OutputIndex = 0;
+    float PixelIndex = 1.0;
 
-float2 OutputOffsets(const float Index)
-{
-    float3 Weights = OutputWeights(Index);
-    float Offset = dot(float2(Index, Index + 1.0), Weights.xy) / Weights.z;
-    return float2(Offset, -Offset);
+    while(OutputIndex < 7)
+    {
+        float Offset1 = PixelIndex;
+        float Offset2 = PixelIndex + 1.0;
+        float Weight1 = GaussianWeight(Offset1);
+        float Weight2 = GaussianWeight(Offset2);
+        float WeightL = Weight1 + Weight2;
+        float Offset = ((Offset1 * Weight1) + (Offset2 * Weight2)) / WeightL;
+        Offsets[OutputIndex] = TexCoord.xyxy + float2(Offset, -Offset).xxyy * Direction.xyxy;
+
+        OutputIndex += 1;
+        PixelIndex += 2.0;
+    }
 }
 
 void HorizontalBlurVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD0, inout float4 Offsets[7] : TEXCOORD1)
 {
     PostProcessVS(ID, Position, TexCoord);
-    const float2 Direction = float2(1.0 / _BUFFERSIZE.x, 0.0);
-
-    [unroll] for(int i = 0; i < 7; i++)
-    {
-        const float2 LinearOffset = OutputOffsets(i * 2 + 1);
-        Offsets[i] = TexCoord.xyxy + LinearOffset.xxyy * Direction.xyxy;
-    }
+    OutputOffsets(TexCoord, Offsets, float2(1.0 / BUFFER_SIZE.x, 0.0));
 }
 
 void VerticalBlurVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD0, inout float4 Offsets[7] : TEXCOORD1)
 {
     PostProcessVS(ID, Position, TexCoord);
-    const float2 Direction = float2(0.0, 1.0 / _BUFFERSIZE.y);
-
-    [unroll] for(int i = 0; i < 7; i++)
-    {
-        const float2 LinearOffset = OutputOffsets(i * 2 + 1);
-        Offsets[i] = TexCoord.xyxy + LinearOffset.xxyy * Direction.xyxy;
-    }
+    OutputOffsets(TexCoord, Offsets, float2(0.0, 1.0 / BUFFER_SIZE.y));
 }
 
 void DerivativesVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD0, inout float4 Offsets : TEXCOORD1)
 {
-    const float2 PixelSize = 0.5 / _BUFFERSIZE;
+    const float2 PixelSize = 0.5 / BUFFER_SIZE;
     const float4 PixelOffset = float4(PixelSize, -PixelSize);
     PostProcessVS(ID, Position, TexCoord);
     Offsets = TexCoord.xyxy + PixelOffset;
@@ -211,12 +204,21 @@ float4 GaussianBlur(sampler2D Source, float2 TexCoord, float4 Offsets[7])
     float Total = GaussianWeight(0.0);
     float4 Output = tex2D(Source, TexCoord) * GaussianWeight(0.0);
 
-    [unroll] for(int i = 0; i < 7; i ++)
+    int Index = 0;
+    float PixelIndex = 1.0;
+
+    while(Index < 7)
     {
-        const float LinearWeight = OutputWeights(i * 2 + 1).z;
-        Output += tex2D(Source, Offsets[i].xy) * LinearWeight;
-        Output += tex2D(Source, Offsets[i].zw) * LinearWeight;
-        Total += 2.0 * LinearWeight;
+        float Offset1 = PixelIndex;
+        float Offset2 = PixelIndex + 1.0;
+        float Weight1 = GaussianWeight(Offset1);
+        float Weight2 = GaussianWeight(Offset2);
+        float WeightL = Weight1 + Weight2;
+        Output += tex2D(Source, Offsets[Index].xy) * WeightL;
+        Output += tex2D(Source, Offsets[Index].zw) * WeightL;
+        Total += 2.0 * WeightL;
+        Index += 1.0;
+        PixelIndex += 2.0;
     }
 
     return Output / Total;
@@ -225,8 +227,8 @@ float4 GaussianBlur(sampler2D Source, float2 TexCoord, float4 Offsets[7])
 void NormalizePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float OutputColor0 : SV_TARGET0)
 {
     float3 Color = max(1e-7, tex2D(_SampleColor, TexCoord).rgb);
-    Color /= dot(Color, 1.0);
-    OutputColor0 = length(Color.xyz);
+    Color = normalize(Color);
+    OutputColor0 = max(max(Color.x, Color.y), Color.z);
 }
 
 void BlitPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0)
@@ -300,7 +302,7 @@ void OutputPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out fl
     const int Samples = 4;
     float Noise = frac(52.9829189 * frac(dot(Position.xy, float2(0.06711056, 0.00583715))));
     float FrameTimeRatio = _TargetFrameRate / (1e+3 / _FrameTime);
-    float2 Velocity = (tex2Dlod(_SampleData1, float4(TexCoord, 0.0, _Detail)).xy / _BUFFERSIZE) * _Scale;
+    float2 Velocity = (tex2Dlod(_SampleData1, float4(TexCoord, 0.0, _Detail)).xy / BUFFER_SIZE) * _Scale;
     Velocity /= (_FrameRateScaling) ? FrameTimeRatio : 1.0;
 
     for(int k = 0; k < Samples; ++k)

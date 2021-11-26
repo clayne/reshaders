@@ -7,7 +7,7 @@
 
 uniform int _Select <
     ui_type = "combo";
-    ui_items = " Built-in Normalized RGB\0 Normalized RGB\0 Built-in RG Chromaticity\0 RG Chromaticity\0 Jamie's RG Chromaticity\0 None\0";
+    ui_items = " Built-in RG Chromaticity\0 Built-in RGB Chromaticity\0 RG Chromaticity\0 RGB Chromaticity\0 Jamie's RG Chromaticity\0 Jamie's RGB Chromaticity\0 None\0";
     ui_label = "Method";
     ui_tooltip = "Select Luminance";
 > = 0;
@@ -39,22 +39,24 @@ void NormalizationPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0,
     switch(_Select)
     {
         case 0:
-            OutputColor0 = normalize(Color);
+            OutputColor0.rg = normalize(Color).rg;
             break;
         case 1:
-            // Note: You can reconstruct blue channel, the remainder ratio, by (1.0 - Red - Green)
-            OutputColor0 = Color / dot(Color, 1.0);
+            OutputColor0 = normalize(Color);
             break;
         case 2:
-            OutputColor0 = float3(normalize(Color).xy , 0.0);
+            OutputColor0.rg = Color.rg / dot(Color, 1.0);
             break;
         case 3:
-            OutputColor0 = float3(Color.xy / dot(Color, 1.0), 0.0);
+            OutputColor0 = Color / dot(Color, 1.0);
             break;
         case 4:
-            float3 NColor = Color / dot(Color, 1.0);
-            float NBright = max(NColor.r, max(NColor.g, NColor.b));
-            OutputColor0 = float3(NColor.xy / NBright, 0.0);
+            OutputColor0 = Color / dot(Color, 1.0);
+            OutputColor0.rg /= max(max(OutputColor0.r, OutputColor0.g), OutputColor0.b);
+            break;
+        case 5:
+            OutputColor0 = Color / dot(Color, 1.0);
+            OutputColor0 /= max(max(OutputColor0.r, OutputColor0.g), OutputColor0.b);
             break;
         default:
             OutputColor0 = Color;
