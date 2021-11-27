@@ -11,7 +11,7 @@
   + Fluid simulation
   + V-Cycle multigrid algorithm
 
-# Shaders
+## Shader List
 
 Name|Description
 ----|-----------
@@ -42,3 +42,9 @@ kContour            | Contour line effect
 kDatamosh           | Simulates video compression artifacts
 kMirror             | Mirroring and kaleidoscope effect
 kVignette           | Natural vignetting effect
+
+## Coding Convention
+
+Coded with [C# Coding Conventions](https://docs.microsoft.com/en-us/dotnet/csharp/fundamentals/coding-style/coding-conventions)
+
+
