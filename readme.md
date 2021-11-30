@@ -45,6 +45,12 @@ kVignette           | Natural vignetting effect
 
 ## Coding Convention
 
-Coded with [ReShadeFX Conventions](https://github.com/crosire/reshade-shaders/blob/slim/REFERENCE.md)
-
-
++ Descriptive variables, please
++ Prefix `_` to uniform objects and variables (except for user functions)
++ Suffix `VS` for `VertexShader`, `PS` for `PixelShader`
++ Use **ALLCAPS** semantics and state parameters
++ Use **PascalCase** for
+  + Namespaces
+  + Structs
+  + User function name, parameters, and variables
++ Use **SNAKE_CASE** for macros and preprocessor defines
