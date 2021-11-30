@@ -275,8 +275,8 @@ void DerivativesPS(float4 Position : SV_POSITION, float4 Offsets : TEXCOORD0, ou
     float2 Sample1 = tex2D(_SampleData0, Offsets.xy).xy; // (+x, +y)
     float2 Sample2 = tex2D(_SampleData0, Offsets.zw).xy; // (-x, -y)
     float2 Sample3 = tex2D(_SampleData0, Offsets.xw).xy; // (+x, -y)
-    OutputColor0.x = dot((-Sample2 + -Sample0) + (Sample3 + Sample1), 0.5);
-    OutputColor0.y = dot((Sample2 + Sample3) + (-Sample0 + -Sample1), 0.5);
+    OutputColor0.x = dot((Sample3 + Sample1) - (Sample2 + Sample0), 0.5);
+    OutputColor0.y = dot((Sample2 + Sample3) - (Sample0 + Sample1), 0.5);
 }
 
 void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
