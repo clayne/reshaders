@@ -227,12 +227,13 @@ void PostProcessVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION
     Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
 
-void DerivativesVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD0, inout float4 Offsets : TEXCOORD1)
+void DerivativesVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float4 TexCoord : TEXCOORD0)
 {
     const float2 PixelSize = 0.5 / _HALFSIZE;
     const float4 PixelOffset = float4(PixelSize, -PixelSize);
-    PostProcessVS(ID, Position, TexCoord);
-    Offsets = TexCoord.xyxy + PixelOffset;
+    float2 TexCoord0 = 0.0;
+    PostProcessVS(ID, Position, TexCoord0);
+    TexCoord = TexCoord0.xyxy + PixelOffset;
 }
 
 /* [Pixel Shaders ] */
@@ -244,19 +245,15 @@ void ConvertPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out f
     OutputColor0 = length(Color);
 }
 
-void DerivativesPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets : TEXCOORD1, out float2 OutputColor0 : SV_TARGET0)
+void DerivativesPS(float4 Position : SV_POSITION, float4 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0)
 {
-    float2 Sample0, Sample1, Sample2, Sample3;
-    Sample0[0] = tex2D(_SampleFrame0, Offsets.zy).x; // (-x, +y)
-    Sample0[1] = tex2D(_SampleFrame1, Offsets.zy).x; // (-x, +y)
-    Sample1[0] = tex2D(_SampleFrame0, Offsets.xy).x; // (+x, +y)
-    Sample1[1] = tex2D(_SampleFrame1, Offsets.xy).x; // (+x, +y)
-    Sample2[0] = tex2D(_SampleFrame0, Offsets.zw).x; // (-x, -y)
-    Sample2[1] = tex2D(_SampleFrame1, Offsets.zw).x; // (-x, -y)
-    Sample3[0] = tex2D(_SampleFrame0, Offsets.xw).x; // (+x, -y)
-    Sample3[1] = tex2D(_SampleFrame1, Offsets.xw).x; // (+x, -y)
-    OutputColor0.x = dot(-(Sample2 + Sample0) + (Sample3 + Sample1), 0.5);
-    OutputColor0.y = dot(-(Sample2 + Sample3) + (Sample0 + Sample1), 0.5);
+    float Sample0 = tex2D(_SampleFrame0, TexCoord.zy).x; // (-x, +y)
+    float Sample1 = tex2D(_SampleFrame0, TexCoord.xy).x; // (+x, +y)
+    float Sample2 = tex2D(_SampleFrame0, TexCoord.zw).x; // (-x, -y)
+    float Sample3 = tex2D(_SampleFrame0, TexCoord.xw).x; // (+x, -y)
+    OutputColor0.x = (Sample3 + Sample1) - (Sample2 + Sample0);
+    OutputColor0.y = (Sample0 + Sample1) - (Sample2 + Sample3);
+    OutputColor0.xy *= 4.0;
 }
 
 /*
@@ -275,7 +272,7 @@ void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, o
 
     for(float Level = MaxLevel; Level > 0.0; Level--)
     {
-        const float Lambda = ldexp(_Constraint * 1e-3, Level - MaxLevel);
+        const float Lambda = ldexp(_Constraint * 1e-5, Level - MaxLevel);
         float4 LevelCoord = float4(TexCoord, 0.0, Level);
         float SampleFrameC = tex2Dlod(_SampleFrame0, LevelCoord).x;
         float SampleFrameP = tex2Dlod(_SampleFrame1, LevelCoord).x;
@@ -285,10 +282,8 @@ void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, o
         I.z = SampleFrameC - SampleFrameP;
         I.w = 1.0 / (dot(I.xy, I.xy) + Lambda);
 
-        OutputColor0.x = lerp(OutputColor0.x, OutputColor0.x - (I.x * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w, 1.5);
-        OutputColor0.x = lerp(OutputColor0.x - (I.x * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w, OutputColor0.x, 1.5);
-        OutputColor0.y = lerp(OutputColor0.y, OutputColor0.y - (I.y * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w, 1.5);
-        OutputColor0.y = lerp(OutputColor0.y - (I.y * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w, OutputColor0.y, 1.5);
+        OutputColor0.x = OutputColor0.x - (I.x * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w;
+        OutputColor0.y = OutputColor0.y - (I.y * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w;
     }
 
     OutputColor0.a = _BlendFactor;

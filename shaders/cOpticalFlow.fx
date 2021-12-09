@@ -269,14 +269,15 @@ void VerticalBlurPS0(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0,
     OutputColor1 = OutputColor0;
 }
 
-void DerivativesPS(float4 Position : SV_POSITION, float4 Offsets : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0)
+void DerivativesPS(float4 Position : SV_POSITION, float4 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0)
 {
-    float2 Sample0 = tex2D(_SampleData0, Offsets.zy).xy; // (-x, +y)
-    float2 Sample1 = tex2D(_SampleData0, Offsets.xy).xy; // (+x, +y)
-    float2 Sample2 = tex2D(_SampleData0, Offsets.zw).xy; // (-x, -y)
-    float2 Sample3 = tex2D(_SampleData0, Offsets.xw).xy; // (+x, -y)
-    OutputColor0.x = dot((Sample3 + Sample1) - (Sample2 + Sample0), 0.5);
-    OutputColor0.y = dot((Sample2 + Sample3) - (Sample0 + Sample1), 0.5);
+    float Sample0 = tex2D(_SampleData0, TexCoord.zy).x; // (-x, +y)
+    float Sample1 = tex2D(_SampleData0, TexCoord.xy).x; // (+x, +y)
+    float Sample2 = tex2D(_SampleData0, TexCoord.zw).x; // (-x, -y)
+    float Sample3 = tex2D(_SampleData0, TexCoord.xw).x; // (+x, -y)
+    OutputColor0.x = (Sample3 + Sample1) - (Sample2 + Sample0);
+    OutputColor0.y = (Sample2 + Sample3) - (Sample0 + Sample1);
+    OutputColor0 *= 4.0;
 }
 
 void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
@@ -294,10 +295,8 @@ void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, o
         I.z = SampleFrame.x - SampleFrame.y;
         I.w = 1.0 / (dot(I.xy, I.xy) + Lambda);
 
-        OutputColor0.x = lerp(OutputColor0.x, OutputColor0.x - (I.x * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w, 1.5);
-        OutputColor0.x = lerp(OutputColor0.x - (I.x * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w, OutputColor0.x, 1.5);
-        OutputColor0.y = lerp(OutputColor0.y, OutputColor0.y - (I.y * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w, 1.5);
-        OutputColor0.y = lerp(OutputColor0.y - (I.y * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w, OutputColor0.y, 1.5);
+        OutputColor0.x = OutputColor0.x - (I.x * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w;
+        OutputColor0.y = OutputColor0.y - (I.y * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w;
     }
 
     OutputColor0.ba = _Blend;

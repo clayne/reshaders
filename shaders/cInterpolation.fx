@@ -225,14 +225,13 @@ void VerticalBlurPS0(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0,
 
 void DerivativesPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets : TEXCOORD1, out float2 OutputColor0 : SV_TARGET0, out float2 OutputColor1 : SV_TARGET1)
 {
-    float2 Sample0 = tex2D(_SampleData0, Offsets.zy).xy; // (-x, +y)
-    float2 Sample1 = tex2D(_SampleData0, Offsets.xy).xy; // (+x, +y)
-    float2 Sample2 = tex2D(_SampleData0, Offsets.zw).xy; // (-x, -y)
-    float2 Sample3 = tex2D(_SampleData0, Offsets.xw).xy; // (+x, -y)
-    float2 Ix = (-Sample2 + -Sample0) + (Sample3 + Sample1);
-    float2 Iy = (Sample2 + Sample3) + (-Sample0 + -Sample1);
-    OutputColor0.x = dot(Ix, 0.5);
-    OutputColor0.y = dot(Iy, 0.5);
+    float Sample0 = tex2D(_SampleData0, Offsets.zy).x; // (-x, +y)
+    float Sample1 = tex2D(_SampleData0, Offsets.xy).x; // (+x, +y)
+    float Sample2 = tex2D(_SampleData0, Offsets.zw).x; // (-x, -y)
+    float Sample3 = tex2D(_SampleData0, Offsets.xw).x; // (+x, -y)
+    OutputColor0.x = (Sample3 + Sample1) - (Sample2 + Sample0);
+    OutputColor0.y = (Sample2 + Sample3) - (Sample0 + Sample1);
+    OutputColor0 *= 4.0;
     OutputColor1 = tex2D(_SampleData0, TexCoord).x;
 }
 
@@ -243,7 +242,7 @@ void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, o
 
     [unroll] for(float Level = MaxLevel; Level > 0.0; Level--)
     {
-        const float Lambda = ldexp(_Constraint * 1e-3, Level - MaxLevel);
+        const float Lambda = ldexp(_Constraint * 1e-5, Level - MaxLevel);
         float4 LevelCoord = float4(TexCoord, 0.0, Level);
 
         float2 SampleFrame = tex2Dlod(_SampleData0, LevelCoord).xy;
@@ -252,10 +251,8 @@ void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, o
         I.z = SampleFrame.x - SampleFrame.y;
         I.w = 1.0 / (dot(I.xy, I.xy) + Lambda);
 
-        OutputColor0.x = lerp(OutputColor0.x, OutputColor0.x - (I.x * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w, 1.5);
-        OutputColor0.x = lerp(OutputColor0.x - (I.x * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w, OutputColor0.x, 1.5);
-        OutputColor0.y = lerp(OutputColor0.y, OutputColor0.y - (I.y * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w, 1.5);
-        OutputColor0.y = lerp(OutputColor0.y - (I.y * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w, OutputColor0.y, 1.5);
+        OutputColor0.x = OutputColor0.x - (I.x * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w;
+        OutputColor0.y = OutputColor0.y - (I.y * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w;
     }
 
     OutputColor0.ba = _Blend;
