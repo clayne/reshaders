@@ -271,13 +271,12 @@ void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, o
 
     for(float Level = MaxLevel; Level > 0.0; Level--)
     {
-        const float Lambda = ldexp(_Constraint * 1e-5, Level - MaxLevel);
-        float4 LevelCoord = float4(TexCoord, 0.0, Level);
-        float SampleFrameC = tex2Dlod(_SampleFrame0, LevelCoord).x;
-        float SampleFrameP = tex2Dlod(_SampleFrame1, LevelCoord).x;
+        const float Lambda = ldexp(_Constraint * 1e-3, Level - MaxLevel);
+        float SampleFrameP = tex2Dlod(_SampleFrame1, float4(TexCoord, 0.0, Level)).x;
+        float SampleFrameC = tex2Dlod(_SampleFrame0, float4(TexCoord, 0.0, Level)).x;
 
         float4 I;
-        I.xy = tex2Dlod(_SampleDerivatives, LevelCoord).xy;
+        I.xy = tex2Dlod(_SampleDerivatives, float4(TexCoord, 0.0, Level)).xy;
         I.z = SampleFrameC - SampleFrameP;
         I.w = 1.0 / (dot(I.xy, I.xy) + Lambda);
 

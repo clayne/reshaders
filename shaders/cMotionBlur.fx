@@ -1,11 +1,6 @@
 
 /*
     Optical flow motion blur
-    Chromaticity Color Space
-        ARC: Angle-Retaining Chromaticity diagram for color constancy error analysis
-        Marco Buzzelli and Simone Bianco and Raimondo Schettini
-        10.1364/JOSAA.398692
-        http://www.ivl.disco.unimib.it/activities/arc/
     Special Thanks
         MartinBFFan and Pao on Discord for reporting bugs
         BSD for bug propaganda and helping to solve my issue
@@ -16,16 +11,16 @@ uniform float _Constraint <
     ui_label = "Flow Smoothness";
     ui_tooltip = "Higher = Smoother flow";
     ui_min = 0.0;
-    ui_max = 1.0;
-> = 0.5;
+    ui_max = 2.0;
+> = 1.0;
 
 uniform float _Scale <
     ui_type = "slider";
     ui_label = "Flow Scale";
     ui_tooltip = "Higher = More motion blur";
     ui_min = 0.0;
-    ui_max = 4.0;
-> = 2.0;
+    ui_max = 2.0;
+> = 1.0;
 
 uniform float _Detail <
     ui_type = "slider";
@@ -238,9 +233,8 @@ void CopyPS0(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out flo
 
 void NormalizePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0)
 {
-    float3 Color = max(tex2D(_SampleColor, TexCoord).rgb, 1e-3);
-    OutputColor0.x = atan2(sqrt(3.0) * (Color.g - Color.b), dot(Color, float3(2.0, -1.0, -1.0)));
-    OutputColor0.y = acos(dot(Color, 1.0) / (sqrt(3.0) * length(Color)));
+    float3 Color = max(tex2D(_SampleColor, TexCoord).rgb, 1e-7);
+    OutputColor0 = Color.xy / dot(Color, 1.0);
 }
 
 void CopyPS1(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0)
@@ -279,7 +273,7 @@ void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, o
 
     [unroll] for(float Level = MaxLevel; Level > 0.0; Level--)
     {
-        const float Lambda = ldexp(_Constraint * 1e-1, Level - MaxLevel);
+        const float Lambda = ldexp(_Constraint * 1e-3, Level - MaxLevel);
         float2 CurrentFrame = tex2Dlod(_SampleData0, float4(TexCoord, 0.0, Level)).xy;
         float2 PreviousFrame = tex2Dlod(_SampleData2, float4(TexCoord, 0.0, Level)).xy;
         float4 SpatialDerivatives = tex2Dlod(_SampleData1, float4(TexCoord, 0.0, Level)).xzyw;

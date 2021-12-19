@@ -1,10 +1,5 @@
 
 /*
-    Chromaticity Color Space
-        ARC: Angle-Retaining Chromaticity diagram for color constancy error analysis
-        Marco Buzzelli and Simone Bianco and Raimondo Schettini
-        10.1364/JOSAA.398692
-        http://www.ivl.disco.unimib.it/activities/arc/
     Uniforms
         https://github.com/diwi/PixelFlow/blob/master/src/com/thomasdiewald/pixelflow/java/imageprocessing/DwOpticalFlow.java#L230
     Vertex Shader
@@ -262,9 +257,8 @@ void CopyPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out floa
 
 void BlitPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0)
 {
-    float3 Color = max(tex2D(_SampleColor, TexCoord).rgb, 1e-3);
-    OutputColor0.x = atan2(sqrt(3.0) * (Color.g - Color.b), dot(Color, float3(2.0, -1.0, -1.0)));
-    OutputColor0.y = acos(dot(Color, 1.0) / (sqrt(3.0) * length(Color)));
+    float3 Color = max(tex2D(_SampleColor, TexCoord).rgb, 1e-7);
+    OutputColor0 = Color.xy / dot(Color, 1.0);
 }
 
 void HorizontalBlurPS0(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets[7] : TEXCOORD1, out float4 OutputColor0 : SV_TARGET0)
@@ -298,7 +292,7 @@ void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, o
     [unroll] for(float Level = MaxLevel; Level > 0.0; Level--)
     {
     	float2 PreviousFlow = OpticalFlow.xy + OpticalFlow.zw;
-        const float Lambda = ldexp(_Constraint * 1e-3, Level - MaxLevel);
+        const float Lambda = ldexp(_Constraint * 1e-5, Level - MaxLevel);
         const float2 PixelSize = 1.0 / (float2(BUFFER_WIDTH, BUFFER_HEIGHT) * 0.5);
         float2 PreviousFrame = tex2Dlod(_SampleData2, float4(TexCoord + PreviousFlow * PixelSize, 0.0, Level)).xy;
         float2 CurrentFrame = tex2Dlod(_SampleData0, float4(TexCoord, 0.0, Level)).xy;
