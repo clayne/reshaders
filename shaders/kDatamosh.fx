@@ -241,8 +241,7 @@ void DerivativesVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION
 void ConvertPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float OutputColor0 : SV_TARGET0)
 {
     float3 Color = max(tex2D(_SampleColor, TexCoord).rgb, 1e-7);
-    Color = normalize(Color);
-    OutputColor0 = max(max(Color.r, Color.g), Color.b);
+    OutputColor0 = acos(dot(Color, 1.0) / (sqrt(3.0) * length(Color)));
 }
 
 void DerivativesPS(float4 Position : SV_POSITION, float4 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0)

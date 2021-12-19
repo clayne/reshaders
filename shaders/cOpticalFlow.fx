@@ -1,5 +1,10 @@
 
 /*
+    Chromaticity Color Space
+        ARC: Angle-Retaining Chromaticity diagram for color constancy error analysis
+        Marco Buzzelli and Simone Bianco and Raimondo Schettini
+        10.1364/JOSAA.398692
+        http://www.ivl.disco.unimib.it/activities/arc/
     Uniforms
         https://github.com/diwi/PixelFlow/blob/master/src/com/thomasdiewald/pixelflow/java/imageprocessing/DwOpticalFlow.java#L230
     Vertex Shader
@@ -78,7 +83,7 @@ texture2D _RenderData1_HS
 {
     Width = BUFFER_WIDTH / 2;
     Height = BUFFER_HEIGHT / 2;
-    Format = RG16F;
+    Format = RGBA16F;
     MipLevels = 8;
 };
 
@@ -87,16 +92,17 @@ sampler2D _SampleData1
     Texture = _RenderData1_HS;
 };
 
-texture2D _RenderCopy_HS
+texture2D _RenderData2_HS
 {
     Width = BUFFER_WIDTH / 2;
     Height = BUFFER_HEIGHT / 2;
-    Format = R16F;
+    Format = RG16F;
+    MipLevels = 8;
 };
 
-sampler2D _SampleCopy
+sampler2D _SampleData2
 {
-    Texture = _RenderCopy_HS;
+    Texture = _RenderData2_HS;
 };
 
 texture2D _RenderOpticalFlow_HS
@@ -190,7 +196,7 @@ void VelocityStreamsVS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITI
     float2 VelocityCoord;
     VelocityCoord.x = Origin.x * PixelSize.x;
     VelocityCoord.y = 1.0 - Origin.y * PixelSize.y;
-    Velocity = tex2Dlod(_SampleData1, float4(VelocityCoord, 0.0, _Detail)).xy;
+    Velocity = tex2Dlod(_SampleData2, float4(VelocityCoord, 0.0, _Detail)).xy;
 
     // Scale velocity
     float2 Direction = Velocity * VELOCITY_SCALE;
@@ -249,13 +255,16 @@ float4 GaussianBlur(sampler2D Source, float2 TexCoord, float4 Offsets[7])
     return Output / Total;
 }
 
+void CopyPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0)
+{
+    OutputColor0 = tex2D(_SampleData0, TexCoord).rg;
+}
 
 void BlitPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0)
 {
-    float3 Color = max(tex2D(_SampleColor, TexCoord).rgb, 1e-7);
-    Color = normalize(Color);
-    OutputColor0 = max(max(Color.x, Color.y), Color.z);
-    OutputColor0.y = tex2D(_SampleCopy, TexCoord).x;
+    float3 Color = max(tex2D(_SampleColor, TexCoord).rgb, 1e-3);
+    OutputColor0.x = atan2(sqrt(3.0) * (Color.g - Color.b), dot(Color, float3(2.0, -1.0, -1.0)));
+    OutputColor0.y = acos(dot(Color, 1.0) / (sqrt(3.0) * length(Color)));
 }
 
 void HorizontalBlurPS0(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets[7] : TEXCOORD1, out float4 OutputColor0 : SV_TARGET0)
@@ -263,58 +272,69 @@ void HorizontalBlurPS0(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD
     OutputColor0 = GaussianBlur(_SampleData0, TexCoord, Offsets);
 }
 
-void VerticalBlurPS0(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets[7] : TEXCOORD1, out float4 OutputColor0 : SV_TARGET0, out float4 OutputColor1 : SV_TARGET1)
+void VerticalBlurPS0(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets[7] : TEXCOORD1, out float4 OutputColor0 : SV_TARGET0)
 {
     OutputColor0 = GaussianBlur(_SampleData1, TexCoord, Offsets);
-    OutputColor1 = OutputColor0;
 }
 
-void DerivativesPS(float4 Position : SV_POSITION, float4 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0)
+void DerivativesPS(float4 Position : SV_POSITION, float4 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    float Sample0 = tex2D(_SampleData0, TexCoord.zy).x; // (-x, +y)
-    float Sample1 = tex2D(_SampleData0, TexCoord.xy).x; // (+x, +y)
-    float Sample2 = tex2D(_SampleData0, TexCoord.zw).x; // (-x, -y)
-    float Sample3 = tex2D(_SampleData0, TexCoord.xw).x; // (+x, -y)
-    OutputColor0.x = (Sample3 + Sample1) - (Sample2 + Sample0);
-    OutputColor0.y = (Sample2 + Sample3) - (Sample0 + Sample1);
+    float2 Sample0 = tex2D(_SampleData0, TexCoord.zy).xy; // (-x, +y)
+    float2 Sample1 = tex2D(_SampleData0, TexCoord.xy).xy; // (+x, +y)
+    float2 Sample2 = tex2D(_SampleData0, TexCoord.zw).xy; // (-x, -y)
+    float2 Sample3 = tex2D(_SampleData0, TexCoord.xw).xy; // (+x, -y)
+    OutputColor0.xy = (Sample3 + Sample1) - (Sample2 + Sample0);
+    OutputColor0.zw = (Sample2 + Sample3) - (Sample0 + Sample1);
     OutputColor0 *= 4.0;
 }
 
 void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
     const float MaxLevel = 6.5;
-    OutputColor0.xy = 0.0;
+    float4 OpticalFlow;
+    float2 Smoothness;
+    float2 Value;
 
     [unroll] for(float Level = MaxLevel; Level > 0.0; Level--)
     {
-        const float Lambda = ldexp(_Constraint * 1e-5, Level - MaxLevel);
-        float4 LevelCoord = float4(TexCoord, 0.0, Level);
-        float2 SampleFrame = tex2Dlod(_SampleData0, LevelCoord).xy;
-        float4 I;
-        I.xy = tex2Dlod(_SampleData1, LevelCoord).xy;
-        I.z = SampleFrame.x - SampleFrame.y;
-        I.w = 1.0 / (dot(I.xy, I.xy) + Lambda);
+    	float2 PreviousFlow = OpticalFlow.xy + OpticalFlow.zw;
+        const float Lambda = ldexp(_Constraint * 1e-3, Level - MaxLevel);
+        const float2 PixelSize = 1.0 / (float2(BUFFER_WIDTH, BUFFER_HEIGHT) * 0.5);
+        float2 PreviousFrame = tex2Dlod(_SampleData2, float4(TexCoord + PreviousFlow * PixelSize, 0.0, Level)).xy;
+        float2 CurrentFrame = tex2Dlod(_SampleData0, float4(TexCoord, 0.0, Level)).xy;
+        float4 SpatialDerivatives = tex2Dlod(_SampleData1, float4(TexCoord, 0.0, Level)).xzyw;
+        float2 TemporalDerivative = CurrentFrame - PreviousFrame;
 
-        OutputColor0.x = OutputColor0.x - (I.x * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w;
-        OutputColor0.y = OutputColor0.y - (I.y * (dot(I.xy, OutputColor0.xy) + I.z)) * I.w;
+        Smoothness.r = dot(SpatialDerivatives.xy, SpatialDerivatives.xy) + Lambda;
+        Smoothness.g = dot(SpatialDerivatives.zw, SpatialDerivatives.zw) + Lambda;
+        Smoothness.rg = 1.0 / Smoothness.rg;
+
+        Value.r = dot(SpatialDerivatives.xy, OpticalFlow.xy) + TemporalDerivative.r;
+        Value.g = dot(SpatialDerivatives.zw, OpticalFlow.zw) + TemporalDerivative.g;
+        OpticalFlow.xz -= (SpatialDerivatives.xz * (Value.rg * Smoothness.rg));
+
+        Value.r = dot(SpatialDerivatives.xy, OpticalFlow.xy) + TemporalDerivative.r;
+        Value.g = dot(SpatialDerivatives.zw, OpticalFlow.zw) + TemporalDerivative.g;
+        OpticalFlow.yw -= (SpatialDerivatives.yw * (Value.rg * Smoothness.rg));
     }
 
+    OutputColor0.xy = lerp(OpticalFlow.xy, OpticalFlow.zw, 0.5);
     OutputColor0.ba = _Blend;
 }
 
 void HorizontalBlurPS1(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets[7] : TEXCOORD1, out float4 OutputColor0 : SV_TARGET0)
 {
-    OutputColor0 = GaussianBlur(_SampleOpticalFlow, TexCoord, Offsets);
+	OutputColor0 = GaussianBlur(_SampleOpticalFlow, TexCoord, Offsets);
 }
 
 void VerticalBlurPS1(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets[7] : TEXCOORD1, out float4 OutputColor0 : SV_TARGET0)
 {
-    OutputColor0 = GaussianBlur(_SampleData0, TexCoord, Offsets);
+	OutputColor0 = GaussianBlur(_SampleData1, TexCoord, Offsets);
 }
 
 void VelocityShadingPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target)
 {
-    float2 Velocity = tex2Dlod(_SampleData1, float4(TexCoord, 0.0, _Detail)).xy;
+    float2 Velocity = tex2Dlod(_SampleData2, float4(TexCoord, 0.0, _Detail)).xy;
     float VelocityLength = saturate(rsqrt(dot(Velocity, Velocity)));
     OutputColor0.rg = (Velocity * VelocityLength) * 0.5 + 0.5;
     OutputColor0.b = -dot(OutputColor0.rg, 1.0) * 0.5 + 1.0;
@@ -334,6 +354,13 @@ technique cOpticalFlow
     pass
     {
         VertexShader = PostProcessVS;
+        PixelShader = CopyPS;
+        RenderTarget0 = _RenderData2_HS;
+    }
+
+    pass
+    {
+        VertexShader = PostProcessVS;
         PixelShader = BlitPS;
         RenderTarget0 = _RenderData0_HS;
     }
@@ -343,7 +370,6 @@ technique cOpticalFlow
         VertexShader = HorizontalBlurVS;
         PixelShader = HorizontalBlurPS0;
         RenderTarget0 = _RenderData1_HS;
-        RenderTargetWriteMask = 1;
     }
 
     pass
@@ -351,8 +377,6 @@ technique cOpticalFlow
         VertexShader = VerticalBlurVS;
         PixelShader = VerticalBlurPS0;
         RenderTarget0 = _RenderData0_HS;
-        RenderTarget1 = _RenderCopy_HS;
-        RenderTargetWriteMask = 1;
     }
 
     pass
@@ -378,14 +402,14 @@ technique cOpticalFlow
     {
         VertexShader = HorizontalBlurVS;
         PixelShader = HorizontalBlurPS1;
-        RenderTarget0 = _RenderData0_HS;
+        RenderTarget0 = _RenderData1_HS;
     }
 
     pass
     {
         VertexShader = VerticalBlurVS;
         PixelShader = VerticalBlurPS1;
-        RenderTarget0 = _RenderData1_HS;
+        RenderTarget0 = _RenderData2_HS;
     }
 
     #if RENDER_VELOCITY_STREAMS

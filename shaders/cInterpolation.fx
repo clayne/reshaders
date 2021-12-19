@@ -208,8 +208,7 @@ void BlitPS0(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out flo
 void NormalizePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float OutputColor0 : SV_TARGET0)
 {
     float3 Color = max(tex2D(_SampleFrame0, TexCoord).rgb, 1e-7);
-    Color = normalize(Color);
-    OutputColor0.x = max(max(Color.r, Color.g), Color.b);
+    OutputColor0.x =  acos(dot(Color, 1.0) / (sqrt(3.0) * length(Color)));
 }
 
 void HorizontalBlurPS0(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets[7] : TEXCOORD1, out float OutputColor0 : SV_TARGET0)
