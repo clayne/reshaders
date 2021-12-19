@@ -312,7 +312,7 @@ void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, o
 
     [unroll] for(float Level = MaxLevel; Level > 0.0; Level--)
     {
-    	float2 PreviousFlow = OpticalFlow.xy + OpticalFlow.zw;
+        float2 PreviousFlow = OpticalFlow.xy + OpticalFlow.zw;
         const float Lambda = ldexp(_Constraint * 1e-5, Level - MaxLevel);
         const float2 PixelSize = 1.0 / (float2(BUFFER_WIDTH, BUFFER_HEIGHT) * 0.5);
         float2 PreviousFrame = tex2Dlod(_SampleData2, float4(TexCoord + PreviousFlow * PixelSize, 0.0, Level)).xy;
@@ -339,12 +339,12 @@ void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, o
 
 void HorizontalBlurPS1(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets[7] : TEXCOORD1, out float4 OutputColor0 : SV_TARGET0)
 {
-	OutputColor0 = GaussianBlur(_SampleOpticalFlow, TexCoord, Offsets);
+    OutputColor0 = GaussianBlur(_SampleOpticalFlow, TexCoord, Offsets);
 }
 
 void VerticalBlurPS1(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets[7] : TEXCOORD1, out float4 OutputColor0 : SV_TARGET0)
 {
-	OutputColor0 = GaussianBlur(_SampleData1, TexCoord, Offsets);
+    OutputColor0 = GaussianBlur(_SampleData1, TexCoord, Offsets);
 }
 
 void VelocityShadingPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target)

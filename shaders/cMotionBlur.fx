@@ -384,14 +384,14 @@ technique cMotionBlur
         PixelShader = VerticalBlurPS0;
         RenderTarget0 = _RenderData0;
     }
-    
-	pass
+
+    pass
     {
         VertexShader = DerivativesVS;
         PixelShader = DerivativesPS;
         RenderTarget0 = _RenderData1;
     }
-    
+
     pass
     {
         VertexShader = PostProcessVS;
@@ -403,7 +403,7 @@ technique cMotionBlur
         SrcBlend = INVSRCALPHA;
         DestBlend = SRCALPHA;
     }
-    
+
     pass
     {
         VertexShader = HorizontalBlurVS;
@@ -417,7 +417,7 @@ technique cMotionBlur
         PixelShader = VerticalBlurPS1;
         RenderTarget0 = _RenderData2;
     }
-    
+
     pass
     {
         VertexShader = PostProcessVS;
