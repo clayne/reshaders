@@ -2,6 +2,13 @@
 /*
     Quasi frame-rate interpolation shader
         Note: Make better masking
+
+    Sources
+        Angle-Retaining Chromaticity
+        Title = "ARC: Angle-Retaining Chromaticity diagram for color constancy error analysis"
+        Authors = Marco Buzzelli and Simone Bianco and Raimondo Schettini
+        Year = 2020
+        Link = http://www.ivl.disco.unimib.it/activities/arc/
 */
 
 uniform float _Blend <
@@ -231,7 +238,22 @@ void CopyPS1(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out flo
 void NormalizePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0)
 {
     float3 Color = max(tex2D(_SampleFrame0, TexCoord).rgb, 1e-7);
-    OutputColor0 = Color.xy / dot(Color, 1.0);
+
+    // Angle-Retaining Chromaticity (Optimized for GPU)
+    float2 AlphaA;
+    AlphaA.x = dot(Color.gb, float2(sqrt(3.0), -sqrt(3.0)));;
+    AlphaA.y = dot(Color, float3(2.0, -1.0, -1.0));
+    float AlphaR = acos(dot(Color, 1.0) / (sqrt(3.0) * length(Color)));
+    float AlphaC = AlphaR / length(AlphaA);
+    float2 Alpha = AlphaC * AlphaA.yx;
+
+    float2 AlphaMin, AlphaMax;
+    AlphaMin.y = -(sqrt(3.0) / 2.0) * acos(rsqrt(3.0));
+    AlphaMax.y = (sqrt(3.0) / 2.0) * acos(rsqrt(3.0));
+    AlphaMin.x = -acos(sqrt(2.0 / 3.0));
+    AlphaMax.x = AlphaMin.x + (AlphaMax.y - AlphaMin.y);
+    Alpha.xy = (Alpha.xy - AlphaMin.xy) / (AlphaMax.xy - AlphaMin.xy);
+    OutputColor0 = Alpha.xy;
 }
 
 void HorizontalBlurPS0(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets[7] : TEXCOORD1, out float4 OutputColor0 : SV_TARGET0)
