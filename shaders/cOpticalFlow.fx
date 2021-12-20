@@ -25,7 +25,7 @@ uniform float _Constraint <
     ui_type = "drag";
     ui_label = "Constraint";
     ui_tooltip = "Higher = Smoother flow";
-> = 0.5;
+> = 1.0;
 
 uniform float _Detail <
     ui_type = "drag";
@@ -312,10 +312,8 @@ void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, o
 
     [unroll] for(float Level = MaxLevel; Level > 0.0; Level--)
     {
-        float2 PreviousFlow = OpticalFlow.xy + OpticalFlow.zw;
         const float Lambda = ldexp(_Constraint * 1e-5, Level - MaxLevel);
-        const float2 PixelSize = 1.0 / (float2(BUFFER_WIDTH, BUFFER_HEIGHT) * 0.5);
-        float2 PreviousFrame = tex2Dlod(_SampleData2, float4(TexCoord + PreviousFlow * PixelSize, 0.0, Level)).xy;
+        float2 PreviousFrame = tex2Dlod(_SampleData2, float4(TexCoord, 0.0, Level)).xy;
         float2 CurrentFrame = tex2Dlod(_SampleData0, float4(TexCoord, 0.0, Level)).xy;
         float4 SpatialDerivatives = tex2Dlod(_SampleData1, float4(TexCoord, 0.0, Level)).xzyw;
         float2 TemporalDerivative = CurrentFrame - PreviousFrame;
@@ -333,7 +331,7 @@ void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, o
         OpticalFlow.yw -= (SpatialDerivatives.yw * (Value.rg * Smoothness.rg));
     }
 
-    OutputColor0.xy = lerp(OpticalFlow.xy, OpticalFlow.zw, 0.5);
+    OutputColor0.xy = OpticalFlow.xy + OpticalFlow.zw;
     OutputColor0.ba = _Blend;
 }
 
