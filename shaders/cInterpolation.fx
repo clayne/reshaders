@@ -23,7 +23,7 @@ uniform float _Constraint <
     ui_type = "slider";
     ui_label = "Constraint";
     ui_tooltip = "Higher = Smoother flow";
-> = 0.1;
+> = 0.5;
 
 uniform float _Detail <
     ui_type = "slider";
@@ -273,13 +273,15 @@ void DerivativesPS(float4 Position : SV_POSITION, float4 TexCoord : TEXCOORD0, o
     float2 Sample1 = tex2D(_SampleData0, TexCoord.xy).xy; // (+x, +y)
     float2 Sample2 = tex2D(_SampleData0, TexCoord.zw).xy; // (-x, -y)
     float2 Sample3 = tex2D(_SampleData0, TexCoord.xw).xy; // (+x, -y)
-    OutputColor0.xy = (Sample3 + Sample1) - (Sample2 + Sample0);
-    OutputColor0.zw = (Sample2 + Sample3) - (Sample0 + Sample1);
+    OutputColor0.xz = (Sample3 + Sample1) - (Sample2 + Sample0);
+    OutputColor0.yw = (Sample2 + Sample3) - (Sample0 + Sample1);
     OutputColor0 *= 4.0;
 }
 
 void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
+    float RedChecker = frac(dot(Position.xy, 0.5)) * 2.0;
+    float BlackChecker = 1.0 - RedChecker;
     const float MaxLevel = 6.5;
     float4 OpticalFlow;
     float2 Smoothness;
@@ -288,22 +290,32 @@ void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, o
     [unroll] for(float Level = MaxLevel; Level > 0.0; Level--)
     {
         const float Lambda = ldexp(_Constraint * 1e-3, Level - MaxLevel);
-        float2 CurrentFrame = tex2Dlod(_SampleData0, float4(TexCoord, 0.0, Level)).xy;
-        float2 PreviousFrame = tex2Dlod(_SampleData2, float4(TexCoord, 0.0, Level)).xy;
-        float4 SpatialDerivatives = tex2Dlod(_SampleData1, float4(TexCoord, 0.0, Level)).xzyw;
-        float2 TemporalDerivative = CurrentFrame - PreviousFrame;
 
-        Smoothness.r = dot(SpatialDerivatives.xy, SpatialDerivatives.xy) + Lambda;
-        Smoothness.g = dot(SpatialDerivatives.zw, SpatialDerivatives.zw) + Lambda;
-        Smoothness.rg = 1.0 / Smoothness.rg;
+        // .xy = Normalized Red Channel (x, y)
+        // .zw = Normalized Green Channel (x, y)
+        float4 SampleIxy = tex2Dlod(_SampleData1, float4(TexCoord, 0.0, Level)).xyzw;
+        float4 RedIxy = SampleIxy * RedChecker;
+        float4 BlackIxy = SampleIxy * BlackChecker;
 
-        Value.r = dot(SpatialDerivatives.xy, OpticalFlow.xy) + TemporalDerivative.r;
-        Value.g = dot(SpatialDerivatives.zw, OpticalFlow.zw) + TemporalDerivative.g;
-        OpticalFlow.xz -= (SpatialDerivatives.xz * (Value.rg * Smoothness.rg));
+        // .xy = Current frame (r, g)
+        // .zw = Previous frame (r, g)
+        float4 SampleFrames;
+        SampleFrames.xy = tex2Dlod(_SampleData0, float4(TexCoord, 0.0, Level)).rg;
+        SampleFrames.zw = tex2Dlod(_SampleData2, float4(TexCoord, 0.0, Level)).rg;
+        float2 RedIz = (SampleFrames.xy - SampleFrames.zw) * RedChecker;
+        float2 BlackIz = (SampleFrames.xy - SampleFrames.zw) * BlackChecker;
 
-        Value.r = dot(SpatialDerivatives.xy, OpticalFlow.xy) + TemporalDerivative.r;
-        Value.g = dot(SpatialDerivatives.zw, OpticalFlow.zw) + TemporalDerivative.g;
-        OpticalFlow.yw -= (SpatialDerivatives.yw * (Value.rg * Smoothness.rg));
+        Value.r = dot(RedIxy.xy, OpticalFlow.xy) + RedIz.r;
+        Value.g = dot(RedIxy.zw, OpticalFlow.zw) + RedIz.g;
+        Smoothness.r = dot(RedIxy.xy, RedIxy.xy) + Lambda;
+        Smoothness.g = dot(RedIxy.zw, RedIxy.zw) + Lambda;
+        OpticalFlow -= (RedIxy.xyzw * (Value.rrgg / Smoothness.rrgg));
+
+        Value.r = dot(BlackIxy.xy, OpticalFlow.xy) + BlackIz.r;
+        Value.g = dot(BlackIxy.zw, OpticalFlow.zw) + BlackIz.g;
+        Smoothness.r = dot(BlackIxy.xy, BlackIxy.xy) + Lambda;
+        Smoothness.g = dot(BlackIxy.zw, BlackIxy.zw) + Lambda;
+        OpticalFlow -= (BlackIxy.xyzw * (Value.rrgg / Smoothness.rrgg));
     }
 
     OutputColor0.xy = OpticalFlow.xy + OpticalFlow.zw;
