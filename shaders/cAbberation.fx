@@ -29,12 +29,14 @@ void PostProcessVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION
 /*
     [Pixel Shaders]
 
-    NOTE: PixelSize = 1.0 / screensize
-    TexCoord + _ShiftRed * pixelsize == TexCoord + _ShiftRed / screensize
-
-    QUESTION: "Why do we have to divide our shifting value with screensize?"
-    ANSWER: Texture coordinates in window-space is between 0.0 - 1.0.
-            Thus, just doing TexCoord + 1.0 moves the texture to the window's other sides, rendering it out of sight
+    NOTES
+        PixelSize = 1.0 / screensize
+        TexCoord + _ShiftRed * pixelsize == TexCoord + _ShiftRed / screensize
+    QUESTION
+        "Why do we have to divide our shifting value with screensize?"
+    ANSWER
+        Texture coordinates in window-space is between 0.0 - 1.0.
+        Thus, just doing TexCoord + 1.0 moves the texture to the window's other sides, rendering it out of sight
 */
 
 void AbberationPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)

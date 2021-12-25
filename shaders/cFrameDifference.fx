@@ -78,8 +78,8 @@ void PostProcessVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION
 void BlitPS0(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
     float3 Color = tex2D(_SampleColor, TexCoord).rgb;
-    float3 NColor = Color / dot(Color, 1.0);
-    OutputColor0 = (_NormalizeInput) ? max(max(NColor.r, NColor.g), NColor.b) : max(max(Color.r, Color.g), Color.b);
+    float3 NColor = acos(dot(Color, 1.0) / (sqrt(3.0) * length(Color)));
+    OutputColor0 = (_NormalizeInput) ? NColor : max(max(Color.r, Color.g), Color.b);
 }
 
 void DifferencePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)

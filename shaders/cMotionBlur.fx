@@ -36,7 +36,7 @@ uniform float _Detail <
     ui_tooltip = "Higher = Less spatial noise";
     ui_min = 0.0;
     ui_max = 7.0;
-> = 3.5;
+> = 1.0;
 
 uniform float _Blend <
     ui_type = "slider";
