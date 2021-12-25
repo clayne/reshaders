@@ -295,8 +295,8 @@ void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, o
         // .xy = Normalized Red Channel (x, y)
         // .zw = Normalized Green Channel (x, y)
         float4 SampleIxy = tex2Dlod(_SampleData1, float4(TexCoord, 0.0, Level)).xyzw;
-        float4 RedIxy = SampleIxy * RedBlack.x;
-        float4 BlackIxy = SampleIxy * RedBlack.y;
+        float4 RedIxy = SampleIxy * RedBlack.xxxx;
+        float4 BlackIxy = SampleIxy * RedBlack.yyyy;
 
         // .xy = Current frame (r, g)
         // .zw = Previous frame (r, g)
