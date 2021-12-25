@@ -280,8 +280,9 @@ void DerivativesPS(float4 Position : SV_POSITION, float4 TexCoord : TEXCOORD0, o
 
 void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    float RedChecker = frac(dot(Position.xy, 0.5)) * 2.0;
-    float BlackChecker = 1.0 - RedChecker;
+    float2 RedBlack;
+    RedBlack.x = frac(dot(Position.xy, 0.5)) * 2.0;
+    RedBlack.y = 1.0 - RedBlack.x;
     const float MaxLevel = 6.5;
     float4 OpticalFlow;
     float2 Smoothness;
@@ -289,30 +290,33 @@ void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, o
 
     [unroll] for(float Level = MaxLevel; Level > 0.0; Level--)
     {
-        const float Lambda = max(ldexp(_Constraint * 1e-3, Level - MaxLevel), 1e-7);
+        const float Lambda = max(ldexp(_Constraint * 1e-5, Level - MaxLevel), 1e-7);
 
         // .xy = Normalized Red Channel (x, y)
         // .zw = Normalized Green Channel (x, y)
         float4 SampleIxy = tex2Dlod(_SampleData1, float4(TexCoord, 0.0, Level)).xyzw;
-        float4 RedIxy = SampleIxy * RedChecker;
-        float4 BlackIxy = SampleIxy * BlackChecker;
+        float4 RedIxy = SampleIxy * RedBlack.x;
+        float4 BlackIxy = SampleIxy * RedBlack.y;
 
         // .xy = Current frame (r, g)
         // .zw = Previous frame (r, g)
         float4 SampleFrames;
         SampleFrames.xy = tex2Dlod(_SampleData0, float4(TexCoord, 0.0, Level)).rg;
         SampleFrames.zw = tex2Dlod(_SampleData2, float4(TexCoord, 0.0, Level)).rg;
-        float2 RedIz = (SampleFrames.xy - SampleFrames.zw) * RedChecker;
-        float2 BlackIz = (SampleFrames.xy - SampleFrames.zw) * BlackChecker;
+        float2 Iz = SampleFrames.xy - SampleFrames.zw;
 
-        Value.r = dot(RedIxy.xy, OpticalFlow.xy) + RedIz.r;
-        Value.g = dot(RedIxy.zw, OpticalFlow.zw) + RedIz.g;
+        // Calculate red points
+        Value.r = dot(RedIxy.xy, OpticalFlow.xy);
+        Value.g = dot(RedIxy.zw, OpticalFlow.zw);
+        Value.rg = (Iz.xy * RedBlack.xx) + Value.rg;
         Smoothness.r = dot(RedIxy.xy, RedIxy.xy) + Lambda;
         Smoothness.g = dot(RedIxy.zw, RedIxy.zw) + Lambda;
         OpticalFlow -= (RedIxy.xyzw * (Value.rrgg / Smoothness.rrgg));
 
-        Value.r = dot(BlackIxy.xy, OpticalFlow.xy) + BlackIz.r;
-        Value.g = dot(BlackIxy.zw, OpticalFlow.zw) + BlackIz.g;
+        // Calculate black points
+        Value.r = dot(BlackIxy.xy, OpticalFlow.xy);
+        Value.g = dot(BlackIxy.zw, OpticalFlow.zw);
+        Value.rg = (Iz.xy * RedBlack.yy) + Value.rg;
         Smoothness.r = dot(BlackIxy.xy, BlackIxy.xy) + Lambda;
         Smoothness.g = dot(BlackIxy.zw, BlackIxy.zw) + Lambda;
         OpticalFlow -= (BlackIxy.xyzw * (Value.rrgg / Smoothness.rrgg));
