@@ -314,7 +314,7 @@ void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, o
 
     [unroll] for(float Level = MaxLevel; Level > 0.0; Level--)
     {
-        const float Lambda = ldexp(_Constraint * 1e-5, Level - MaxLevel);
+        const float Lambda = max(ldexp(_Constraint * 1e-5, Level - MaxLevel), 1e-7);
 
         // .xy = Normalized Red Channel (x, y)
         // .zw = Normalized Green Channel (x, y)
