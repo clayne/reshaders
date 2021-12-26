@@ -264,21 +264,7 @@ void CopyPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out floa
 void BlitPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0)
 {
     float3 Color = tex2D(_SampleColor, TexCoord).rgb;
-
-    // Angle-Retaining Chromaticity (Optimized for GPU)
-    float2 AlphaA;
-    AlphaA.x = dot(Color.gb, float2(sqrt(3.0), -sqrt(3.0)));;
-    AlphaA.y = dot(Color, float3(2.0, -1.0, -1.0));
-    float AlphaR = acos(dot(Color, 1.0) / (sqrt(3.0) * length(Color)));
-    float AlphaC = AlphaR / length(AlphaA);
-    float2 Alpha = AlphaC * AlphaA.yx;
-
-    float2 AlphaMin, AlphaMax;
-    AlphaMin.y = -(sqrt(3.0) / 2.0) * acos(rsqrt(3.0));
-    AlphaMax.y = (sqrt(3.0) / 2.0) * acos(rsqrt(3.0));
-    AlphaMin.x = -acos(sqrt(2.0 / 3.0));
-    AlphaMax.x = AlphaMin.x + (AlphaMax.y - AlphaMin.y);
-    OutputColor0 = saturate((Alpha.xy - AlphaMin.xy) / (AlphaMax.xy - AlphaMin.xy));
+    OutputColor0 = saturate(Color.xy / dot(Color, 1.0));
 }
 
 void HorizontalBlurPS0(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets[7] : TEXCOORD1, out float4 OutputColor0 : SV_TARGET0)
