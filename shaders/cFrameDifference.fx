@@ -32,7 +32,7 @@ texture2D _RenderCurrent_FrameDifference
 {
     Width = BUFFER_WIDTH;
     Height = BUFFER_HEIGHT;
-    Format = R8;
+    Format = RG8;
 };
 
 sampler2D _SampleCurrent
@@ -44,7 +44,7 @@ texture2D _RenderDifference
 {
     Width = BUFFER_WIDTH;
     Height = BUFFER_HEIGHT;
-    Format = R8;
+    Format = RGBA8;
 };
 
 sampler2D _SampleDifference
@@ -56,7 +56,7 @@ texture2D _RenderPrevious_FrameDifference
 {
     Width = BUFFER_WIDTH;
     Height = BUFFER_HEIGHT;
-    Format = R8;
+    Format = RG8;
 };
 
 sampler2D _SamplePrevious
@@ -78,15 +78,27 @@ void PostProcessVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION
 void BlitPS0(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
     float3 Color = tex2D(_SampleColor, TexCoord).rgb;
-    float3 NColor = saturate(acos(dot(Color, 1.0) / (sqrt(3.0) * length(Color))));
+    float3 NColor = saturate(Color / dot(Color, 1.0));
     OutputColor0 = (_NormalizeInput) ? NColor : max(max(Color.r, Color.g), Color.b);
 }
 
 void DifferencePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    float Current = tex2D(_SampleCurrent, TexCoord).x;
-    float Previous = tex2D(_SamplePrevious, TexCoord).x;
-    OutputColor0.rgb = abs(Current - Previous) * _Weight;
+    if(_NormalizeInput)
+    {
+        float3 Current = tex2D(_SampleCurrent, TexCoord).rgb;
+        Current.b = 1.0 - Current.r - Current.g;
+        float3 Previous = tex2D(_SamplePrevious, TexCoord).rgb;
+        Previous.b = 1.0 - Previous.r - Previous.g;
+        OutputColor0.rgb = length(Current - Previous) * _Weight;
+    }
+    else
+    {
+        float Current = tex2D(_SampleCurrent, TexCoord).r;
+        float Previous = tex2D(_SamplePrevious, TexCoord).r;
+        OutputColor0.rgb = (Current - Previous) * _Weight;
+    }
+
     OutputColor0.a = _Blend;
 }
 
