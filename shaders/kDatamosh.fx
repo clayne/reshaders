@@ -271,28 +271,23 @@ void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, o
     float Smoothness;
     float Value;
 
-    float2 RedBlackChecker;
-    RedBlackChecker.x =  frac(dot(Position.xy, 0.5)) * 2.0;
-    RedBlackChecker.y =  1.0 - RedBlackChecker.x;
+    float RedBlack = frac(dot(Position.xy, 0.5)) * 2.0;
 
     for(float Level = MaxLevel; Level > 0.0; Level--)
     {
         const float Lambda = max(ldexp(_Constraint * 1e-3, Level - MaxLevel), 1e-7);
         float2 SampleIxy = tex2Dlod(_SampleDerivatives, float4(TexCoord, 0.0, Level)).xy;
-        float4 RedBlackIxy = SampleIxy.xyxy * RedBlackChecker.xxyy;
 
         float2 SampleFrames;
         SampleFrames.x = tex2Dlod(_SampleFrame0, float4(TexCoord, 0.0, Level)).x;
         SampleFrames.y = tex2Dlod(_SampleFrame1, float4(TexCoord, 0.0, Level)).x;
-        float2 RedBlackIz = (SampleFrames.xx - SampleFrames.yy) * RedBlackChecker.xy;
+        float Iz = SampleFrames.x - SampleFrames.y;
 
-        Value = dot(RedBlackIxy.xy, OutputColor0.xy) + RedBlackIz.x;
-        Smoothness = dot(RedBlackIxy.xy, RedBlackIxy.xy) + Lambda;
-        OutputColor0.xy -= (RedBlackIxy.xy * (Value / Smoothness));
-
-        Value = dot(RedBlackIxy.zw, OutputColor0.xy) + RedBlackIz.y;
-        Smoothness = dot(RedBlackIxy.zw, RedBlackIxy.zw) + Lambda;
-        OutputColor0.xy -= (RedBlackIxy.zw * (Value / Smoothness));
+        Smoothness = 1.0 / (dot(SampleIxy.xy, SampleIxy.xy) + Lambda);
+        Value = dot(SampleIxy.xy, OutputColor0.xy) + Iz;
+        OutputColor0.xy = (RedBlack == 1.0) ? OutputColor0.xy - (SampleIxy.xy * (Value * Smoothness)) : OutputColor0.xy;
+        Value = dot(SampleIxy.xy, OutputColor0.xy) + Iz;
+        OutputColor0.xy = (RedBlack == 0.0) ? OutputColor0.xy - (SampleIxy.xy * (Value * Smoothness)) : OutputColor0.xy;
     }
 
     OutputColor0.ba = float2(1.0, _BlendFactor);
