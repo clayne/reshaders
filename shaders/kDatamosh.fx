@@ -365,7 +365,7 @@ void OutputPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out fl
     MotionVectors *= float2(BUFFER_WIDTH, BUFFER_HEIGHT); // Normalized screen space -> Pixel coordinates
     MotionVectors += (Random.xy - 0.5) * _Diffusion; // Small random displacement (diffusion)
     MotionVectors = round(MotionVectors); // Pixel perfect snapping
-    MotionVectors *= (float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT) - 1.0); // Pixel coordinates -> Normalized screen space
+    MotionVectors *= float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT); // Pixel coordinates -> Normalized screen space
 
     // Generate some pseudo random numbers.
     float RandomMotion = RandomNoise(TexCoord + length(MotionVectors));
