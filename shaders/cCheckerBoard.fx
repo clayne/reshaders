@@ -1,11 +1,17 @@
 
 /* [Vertex Shaders] */
 
-uniform float4 _Color <
+uniform float4 _Color1 <
     ui_min = 0.0;
-    ui_label = "Color";
+    ui_label = "Color 1";
     ui_type = "color";
 > = 1.0;
+
+uniform float4 _Color2 <
+    ui_min = 0.0;
+    ui_label = "Color 2";
+    ui_type = "color";
+> = 0.0;
 
 uniform bool _InvertCheckerboard <
     ui_type = "radio";
@@ -23,9 +29,9 @@ void PostProcessVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION
 
 void CheckerBoardPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    float RedBlack = frac(dot(Position.xy, 0.5)) * 2.0;
-    RedBlack = _InvertCheckerboard ? 1.0 - RedBlack : RedBlack;
-    OutputColor0 = RedBlack == 1.0 ? _Color : 0.0;
+    float CheckerBoard = frac(dot(Position.xy, 0.5)) * 2.0;
+    CheckerBoard = _InvertCheckerboard ? 1.0 - CheckerBoard : CheckerBoard;
+    OutputColor0 = CheckerBoard == 1.0 ? _Color1 : _Color2;
 }
 
 technique cCheckerBoard
