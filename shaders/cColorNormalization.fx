@@ -45,34 +45,35 @@ void PostProcessVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION
 
 void NormalizationPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float3 OutputColor0 : SV_TARGET0)
 {
-    float3 Color = max(tex2D(_SampleColor, TexCoord).rgb, 1e-7);
+	OutputColor0 = 0.0;
+    float3 Color = tex2D(_SampleColor, TexCoord).rgb;
     switch(_Select)
     {
         case 0:
             // Built-in RG Chromaticity
-            OutputColor0.rg = normalize(Color).rg;
+            OutputColor0.rg = saturate(normalize(Color).rg);
             break;
         case 1:
             // Built-in RGB Chromaticity
-            OutputColor0 = normalize(Color);
+            OutputColor0 = saturate(normalize(Color));
             break;
         case 2:
             // Standard RG Chromaticity
-            OutputColor0.rg = Color.rg / dot(Color, 1.0);
+            OutputColor0.rg = saturate(Color.rg / dot(Color, 1.0));
             break;
         case 3:
             // Standard RGB Chromaticity
-            OutputColor0 = Color / dot(Color, 1.0);
+            OutputColor0 = saturate(Color / dot(Color, 1.0));
             break;
         case 4:
             // Jamie Wong's RG Chromaticity
             OutputColor0 = Color / dot(Color, 1.0);
-            OutputColor0.rg /= max(max(OutputColor0.r, OutputColor0.g), OutputColor0.b);
+            OutputColor0.rg = saturate(OutputColor0.rg / max(max(OutputColor0.r, OutputColor0.g), OutputColor0.b));
             break;
         case 5:
             // Jamie Wong's RGB Chromaticity
             OutputColor0 = Color / dot(Color, 1.0);
-            OutputColor0 /= max(max(OutputColor0.r, OutputColor0.g), OutputColor0.b);
+            OutputColor0 = saturate(OutputColor0 / max(max(OutputColor0.r, OutputColor0.g), OutputColor0.b));
             break;
         case 6:
             // Angle-Retaining Chromaticity (Optimized for GPU)
@@ -88,8 +89,7 @@ void NormalizationPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0,
             AlphaMax.y = (sqrt(3.0) / 2.0) * acos(rsqrt(3.0));
             AlphaMin.x = -acos(sqrt(2.0 / 3.0));
             AlphaMax.x = AlphaMin.x + (AlphaMax.y - AlphaMin.y);
-            Alpha.xy = (Alpha.xy - AlphaMin.xy) / (AlphaMax.xy - AlphaMin.xy);
-            OutputColor0 = float3(Alpha.xy, 0.0);
+            OutputColor0.rg = saturate((Alpha.xy - AlphaMin.xy) / (AlphaMax.xy - AlphaMin.xy));
             break;
         default:
             // No Chromaticity
