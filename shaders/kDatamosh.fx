@@ -88,7 +88,7 @@ uniform float _Constraint <
     ui_label = "Constraint";
     ui_tooltip = "Higher = Smoother flow";
     ui_min = 0.0;
-> = 0.1;
+> = 1.0;
 
 uniform float _BlendFactor <
     ui_category = "Motion Vectors";
@@ -97,7 +97,7 @@ uniform float _BlendFactor <
     ui_tooltip = "Higher = Less temporal noise";
     ui_min = 0.0;
     ui_max = 1.0;
-> = 0.5;
+> = 0.25;
 
 #ifndef LINEAR_SAMPLING
     #define LINEAR_SAMPLING 0
@@ -275,7 +275,7 @@ void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, o
 
     for(float Level = MaxLevel; Level > 0.0; Level--)
     {
-        const float Lambda = max(ldexp(_Constraint * 1e-3, Level - MaxLevel), 1e-7);
+        const float Lambda = max(ldexp(_Constraint * 1e-5, Level - MaxLevel), 1e-7);
         float2 SampleIxy = tex2Dlod(_SampleDerivatives, float4(TexCoord, 0.0, Level)).xy;
 
         float2 SampleFrames;
@@ -328,18 +328,8 @@ void AccumulatePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, ou
     float ResetAccumulation = saturate(Random.z * 0.5 + Quality);
 
     // - Reset if the amount of motion is larger than the block size.
-    if(MotionVectorLength > _BlockSize)
-    {
-        OutputColor0.rgb = ResetAccumulation;
-        OutputColor0.a = 0.0;
-    }
-    else
-    {
-        // This should work given law of addition
-        OutputColor0.rgb = UpdateAccumulation;
-        OutputColor0.a = 1.0;
-    }
-
+    OutputColor0.rgb = MotionVectorLength > _BlockSize ? ResetAccumulation : UpdateAccumulation;
+	OutputColor0.a = MotionVectorLength > _BlockSize ? 0.0 : 1.0;
     OutputColor1 = float4(tex2D(_SampleFrame0, TexCoord).rgb, 0.0);
 }
 

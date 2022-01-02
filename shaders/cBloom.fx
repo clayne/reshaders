@@ -26,7 +26,7 @@ uniform float _Saturation <
     ui_type = "drag";
     ui_min = 0.0;
     ui_label = "Saturation";
-> = 1.0;
+> = 4.0;
 
 uniform float3 _ColorShift <
     ui_type = "color";
@@ -38,7 +38,7 @@ uniform float _Intensity <
     ui_type = "drag";
     ui_min = 0.0;
     ui_label = "Color Intensity";
-> = 1.0;
+> = 8.0;
 
 texture2D _RenderColor : COLOR;
 
@@ -319,6 +319,11 @@ float4 UpsamplePS(sampler2D Source, float4 TexCoord[3])
     return Output / 16.0;
 }
 
+float Med3(float x, float y, float z)
+{
+    return max(min(x, y), min(max(x, y), z));
+}
+
 void PrefilterPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
     const float Knee = mad(_Threshold, _Smooth, 1e-5f);
@@ -326,13 +331,13 @@ void PrefilterPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out
     float4 Color = tex2D(_SampleColor, TexCoord);
 
     // Under-threshold
-    float Brightness = max(Color.r, max(Color.g, Color.b));
+    float Brightness = Med3(Color.r, Color.g, Color.b);
     float ResponseCurve = clamp(Brightness - Curve.x, 0.0, Curve.y);
     ResponseCurve = Curve.z * ResponseCurve * ResponseCurve;
 
     // Combine and apply the brightness response curve
     Color = Color * max(ResponseCurve, Brightness - _Threshold) / max(Brightness, 1e-10);
-    Brightness = max(max(Color.r, Color.g), Color.b);
+    Brightness = Med3(Color.r, Color.g, Color.b);
     OutputColor0 = saturate(lerp(Brightness, Color.rgb, _Saturation)) * _ColorShift;
 
     // Set alpha to 1.0 so we can see the complete results in ReShade's statistics

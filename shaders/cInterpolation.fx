@@ -308,9 +308,9 @@ void VerticalBlurPS1(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0,
     OutputColor0 = GaussianBlur(_SampleData1, TexCoord, Offsets);
 }
 
-float4 Median(float4 A, float4 B, float4 C)
+float4 Med3(float4 x, float4 y, float4 z)
 {
-    return max(min(A, B), min(max(A, B), C));
+    return max(min(x, y), min(max(x, y), z));
 }
 
 void InterpolatePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
@@ -321,7 +321,7 @@ void InterpolatePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, o
     float4 FrameP = tex2D(_SampleFrame1, TexCoord);
     float4 FrameC = tex2D(_SampleFrame0, TexCoord);
     float4 FrameA = lerp(FrameC, FrameP, 64.0 / 256.0);
-    OutputColor0 = Median(FrameA, FrameF, FrameB);
+    OutputColor0 = Med3(FrameA, FrameF, FrameB);
 }
 
 void CopyPS2(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
