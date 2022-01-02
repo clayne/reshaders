@@ -270,7 +270,8 @@ void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, o
     const float MaxLevel = 6.5;
     float Smoothness;
     float Value;
-    float2 PixelIndex = Position.xy % 2.0;
+
+    float RedBlack = frac(dot(Position.xy, 0.5)) * 2.0;
 
     for(float Level = MaxLevel; Level > 0.0; Level--)
     {
@@ -283,30 +284,10 @@ void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, o
         float Iz = SampleFrames.x - SampleFrames.y;
 
         Smoothness = 1.0 / (dot(SampleIxy.xy, SampleIxy.xy) + Lambda);
-
-        // Calculate red points
         Value = dot(SampleIxy.xy, OutputColor0.xy) + Iz;
-        OutputColor0.xy = PixelIndex.x == 1.0 && PixelIndex.y == 1.0
-                        ? OutputColor0.xy - (SampleIxy.xy * (Value * Smoothness))
-                        : OutputColor0.xy;
-
-        // Calculate green points
+        OutputColor0.xy = (RedBlack == 1.0) ? OutputColor0.xy - (SampleIxy.xy * (Value * Smoothness)) : OutputColor0.xy;
         Value = dot(SampleIxy.xy, OutputColor0.xy) + Iz;
-        OutputColor0.xy = PixelIndex.x == 0.0 && PixelIndex.y == 1.0
-                        ? OutputColor0.xy - (SampleIxy.xy * (Value * Smoothness))
-                        : OutputColor0.xy;
-
-        // Calculate blue points
-        Value = dot(SampleIxy.xy, OutputColor0.xy) + Iz;
-        OutputColor0.xy = PixelIndex.x == 1.0 && PixelIndex.y == 0.0
-                        ? OutputColor0.xy - (SampleIxy.xy * (Value * Smoothness))
-                        : OutputColor0.xy;
-
-        // Calculate alpha points
-        Value = dot(SampleIxy.xy, OutputColor0.xy) + Iz;
-        OutputColor0.xy = PixelIndex.x == 0.0 && PixelIndex.y == 0.0
-                        ? OutputColor0.xy - (SampleIxy.xy * (Value * Smoothness))
-                        : OutputColor0.xy;
+        OutputColor0.xy = (RedBlack == 0.0) ? OutputColor0.xy - (SampleIxy.xy * (Value * Smoothness)) : OutputColor0.xy;
     }
 
     OutputColor0.ba = float2(1.0, _BlendFactor);

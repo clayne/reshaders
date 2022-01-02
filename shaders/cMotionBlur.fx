@@ -267,7 +267,7 @@ void DerivativesPS(float4 Position : SV_POSITION, float4 TexCoord : TEXCOORD0, o
 
 void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    float2 PixelIndex = Position.xy % 2.0;
+    float RedBlack = frac(dot(Position.xy, 0.5)) * 2.0;
     const float MaxLevel = 6.5;
     float4 OpticalFlow;
     float2 Smoothness;
@@ -295,30 +295,12 @@ void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, o
         // Calculate red points
         Value.r = dot(SampleIxy.xy, OpticalFlow.xy) + Iz.r;
         Value.g = dot(SampleIxy.zw, OpticalFlow.zw) + Iz.g;
-        OpticalFlow = PixelIndex.x == 1.0 && PixelIndex.y == 1.0
-                    ? OpticalFlow - (SampleIxy.xyzw * (Value.rrgg * Smoothness.rrgg))
-                    : OpticalFlow;
+        OpticalFlow = (RedBlack == 1.0) ? OpticalFlow - (SampleIxy.xyzw * (Value.rrgg * Smoothness.rrgg)) : OpticalFlow;
 
         // Calculate black points
         Value.r = dot(SampleIxy.xy, OpticalFlow.xy) + Iz.r;
         Value.g = dot(SampleIxy.zw, OpticalFlow.zw) + Iz.g;
-        OpticalFlow = PixelIndex.x == 0.0 && PixelIndex.y == 1.0
-                    ? OpticalFlow - (SampleIxy.xyzw * (Value.rrgg * Smoothness.rrgg))
-                    : OpticalFlow;
-
-        // Calculate red points
-        Value.r = dot(SampleIxy.xy, OpticalFlow.xy) + Iz.r;
-        Value.g = dot(SampleIxy.zw, OpticalFlow.zw) + Iz.g;
-        OpticalFlow = PixelIndex.x == 1.0 && PixelIndex.y == 0.0
-                    ? OpticalFlow - (SampleIxy.xyzw * (Value.rrgg * Smoothness.rrgg))
-                    : OpticalFlow;
-
-        // Calculate black points
-        Value.r = dot(SampleIxy.xy, OpticalFlow.xy) + Iz.r;
-        Value.g = dot(SampleIxy.zw, OpticalFlow.zw) + Iz.g;
-        OpticalFlow = PixelIndex.x == 0.0 && PixelIndex.y == 0.0
-                    ? OpticalFlow - (SampleIxy.xyzw * (Value.rrgg * Smoothness.rrgg))
-                    : OpticalFlow;
+        OpticalFlow = (RedBlack == 0.0) ? OpticalFlow - (SampleIxy.xyzw * (Value.rrgg * Smoothness.rrgg)) : OpticalFlow;
     }
 
     OutputColor0.xy = OpticalFlow.xy + OpticalFlow.zw;
