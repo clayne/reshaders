@@ -26,7 +26,7 @@ uniform float _Saturation <
     ui_type = "drag";
     ui_min = 0.0;
     ui_label = "Saturation";
-> = 4.0;
+> = 1.0;
 
 uniform float3 _ColorShift <
     ui_type = "color";
@@ -38,7 +38,7 @@ uniform float _Intensity <
     ui_type = "drag";
     ui_min = 0.0;
     ui_label = "Color Intensity";
-> = 8.0;
+> = 1.0;
 
 texture2D _RenderColor : COLOR;
 
