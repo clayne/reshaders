@@ -291,16 +291,14 @@ void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, o
         Smoothness.r = dot(SampleIxy.xy, SampleIxy.xy) + Lambda;
         Smoothness.g = dot(SampleIxy.zw, SampleIxy.zw) + Lambda;
         Smoothness.rg = 1.0 / Smoothness.rg;
-
-        // Calculate red points
+    
         Value.r = dot(SampleIxy.xy, OpticalFlow.xy) + Iz.r;
         Value.g = dot(SampleIxy.zw, OpticalFlow.zw) + Iz.g;
-        OpticalFlow = (RedBlack == 1.0) ? OpticalFlow - (SampleIxy.xyzw * (Value.rrgg * Smoothness.rrgg)) : OpticalFlow;
+        OpticalFlow.xz = OpticalFlow.xz - (SampleIxy.xz * (Value.rg * Smoothness.rg));
 
-        // Calculate black points
         Value.r = dot(SampleIxy.xy, OpticalFlow.xy) + Iz.r;
         Value.g = dot(SampleIxy.zw, OpticalFlow.zw) + Iz.g;
-        OpticalFlow = (RedBlack == 0.0) ? OpticalFlow - (SampleIxy.xyzw * (Value.rrgg * Smoothness.rrgg)) : OpticalFlow;
+        OpticalFlow.yw = OpticalFlow.yw - (SampleIxy.yw * (Value.rg * Smoothness.rg));
     }
 
     OutputColor0.xy = OpticalFlow.xy + OpticalFlow.zw;

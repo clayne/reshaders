@@ -285,7 +285,6 @@ void DerivativesPS(float4 Position : SV_POSITION, float4 TexCoord : TEXCOORD0, o
 
 void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    float RedBlack = frac(dot(Position.xy, 0.5)) * 2.0;
     const float MaxLevel = 6.5;
     float4 OpticalFlow;
     float2 Smoothness;
@@ -310,15 +309,13 @@ void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, o
         Smoothness.g = dot(SampleIxy.zw, SampleIxy.zw) + Lambda;
         Smoothness.rg = 1.0 / Smoothness.rg;
 
-        // Calculate red points
         Value.r = dot(SampleIxy.xy, OpticalFlow.xy) + Iz.r;
         Value.g = dot(SampleIxy.zw, OpticalFlow.zw) + Iz.g;
-        OpticalFlow = RedBlack == 1.0 ? OpticalFlow - (SampleIxy.xyzw * (Value.rrgg * Smoothness.rrgg)) : OpticalFlow;
+        OpticalFlow.xz = OpticalFlow.xz - (SampleIxy.xz * (Value.rg * Smoothness.rg));
 
-        // Calculate black points
         Value.r = dot(SampleIxy.xy, OpticalFlow.xy) + Iz.r;
         Value.g = dot(SampleIxy.zw, OpticalFlow.zw) + Iz.g;
-        OpticalFlow = RedBlack == 0.0 ? OpticalFlow - (SampleIxy.xyzw * (Value.rrgg * Smoothness.rrgg)) : OpticalFlow;
+        OpticalFlow.yw = OpticalFlow.yw - (SampleIxy.yw * (Value.rg * Smoothness.rg));
     }
 
     OutputColor0.xy = OpticalFlow.xy + OpticalFlow.zw;

@@ -285,9 +285,9 @@ void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, o
 
         Smoothness = 1.0 / (dot(SampleIxy.xy, SampleIxy.xy) + Lambda);
         Value = dot(SampleIxy.xy, OutputColor0.xy) + Iz;
-        OutputColor0.xy = (RedBlack == 1.0) ? OutputColor0.xy - (SampleIxy.xy * (Value * Smoothness)) : OutputColor0.xy;
+        OutputColor0.x = OutputColor0.x - (SampleIxy.x * (Value * Smoothness));
         Value = dot(SampleIxy.xy, OutputColor0.xy) + Iz;
-        OutputColor0.xy = (RedBlack == 0.0) ? OutputColor0.xy - (SampleIxy.xy * (Value * Smoothness)) : OutputColor0.xy;
+        OutputColor0.y = OutputColor0.y - (SampleIxy.y * (Value * Smoothness));
     }
 
     OutputColor0.ba = float2(1.0, _BlendFactor);
