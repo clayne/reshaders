@@ -127,7 +127,7 @@ texture2D _RenderFrame0
 {
     Width = _HALFSIZE.x;
     Height = _HALFSIZE.y;
-    Format = R16F;
+    Format = RG8;
     MipLevels = 8;
 };
 
@@ -142,7 +142,7 @@ texture2D _RenderDerivatives_Datamosh
 {
     Width = _HALFSIZE.x;
     Height = _HALFSIZE.y;
-    Format = RG16F;
+    Format = RGBA16F;
     MipLevels = 8;
 };
 
@@ -190,7 +190,7 @@ texture2D _RenderFrame1
 {
     Width = _HALFSIZE.x;
     Height = _HALFSIZE.y;
-    Format = R16F;
+    Format = RG8;
     MipLevels = 8;
 };
 
@@ -238,21 +238,21 @@ void DerivativesVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION
 
 /* [Pixel Shaders ] */
 
-void ConvertPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float OutputColor0 : SV_TARGET0)
+void ConvertPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0)
 {
     float3 Color = tex2D(_SampleColor, TexCoord).rgb;
-    OutputColor0 = saturate(acos(dot(Color, 1.0) / (sqrt(3.0) * length(Color))));
+    OutputColor0 = saturate(Color.xy / dot(Color, 1.0));
 }
 
-void DerivativesPS(float4 Position : SV_POSITION, float4 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0)
+void DerivativesPS(float4 Position : SV_POSITION, float4 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    float Sample0 = tex2D(_SampleFrame0, TexCoord.zy).x; // (-x, +y)
-    float Sample1 = tex2D(_SampleFrame0, TexCoord.xy).x; // (+x, +y)
-    float Sample2 = tex2D(_SampleFrame0, TexCoord.zw).x; // (-x, -y)
-    float Sample3 = tex2D(_SampleFrame0, TexCoord.xw).x; // (+x, -y)
-    OutputColor0.x = (Sample3 + Sample1) - (Sample2 + Sample0);
-    OutputColor0.y = (Sample0 + Sample1) - (Sample2 + Sample3);
-    OutputColor0.xy *= 4.0;
+    float2 Sample0 = tex2D(_SampleFrame0, TexCoord.zy).xy; // (-x, +y)
+    float2 Sample1 = tex2D(_SampleFrame0, TexCoord.xy).xy; // (+x, +y)
+    float2 Sample2 = tex2D(_SampleFrame0, TexCoord.zw).xy; // (-x, -y)
+    float2 Sample3 = tex2D(_SampleFrame0, TexCoord.xw).xy; // (+x, -y)
+    OutputColor0.xz = (Sample3 + Sample1) - (Sample2 + Sample0);
+    OutputColor0.yw = (Sample0 + Sample1) - (Sample2 + Sample3);
+    OutputColor0 *= 4.0;
 }
 
 /*
@@ -268,28 +268,33 @@ void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, o
 {
     OutputColor0 = 0.0;
     const float MaxLevel = 6.5;
-    float Smoothness;
-    float Value;
-
-    float RedBlack = frac(dot(Position.xy, 0.5)) * 2.0;
+    float2 Smoothness;
+    float2 Value;
 
     for(float Level = MaxLevel; Level > 0.0; Level--)
     {
         const float Lambda = max(ldexp(_Constraint * 1e-5, Level - MaxLevel), 1e-7);
-        float2 SampleIxy = tex2Dlod(_SampleDerivatives, float4(TexCoord, 0.0, Level)).xy;
+        float4 SampleIxy = tex2Dlod(_SampleDerivatives, float4(TexCoord, 0.0, Level));
 
-        float2 SampleFrames;
-        SampleFrames.x = tex2Dlod(_SampleFrame0, float4(TexCoord, 0.0, Level)).x;
-        SampleFrames.y = tex2Dlod(_SampleFrame1, float4(TexCoord, 0.0, Level)).x;
-        float Iz = SampleFrames.x - SampleFrames.y;
+        float4 SampleFrames;
+        SampleFrames.xy = tex2Dlod(_SampleFrame0, float4(TexCoord, 0.0, Level)).rg;
+        SampleFrames.zw = tex2Dlod(_SampleFrame1, float4(TexCoord, 0.0, Level)).rg;
+        float2 Iz = SampleFrames.xy - SampleFrames.zw;
 
-        Smoothness = 1.0 / (dot(SampleIxy.xy, SampleIxy.xy) + Lambda);
-        Value = dot(SampleIxy.xy, OutputColor0.xy) + Iz;
-        OutputColor0.x = OutputColor0.x - (SampleIxy.x * (Value * Smoothness));
-        Value = dot(SampleIxy.xy, OutputColor0.xy) + Iz;
-        OutputColor0.y = OutputColor0.y - (SampleIxy.y * (Value * Smoothness));
+        Smoothness.r = dot(SampleIxy.xy, SampleIxy.xy) + Lambda;
+        Smoothness.g = dot(SampleIxy.zw, SampleIxy.zw) + Lambda;
+        Smoothness.rg = 1.0 / Smoothness.rg;
+
+        Value.r = dot(SampleIxy.xy, OutputColor0.xy) + Iz.r;
+        Value.g = dot(SampleIxy.zw, OutputColor0.zw) + Iz.g;
+        OutputColor0.xz = OutputColor0.xz - (SampleIxy.xz * (Value.rg * Smoothness.rg));
+
+        Value.r = dot(SampleIxy.xy, OutputColor0.xy) + Iz.r;
+        Value.g = dot(SampleIxy.zw, OutputColor0.zw) + Iz.g;
+        OutputColor0.yw = OutputColor0.yw - (SampleIxy.yw * (Value.rg * Smoothness.rg));
     }
 
+    OutputColor0.xy = OutputColor0.xy + OutputColor0.zw;
     OutputColor0.ba = float2(1.0, _BlendFactor);
 }
 
@@ -329,7 +334,7 @@ void AccumulatePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, ou
 
     // - Reset if the amount of motion is larger than the block size.
     OutputColor0.rgb = MotionVectorLength > _BlockSize ? ResetAccumulation : UpdateAccumulation;
-	OutputColor0.a = MotionVectorLength > _BlockSize ? 0.0 : 1.0;
+    OutputColor0.a = MotionVectorLength > _BlockSize ? 0.0 : 1.0;
     OutputColor1 = float4(tex2D(_SampleFrame0, TexCoord).rgb, 0.0);
 }
 
