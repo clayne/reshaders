@@ -80,7 +80,7 @@ uniform float _Detail <
     ui_label = "Blockiness";
     ui_tooltip = "How blocky the motion vectors should be.";
     ui_min = 0.0;
-> = 0.0;
+> = 4.5;
 
 uniform float _Constraint <
     ui_category = "Motion Vectors";
