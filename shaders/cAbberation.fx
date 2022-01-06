@@ -19,7 +19,7 @@ sampler2D _SampleColor
 
 /* [Vertex Shaders] */
 
-void PostProcessVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float2 TexCoord : TEXCOORD)
+void PostProcessVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float2 TexCoord : TEXCOORD0)
 {
     TexCoord.x = (ID == 2) ? 2.0 : 0.0;
     TexCoord.y = (ID == 1) ? 2.0 : 0.0;
