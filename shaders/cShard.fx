@@ -17,7 +17,7 @@ sampler2D _SampleColor
 
 /* [Vertex Shaders] */
 
-void ShardVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD0, inout float4 Offset : TEXCOORD1)
+void ShardVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float2 TexCoord : TEXCOORD0, out float4 Offset : TEXCOORD1)
 {
     TexCoord.x = (ID == 2) ? 2.0 : 0.0;
     TexCoord.y = (ID == 1) ? 2.0 : 0.0;
@@ -28,7 +28,7 @@ void ShardVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inou
 
 /* [ Pixel Shaders ] */
 
-void ShardPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offset : TEXCOORD1, out float4 OutputColor0 : SV_TARGET0)
+void ShardPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, in float4 Offset : TEXCOORD1, out float4 OutputColor0 : SV_Target0)
 {
     float4 OriginalSample = tex2D(_SampleColor, TexCoord);
     float4 BlurSample;

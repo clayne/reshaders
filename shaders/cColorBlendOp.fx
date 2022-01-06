@@ -11,9 +11,10 @@ uniform float4 _Color <
 
 /* [Vertex Shaders] */
 
-void PostProcessVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD0)
+void PostProcessVS(in uint ID : SV_VertexID, out float4 Position : SV_Position)
 {
     // Clip a triangle twice the screen's size to make a quad
+    float2 TexCoord = 0.0;
     TexCoord.x = (ID == 2) ? 2.0 : 0.0;
     TexCoord.y = (ID == 1) ? 2.0 : 0.0;
     Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
@@ -21,7 +22,7 @@ void PostProcessVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION
 
 /* [Pixel Shaders] */
 
-void ColorPS(float4 Position : SV_Position, out float4 OutputColor0 : SV_Target0)
+void ColorPS(in float4 Position : SV_Position, out float4 OutputColor0 : SV_Target0)
 {
     // Fill this quad with a color
     OutputColor0 = _Color;

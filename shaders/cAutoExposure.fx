@@ -45,7 +45,7 @@ sampler2D _SampleLumaLOD
 
 /* [Vertex Shaders] */
 
-void PostProcessVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD)
+void PostProcessVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float2 TexCoord : TEXCOORD)
 {
     TexCoord.x = (ID == 2) ? 2.0 : 0.0;
     TexCoord.y = (ID == 1) ? 2.0 : 0.0;
@@ -54,7 +54,7 @@ void PostProcessVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION
 
 /* [Pixel Shaders] */
 
-void BlitPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+void BlitPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
     float4 Color = tex2D(_SampleColor, TexCoord);
 
@@ -63,7 +63,7 @@ void BlitPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out floa
     OutputColor0 = float4(max(Color.r, max(Color.g, Color.b)).rrr, _TimeRate);
 }
 
-void ExposurePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+void ExposurePS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
     // Average Luma = Average value (1x1) for all of the pixels
     float AverageLuma = tex2Dlod(_SampleLumaLOD, float4(TexCoord, 0.0, 8.0)).r;

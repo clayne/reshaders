@@ -166,7 +166,7 @@ float2 Rotate2D( float2 r, float l )
     return float2(dot(r, float2(Directions[1], -Directions[0])), dot(r, Directions.xy));
 }
 
-void OcclusionPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+void OcclusionPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
     const int Samples = 16;
 
@@ -237,22 +237,22 @@ float GaussianBlur(sampler2D Source, float2 TexCoord, float2 Direction)
     return Output / TotalWeight;
 }
 
-void BlitPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float OutputColor0 : SV_TARGET0)
+void BlitPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float OutputColor0 : SV_Target0)
 {
     OutputColor0 = tex2D(_SampleOcclusion, TexCoord).x;
 }
 
-void HorizontalBlurPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float OutputColor0 : SV_TARGET0)
+void HorizontalBlurPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float OutputColor0 : SV_Target0)
 {
     OutputColor0 = GaussianBlur(_SampleData0, TexCoord, float2(1.0, 0.0)).x;
 }
 
-void VerticalBlurPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float OutputColor0 : SV_TARGET0)
+void VerticalBlurPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float OutputColor0 : SV_Target0)
 {
     OutputColor0 = GaussianBlur(_SampleData1, TexCoord, float2(0.0, 1.0)).x;
 }
 
-void ImagePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float3 OutputColor0 : SV_TARGET0)
+void ImagePS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float3 OutputColor0 : SV_Target0)
 {
 
     switch(_Debug)

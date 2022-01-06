@@ -133,7 +133,7 @@ sampler2D _SampleFrame1
 
 /* [Vertex Shaders] */
 
-void PostProcessVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD0)
+void PostProcessVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float2 TexCoord : TEXCOORD0)
 {
     TexCoord.x = (ID == 2) ? 2.0 : 0.0;
     TexCoord.y = (ID == 1) ? 2.0 : 0.0;
@@ -170,19 +170,19 @@ void OutputOffsets(in float2 TexCoord, inout float4 Offsets[7], float2 Direction
     }
 }
 
-void HorizontalBlurVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD0, inout float4 Offsets[7] : TEXCOORD1)
+void HorizontalBlurVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float2 TexCoord : TEXCOORD0, out float4 Offsets[7] : TEXCOORD1)
 {
     PostProcessVS(ID, Position, TexCoord);
     OutputOffsets(TexCoord, Offsets, float2(1.0 / BUFFER_SIZE.x, 0.0));
 }
 
-void VerticalBlurVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD0, inout float4 Offsets[7] : TEXCOORD1)
+void VerticalBlurVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float2 TexCoord : TEXCOORD0, out float4 Offsets[7] : TEXCOORD1)
 {
     PostProcessVS(ID, Position, TexCoord);
     OutputOffsets(TexCoord, Offsets, float2(0.0, 1.0 / BUFFER_SIZE.y));
 }
 
-void DerivativesVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float4 TexCoord : TEXCOORD0)
+void DerivativesVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoord : TEXCOORD0)
 {
     const float2 PixelSize = 0.5 / BUFFER_SIZE;
     const float4 PixelOffset = float4(PixelSize, -PixelSize);
@@ -218,34 +218,34 @@ float4 GaussianBlur(sampler2D Source, float2 TexCoord, float4 Offsets[7])
     return Output / Total;
 }
 
-void CopyPS0(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0)
+void CopyPS0(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
 {
     OutputColor0 = tex2D(_SampleData0, TexCoord).rg;
 }
 
-void CopyPS1(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+void CopyPS1(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
     OutputColor0 = tex2D(_SampleColor, TexCoord);
 }
 
-void NormalizePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0)
+void NormalizePS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
 {
     float3 Color = tex2D(_SampleFrame0, TexCoord).rgb;
     OutputColor0 = saturate(Color.xy / dot(Color, 1.0));
 }
 
-void HorizontalBlurPS0(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets[7] : TEXCOORD1, out float4 OutputColor0 : SV_TARGET0)
+void HorizontalBlurPS0(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, in float4 Offsets[7] : TEXCOORD1, out float4 OutputColor0 : SV_Target0)
 {
     OutputColor0 = GaussianBlur(_SampleData0, TexCoord, Offsets).xyz;
     OutputColor0.a = 1.0;
 }
 
-void VerticalBlurPS0(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets[7] : TEXCOORD1, out float4 OutputColor0 : SV_TARGET0)
+void VerticalBlurPS0(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, in float4 Offsets[7] : TEXCOORD1, out float4 OutputColor0 : SV_Target0)
 {
     OutputColor0 = GaussianBlur(_SampleData1, TexCoord, Offsets);
 }
 
-void DerivativesPS(float4 Position : SV_POSITION, float4 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+void DerivativesPS(in float4 Position : SV_Position, in float4 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
     float2 Sample0 = tex2D(_SampleData0, TexCoord.zy).xy; // (-x, +y)
     float2 Sample1 = tex2D(_SampleData0, TexCoord.xy).xy; // (+x, +y)
@@ -256,7 +256,7 @@ void DerivativesPS(float4 Position : SV_POSITION, float4 TexCoord : TEXCOORD0, o
     OutputColor0 *= 4.0;
 }
 
-void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+void OpticalFlowPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
     const float MaxLevel = 6.5;
     float4 OpticalFlow;
@@ -295,12 +295,12 @@ void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, o
     OutputColor0.ba = _Blend;
 }
 
-void HorizontalBlurPS1(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets[7] : TEXCOORD1, out float4 OutputColor0 : SV_TARGET0)
+void HorizontalBlurPS1(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, in float4 Offsets[7] : TEXCOORD1, out float4 OutputColor0 : SV_Target0)
 {
     OutputColor0 = GaussianBlur(_SampleOpticalFlow, TexCoord, Offsets);
 }
 
-void VerticalBlurPS1(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, float4 Offsets[7] : TEXCOORD1, out float4 OutputColor0 : SV_TARGET0)
+void VerticalBlurPS1(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, in float4 Offsets[7] : TEXCOORD1, out float4 OutputColor0 : SV_Target0)
 {
     OutputColor0 = GaussianBlur(_SampleData1, TexCoord, Offsets);
 }
@@ -310,7 +310,7 @@ float4 Med3(float4 x, float4 y, float4 z)
     return max(min(x, y), min(max(x, y), z));
 }
 
-void InterpolatePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+void InterpolatePS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
     float2 MotionVectors = tex2Dlod(_SampleData2, float4(TexCoord, 0.0, _Detail)).xy / BUFFER_SIZE;
     float4 FrameF = tex2D(_SampleFrame1, TexCoord + MotionVectors);
@@ -321,7 +321,7 @@ void InterpolatePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, o
     OutputColor0 = Med3(FrameA, FrameF, FrameB);
 }
 
-void CopyPS2(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+void CopyPS2(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
     OutputColor0 = tex2D(_SampleFrame0, TexCoord);
 }

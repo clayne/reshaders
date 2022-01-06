@@ -79,14 +79,14 @@ sampler2D _SampleColor
     #endif
 };
 
-void PostProcessVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD0)
+void PostProcessVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float2 TexCoord : TEXCOORD0)
 {
     TexCoord.x = (ID == 2) ? 2.0 : 0.0;
     TexCoord.y = (ID == 1) ? 2.0 : 0.0;
     Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
 
-void ContourVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float4 TexCoord[4] : TEXCOORD0)
+void ContourVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoord[4] : TEXCOORD0)
 {
     float2 TexCoord0;
     PostProcessVS(ID, Position, TexCoord0);
@@ -107,7 +107,7 @@ float3 NormalizeValue(float3 Input)
     return (_NormalizeOutput) ? Input * rsqrt(dot(Input, Input) + _NormalWeight) : Input;
 }
 
-void ContourPS(float4 Position : SV_POSITION, float4 TexCoord[4] : TEXCOORD0, out float3 OutputColor0 : SV_TARGET0)
+void ContourPS(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float3 OutputColor0 : SV_Target0)
 {
     /*
         A0 B0 C0

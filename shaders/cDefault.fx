@@ -3,12 +3,12 @@
     Placeholder shader to initialize the pipeline for comparing shaders
 */
 
-void PostProcessVS(out float4 Position : SV_POSITION)
+void PostProcessVS(out float4 Position : SV_Position)
 {
     Position = 0.0;
 }
 
-void PostProcessPS(out float4 OutputColor0 : SV_TARGET0)
+void PostProcessPS(out float4 OutputColor0 : SV_Target0)
 {
     OutputColor0 = 0.0;
 }

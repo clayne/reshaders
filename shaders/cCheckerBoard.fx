@@ -18,7 +18,7 @@ uniform bool _InvertCheckerboard <
     ui_label = "Invert Checkerboard Pattern";
 > = false;
 
-void PostProcessVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD)
+void PostProcessVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float2 TexCoord : TEXCOORD)
 {
     TexCoord.x = (ID == 2) ? 2.0 : 0.0;
     TexCoord.y = (ID == 1) ? 2.0 : 0.0;
@@ -27,7 +27,7 @@ void PostProcessVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION
 
 /* [Pixel Shaders] */
 
-void CheckerBoardPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+void CheckerBoardPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
     float CheckerBoard = frac(dot(Position.xy, 0.5)) * 2.0;
     CheckerBoard = _InvertCheckerboard ? 1.0 - CheckerBoard : CheckerBoard;

@@ -49,6 +49,7 @@ kVignette           | Natural vignetting effect
 + Prefix `_` to uniform objects and variables (except for user functions)
 + Suffix `VS` for `VertexShader`, `PS` for `PixelShader`
 + Use **ALLCAPS** semantics and state parameters
++ Use **Pascal_Case** for System-Value Semantics (`SV_Position`) 
 + Use **PascalCase** for
   + Namespaces
   + Structs

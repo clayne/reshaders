@@ -148,14 +148,14 @@ sampler2D _SampleBloom8
 
 /* [ Vertex Shaders ] */
 
-void PostProcessVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD0)
+void PostProcessVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float2 TexCoord : TEXCOORD0)
 {
     TexCoord.x = (ID == 2) ? 2.0 : 0.0;
     TexCoord.y = (ID == 1) ? 2.0 : 0.0;
     Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
 
-void DownsampleVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float4 TexCoord[4] : TEXCOORD0, float Factor)
+void DownsampleVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoord[4] : TEXCOORD0, float Factor)
 {
     float2 TexCoord0;
     PostProcessVS(ID, Position, TexCoord0);
@@ -170,7 +170,7 @@ void DownsampleVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION,
     TexCoord[3] = TexCoord0.xyyy + float4(2.0, 2.0, 0.0, -2.0) * pSize.xyyy;
 }
 
-void UpsampleVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float4 TexCoord[3] : TEXCOORD0, float Factor)
+void UpsampleVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoord[3] : TEXCOORD0, float Factor)
 {
     float2 TexCoord0;
     PostProcessVS(ID, Position, TexCoord0);
@@ -183,72 +183,72 @@ void UpsampleVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, i
     TexCoord[2] = TexCoord0.xyyy + float4(1.0, 1.0, 0.0, -1.0) * pSize.xyyy;
 }
 
-void DownsampleVS1(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float4 TexCoord[4] : TEXCOORD0)
+void DownsampleVS1(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoord[4] : TEXCOORD0)
 {
     DownsampleVS(ID, Position, TexCoord, 1.0);
 }
 
-void DownsampleVS2(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float4 TexCoord[4] : TEXCOORD0)
+void DownsampleVS2(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoord[4] : TEXCOORD0)
 {
     DownsampleVS(ID, Position, TexCoord, 2.0);
 }
 
-void DownsampleVS3(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float4 TexCoord[4] : TEXCOORD0)
+void DownsampleVS3(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoord[4] : TEXCOORD0)
 {
     DownsampleVS(ID, Position, TexCoord, 3.0);
 }
 
-void DownsampleVS4(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float4 TexCoord[4] : TEXCOORD0)
+void DownsampleVS4(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoord[4] : TEXCOORD0)
 {
     DownsampleVS(ID, Position, TexCoord, 4.0);
 }
 
-void DownsampleVS5(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float4 TexCoord[4] : TEXCOORD0)
+void DownsampleVS5(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoord[4] : TEXCOORD0)
 {
     DownsampleVS(ID, Position, TexCoord, 5.0);
 }
 
-void DownsampleVS6(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float4 TexCoord[4] : TEXCOORD0)
+void DownsampleVS6(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoord[4] : TEXCOORD0)
 {
     DownsampleVS(ID, Position, TexCoord, 6.0);
 }
 
-void DownsampleVS7(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float4 TexCoord[4] : TEXCOORD0)
+void DownsampleVS7(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoord[4] : TEXCOORD0)
 {
     DownsampleVS(ID, Position, TexCoord, 7.0);
 }
 
-void UpsampleVS8(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float4 TexCoord[3] : TEXCOORD0)
+void UpsampleVS8(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoord[3] : TEXCOORD0)
 {
     UpsampleVS(ID, Position, TexCoord, 8.0);
 }
 
-void UpsampleVS7(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float4 TexCoord[3] : TEXCOORD0)
+void UpsampleVS7(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoord[3] : TEXCOORD0)
 {
     UpsampleVS(ID, Position, TexCoord, 7.0);
 }
 
-void UpsampleVS6(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float4 TexCoord[3] : TEXCOORD0)
+void UpsampleVS6(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoord[3] : TEXCOORD0)
 {
     UpsampleVS(ID, Position, TexCoord, 6.0);
 }
 
-void UpsampleVS5(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float4 TexCoord[3] : TEXCOORD0)
+void UpsampleVS5(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoord[3] : TEXCOORD0)
 {
     UpsampleVS(ID, Position, TexCoord, 5.0);
 }
 
-void UpsampleVS4(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float4 TexCoord[3] : TEXCOORD0)
+void UpsampleVS4(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoord[3] : TEXCOORD0)
 {
     UpsampleVS(ID, Position, TexCoord, 4.0);
 }
 
-void UpsampleVS3(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float4 TexCoord[3] : TEXCOORD0)
+void UpsampleVS3(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoord[3] : TEXCOORD0)
 {
     UpsampleVS(ID, Position, TexCoord, 3.0);
 }
 
-void UpsampleVS2(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float4 TexCoord[3] : TEXCOORD0)
+void UpsampleVS2(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoord[3] : TEXCOORD0)
 {
     UpsampleVS(ID, Position, TexCoord, 2.0);
 }
@@ -324,7 +324,7 @@ float Med3(float x, float y, float z)
     return max(min(x, y), min(max(x, y), z));
 }
 
-void PrefilterPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+void PrefilterPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
     const float Knee = mad(_Threshold, _Smooth, 1e-5f);
     const float3 Curve = float3(_Threshold - Knee, Knee * 2.0, 0.25 / Knee);
@@ -365,77 +365,77 @@ float3 RRTAndODTFit(float3 v)
     return a / b;
 }
 
-void DownsamplePS1(float4 Position : SV_POSITION, float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+void DownsamplePS1(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
     OutputColor0 = DownsamplePS(_SampleBloom1, TexCoord);
 }
 
-void DownsamplePS2(float4 Position : SV_POSITION, float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+void DownsamplePS2(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
     OutputColor0 = DownsamplePS(_SampleBloom2, TexCoord);
 }
 
-void DownsamplePS3(float4 Position : SV_POSITION, float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+void DownsamplePS3(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
     OutputColor0 = DownsamplePS(_SampleBloom3, TexCoord);
 }
 
-void DownsamplePS4(float4 Position : SV_POSITION, float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+void DownsamplePS4(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
     OutputColor0 = DownsamplePS(_SampleBloom4, TexCoord);
 }
 
-void DownsamplePS5(float4 Position : SV_POSITION, float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+void DownsamplePS5(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
     OutputColor0 = DownsamplePS(_SampleBloom5, TexCoord);
 }
 
-void DownsamplePS6(float4 Position : SV_POSITION, float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+void DownsamplePS6(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
     OutputColor0 = DownsamplePS(_SampleBloom6, TexCoord);
 }
 
-void DownsamplePS7(float4 Position : SV_POSITION, float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+void DownsamplePS7(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
     OutputColor0 = DownsamplePS(_SampleBloom7, TexCoord);
 }
 
-void UpsamplePS8(float4 Position : SV_POSITION, float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+void UpsamplePS8(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
     OutputColor0 = UpsamplePS(_SampleBloom8, TexCoord);
 }
 
-void UpsamplePS7(float4 Position : SV_POSITION, float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+void UpsamplePS7(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
     OutputColor0 = UpsamplePS(_SampleBloom7, TexCoord);
 }
 
-void UpsamplePS6(float4 Position : SV_POSITION, float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+void UpsamplePS6(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
     OutputColor0 = UpsamplePS(_SampleBloom6, TexCoord);
 }
 
-void UpsamplePS5(float4 Position : SV_POSITION, float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+void UpsamplePS5(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
     OutputColor0 = UpsamplePS(_SampleBloom5, TexCoord);
 }
 
-void UpsamplePS4(float4 Position : SV_POSITION, float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+void UpsamplePS4(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
     OutputColor0 = UpsamplePS(_SampleBloom4, TexCoord);
 }
 
-void UpsamplePS3(float4 Position : SV_POSITION, float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+void UpsamplePS3(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
     OutputColor0 = UpsamplePS(_SampleBloom3, TexCoord);
 }
 
-void UpsamplePS2(float4 Position : SV_POSITION, float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+void UpsamplePS2(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
     OutputColor0 = UpsamplePS(_SampleBloom2, TexCoord);
 }
 
-void CompositePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+void CompositePS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
     float4 Src = tex2D(_SampleBloom1, TexCoord);
     Src *= _Intensity;

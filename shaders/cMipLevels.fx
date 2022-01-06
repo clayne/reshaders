@@ -42,7 +42,7 @@ sampler2D _SampleImage
 
 /* [Vertex Shaders] */
 
-void PostProcessVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD)
+void PostProcessVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float2 TexCoord : TEXCOORD)
 {
     TexCoord.x = (ID == 2) ? 2.0 : 0.0;
     TexCoord.y = (ID == 1) ? 2.0 : 0.0;
@@ -60,19 +60,19 @@ float MipLODLevel(float2 TexCoord, float2 InputSize, float Bias)
     return max(log2(Product) * 0.5 + Bias, 0.0);
 }
 
-void BlitPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+void BlitPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
     OutputColor0 = tex2D(_SampleColor, TexCoord);
 }
 
-void MipLevelPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+void MipLevelPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
     float2 InputSize = float2(BUFFER_WIDTH, BUFFER_HEIGHT) / 2.0;
     float MipLevel = MipLODLevel(TexCoord, InputSize, 0.0);
     OutputColor0 = tex2Dlod(_SampleMipMaps, float4(TexCoord, 0.0, MipLevel));
 }
 
-void ImagePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+void OutputPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
     OutputColor0 = tex2D(_SampleImage, TexCoord);
 }
@@ -102,7 +102,7 @@ technique cMipLevels
     pass
     {
         VertexShader = PostProcessVS;
-        PixelShader = ImagePS;
+        PixelShader = OutputPS;
         #if BUFFER_COLOR_BIT_DEPTH == 8
             SRGBWriteEnable = TRUE;
         #endif

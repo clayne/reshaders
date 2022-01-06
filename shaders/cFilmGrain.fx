@@ -23,7 +23,7 @@ uniform float _Intensity <
 
 uniform float _Time < source = "timer"; >;
 
-void PostProcessVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD0)
+void PostProcessVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float2 TexCoord : TEXCOORD0)
 {
     TexCoord.x = (ID == 2) ? 2.0 : 0.0;
     TexCoord.y = (ID == 1) ? 2.0 : 0.0;
@@ -37,12 +37,12 @@ float GaussianWeight(float x, float Sigma)
     return rsqrt(Pi * Sigma) * exp(-((x * x) / (2.0 * Sigma)));
 }
 
-float4 VignettePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0) : SV_Target
+void FilmGrainPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
     float Time = rcp(1e+3 / _Time) * _Speed;
     float Seed = dot(Position.xy, float2(12.9898, 78.233));
     float Noise = frac(sin(Seed) * 43758.5453 + Time);
-    return GaussianWeight(Noise, _Variance) * _Intensity;
+    OutputColor0 = GaussianWeight(Noise, _Variance) * _Intensity;
 }
 
 technique cFilmGrain
@@ -50,7 +50,7 @@ technique cFilmGrain
     pass
     {
         VertexShader = PostProcessVS;
-        PixelShader = VignettePS;
+        PixelShader = FilmGrainPS;
         // (Shader[Src] * SrcBlend) + (Buffer[Dest] * DestBlend)
         // This shader: (Shader[Src] * (1.0 - Buffer[Dest])) + Buffer[Dest]
         BlendEnable = TRUE;

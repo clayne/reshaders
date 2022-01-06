@@ -220,14 +220,14 @@ sampler2D _SampleFeedback
 
 /* [Vertex Shaders] */
 
-void PostProcessVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD0)
+void PostProcessVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float2 TexCoord : TEXCOORD0)
 {
     TexCoord.x = (ID == 2) ? 2.0 : 0.0;
     TexCoord.y = (ID == 1) ? 2.0 : 0.0;
     Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
 
-void DerivativesVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float4 TexCoord : TEXCOORD0)
+void DerivativesVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoord : TEXCOORD0)
 {
     const float2 PixelSize = 0.5 / _HALFSIZE;
     const float4 PixelOffset = float4(PixelSize, -PixelSize);
@@ -238,13 +238,13 @@ void DerivativesVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION
 
 /* [Pixel Shaders ] */
 
-void ConvertPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0)
+void ConvertPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
 {
     float3 Color = tex2D(_SampleColor, TexCoord).rgb;
     OutputColor0 = saturate(Color.xy / dot(Color, 1.0));
 }
 
-void DerivativesPS(float4 Position : SV_POSITION, float4 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+void DerivativesPS(in float4 Position : SV_Position, in float4 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
     float2 Sample0 = tex2D(_SampleFrame0, TexCoord.zy).xy; // (-x, +y)
     float2 Sample1 = tex2D(_SampleFrame0, TexCoord.xy).xy; // (+x, +y)
@@ -264,7 +264,7 @@ void DerivativesPS(float4 Position : SV_POSITION, float4 TexCoord : TEXCOORD0, o
     - Repeat until full resolution level of original frames is reached
 */
 
-void OpticalFlowPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+void OpticalFlowPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
     OutputColor0 = 0.0;
     const float MaxLevel = 6.5;
@@ -304,7 +304,7 @@ float RandomNoise(float2 TexCoord)
     return frac(43758.5453 * sin(f));
 }
 
-void AccumulatePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0, out float4 OutputColor1 : SV_TARGET1)
+void AccumulatePS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0, out float4 OutputColor1 : SV_Target1)
 {
     float Quality = 1.0 - _Entropy;
     float2 Time = float2(_Time, 0.0);
@@ -338,7 +338,7 @@ void AccumulatePS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, ou
     OutputColor1 = float4(tex2D(_SampleFrame0, TexCoord).rgb, 0.0);
 }
 
-void OutputPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+void OutputPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
     const float2 DisplacementTexel = 1.0 / _HALFSIZE;
     const float Quality = 1.0 - _Entropy;
@@ -383,7 +383,7 @@ void OutputPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out fl
     OutputColor0 = lerp(Working, Source, ConditionalWeight);
 }
 
-void BlitPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+void BlitPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
     OutputColor0 = tex2D(_SampleColor, TexCoord);
 }

@@ -12,7 +12,7 @@ uniform float2 _Scale <
 
 /* [Vertex Shaders] */
 
-void PostProcessVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD0)
+void PostProcessVS(in uint ID : SV_VertexID, inout float4 Position : SV_Position, inout float2 TexCoord : TEXCOORD0)
 {
     TexCoord.x = (ID == 2) ? 2.0 : 0.0;
     TexCoord.y = (ID == 1) ? 2.0 : 0.0;
@@ -21,7 +21,7 @@ void PostProcessVS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION
 
 /* [Pixel Shaders] */
 
-void LetterboxPS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD0, out float3 OutputColor : SV_Target0)
+void LetterboxPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float3 OutputColor : SV_Target0)
 {
     // Output a rectangle
     const float2 Scale = -_Scale * 0.5 + 0.5;
