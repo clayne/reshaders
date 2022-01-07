@@ -27,7 +27,7 @@ void LetterboxPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD
     const float2 Scale = -_Scale * 0.5 + 0.5;
     float2 Shaper  = step(Scale, TexCoord);
            Shaper *= step(Scale, 1.0 - TexCoord);
-    OutputColor = float4(Shaper.x * Shaper.y);
+    OutputColor = Shaper.xxxx * Shaper.yyyy;
 }
 
 technique cLetterBox
