@@ -21,13 +21,13 @@ void PostProcessVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, 
 
 /* [Pixel Shaders] */
 
-void LetterboxPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float3 OutputColor : SV_Target0)
+void LetterboxPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor : SV_Target0)
 {
     // Output a rectangle
     const float2 Scale = -_Scale * 0.5 + 0.5;
     float2 Shaper  = step(Scale, TexCoord);
            Shaper *= step(Scale, 1.0 - TexCoord);
-    OutputColor = Shaper.x * Shaper.y;
+    OutputColor = float4(Shaper.x * Shaper.y);
 }
 
 technique cLetterBox

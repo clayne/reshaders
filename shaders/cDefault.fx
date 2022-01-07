@@ -5,12 +5,12 @@
 
 void PostProcessVS(out float4 Position : SV_Position)
 {
-    Position = 0.0;
+    Position = float4(0.0, 0.0, 0.0, 0.0);
 }
 
 void PostProcessPS(out float4 OutputColor0 : SV_Target0)
 {
-    OutputColor0 = 0.0;
+    OutputColor0 = float4(0.0, 0.0, 0.0, 0.0);
 }
 
 technique cDefault
