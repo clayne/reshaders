@@ -1,0 +1,219 @@
+
+/*
+    WIP pyramidal Horn-Schunck shader
+    Based off of http://web.archive.org/web/20080919150049/https://petewarden.com/notes/archives/2005/05/gpu_optical_flo.html
+*/
+
+namespace HornSchunck
+{
+    uniform float _Constraint <
+        ui_type = "slider";
+        ui_label = "Flow Smoothness";
+        ui_tooltip = "Higher = Smoother flow";
+        ui_min = 0.0;
+        ui_max = 2.0;
+    > = 1.0;
+
+    uniform float _Blend <
+        ui_type = "slider";
+        ui_label = "Blending";
+        ui_min = 0.0;
+        ui_max = 1.0;
+    > = 0.25;
+
+    uniform float _Detail <
+        ui_type = "drag";
+        ui_label = "Mipmap Bias";
+        ui_tooltip = "Higher = Less spatial noise";
+    > = 0.0;
+
+    texture2D _RenderColor : COLOR;
+
+    sampler2D _SampleColor
+    {
+        Texture = _RenderColor;
+        #if BUFFER_COLOR_BIT_DEPTH == 8
+            SRGBTexture = TRUE;
+        #endif
+    };
+
+    texture2D _RenderCurrentFrame
+    {
+        Width = BUFFER_WIDTH / 2;
+        Height = BUFFER_HEIGHT / 2;
+        Format = RG8;
+        MipLevels = 8;
+    };
+
+    sampler2D _SampleCurrentFrame
+    {
+        Texture = _RenderCurrentFrame;
+    };
+
+    texture2D _RenderDerivatives
+    {
+        Width = BUFFER_WIDTH / 2;
+        Height = BUFFER_HEIGHT / 2;
+        Format = RGBA16F;
+        MipLevels = 8;
+    };
+
+    sampler2D _SampleDerivatives
+    {
+        Texture = _RenderDerivatives;
+    };
+
+    texture2D _RenderOpticalFlow
+    {
+        Width = BUFFER_WIDTH / 2;
+        Height = BUFFER_HEIGHT / 2;
+        Format = RG16F;
+        MipLevels = 8;
+    };
+
+    sampler2D _SampleOpticalFlow
+    {
+        Texture = _RenderOpticalFlow;
+    };
+
+    texture2D _RenderPreviousFrame
+    {
+        Width = BUFFER_WIDTH / 2;
+        Height = BUFFER_HEIGHT / 2;
+        Format = RG8;
+        MipLevels = 8;
+    };
+
+    sampler2D _SamplePreviousFrame
+    {
+        Texture = _RenderPreviousFrame;
+    };
+
+    void PostProcessVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float2 TexCoord : TEXCOORD0)
+    {
+        TexCoord.x = (ID == 2) ? 2.0 : 0.0;
+        TexCoord.y = (ID == 1) ? 2.0 : 0.0;
+        Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    }
+
+    void DerivativesVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 Offsets : TEXCOORD0)
+    {
+        const float2 PixelSize = 0.5 / float2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2);
+        const float4 PixelOffset = float4(PixelSize, -PixelSize);
+        float2 TexCoord0;
+        PostProcessVS(ID, Position, TexCoord0);
+        Offsets = TexCoord0.xyxy + PixelOffset;
+    }
+
+    void NormalizePS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
+    {
+        float3 Color = tex2D(_SampleColor, TexCoord).rgb;
+        OutputColor0 = saturate(Color.xy / dot(Color, 1.0));
+    }
+
+    void DerivativesPS(in float4 Position : SV_Position, in float4 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+    {
+        float2 Sample0 = tex2D(_SampleCurrentFrame, TexCoord.zy).xy; // (-x, +y)
+        float2 Sample1 = tex2D(_SampleCurrentFrame, TexCoord.xy).xy; // (+x, +y)
+        float2 Sample2 = tex2D(_SampleCurrentFrame, TexCoord.zw).xy; // (-x, -y)
+        float2 Sample3 = tex2D(_SampleCurrentFrame, TexCoord.xw).xy; // (+x, -y)
+        OutputColor0.xz = (Sample3 + Sample1) - (Sample2 + Sample0);
+        OutputColor0.yw = (Sample2 + Sample3) - (Sample0 + Sample1);
+        OutputColor0 *= 4.0;
+    }
+
+    void OpticalFlowPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+    {
+        const float MaxLevel = 6.5;
+        float4 OpticalFlow;
+        float2 Smoothness;
+        float2 Value;
+
+        [unroll] for(float Level = MaxLevel; Level > 0.0; Level--)
+        {
+            const float Lambda = max(ldexp(_Constraint * 1e-5, Level - MaxLevel), 1e-7);
+
+            // .xy = Normalized Red Channel (x, y)
+            // .zw = Normalized Green Channel (x, y)
+            float4 SampleIxy = tex2Dlod(_SampleDerivatives, float4(TexCoord, 0.0, Level)).xyzw;
+
+            // .xy = Current frame (r, g)
+            // .zw = Previous frame (r, g)
+            float4 SampleFrames;
+            SampleFrames.xy = tex2Dlod(_SampleCurrentFrame, float4(TexCoord, 0.0, Level)).rg;
+            SampleFrames.zw = tex2Dlod(_SamplePreviousFrame, float4(TexCoord, 0.0, Level)).rg;
+            float2 Iz = SampleFrames.xy - SampleFrames.zw;
+
+            Smoothness.r = dot(SampleIxy.xy, SampleIxy.xy) + Lambda;
+            Smoothness.g = dot(SampleIxy.zw, SampleIxy.zw) + Lambda;
+            Smoothness.rg = 1.0 / Smoothness.rg;
+
+            Value.r = dot(SampleIxy.xy, OpticalFlow.xy) + Iz.r;
+            Value.g = dot(SampleIxy.zw, OpticalFlow.zw) + Iz.g;
+            OpticalFlow.xz = OpticalFlow.xz - (SampleIxy.xz * (Value.rg * Smoothness.rg));
+
+            Value.r = dot(SampleIxy.xy, OpticalFlow.xy) + Iz.r;
+            Value.g = dot(SampleIxy.zw, OpticalFlow.zw) + Iz.g;
+            OpticalFlow.yw = OpticalFlow.yw - (SampleIxy.yw * (Value.rg * Smoothness.rg));
+        }
+
+        OutputColor0.xy = OpticalFlow.xy + OpticalFlow.zw;
+        OutputColor0.ba = _Blend;
+    }
+
+    void DisplayPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target)
+    {
+        float2 Velocity = tex2Dlod(_SampleOpticalFlow, float4(TexCoord, 0.0, _Detail)).xy;
+        float VelocityLength = saturate(rsqrt(dot(Velocity, Velocity)));
+        OutputColor0.rg = (Velocity * VelocityLength) * 0.5 + 0.5;
+        OutputColor0.b = -dot(OutputColor0.rg, 1.0) * 0.5 + 1.0;
+        OutputColor0.a = 1.0;
+    }
+
+    void CopyPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
+    {
+        OutputColor0 = tex2D(_SampleCurrentFrame, TexCoord).rg;
+    }
+
+    technique cHornSchunck
+    {
+        pass
+        {
+            VertexShader = PostProcessVS;
+            PixelShader = NormalizePS;
+            RenderTarget0 = _RenderCurrentFrame;
+        }
+
+        pass
+        {
+            VertexShader = DerivativesVS;
+            PixelShader = DerivativesPS;
+            RenderTarget0 = _RenderDerivatives;
+        }
+
+        pass
+        {
+            VertexShader = PostProcessVS;
+            PixelShader = OpticalFlowPS;
+            RenderTarget0 = _RenderOpticalFlow;
+            ClearRenderTargets = FALSE;
+            BlendEnable = TRUE;
+            BlendOp = ADD;
+            SrcBlend = INVSRCALPHA;
+            DestBlend = SRCALPHA;
+        }
+
+        pass
+        {
+            VertexShader = PostProcessVS;
+            PixelShader = DisplayPS;
+        }
+
+        pass
+        {
+            VertexShader = PostProcessVS;
+            PixelShader = CopyPS;
+            RenderTarget0 = _RenderPreviousFrame;
+        }
+    }
+}
