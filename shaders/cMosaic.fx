@@ -48,7 +48,7 @@ sampler2D _SampleMosaicLOD
     #endif
 };
 
-/* [Vertex Shaders] */
+// Vertex shaders
 
 void PostProcessVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float2 TexCoord : TEXCOORD0)
 {
@@ -57,7 +57,7 @@ void PostProcessVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, 
     Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
 
-/* [Pixel Shaders] */
+// Pixel shaders
 
 void BlitPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {

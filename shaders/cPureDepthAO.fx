@@ -115,7 +115,7 @@ sampler2D _SampleData1
     AddressV = MIRROR;
 };
 
-/* [Pixel Shaders] */
+// Pixel shaders
 
 float2 DepthMap(float2 TexCoord)
 {

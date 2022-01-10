@@ -11,7 +11,7 @@
   + Fluid simulation
   + V-Cycle multigrid algorithm
 
-## Shader List
+## Shaders
 
 Name|Description
 ----|-----------
@@ -45,13 +45,16 @@ kVignette           | Natural vignetting effect
 
 ## Coding Convention
 
-+ Descriptive variables, please
-+ Prefix `_` to uniform objects and variables (except for user functions)
-+ Suffix `VS` for `VertexShader`, `PS` for `PixelShader`
-+ Use **ALLCAPS** semantics and state parameters
-+ Use **Pascal_Case** for System-Value Semantics (`SV_Position`) 
-+ Use **PascalCase** for
-  + Namespaces
-  + Structs
-  + User function name, parameters, and variables
-+ Use **SNAKE_CASE** for macros and preprocessor defines
+Practice | Variable
+-------- | --------
+Prefix `_` | Global objects and parameters
+Respectively suffix `VS` and `PS` | `PixelShader and VertexShader`
+**ALLCAPS** | Semantics and state parameters
+**Pascal_Case** | System-Value Semantics (`SV_Position`)
+**PascalCase** | Namespaces, structs, methods, and local parameters
+**SNAKE_CASE** | Macros and preprocessor defines
+
+## Acknowledgements
+
+MartinBFFan and Pao on Discord for reporting bugs
+BSD for bug propaganda and helping to solve my issue

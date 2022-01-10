@@ -2,32 +2,27 @@
 /*
     Ping-Pong gaussian blur shader, for BlueSkyDefender
 
-    Why is this method called ping-ponging?
-        Answer: https://diplomacy.state.gov/u-s-diplomacy-stories/ping-pong-diplomacy/
-                The game of ping-pong involves two players hitting a ball back-and-forth
+    MIT License
 
-        We can apply this logic to shader programming by setting up
-            1. The 2 players (textures)
-                - One texture will be the hitter (texture we sample from), the other the receiver (texture we write to)
-                - The roles for both textures will switch at each pass
-            2. The ball (the texels in the pixel shader)
-            3. The way the player hits the ball (PixelShader)
+    Copyright (c) 2022 brimson
 
-    This shader's technique is an example of the 2 steps above
-        Pregame: Set up 2 players (_RenderBufferA and _RenderBufferB)
-        PingPong1: _RenderBufferA hits (HorizontalBlurPS0) to _RenderBufferB
-        PingPong2: _RenderBufferB hits (VerticalBlurPS0) to _RenderBufferA
-        PingPong3: _RenderBufferA hits (HorizontalBlurPS1) to _RenderBufferB
-        PingPong4: _RenderBufferB hits (VerticalBlurPS1) to _RenderBufferA
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
 
-    "Why two textures? Can't we just read and write to one texture"?
-        Unfortunately we cannot sample from and to memory at the same time
+    The above copyright notice and this permission notice shall be included in all
+    copies or substantial portions of the Software.
 
-    NOTES
-        Be cautious when pingponging in shaders that use BlendOps or involve temporal accumulation.
-        Therefore, I recommend you to enable ClearRenderTargets as a sanity check.
-        In addition, you may need to use use RenderTargetWriteMask if you're pingponging using textures that stores
-        components that do not need pingponging (see my motion shaders as an example of this)
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+    SOFTWARE.
 */
 
 uniform int _Radius <
@@ -79,7 +74,7 @@ sampler2D _SampleBufferB
     #endif
 };
 
-/* [Vertex Shaders] */
+// Vertex shaders
 
 void PostProcessVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float2 TexCoord : TEXCOORD0)
 {
@@ -88,7 +83,36 @@ void PostProcessVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, 
     Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
 
-/* [ Pixel Shaders ] */
+// Pixel Shaders
+
+/*
+    Why is this method called ping-ponging?
+        Answer: https://diplomacy.state.gov/u-s-diplomacy-stories/ping-pong-diplomacy/
+                The game of ping-pong involves two players hitting a ball back-and-forth
+
+        We can apply this logic to shader programming by setting up
+            1. The 2 players (textures)
+                - One texture will be the hitter (texture we sample from), the other the receiver (texture we write to)
+                - The roles for both textures will switch at each pass
+            2. The ball (the texels in the pixel shader)
+            3. The way the player hits the ball (PixelShader)
+
+    This shader's technique is an example of the 2 steps above
+        Pregame: Set up 2 players (_RenderBufferA and _RenderBufferB)
+        PingPong1: _RenderBufferA hits (HorizontalBlurPS0) to _RenderBufferB
+        PingPong2: _RenderBufferB hits (VerticalBlurPS0) to _RenderBufferA
+        PingPong3: _RenderBufferA hits (HorizontalBlurPS1) to _RenderBufferB
+        PingPong4: _RenderBufferB hits (VerticalBlurPS1) to _RenderBufferA
+
+    "Why two textures? Can't we just read and write to one texture"?
+        Unfortunately we cannot sample from and to memory at the same time
+
+    NOTES
+        Be cautious when pingponging in shaders that use BlendOps or involve temporal accumulation.
+        Therefore, I recommend you to enable ClearRenderTargets as a sanity check.
+        In addition, you may need to use use RenderTargetWriteMask if you're pingponging using textures that stores
+        components that do not need pingponging (see my motion shaders as an example of this)
+*/
 
 float4 GaussianBlur(sampler2D Source, float2 TexCoord, const float2 Direction)
 {

@@ -1,12 +1,28 @@
 
 /*
-    Dual-filtering bloom
-        Kernels
-            http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare
-        Thresholding
-            https://github.com/keijiro/Kino [MIT]
-        Tonemap
-            https://github.com/TheRealMJP/BakingLab [MIT]
+    Dual-filtering Bloom
+
+    MIT License
+
+    Copyright (c) 2022 brimson
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in all
+    copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+    SOFTWARE.
 */
 
 uniform float _Threshold <
@@ -146,7 +162,8 @@ sampler2D _SampleBloom8
     Texture = _RenderBloom8;
 };
 
-/* [ Vertex Shaders ] */
+// Vertex shaders
+// Sampling kernels: http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare
 
 void PostProcessVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float2 TexCoord : TEXCOORD0)
 {
@@ -253,17 +270,17 @@ void UpsampleVS2(in uint ID : SV_VertexID, out float4 Position : SV_Position, ou
     UpsampleVS(ID, Position, TexCoord, 2.0);
 }
 
-/* [Pixel Shaders] */
+// Pixel shaders
+// Thresholding: https://github.com/keijiro/Kino [MIT]
+// Tonemapping: https://github.com/TheRealMJP/BakingLab [MIT]
 
 float4 DownsamplePS(sampler2D Source, float4 TexCoord[4])
 {
-    /*
-        A0    B0    C0
-           D0    D1
-        A1    B1    C1
-           D2    D3
-        A2    B2    C2
-    */
+    // A0    B0    C0
+    //    D0    D1
+    // A1    B1    C1
+    //    D2    D3
+    // A2    B2    C2
 
     float4 D0 = tex2D(Source, TexCoord[0].xw);
     float4 D1 = tex2D(Source, TexCoord[0].zw);
@@ -294,11 +311,9 @@ float4 DownsamplePS(sampler2D Source, float4 TexCoord[4])
 
 float4 UpsamplePS(sampler2D Source, float4 TexCoord[3])
 {
-    /*
-        A0 B0 C0
-        A1 B1 C1
-        A2 B2 C2
-    */
+    // A0 B0 C0
+    // A1 B1 C1
+    // A2 B2 C2
 
     float4 A0 = tex2D(Source, TexCoord[0].xy);
     float4 A1 = tex2D(Source, TexCoord[0].xz);

@@ -220,7 +220,7 @@ namespace DataMosh
         #endif
     };
 
-    /* [Vertex Shaders] */
+    // Vertex shaders
 
     void PostProcessVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float2 TexCoord : TEXCOORD0)
     {

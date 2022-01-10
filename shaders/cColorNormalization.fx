@@ -1,18 +1,28 @@
 
 /*
-    Various types of color normalization
+    Various color normalization algorithms
 
-    Sources
-        Angle-Retaining Chromaticity
-            Title = "ARC: Angle-Retaining Chromaticity diagram for color constancy error analysis"
-            Authors = Marco Buzzelli and Simone Bianco and Raimondo Schettini
-            Year = 2020
-            Link = http://www.ivl.disco.unimib.it/activities/arc/
-        Jamie Wong's Chromaticity
-            Title = "Color: From Hexcodes to Eyeballs"
-            Authors = Jamie Wong
-            Year = 2018
-            Link = http://jamie-wong.com/post/color/
+    MIT License
+
+    Copyright (c) 2022 brimson
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in all
+    copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+    SOFTWARE.
 */
 
 uniform int _Select <
@@ -32,7 +42,7 @@ sampler2D _SampleColor
     #endif
 };
 
-/* [Vertex Shaders] */
+// Vertex shaders
 
 void PostProcessVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float2 TexCoord : TEXCOORD0)
 {
@@ -41,7 +51,21 @@ void PostProcessVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, 
     Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
 
-/* [Pixel Shaders] */
+// Pixel shaders
+
+/*
+    Sources
+        Angle-Retaining Chromaticity
+            Title = "ARC: Angle-Retaining Chromaticity diagram for color constancy error analysis"
+            Authors = Marco Buzzelli and Simone Bianco and Raimondo Schettini
+            Year = 2020
+            Link = http://www.ivl.disco.unimib.it/activities/arc/
+        Jamie Wong's Chromaticity
+            Title = "Color: From Hexcodes to Eyeballs"
+            Authors = Jamie Wong
+            Year = 2018
+            Link = http://jamie-wong.com/post/color/
+*/
 
 void NormalizationPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float3 OutputColor0 : SV_Target0)
 {
