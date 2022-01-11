@@ -114,8 +114,7 @@ float3 NormalizeValue(float3 Input)
 }
 
 // Pixel shaders
-// 
-// Contour pass: https://github.com/keijiro/KinoContour
+// Contour pass: https://github.com/keijiro/KinoContour [MIT]
 
 void ContourPS(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float3 OutputColor0 : SV_Target0)
 {
