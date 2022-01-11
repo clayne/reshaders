@@ -57,7 +57,7 @@ uniform float4 _BackColor <
 
 uniform int _Select <
     ui_type = "combo";
-    ui_items = " Fwidth\0 Laplacian\0 Sobel\0 Prewitt\0 Robert\0 Scharr\0 Kayyali\0 Kroon\0 FastSobel\0 None\0";
+    ui_items = " Fwidth\0 Laplacian\0 Sobel\0 Prewitt\0 Robert\0 Scharr\0 Kayyali\0 Kroon\0 Bilinear Sobel\0 None\0";
     ui_label = "Method";
     ui_tooltip = "Select Edge Detection";
 > = 0;
@@ -203,7 +203,7 @@ void ContourPS(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOOR
             Iy += C2 * -17.0;
             Edge = Magnitude(NormalizeValue(Ix), NormalizeValue(Iy));
             break;
-        case 8: // Fast Sobel
+        case 8: // Bilinear Sobel
             float3 Sample0 = tex2D(_SampleColor, TexCoord[3].zy).rgb; // (-x, +y)
             float3 Sample1 = tex2D(_SampleColor, TexCoord[3].xy).rgb; // (+x, +y)
             float3 Sample2 = tex2D(_SampleColor, TexCoord[3].zw).rgb; // (-x, -y)
