@@ -25,6 +25,25 @@
     SOFTWARE.
 */
 
+uniform float _Threshold <
+    ui_type = "drag";
+    ui_min = 0.0;
+    ui_label = "Threshold";
+> = 0.8;
+
+uniform float _Smooth <
+    ui_type = "drag";
+    ui_min = 0.0;
+    ui_label = "Smoothing";
+    ui_max = 1.0;
+> = 0.5;
+
+uniform float _Saturation <
+    ui_type = "drag";
+    ui_min = 0.0;
+    ui_label = "Saturation";
+> = 1.0;
+
 uniform float3 _ColorShift <
     ui_type = "color";
     ui_min = 0.0;
@@ -36,32 +55,6 @@ uniform float _Intensity <
     ui_min = 0.0;
     ui_label = "Color Intensity";
 > = 1.0;
-
-uniform int _Luminance <
-    ui_type = "combo";
-    ui_items = " Average\0 Max\0 Median\0 Length\0";
-    ui_label = "Luminance";
-    ui_tooltip = "Method of extracting brightness from the image";
-> = 3;
-
-uniform float _Saturation <
-    ui_type = "drag";
-    ui_min = 0.0;
-    ui_label = "Saturation";
-> = 1.0;
-
-uniform float _Smooth <
-    ui_type = "drag";
-    ui_min = 0.0;
-    ui_label = "Smoothing";
-    ui_max = 1.0;
-> = 0.5;
-
-uniform float _Threshold <
-    ui_type = "drag";
-    ui_min = 0.0;
-    ui_label = "Threshold";
-> = 0.8;
 
 texture2D _RenderColor : COLOR;
 
@@ -341,31 +334,9 @@ float4 UpsamplePS(sampler2D Source, float4 TexCoord[3])
     return Output / 16.0;
 }
 
-float Luminance(float3 Color)
+float Med3(float x, float y, float z)
 {
-    float OutputColor0;
-
-    switch(_Luminance)
-    {
-        case 0:
-            // Average
-            OutputColor0 = dot(Color.rgb, 1.0 / 3.0);
-            break;
-        case 1:
-            // Max
-            OutputColor0 = max(Color.r, max(Color.g, Color.b));
-            break;
-        case 2:
-            // Median
-            OutputColor0 = max(min(Color.r, Color.g), min(max(Color.r, Color.g), Color.b));
-            break;
-        case 3:
-            // Length
-            OutputColor0 = length(Color.rgb) * rsqrt(3.0);
-            break;
-    }
-
-    return OutputColor0;
+    return max(min(x, y), min(max(x, y), z));
 }
 
 void PrefilterPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
@@ -375,13 +346,13 @@ void PrefilterPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD
     float4 Color = tex2D(_SampleColor, TexCoord);
 
     // Under-threshold
-    float Brightness = Luminance(Color.rgb);
+    float Brightness = Med3(Color.r, Color.g, Color.b);
     float ResponseCurve = clamp(Brightness - Curve.x, 0.0, Curve.y);
     ResponseCurve = Curve.z * ResponseCurve * ResponseCurve;
 
     // Combine and apply the brightness response curve
     Color = Color * max(ResponseCurve, Brightness - _Threshold) / max(Brightness, 1e-10);
-    Brightness = Luminance(Color.rgb);
+    Brightness = Med3(Color.r, Color.g, Color.b);
     OutputColor0 = saturate(lerp(Brightness, Color.rgb, _Saturation)) * _ColorShift;
 
     // Set alpha to 1.0 so we can see the complete results in ReShade's statistics
