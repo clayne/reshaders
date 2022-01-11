@@ -60,7 +60,7 @@ void PostProcessVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, 
 
 void MirrorPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    // Convert to the polar coordinate.
+    // Convert to polar coordinates
     float2 Polar = TexCoord - 0.5;
     float Phi = atan2(Polar.y, Polar.x);
     float Radius = length(Polar);
