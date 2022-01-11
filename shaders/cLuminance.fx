@@ -78,7 +78,7 @@ void LuminancePS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD
             // Length
             OutputColor0 = length(Color.rgb);
             break;
-        case 4:
+        case 5:
             // Clamped Length
             OutputColor0 = length(Color.rgb) * rsqrt(3.0);
             break;
