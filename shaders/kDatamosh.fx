@@ -257,15 +257,6 @@ namespace DataMosh
         OutputColor0 *= 4.0;
     }
 
-    /*
-        https://www.cs.auckland.ac.nz/~rklette/CCV-CIMAT/pdfs/B08-HornSchunck.pdf
-        - Use a regular image pyramid for input frames I(., .,t)
-        - Processing starts at a selected level (of lower resolution)
-        - Obtained results are used for initializing optic flow values at a
-        lower level (of higher resolution)
-        - Repeat until full resolution level of original frames is reached
-    */
-
     void OpticalFlowPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
         OutputColor0 = 0.0;
@@ -446,7 +437,9 @@ namespace DataMosh
                 {
                     // Clear previous result, but output the reset
                     (OUTPUT * ONE) + (Previous * ZERO);
-                } else {
+                }
+                else
+                {
                     // Accumulate if false
                     (OUTPUT * ONE) + (Previous * ONE);
                 }
