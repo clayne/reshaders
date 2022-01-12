@@ -259,35 +259,32 @@ namespace DataMosh
 
     void OpticalFlowPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
-        OutputColor0 = 0.0;
+        const float2 PixelSize = 1.0 / float2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2);
         const float MaxLevel = 6.5;
+        float4 OpticalFlow;
         float2 Smoothness;
         float2 Value;
+        float2 PreviousFlow = 0.0;
 
         for(float Level = MaxLevel; Level > 0.0; Level--)
         {
-            const float Lambda = max(ldexp(_Constraint * 1e-5, Level - MaxLevel), 1e-7);
+            const float Lambda = max(_Constraint * 1e-5 / pow(4.0, MaxLevel - Level), 1e-7);
             float4 SampleIxy = tex2Dlod(_SampleDerivatives, float4(TexCoord, 0.0, Level));
 
             float4 SampleFrames;
             SampleFrames.xy = tex2Dlod(_SampleFrame0, float4(TexCoord, 0.0, Level)).rg;
-            SampleFrames.zw = tex2Dlod(_SampleFrame1, float4(TexCoord, 0.0, Level)).rg;
+            SampleFrames.zw = tex2Dlod(_SampleFrame1, float4(TexCoord + (PreviousFlow * PixelSize), 0.0, Level)).rg;
             float2 Iz = SampleFrames.xy - SampleFrames.zw;
 
             Smoothness.r = dot(SampleIxy.xy, SampleIxy.xy) + Lambda;
             Smoothness.g = dot(SampleIxy.zw, SampleIxy.zw) + Lambda;
-            Smoothness.rg = 1.0 / Smoothness.rg;
-
-            Value.r = dot(SampleIxy.xy, OutputColor0.xy) + Iz.r;
-            Value.g = dot(SampleIxy.zw, OutputColor0.zw) + Iz.g;
-            OutputColor0.xz = OutputColor0.xz - (SampleIxy.xz * (Value.rg * Smoothness.rg));
-
-            Value.r = dot(SampleIxy.xy, OutputColor0.xy) + Iz.r;
-            Value.g = dot(SampleIxy.zw, OutputColor0.zw) + Iz.g;
-            OutputColor0.yw = OutputColor0.yw - (SampleIxy.yw * (Value.rg * Smoothness.rg));
+            Value.r = dot(SampleIxy.xy, PreviousFlow.xy) + Iz.r;
+            Value.g = dot(SampleIxy.zw, PreviousFlow.xy) + Iz.g;
+            OpticalFlow = PreviousFlow.xyxy - (SampleIxy.xyzw * (Value.rrgg / Smoothness.rrgg));
+            PreviousFlow = lerp(OpticalFlow.xy, OpticalFlow.zw, 0.5);
         }
 
-        OutputColor0.xy = OutputColor0.xy + OutputColor0.zw;
+        OutputColor0.xy = lerp(OpticalFlow.xy, OpticalFlow.zw, 0.5);
         OutputColor0.ba = float2(1.0, _BlendFactor);
     }
 

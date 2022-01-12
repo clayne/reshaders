@@ -38,8 +38,8 @@ uniform float _Scale <
     ui_label = "Flow Scale";
     ui_tooltip = "Higher = More motion blur";
     ui_min = 0.0;
-    ui_max = 2.0;
-> = 1.0;
+    ui_max = 4.0;
+> = 2.0;
 
 uniform float _Detail <
     ui_type = "slider";
@@ -285,15 +285,16 @@ void DerivativesPS(in float4 Position : SV_Position, in float4 TexCoord : TEXCOO
 
 void OpticalFlowPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    float RedBlack = frac(dot(Position.xy, 0.5)) * 2.0;
+    const float2 PixelSize = 1.0 / BUFFER_SIZE;
     const float MaxLevel = 6.5;
     float4 OpticalFlow;
     float2 Smoothness;
     float2 Value;
+    float2 PreviousFlow = 0.0;
 
     [unroll] for(float Level = MaxLevel; Level > 0.0; Level--)
     {
-        const float Lambda = max(ldexp(_Constraint * 1e-3, Level - MaxLevel), 1e-7);
+        const float Lambda = max(_Constraint * 1e-2 / pow(4.0, MaxLevel - Level), 1e-7);
 
         // .xy = Normalized Red Channel (x, y)
         // .zw = Normalized Green Channel (x, y)
@@ -303,23 +304,18 @@ void OpticalFlowPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOO
         // .zw = Previous frame (r, g)
         float4 SampleFrames;
         SampleFrames.xy = tex2Dlod(_SampleData0, float4(TexCoord, 0.0, Level)).rg;
-        SampleFrames.zw = tex2Dlod(_SampleData2, float4(TexCoord, 0.0, Level)).rg;
+        SampleFrames.zw = tex2Dlod(_SampleData2, float4(TexCoord + (PreviousFlow * PixelSize), 0.0, Level)).rg;
         float2 Iz = SampleFrames.xy - SampleFrames.zw;
 
         Smoothness.r = dot(SampleIxy.xy, SampleIxy.xy) + Lambda;
         Smoothness.g = dot(SampleIxy.zw, SampleIxy.zw) + Lambda;
-        Smoothness.rg = 1.0 / Smoothness.rg;
-    
-        Value.r = dot(SampleIxy.xy, OpticalFlow.xy) + Iz.r;
-        Value.g = dot(SampleIxy.zw, OpticalFlow.zw) + Iz.g;
-        OpticalFlow.xz = OpticalFlow.xz - (SampleIxy.xz * (Value.rg * Smoothness.rg));
-
-        Value.r = dot(SampleIxy.xy, OpticalFlow.xy) + Iz.r;
-        Value.g = dot(SampleIxy.zw, OpticalFlow.zw) + Iz.g;
-        OpticalFlow.yw = OpticalFlow.yw - (SampleIxy.yw * (Value.rg * Smoothness.rg));
+        Value.r = dot(SampleIxy.xy, PreviousFlow.xy) + Iz.r;
+        Value.g = dot(SampleIxy.zw, PreviousFlow.xy) + Iz.g;
+        OpticalFlow = PreviousFlow.xyxy - (SampleIxy.xyzw * (Value.rrgg / Smoothness.rrgg));
+        PreviousFlow = lerp(OpticalFlow.xy, OpticalFlow.zw, 0.5);
     }
 
-    OutputColor0.xy = OpticalFlow.xy + OpticalFlow.zw;
+    OutputColor0.xy = lerp(OpticalFlow.xy, OpticalFlow.zw, 0.5);
     OutputColor0.ba = _Blend;
 }
 
