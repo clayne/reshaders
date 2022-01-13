@@ -184,7 +184,7 @@ namespace HornSchunck
             Data.x = dot(SampleI.xz, Iz.rg);
             Data.y = dot(SampleI.yw, Iz.rg);
             Data.z = dot(SampleI.xz, SampleI.yw);
-            OpticalFlow.xy = Smooth.xy * ((OpticalFlow.xy * Lambda) - (Data.zz * OpticalFlow.yx + Data.xy));
+            OpticalFlow.xy = Smooth.xy * (Lambda * OpticalFlow.xy - (Data.zz * OpticalFlow.yx + Data.xy));
         }
 
         OutputColor0.xy = OpticalFlow.xy;
