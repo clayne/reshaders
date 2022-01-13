@@ -158,37 +158,36 @@ namespace HornSchunck
 
     void OpticalFlowPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
-        const float2 PixelSize = 1.0 / float2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2);
         const float MaxLevel = 6.5;
         float4 OpticalFlow;
         float2 Smoothness;
-        float2 Value;
-        float2 PreviousFlow = 0.0;
+        float3 Value;
 
         [unroll] for(float Level = MaxLevel; Level > 0.0; Level--)
         {
-            const float Lambda = max(_Constraint * 1e-5 / pow(4.0, MaxLevel - Level), 1e-7);
+            const float Lambda = max(_Constraint * 1e-3 / pow(4.0, MaxLevel - Level), 1e-7);
 
             // .xy = Normalized Red Channel (x, y)
             // .zw = Normalized Green Channel (x, y)
-            float4 SampleIxy = tex2Dlod(_SampleDerivatives, float4(TexCoord, 0.0, Level)).xyzw;
+            float4 SampleI = tex2Dlod(_SampleDerivatives, float4(TexCoord, 0.0, Level)).xyzw;
 
             // .xy = Current frame (r, g)
             // .zw = Previous frame (r, g)
             float4 SampleFrames;
             SampleFrames.xy = tex2Dlod(_SampleCurrentFrame, float4(TexCoord, 0.0, Level)).rg;
-            SampleFrames.zw = tex2Dlod(_SamplePreviousFrame, float4(TexCoord + (PreviousFlow * PixelSize), 0.0, Level)).rg;
+            SampleFrames.zw = tex2Dlod(_SamplePreviousFrame, float4(TexCoord, 0.0, Level)).rg;
             float2 Iz = SampleFrames.xy - SampleFrames.zw;
 
-            Smoothness.r = dot(SampleIxy.xy, SampleIxy.xy) + Lambda;
-            Smoothness.g = dot(SampleIxy.zw, SampleIxy.zw) + Lambda;
-            Value.r = dot(SampleIxy.xy, PreviousFlow.xy) + Iz.r;
-            Value.g = dot(SampleIxy.zw, PreviousFlow.xy) + Iz.g;
-            OpticalFlow = PreviousFlow.xyxy - (SampleIxy.xyzw * (Value.rrgg / Smoothness.rrgg));
-            PreviousFlow = lerp(OpticalFlow.xy, OpticalFlow.zw, 0.5);
+            Smoothness.x = dot(SampleI.xz, SampleI.xz);
+            Smoothness.y = dot(SampleI.yw, SampleI.yw);
+            Smoothness.xy = 1.0 / (Smoothness.xy + Lambda);
+            Value.x = dot(SampleI.xz, Iz.rg);
+            Value.y = dot(SampleI.yw, Iz.rg);
+            Value.z = dot(SampleI.xz, SampleI.yw);
+            OpticalFlow.xy = Smoothness.xy * ((OpticalFlow.xy * Lambda) - (Value.zz * OpticalFlow.yx + Value.xy));
         }
 
-        OutputColor0.xy = lerp(OpticalFlow.xy, OpticalFlow.zw, 0.5);
+        OutputColor0.xy = OpticalFlow.xy;
         OutputColor0.ba = _Blend;
     }
 
