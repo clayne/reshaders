@@ -283,6 +283,21 @@ void DerivativesPS(in float4 Position : SV_Position, in float4 TexCoord : TEXCOO
     OutputColor0 *= 4.0;
 }
 
+/*
+    Horn Schunck
+        http://6.869.csail.mit.edu/fa12/lectures/lecture16/MotionEstimation1.pdf
+        - Use Gauss-Seidel at slide 51
+        - Use additional constraint (normalized RG)
+
+    Pyramid
+        https://www.cs.auckland.ac.nz/~rklette/CCV-CIMAT/pdfs/B08-HornSchunck.pdf
+        - Use a regular image pyramid for input frames I(., .,t)
+        - Processing starts at a selected level (of lower resolution)
+        - Obtained results are used for initializing optic flow values at a
+        lower level (of higher resolution)
+        - Repeat until full resolution level of original frames is reached
+*/
+
 void OpticalFlowPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
     const float MaxLevel = 6.5;
@@ -292,7 +307,7 @@ void OpticalFlowPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOO
 
     [unroll] for(float Level = MaxLevel; Level > 0.0; Level--)
     {
-        const float Lambda = max(ldexp(_Constraint * 1e-3, Level - MaxLevel), 1e-7);
+        const float Alpha = max(ldexp(_Constraint * 1e-3, Level - MaxLevel), 1e-7);
 
         // .xy = Normalized Red Channel (x, y)
         // .zw = Normalized Green Channel (x, y)
@@ -307,11 +322,12 @@ void OpticalFlowPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOO
 
         Smooth.x = dot(SampleI.xz, SampleI.xz);
         Smooth.y = dot(SampleI.yw, SampleI.yw);
-        Smooth.xy = 1.0 / (Smooth.xy + Lambda);
+        Smooth.xy = 1.0 / (Smooth.xy + Alpha);
         Data.x = dot(SampleI.xz, Iz.rg);
         Data.y = dot(SampleI.yw, Iz.rg);
         Data.z = dot(SampleI.xz, SampleI.yw);
-        OpticalFlow.xy = Smooth.xy * (Lambda * OpticalFlow.xy - (Data.zz * OpticalFlow.yx + Data.xy));
+        OpticalFlow.x = (Alpha * OpticalFlow.x - (OpticalFlow.y * Data.z + Data.x)) * Smooth.x;
+        OpticalFlow.y = (Alpha * OpticalFlow.y - (OpticalFlow.x * Data.z + Data.y)) * Smooth.y;
     }
 
     OutputColor0.xy = OpticalFlow.xy;
