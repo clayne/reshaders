@@ -38,8 +38,8 @@ uniform float _Scale <
     ui_label = "Flow Scale";
     ui_tooltip = "Higher = More motion blur";
     ui_min = 0.0;
-    ui_max = 4.0;
-> = 2.0;
+    ui_max = 3.0;
+> = 1.5;
 
 uniform float _Detail <
     ui_type = "slider";
@@ -292,7 +292,7 @@ void OpticalFlowPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOO
 
     [unroll] for(float Level = MaxLevel; Level > 0.0; Level--)
     {
-        const float Lambda = max(_Constraint * 1e-2 / pow(4.0, MaxLevel - Level), 1e-7);
+        const float Lambda = max(ldexp(_Constraint * 1e-3, Level - MaxLevel), 1e-7);
 
         // .xy = Normalized Red Channel (x, y)
         // .zw = Normalized Green Channel (x, y)

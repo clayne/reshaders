@@ -288,7 +288,7 @@ namespace Interpolation
 
         [unroll] for(float Level = MaxLevel; Level > 0.0; Level--)
         {
-            const float Lambda = max(_Constraint * 1e-2 / pow(4.0, MaxLevel - Level), 1e-7);
+            const float Lambda = max(ldexp(_Constraint * 1e-5, Level - MaxLevel), 1e-7);
 
             // .xy = Normalized Red Channel (x, y)
             // .zw = Normalized Green Channel (x, y)
