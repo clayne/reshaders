@@ -29,7 +29,7 @@ namespace HornSchunck
 {
     uniform float _Constraint <
         ui_type = "slider";
-        ui_label = "Flow Smoothness";
+        ui_label = "Flow Smooth";
         ui_tooltip = "Higher = Smoother flow";
         ui_min = 0.0;
         ui_max = 2.0;
@@ -160,8 +160,8 @@ namespace HornSchunck
     {
         const float MaxLevel = 6.5;
         float4 OpticalFlow;
-        float2 Smoothness;
-        float3 Value;
+        float2 Smooth;
+        float3 Data;
 
         [unroll] for(float Level = MaxLevel; Level > 0.0; Level--)
         {
@@ -178,13 +178,13 @@ namespace HornSchunck
             SampleFrames.zw = tex2Dlod(_SamplePreviousFrame, float4(TexCoord, 0.0, Level)).rg;
             float2 Iz = SampleFrames.xy - SampleFrames.zw;
 
-            Smoothness.x = dot(SampleI.xz, SampleI.xz);
-            Smoothness.y = dot(SampleI.yw, SampleI.yw);
-            Smoothness.xy = 1.0 / (Smoothness.xy + Lambda);
-            Value.x = dot(SampleI.xz, Iz.rg);
-            Value.y = dot(SampleI.yw, Iz.rg);
-            Value.z = dot(SampleI.xz, SampleI.yw);
-            OpticalFlow.xy = Smoothness.xy * ((OpticalFlow.xy * Lambda) - (Value.zz * OpticalFlow.yx + Value.xy));
+            Smooth.x = dot(SampleI.xz, SampleI.xz);
+            Smooth.y = dot(SampleI.yw, SampleI.yw);
+            Smooth.xy = 1.0 / (Smooth.xy + Lambda);
+            Data.x = dot(SampleI.xz, Iz.rg);
+            Data.y = dot(SampleI.yw, Iz.rg);
+            Data.z = dot(SampleI.xz, SampleI.yw);
+            OpticalFlow.xy = Smooth.xy * ((OpticalFlow.xy * Lambda) - (Data.zz * OpticalFlow.yx + Data.xy));
         }
 
         OutputColor0.xy = OpticalFlow.xy;

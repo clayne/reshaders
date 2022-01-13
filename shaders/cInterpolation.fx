@@ -283,8 +283,8 @@ namespace Interpolation
     {
         const float MaxLevel = 6.5;
         float4 OpticalFlow;
-        float2 Smoothness;
-        float3 Value;
+        float2 Smooth;
+        float3 Data;
 
         [unroll] for(float Level = MaxLevel; Level > 0.0; Level--)
         {
@@ -301,13 +301,13 @@ namespace Interpolation
             SampleFrames.zw = tex2Dlod(_SampleData2, float4(TexCoord, 0.0, Level)).rg;
             float2 Iz = SampleFrames.xy - SampleFrames.zw;
 
-            Smoothness.x = dot(SampleI.xz, SampleI.xz);
-            Smoothness.y = dot(SampleI.yw, SampleI.yw);
-            Smoothness.xy = 1.0 / (Smoothness.xy + Lambda);
-            Value.x = dot(SampleI.xz, Iz.rg);
-            Value.y = dot(SampleI.yw, Iz.rg);
-            Value.z = dot(SampleI.xz, SampleI.yw);
-            OpticalFlow.xy = Smoothness.xy * (Lambda * OpticalFlow.xy - (Value.zz * OpticalFlow.yx + Value.xy));
+            Smooth.x = dot(SampleI.xz, SampleI.xz);
+            Smooth.y = dot(SampleI.yw, SampleI.yw);
+            Smooth.xy = 1.0 / (Smooth.xy + Lambda);
+            Data.x = dot(SampleI.xz, Iz.rg);
+            Data.y = dot(SampleI.yw, Iz.rg);
+            Data.z = dot(SampleI.xz, SampleI.yw);
+            OpticalFlow.xy = Smooth.xy * (Lambda * OpticalFlow.xy - (Data.zz * OpticalFlow.yx + Data.xy));
         }
 
         OutputColor0.xy = OpticalFlow.xy;
