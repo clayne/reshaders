@@ -296,6 +296,7 @@ namespace Interpolation
 
     void OpticalFlowPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
+        const float2 PixelSize = 1.0 / BUFFER_SIZE;
         const float MaxLevel = 6.5;
         float4 OpticalFlow;
         float2 Smooth;
@@ -313,7 +314,7 @@ namespace Interpolation
             // .zw = Previous frame (r, g)
             float4 SampleFrames;
             SampleFrames.xy = tex2Dlod(_SampleData0, float4(TexCoord, 0.0, Level)).rg;
-            SampleFrames.zw = tex2Dlod(_SampleData2, float4(TexCoord, 0.0, Level)).rg;
+            SampleFrames.zw = tex2Dlod(_SampleData2, float4(TexCoord + (OpticalFlow.xy * PixelSize), 0.0, Level)).rg;
             float2 Iz = SampleFrames.xy - SampleFrames.zw;
 
             Smooth.x = dot(SampleI.xz, SampleI.xz) + Alpha;
