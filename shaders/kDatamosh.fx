@@ -295,14 +295,13 @@ namespace DataMosh
             SampleFrames.zw = tex2Dlod(_SampleFrame1, float4(TexCoord, 0.0, Level)).rg;
             float2 Iz = SampleFrames.xy - SampleFrames.zw;
 
-            Smooth.x = dot(SampleI.xz, SampleI.xz);
-            Smooth.y = dot(SampleI.yw, SampleI.yw);
-            Smooth.xy = 1.0 / (Smooth.xy + Alpha);
+            Smooth.x = dot(SampleI.xz, SampleI.xz) + Alpha;
+            Smooth.y = dot(SampleI.yw, SampleI.yw) + Alpha;
             Data.x = dot(SampleI.xz, Iz.rg);
             Data.y = dot(SampleI.yw, Iz.rg);
             Data.z = dot(SampleI.xz, SampleI.yw);
-            OpticalFlow.x = (Alpha * OpticalFlow.x - (OpticalFlow.y * Data.z + Data.x)) * Smooth.x;
-            OpticalFlow.y = (Alpha * OpticalFlow.y - (OpticalFlow.x * Data.z + Data.y)) * Smooth.y;
+            OpticalFlow.x = ((Alpha * OpticalFlow.x) - (OpticalFlow.y * Data.z) - Data.x) / Smooth.x;
+            OpticalFlow.y = ((Alpha * OpticalFlow.y) - (OpticalFlow.x * Data.z) - Data.y) / Smooth.y;
         }
 
         OutputColor0.xy = OpticalFlow.xy;
