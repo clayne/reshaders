@@ -156,6 +156,32 @@ namespace Interpolation
 
     // Vertex shaders
 
+    static const float SampleOffsets[8] =
+    {
+        0.0,
+        1.4850044983805901,
+        3.4650570548417856,
+        5.4452207648927855,
+        7.425557483188341,
+        9.406126897065857,
+        11.386985823860664,
+        13.368187582263898
+    };
+
+    void BlurOffsets(in float2 TexCoord, in float2 PixelSize, out float4 Offsets[7])
+    {
+        int OffsetIndex = 0;
+        int SampleIndex = 1;
+
+        while(OffsetIndex < 7)
+        {
+            Offsets[OffsetIndex].xy = TexCoord.xy - (SampleOffsets[SampleIndex] * PixelSize.xy);
+            Offsets[OffsetIndex].zw = TexCoord.xy + (SampleOffsets[SampleIndex] * PixelSize.xy);
+            OffsetIndex = OffsetIndex + 1;
+            SampleIndex = SampleIndex + 1;
+        }
+    }
+
     void PostProcessVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float2 TexCoord : TEXCOORD0)
     {
         TexCoord.x = (ID == 2) ? 2.0 : 0.0;
@@ -163,46 +189,16 @@ namespace Interpolation
         Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
     }
 
-    static const float KernelSize = 14;
-
-    float GaussianWeight(const int PixelPosition)
-    {
-        const float Sigma = KernelSize / 3.0;
-        const float Pi = 3.1415926535897932384626433832795f;
-        float Output = rsqrt(2.0 * Pi * (Sigma * Sigma));
-        return Output * exp(-(PixelPosition * PixelPosition) / (2.0 * (Sigma * Sigma)));
-    }
-
-    void OutputOffsets(in float2 TexCoord, inout float4 Offsets[7], float2 Direction)
-    {
-        int OutputIndex = 0;
-        float PixelIndex = 1.0;
-
-        while(OutputIndex < 7)
-        {
-            float Offset1 = PixelIndex;
-            float Offset2 = PixelIndex + 1.0;
-            float Weight1 = GaussianWeight(Offset1);
-            float Weight2 = GaussianWeight(Offset2);
-            float WeightL = Weight1 + Weight2;
-            float Offset = ((Offset1 * Weight1) + (Offset2 * Weight2)) / WeightL;
-            Offsets[OutputIndex] = TexCoord.xyxy + float2(Offset, -Offset).xxyy * Direction.xyxy;
-
-            OutputIndex += 1;
-            PixelIndex += 2.0;
-        }
-    }
-
     void HorizontalBlurVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float2 TexCoord : TEXCOORD0, out float4 Offsets[7] : TEXCOORD1)
     {
         PostProcessVS(ID, Position, TexCoord);
-        OutputOffsets(TexCoord, Offsets, float2(1.0 / BUFFER_SIZE.x, 0.0));
+        BlurOffsets(TexCoord, float2(1.0 / BUFFER_SIZE.x, 0.0), Offsets);
     }
 
     void VerticalBlurVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float2 TexCoord : TEXCOORD0, out float4 Offsets[7] : TEXCOORD1)
     {
         PostProcessVS(ID, Position, TexCoord);
-        OutputOffsets(TexCoord, Offsets, float2(0.0, 1.0 / BUFFER_SIZE.y));
+        BlurOffsets(TexCoord, float2(0.0, 1.0 / BUFFER_SIZE.y), Offsets);
     }
 
     void DerivativesVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoord : TEXCOORD0)
@@ -216,29 +212,36 @@ namespace Interpolation
 
     // Pixel shaders
 
+    static const float SampleWeights[8] =
+    {
+        0.07978845608028654,
+        0.15186256685575583,
+        0.12458323113065647,
+        0.08723135590047126,
+        0.05212966006304008,
+        0.02658822496281644,
+        0.011573824628214867,
+        0.004299684163333117
+    };
+
     float4 GaussianBlur(sampler2D Source, float2 TexCoord, float4 Offsets[7])
     {
-        float Total = GaussianWeight(0.0);
-        float4 Output = tex2D(Source, TexCoord) * GaussianWeight(0.0);
+        float TotalSampleWeights = SampleWeights[0];
+        float4 OutputColor = tex2D(Source, TexCoord) * SampleWeights[0];
 
-        int Index = 0;
-        float PixelIndex = 1.0;
+        int SampleIndex = 0;
+        int WeightIndex = 1;
 
-        while(Index < 7)
+        while(SampleIndex < 7)
         {
-            float Offset1 = PixelIndex;
-            float Offset2 = PixelIndex + 1.0;
-            float Weight1 = GaussianWeight(Offset1);
-            float Weight2 = GaussianWeight(Offset2);
-            float WeightL = Weight1 + Weight2;
-            Output += tex2D(Source, Offsets[Index].xy) * WeightL;
-            Output += tex2D(Source, Offsets[Index].zw) * WeightL;
-            Total += 2.0 * WeightL;
-            Index += 1.0;
-            PixelIndex += 2.0;
+            OutputColor += (tex2D(Source, Offsets[SampleIndex].xy) * SampleWeights[WeightIndex]);
+            OutputColor += (tex2D(Source, Offsets[SampleIndex].zw) * SampleWeights[WeightIndex]);
+            TotalSampleWeights += (SampleWeights[WeightIndex] * 2.0);
+            SampleIndex = SampleIndex + 1;
+            WeightIndex = WeightIndex + 1;
         }
 
-        return Output / Total;
+        return OutputColor / TotalSampleWeights;
     }
 
     void CopyPS0(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
@@ -260,7 +263,6 @@ namespace Interpolation
     void HorizontalBlurPS0(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, in float4 Offsets[7] : TEXCOORD1, out float4 OutputColor0 : SV_Target0)
     {
         OutputColor0 = GaussianBlur(_SampleData0, TexCoord, Offsets).xyz;
-        OutputColor0.a = 1.0;
     }
 
     void VerticalBlurPS0(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, in float4 Offsets[7] : TEXCOORD1, out float4 OutputColor0 : SV_Target0)
