@@ -32,7 +32,7 @@ namespace PyramidalHornSchunck
         ui_label = "Blending";
         ui_min = 0.0;
         ui_max = 1.0;
-    > = 0.25;
+    > = 0.1;
 
     uniform float _Constraint <
         ui_type = "drag";
