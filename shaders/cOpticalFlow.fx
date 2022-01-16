@@ -328,40 +328,6 @@ namespace PyramidalHornSchunck
         MedianOffsets(TexCoord0, 1.0 / ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -1.0), Offsets);
     }
 
-    // Pixel shaders
-
-    static const float SampleWeights[8] =
-    {
-        0.07978845608028654,
-        0.15186256685575583,
-        0.12458323113065647,
-        0.08723135590047126,
-        0.05212966006304008,
-        0.02658822496281644,
-        0.011573824628214867,
-        0.004299684163333117
-    };
-
-    float4 GaussianBlur(sampler2D Source, float2 TexCoord, float4 Offsets[7])
-    {
-        float TotalSampleWeights = SampleWeights[0];
-        float4 OutputColor = tex2D(Source, TexCoord) * SampleWeights[0];
-
-        int SampleIndex = 0;
-        int WeightIndex = 1;
-
-        while(SampleIndex < 7)
-        {
-            OutputColor += (tex2D(Source, Offsets[SampleIndex].xy) * SampleWeights[WeightIndex]);
-            OutputColor += (tex2D(Source, Offsets[SampleIndex].zw) * SampleWeights[WeightIndex]);
-            TotalSampleWeights += (SampleWeights[WeightIndex] * 2.0);
-            SampleIndex = SampleIndex + 1;
-            WeightIndex = WeightIndex + 1;
-        }
-
-        return OutputColor / TotalSampleWeights;
-    }
-
     void VelocityStreamsVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float2 Velocity : TEXCOORD0)
     {
         int LineID = ID / 2; // Line Index
@@ -411,6 +377,40 @@ namespace PyramidalHornSchunck
         // Finish vertex position
         float2 VertexPositionNormal = (VertexPosition + 0.5) * PixelSize; // [0, 1]
         Position = float4(VertexPositionNormal * 2.0 - 1.0, 0.0, 1.0); // ndc: [-1, +1]
+    }
+
+    // Pixel shaders
+
+    static const float SampleWeights[8] =
+    {
+        0.07978845608028654,
+        0.15186256685575583,
+        0.12458323113065647,
+        0.08723135590047126,
+        0.05212966006304008,
+        0.02658822496281644,
+        0.011573824628214867,
+        0.004299684163333117
+    };
+
+    float4 GaussianBlur(sampler2D Source, float2 TexCoord, float4 Offsets[7])
+    {
+        float TotalSampleWeights = SampleWeights[0];
+        float4 OutputColor = tex2D(Source, TexCoord) * SampleWeights[0];
+
+        int SampleIndex = 0;
+        int WeightIndex = 1;
+
+        while(SampleIndex < 7)
+        {
+            OutputColor += (tex2D(Source, Offsets[SampleIndex].xy) * SampleWeights[WeightIndex]);
+            OutputColor += (tex2D(Source, Offsets[SampleIndex].zw) * SampleWeights[WeightIndex]);
+            TotalSampleWeights += (SampleWeights[WeightIndex] * 2.0);
+            SampleIndex = SampleIndex + 1;
+            WeightIndex = WeightIndex + 1;
+        }
+
+        return OutputColor / TotalSampleWeights;
     }
 
     // Math functions: https://github.com/microsoft/DirectX-Graphics-Samples/blob/master/MiniEngine/Core/Shaders/DoFMedianFilterCS.hlsl
