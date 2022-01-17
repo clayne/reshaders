@@ -13,6 +13,8 @@
 
 ## Shaders
 
+> Visit [my gist](https://gist.github.com/brimson) if you want ShaderToy ports
+
 Name|Description
 ----|-----------
 buggyassshaderlmao  | Shader that seems to cause problems on ReShade
@@ -56,5 +58,5 @@ Respectively suffix `VS` and `PS` | `PixelShader and VertexShader`
 
 ## Acknowledgements
 
-MartinBFFan and Pao on Discord for reporting bugs
-BSD for bug propaganda and helping to solve my issue
++ MartinBFFan and Pao on Discord for reporting bugs
++ BSD for bug propaganda and helping to solve my issue
