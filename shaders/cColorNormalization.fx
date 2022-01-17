@@ -102,7 +102,7 @@ void NormalizationPS(in float4 Position : SV_Position, in float2 TexCoord : TEXC
         case 6:
             // Angle-Retaining Chromaticity (Optimized for GPU)
             float2 AlphaA;
-            AlphaA.x = dot(Color.gb, float2(sqrt(3.0), -sqrt(3.0)));;
+            AlphaA.x = dot(Color.gb, float2(sqrt(3.0), -sqrt(3.0)));
             AlphaA.y = dot(Color, float3(2.0, -1.0, -1.0));
             float AlphaR = acos(dot(Color, 1.0) / (sqrt(3.0) * length(Color)));
             float AlphaC = AlphaR / length(AlphaA);
