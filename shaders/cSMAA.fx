@@ -208,8 +208,8 @@ v2f_2 SMAABlendingWeightCalculationWrapVS(in uint id : SV_VertexID)
 
     // And these for the searches, they indicate the ends of the loops:
     o.uv1[2] = mad(SMAA_RT_METRICS.xxyy,
-                    float2(-2.0, 2.0).xyxy * float(SMAA_MAX_SEARCH_STEPS),
-                    float4(o.uv1[0].xz, o.uv1[1].yw));
+                   float2(-2.0, 2.0).xyxy * float(SMAA_MAX_SEARCH_STEPS),
+                   float4(o.uv1[0].xz, o.uv1[1].yw));
     return o;
 }
 

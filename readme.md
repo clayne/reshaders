@@ -15,29 +15,29 @@
 
 Name|Description
 ----|-----------
+buggyassshaderlmao  | Shader that seems to cause problems on ReShade
 cAbberation         | Chromatic abberation using vertex shader offset
 cAutoExposure       | 2-pass automatic exposure
 cBloom              | Dual-filtering bloom
+cCheckerBoard       | Customizable 2-pattern checkerboard
 cColorBlendOp       | Blend to backbuffer without copying textures
 cColorNormalization | Various color normalization algoritms
+cDefault            | Initialize graphics pipeline (useful for comparing effects)
 cFilmGrain          | Film grain without copying texture
 cFrameBlending      | Frame blending using the previous result
 cFrameDifference    | Frame differencing
 cInterpolation      | Optical flow frame blending
 cLetterBox          | LetterBox without copying textures
 cLuminance          | Various grayscale algoritms
-cMipLevels          | Manual mipmap calculation
-cMosaic             | Few mosiac algorithms with mipmaps
+cMedian             | 3x3 median filter
 cMotionBlur         | Optical flow motion blur
 cOpticalFlow        | Display optical flow with lines or shading
 cPingPong           | Gaussian blur approximation using ping-pong box blurs
-cPureDepthAO        | **Experimental** ambient occlusion
 cSMAA               | Minimalist version of SMAA, medium setting
 cShard              | Simple unmask sharpening
 cSrcDestBlend       | Backbuffer blending
 cThreshold          | Quadratic color thresholding
 cTile               | Buffer scaling using vertex shaders
-cTonemap            | Watch Dog's tonemapping with gamma correction
 kContour            | Contour line effect
 kDatamosh           | Simulates video compression artifacts
 kMirror             | Mirroring and kaleidoscope effect

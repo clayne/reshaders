@@ -117,7 +117,7 @@ void PostProcessVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, 
 float4 GaussianBlur(sampler2D Source, float2 TexCoord, const float2 Direction)
 {
     float4 Output;
-    const float2 PixelSize = (1.0 / float2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2)) * Direction;
+    const float2 PixelSize = (2.0 / float2(BUFFER_WIDTH, BUFFER_HEIGHT)) * Direction;
     const float Weight = 1.0 / _Radius;
 
     for(float Index = -_Radius + 0.5; Index <= _Radius; Index += 2.0)
@@ -200,7 +200,6 @@ technique cPingPong
                 SRGBWriteEnable = TRUE;
             #endif
         }
-
 
         pass PingPong4
         {
