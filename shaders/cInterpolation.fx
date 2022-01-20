@@ -32,16 +32,8 @@ namespace Interpolation
         ui_label = "Flow Smooth";
         ui_tooltip = "Higher = Smoother flow";
         ui_min = 0.0;
-        ui_max = 1.0;
-    > = 0.5;
-
-    uniform float _Scale <
-        ui_type = "slider";
-        ui_label = "Flow Scale";
-        ui_tooltip = "Higher = More motion blur";
-        ui_min = 0.0;
-        ui_max = 3.0;
-    > = 1.5;
+        ui_max = 2.0;
+    > = 1.0;
 
     uniform float _MipBias <
         ui_type = "slider";
@@ -282,7 +274,7 @@ namespace Interpolation
         }
     }
 
-    void MedianOffsets(in float2 TexCoord, in float2 PixelSize, out float4 SampleOffsets[3])
+    void UpsampleOffsets(in float2 TexCoord, in float2 PixelSize, out float4 SampleOffsets[3])
     {
         // Sample locations:
         // [0].xy [1].xy [2].xy
@@ -325,49 +317,49 @@ namespace Interpolation
     {
         float2 TexCoord0;
         PostProcessVS(ID, Position, TexCoord0);
-        MedianOffsets(TexCoord0, 1.0 / ldexp(BUFFER_SIZE, -6.0), Offsets);
+        UpsampleOffsets(TexCoord0, 1.0 / ldexp(BUFFER_SIZE, -7.0), Offsets);
     }
 
     void EstimateLevel5VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 Offsets[3] : TEXCOORD0)
     {
         float2 TexCoord0;
         PostProcessVS(ID, Position, TexCoord0);
-        MedianOffsets(TexCoord0, 1.0 / ldexp(BUFFER_SIZE, -5.0), Offsets);
+        UpsampleOffsets(TexCoord0, 1.0 / ldexp(BUFFER_SIZE, -6.0), Offsets);
     }
 
     void EstimateLevel4VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 Offsets[3] : TEXCOORD0)
     {
         float2 TexCoord0;
         PostProcessVS(ID, Position, TexCoord0);
-        MedianOffsets(TexCoord0, 1.0 / ldexp(BUFFER_SIZE, -4.0), Offsets);
+        UpsampleOffsets(TexCoord0, 1.0 / ldexp(BUFFER_SIZE, -5.0), Offsets);
     }
 
     void EstimateLevel3VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 Offsets[3] : TEXCOORD0)
     {
         float2 TexCoord0;
         PostProcessVS(ID, Position, TexCoord0);
-        MedianOffsets(TexCoord0, 1.0 / ldexp(BUFFER_SIZE, -3.0), Offsets);
+        UpsampleOffsets(TexCoord0, 1.0 / ldexp(BUFFER_SIZE, -4.0), Offsets);
     }
 
     void EstimateLevel2VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 Offsets[3] : TEXCOORD0)
     {
         float2 TexCoord0;
         PostProcessVS(ID, Position, TexCoord0);
-        MedianOffsets(TexCoord0, 1.0 / ldexp(BUFFER_SIZE, -2.0), Offsets);
+        UpsampleOffsets(TexCoord0, 1.0 / ldexp(BUFFER_SIZE, -3.0), Offsets);
     }
 
     void EstimateLevel1VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 Offsets[3] : TEXCOORD0)
     {
         float2 TexCoord0;
         PostProcessVS(ID, Position, TexCoord0);
-        MedianOffsets(TexCoord0, 1.0 / ldexp(BUFFER_SIZE, -1.0), Offsets);
+        UpsampleOffsets(TexCoord0, 1.0 / ldexp(BUFFER_SIZE, -2.0), Offsets);
     }
 
     void EstimateLevel0VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 Offsets[3] : TEXCOORD0)
     {
         float2 TexCoord0;
         PostProcessVS(ID, Position, TexCoord0);
-        MedianOffsets(TexCoord0, 1.0 / ldexp(BUFFER_SIZE, 0.0), Offsets);
+        UpsampleOffsets(TexCoord0, 1.0 / ldexp(BUFFER_SIZE, -1.0), Offsets);
     }
 
     // Pixel shaders
@@ -404,34 +396,7 @@ namespace Interpolation
         return OutputColor / TotalSampleWeights;
     }
 
-    // Math functions: https://github.com/microsoft/DirectX-Graphics-Samples/blob/master/MiniEngine/Core/Shaders/DoFMedianFilterCS.hlsl
-
-    float4 Max3(float4 a, float4 b, float4 c)
-    {
-        return max(max(a, b), c);
-    }
-
-    float4 Min3(float4 a, float4 b, float4 c)
-    {
-        return min(min(a, b), c);
-    }
-
-    float4 Med3(float4 a, float4 b, float4 c)
-    {
-        return clamp(a, min(b, c), max(b, c));
-    }
-
-    float4 Med9(float4 x0, float4 x1, float4 x2,
-                float4 x3, float4 x4, float4 x5,
-                float4 x6, float4 x7, float4 x8)
-    {
-        float4 A = Max3(Min3(x0, x1, x2), Min3(x3, x4, x5), Min3(x6, x7, x8));
-        float4 B = Min3(Max3(x0, x1, x2), Max3(x3, x4, x5), Max3(x6, x7, x8));
-        float4 C = Med3(Med3(x0, x1, x2), Med3(x3, x4, x5), Med3(x6, x7, x8));
-        return Med3(A, B, C);
-    }
-
-    float4 Median(sampler2D Source, float4 Offsets[3])
+    float4 Upsample(sampler2D Source, float4 Offsets[3])
     {
         // Sample locations:
         // [0].xy [1].xy [2].xy
@@ -448,9 +413,10 @@ namespace Interpolation
         Sample[6] = tex2D(Source, Offsets[0].xw);
         Sample[7] = tex2D(Source, Offsets[1].xw);
         Sample[8] = tex2D(Source, Offsets[2].xw);
-        return Med9(Sample[0], Sample[1], Sample[2],
-                    Sample[3], Sample[4], Sample[5],
-                    Sample[6], Sample[7], Sample[8]);
+
+        return ((Sample[0] + Sample[2] + Sample[6] + Sample[8]) * 1.0
+              + (Sample[1] + Sample[3] + Sample[5] + Sample[7]) * 2.0
+              + (Sample[4]) * 4.0) / 16.0;
     }
 
     /*
@@ -539,39 +505,39 @@ namespace Interpolation
         OpticalFlow(TexCoord, 0.0, 7.0, OutputEstimation);
     }
 
-    void EstimateLevel6PS(in float4 Position : SV_Position, in float4 MedianOffsets[3] : TEXCOORD0, out float2 OutputEstimation : SV_Target0)
+    void EstimateLevel6PS(in float4 Position : SV_Position, in float4 UpsampleOffsets[3] : TEXCOORD0, out float2 OutputEstimation : SV_Target0)
     {
-        OpticalFlow(MedianOffsets[1].xz, Median(_SampleLevel7, MedianOffsets).xy, 7.0, OutputEstimation);
+        OpticalFlow(UpsampleOffsets[1].xz, Upsample(_SampleLevel7, UpsampleOffsets).xy, 6.0, OutputEstimation);
     }
 
-    void EstimateLevel5PS(in float4 Position : SV_Position, in float4 MedianOffsets[3] : TEXCOORD0, out float2 OutputEstimation : SV_Target0)
+    void EstimateLevel5PS(in float4 Position : SV_Position, in float4 UpsampleOffsets[3] : TEXCOORD0, out float2 OutputEstimation : SV_Target0)
     {
-        OpticalFlow(MedianOffsets[1].xz, Median(_SampleLevel6, MedianOffsets).xy, 6.0, OutputEstimation);
+        OpticalFlow(UpsampleOffsets[1].xz, Upsample(_SampleLevel6, UpsampleOffsets).xy, 5.0, OutputEstimation);
     }
 
-    void EstimateLevel4PS(in float4 Position : SV_Position, in float4 MedianOffsets[3] : TEXCOORD0, out float2 OutputEstimation : SV_Target0)
+    void EstimateLevel4PS(in float4 Position : SV_Position, in float4 UpsampleOffsets[3] : TEXCOORD0, out float2 OutputEstimation : SV_Target0)
     {
-        OpticalFlow(MedianOffsets[1].xz, Median(_SampleLevel5, MedianOffsets).xy, 5.0, OutputEstimation);
+        OpticalFlow(UpsampleOffsets[1].xz, Upsample(_SampleLevel5, UpsampleOffsets).xy, 4.0, OutputEstimation);
     }
 
-    void EstimateLevel3PS(in float4 Position : SV_Position, in float4 MedianOffsets[3] : TEXCOORD0, out float2 OutputEstimation : SV_Target0)
+    void EstimateLevel3PS(in float4 Position : SV_Position, in float4 UpsampleOffsets[3] : TEXCOORD0, out float2 OutputEstimation : SV_Target0)
     {
-        OpticalFlow(MedianOffsets[1].xz, Median(_SampleLevel4, MedianOffsets).xy, 4.0, OutputEstimation);
+        OpticalFlow(UpsampleOffsets[1].xz, Upsample(_SampleLevel4, UpsampleOffsets).xy, 3.0, OutputEstimation);
     }
 
-    void EstimateLevel2PS(in float4 Position : SV_Position, in float4 MedianOffsets[3] : TEXCOORD0, out float2 OutputEstimation : SV_Target0)
+    void EstimateLevel2PS(in float4 Position : SV_Position, in float4 UpsampleOffsets[3] : TEXCOORD0, out float2 OutputEstimation : SV_Target0)
     {
-        OpticalFlow(MedianOffsets[1].xz, Median(_SampleLevel3, MedianOffsets).xy, 3.0, OutputEstimation);
+        OpticalFlow(UpsampleOffsets[1].xz, Upsample(_SampleLevel3, UpsampleOffsets).xy, 2.0, OutputEstimation);
     }
 
-    void EstimateLevel1PS(in float4 Position : SV_Position, in float4 MedianOffsets[3] : TEXCOORD0, out float2 OutputEstimation : SV_Target0)
+    void EstimateLevel1PS(in float4 Position : SV_Position, in float4 UpsampleOffsets[3] : TEXCOORD0, out float2 OutputEstimation : SV_Target0)
     {
-        OpticalFlow(MedianOffsets[1].xz, Median(_SampleLevel2, MedianOffsets).xy, 2.0, OutputEstimation);
+        OpticalFlow(UpsampleOffsets[1].xz, Upsample(_SampleLevel2, UpsampleOffsets).xy, 1.0, OutputEstimation);
     }
 
-    void EstimateLevel0PS(in float4 Position : SV_Position, in float4 MedianOffsets[3] : TEXCOORD0, out float4 OutputEstimation : SV_Target0)
+    void EstimateLevel0PS(in float4 Position : SV_Position, in float4 UpsampleOffsets[3] : TEXCOORD0, out float4 OutputEstimation : SV_Target0)
     {
-        OpticalFlow(MedianOffsets[1].xz, Median(_SampleLevel1, MedianOffsets).xy, 1.0, OutputEstimation.xy);
+        OpticalFlow(UpsampleOffsets[1].xz, Upsample(_SampleLevel1, UpsampleOffsets).xy, 0.0, OutputEstimation.xy);
         OutputEstimation.ba = (0.0, _Blend);
     }
 
@@ -583,6 +549,11 @@ namespace Interpolation
     void VerticalBlurPS1(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, in float4 Offsets[7] : TEXCOORD1, out float4 OutputColor0 : SV_Target0)
     {
         OutputColor0 = GaussianBlur(_SampleData1, TexCoord, Offsets);
+    }
+
+    float4 Med3(float4 a, float4 b, float4 c)
+    {
+        return clamp(a, min(b, c), max(b, c));
     }
 
     void InterpolatePS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
