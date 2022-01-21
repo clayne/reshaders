@@ -28,6 +28,7 @@ cDefault            | Initialize graphics pipeline (useful for comparing effects
 cFilmGrain          | Film grain without copying texture
 cFrameBlending      | Frame blending using the previous result
 cFrameDifference    | Frame differencing
+cGaussianBlur       | HLSL implementation of RasterGrid's linear Gaussian blur
 cInterpolation      | Optical flow frame blending
 cLetterBox          | LetterBox without copying textures
 cLuminance          | Various grayscale algoritms
