@@ -29,6 +29,10 @@ uniform float2 _ShiftRed <
     ui_type = "drag";
 > = -1.0;
 
+uniform float2 _ShiftGreen <
+    ui_type = "drag";
+> = 0.0;
+
 uniform float2 _ShiftBlue <
     ui_type = "drag";
 > = 1.0;
@@ -60,7 +64,7 @@ void AbberationPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOOR
     // Shift red channel
     OutputColor0.r = tex2D(_SampleColor, TexCoord + _ShiftRed * PixelSize).r;
     // Keep green channel to the center
-    OutputColor0.g = tex2D(_SampleColor, TexCoord).g;
+    OutputColor0.g = tex2D(_SampleColor, TexCoord + _ShiftGreen * PixelSize).g;
     // Shift blue channel
     OutputColor0.b = tex2D(_SampleColor, TexCoord + _ShiftBlue * PixelSize).b;
     // Write alpha value
