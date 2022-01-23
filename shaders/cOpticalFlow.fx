@@ -54,7 +54,12 @@ namespace PyramidalHornSchunck
         ui_tooltip = "Higher = Less spatial noise";
     > = 0.0;
 
-    uniform bool _Normal <
+    uniform bool _NormalizedShading <
+        ui_label = "Normalize Velocity Shading";
+        ui_type = "radio";
+    > = true;
+
+    uniform bool _NormalDirection <
         ui_label = "Lines Normal Direction";
         ui_tooltip = "Normal to velocity direction";
         ui_type = "radio";
@@ -369,7 +374,7 @@ namespace PyramidalHornSchunck
         // Compute current vertex position (based on VertexID)
         float2 VertexPosition = 0.0;
 
-        if(_Normal)
+        if(_NormalDirection)
         {
             // Lines: Normal to velocity direction
             Direction *= 0.5;
@@ -420,7 +425,6 @@ namespace PyramidalHornSchunck
 
         return OutputColor / TotalSampleWeights;
     }
-
 
     float4 Upsample(sampler2D Source, float4 Offsets[3])
     {
@@ -575,10 +579,18 @@ namespace PyramidalHornSchunck
     void VelocityShadingPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target)
     {
         float2 Velocity = tex2Dlod(_SampleData2, float4(TexCoord, 0.0, _MipBias)).xy;
-        float VelocityLength = saturate(rsqrt(dot(Velocity, Velocity)));
-        OutputColor0.rg = (Velocity * VelocityLength) * 0.5 + 0.5;
-        OutputColor0.b = -dot(OutputColor0.rg, 1.0) * 0.5 + 1.0;
-        OutputColor0.a = 1.0;
+
+        if(_NormalizedShading)
+        {
+            float VelocityLength = saturate(rsqrt(dot(Velocity, Velocity)));
+            OutputColor0.rg = (Velocity * VelocityLength) * 0.5 + 0.5;
+            OutputColor0.b = -dot(OutputColor0.rg, 1.0) * 0.5 + 1.0;
+            OutputColor0.a = 1.0;
+        }
+        else
+        {
+            OutputColor0 = float4(Velocity, 0.0, 1.0);
+        }
     }
 
     void VelocityStreamsPS(in float4 Position : SV_Position, in float2 Velocity : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
