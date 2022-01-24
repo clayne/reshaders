@@ -41,7 +41,7 @@ namespace PyramidalHornSchunck
         ui_label = "Blending";
         ui_min = 0.0;
         ui_max = 1.0;
-    > = 0.1;
+    > = 0.8;
 
     uniform float _Constraint <
         ui_type = "drag";
@@ -57,49 +57,49 @@ namespace PyramidalHornSchunck
         ui_tooltip = "Higher = Less spatial noise";
     > = 0.0;
 
-    uniform float3 _ColorShift <
-        ui_type = "color";
-        ui_category = "Rendering";
-        ui_label = "Display line color shifting";
-    > = 1.0;
-
-    uniform float _LineBlend <
-        ui_type = "slider";
-        ui_category = "Rendering";
-        ui_label = "Velocity line blending";
-        ui_min = 0.0;
-        ui_max = 1.0;
-    > = 1.0;
-
     uniform bool _NormalizedShading <
         ui_type = "radio";
-        ui_category = "Rendering";
+        ui_category = "Velocity shading";
         ui_label = "Normalize velocity shading";
-    > = true;
-
-    uniform bool _NormalDirection <
-        ui_type = "radio";
-        ui_category = "Rendering";
-        ui_label = "Lines normal direction";
-        ui_tooltip = "Normal to velocity direction";
     > = true;
 
     uniform bool _ScaleLineVelocity <
         ui_type = "radio";
-        ui_category = "Rendering";
-        ui_label = "Scale line velocity color";
-    > = true;
+        ui_category = "Velocity streaming";
+        ui_label = "Scale velocity color";
+    > = false;
+
+    uniform bool _NormalDirection <
+        ui_type = "radio";
+        ui_category = "Velocity streaming";
+        ui_label = "Normalize direction";
+        ui_tooltip = "Normalize direction";
+    > = false;
+
+    uniform float3 _ColorShift <
+        ui_type = "color";
+        ui_category = "Velocity streaming";
+        ui_label = "Color shifting";
+    > = 1.0;
+
+    uniform float _LineBlend <
+        ui_type = "slider";
+        ui_category = "Velocity streaming";
+        ui_label = "Background blending";
+        ui_min = 0.0;
+        ui_max = 1.0;
+    > = 0.0;
 
     #ifndef RENDER_VELOCITY_STREAMS
         #define RENDER_VELOCITY_STREAMS 1
     #endif
 
     #ifndef VERTEX_SPACING
-        #define VERTEX_SPACING 10
+        #define VERTEX_SPACING 16
     #endif
 
     #ifndef VELOCITY_SCALE_FACTOR
-        #define VELOCITY_SCALE_FACTOR 1
+        #define VELOCITY_SCALE_FACTOR 16
     #endif
 
     #define LINES_X uint(BUFFER_WIDTH / VERTEX_SPACING)
