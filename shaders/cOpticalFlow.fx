@@ -37,6 +37,7 @@ namespace PyramidalHornSchunck
 {
     uniform float _Blend <
         ui_type = "slider";
+        ui_category = "Optical flow";
         ui_label = "Blending";
         ui_min = 0.0;
         ui_max = 1.0;
@@ -44,25 +45,49 @@ namespace PyramidalHornSchunck
 
     uniform float _Constraint <
         ui_type = "drag";
+        ui_category = "Optical flow";
         ui_label = "Constraint";
         ui_tooltip = "Higher = Smoother flow";
     > = 1.0;
 
     uniform float _MipBias  <
         ui_type = "drag";
-        ui_label = "Mipmap Bias";
+        ui_category = "Optical flow";
+        ui_label = "Mipmap bias";
         ui_tooltip = "Higher = Less spatial noise";
     > = 0.0;
 
+    uniform float3 _ColorShift <
+        ui_type = "color";
+        ui_category = "Rendering";
+        ui_label = "Display line color shifting";
+    > = 1.0;
+
+    uniform float _LineBlend <
+        ui_type = "slider";
+        ui_category = "Rendering";
+        ui_label = "Velocity line blending";
+        ui_min = 0.0;
+        ui_max = 1.0;
+    > = 1.0;
+
     uniform bool _NormalizedShading <
-        ui_label = "Normalize Velocity Shading";
         ui_type = "radio";
+        ui_category = "Rendering";
+        ui_label = "Normalize velocity shading";
     > = true;
 
     uniform bool _NormalDirection <
-        ui_label = "Lines Normal Direction";
-        ui_tooltip = "Normal to velocity direction";
         ui_type = "radio";
+        ui_category = "Rendering";
+        ui_label = "Lines normal direction";
+        ui_tooltip = "Normal to velocity direction";
+    > = true;
+
+    uniform bool _ScaleLineVelocity <
+        ui_type = "radio";
+        ui_category = "Rendering";
+        ui_label = "Scale line velocity color";
     > = true;
 
     #ifndef RENDER_VELOCITY_STREAMS
@@ -73,12 +98,16 @@ namespace PyramidalHornSchunck
         #define VERTEX_SPACING 10
     #endif
 
+    #ifndef VELOCITY_SCALE_FACTOR
+        #define VELOCITY_SCALE_FACTOR 1
+    #endif
+
     #define LINES_X uint(BUFFER_WIDTH / VERTEX_SPACING)
     #define LINES_Y uint(BUFFER_HEIGHT / VERTEX_SPACING)
     #define NUM_LINES (LINES_X * LINES_Y)
     #define SPACE_X (BUFFER_WIDTH / LINES_X)
     #define SPACE_Y (BUFFER_HEIGHT / LINES_Y)
-    #define VELOCITY_SCALE (SPACE_X + SPACE_Y) * 1
+    #define VELOCITY_SCALE (SPACE_X + SPACE_Y) * VELOCITY_SCALE_FACTOR
 
     texture2D _RenderColor : COLOR;
 
@@ -223,6 +252,23 @@ namespace PyramidalHornSchunck
     sampler2D _SampleLevel0
     {
         Texture = _RenderLevel0;
+    };
+
+    texture2D _RenderLines
+    {
+        Width = BUFFER_WIDTH;
+        Height = BUFFER_HEIGHT;
+        Format = RGBA8;
+    };
+
+    sampler2D _SampleLines
+    {
+        Texture = _RenderLines;
+    };
+
+    sampler2D _SampleColorGamma
+    {
+        Texture = _RenderColor;
     };
 
     // Vertex shaders
@@ -595,10 +641,17 @@ namespace PyramidalHornSchunck
 
     void VelocityStreamsPS(in float4 Position : SV_Position, in float2 Velocity : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
-        float Length = length(Velocity) * VELOCITY_SCALE * 0.05;
-        OutputColor0.rg = (Velocity.xy / Length) * 0.5 + 0.5;
+        OutputColor0.rg = (_ScaleLineVelocity) ? (Velocity.xy / (length(Velocity) * VELOCITY_SCALE * 0.05)) : normalize(Velocity.xy);
+        OutputColor0.rg = OutputColor0.xy * 0.5 + 0.5;
         OutputColor0.b = -dot(OutputColor0.rg, 1.0) * 0.5 + 1.0;
         OutputColor0.a = 1.0;
+    }
+
+    void VelocityStreamsDisplayPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float3 OutputColor0 : SV_Target0)
+    {
+        float3 Lines = tex2D(_SampleLines, TexCoord).rgb;
+        float3 MainColor = tex2D(_SampleColorGamma, TexCoord).rgb;
+        OutputColor0 = (MainColor * _LineBlend) + (Lines * _ColorShift);
     }
 
     technique cOpticalFlow
@@ -714,19 +767,22 @@ namespace PyramidalHornSchunck
         }
 
         #if RENDER_VELOCITY_STREAMS
+            // Render to a fullscreen buffer (cringe!)
             pass
             {
                 PrimitiveTopology = LINELIST;
                 VertexCount = NUM_LINES * 2;
                 VertexShader = VelocityStreamsVS;
                 PixelShader = VelocityStreamsPS;
+                ClearRenderTargets = TRUE;
+                RenderTarget0 = _RenderLines;
+            }
+
+            pass
+            {
+                VertexShader = PostProcessVS;
+                PixelShader = VelocityStreamsDisplayPS;
                 ClearRenderTargets = FALSE;
-                BlendEnable = TRUE;
-                BlendOp = ADD;
-                SrcBlend = SRCALPHA;
-                DestBlend = INVSRCALPHA;
-                SrcBlendAlpha = ONE;
-                DestBlendAlpha = ONE;
             }
         #else
             pass

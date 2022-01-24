@@ -74,10 +74,22 @@ sampler2D _SampleColor
     #endif
 };
 
-texture2D _RenderBloom1
+texture2D _RenderBlit
 {
     Width = BUFFER_WIDTH / 2;
     Height = BUFFER_HEIGHT / 2;
+    Format = RGBA16F;
+};
+
+sampler2D _SampleBlit
+{
+    Texture = _RenderBlit;
+};
+
+texture2D _RenderBloom1
+{
+    Width = BUFFER_WIDTH / 4;
+    Height = BUFFER_HEIGHT / 4;
     Format = RGBA16F;
 };
 
@@ -88,8 +100,8 @@ sampler2D _SampleBloom1
 
 texture2D _RenderBloom2
 {
-    Width = BUFFER_WIDTH / 4;
-    Height = BUFFER_HEIGHT / 4;
+    Width = BUFFER_WIDTH / 8;
+    Height = BUFFER_HEIGHT / 8;
     Format = RGBA16F;
 };
 
@@ -100,8 +112,8 @@ sampler2D _SampleBloom2
 
 texture2D _RenderBloom3
 {
-    Width = BUFFER_WIDTH / 8;
-    Height = BUFFER_HEIGHT / 8;
+    Width = BUFFER_WIDTH / 16;
+    Height = BUFFER_HEIGHT / 16;
     Format = RGBA16F;
 };
 
@@ -112,8 +124,8 @@ sampler2D _SampleBloom3
 
 texture2D _RenderBloom4
 {
-    Width = BUFFER_WIDTH / 16;
-    Height = BUFFER_HEIGHT / 16;
+    Width = BUFFER_WIDTH / 32;
+    Height = BUFFER_HEIGHT / 32;
     Format = RGBA16F;
 };
 
@@ -124,8 +136,8 @@ sampler2D _SampleBloom4
 
 texture2D _RenderBloom5
 {
-    Width = BUFFER_WIDTH / 32;
-    Height = BUFFER_HEIGHT / 32;
+    Width = BUFFER_WIDTH / 64;
+    Height = BUFFER_HEIGHT / 64;
     Format = RGBA16F;
 };
 
@@ -136,8 +148,8 @@ sampler2D _SampleBloom5
 
 texture2D _RenderBloom6
 {
-    Width = BUFFER_WIDTH / 64;
-    Height = BUFFER_HEIGHT / 64;
+    Width = BUFFER_WIDTH / 128;
+    Height = BUFFER_HEIGHT / 128;
     Format = RGBA16F;
 };
 
@@ -148,26 +160,14 @@ sampler2D _SampleBloom6
 
 texture2D _RenderBloom7
 {
-    Width = BUFFER_WIDTH / 128;
-    Height = BUFFER_HEIGHT / 128;
+    Width = BUFFER_WIDTH / 256;
+    Height = BUFFER_HEIGHT / 256;
     Format = RGBA16F;
 };
 
 sampler2D _SampleBloom7
 {
     Texture = _RenderBloom7;
-};
-
-texture2D _RenderBloom8
-{
-    Width = BUFFER_WIDTH / 256;
-    Height = BUFFER_HEIGHT / 256;
-    Format = RGBA16F;
-};
-
-sampler2D _SampleBloom8
-{
-    Texture = _RenderBloom8;
 };
 
 // Vertex shaders
@@ -201,11 +201,11 @@ void UpsampleVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out
     PostProcessVS(ID, Position, TexCoord0);
     const float2 pSize = 1.0 / ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -Factor);
     // Left column
-    TexCoord[0] = TexCoord0.xyyy + float4(-1.0, 1.0, 0.0, -1.0) * pSize.xyyy;
+    TexCoord[0] = TexCoord0.xyyy + float4(-2.0, 2.0, 0.0, -2.0) * pSize.xyyy;
     // Center column
-    TexCoord[1] = TexCoord0.xyyy + float4(0.0, 1.0, 0.0, -1.0) * pSize.xyyy;
+    TexCoord[1] = TexCoord0.xyyy + float4(0.0, 2.0, 0.0, -2.0) * pSize.xyyy;
     // Right column
-    TexCoord[2] = TexCoord0.xyyy + float4(1.0, 1.0, 0.0, -1.0) * pSize.xyyy;
+    TexCoord[2] = TexCoord0.xyyy + float4(2.0, 2.0, 0.0, -2.0) * pSize.xyyy;
 }
 
 void DownsampleVS1(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoord[4] : TEXCOORD0)
@@ -243,37 +243,32 @@ void DownsampleVS7(in uint ID : SV_VertexID, out float4 Position : SV_Position, 
     DownsampleVS(ID, Position, TexCoord, 7.0);
 }
 
-void UpsampleVS8(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoord[3] : TEXCOORD0)
-{
-    UpsampleVS(ID, Position, TexCoord, 8.0);
-}
-
-void UpsampleVS7(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoord[3] : TEXCOORD0)
+void UpsampleVS6(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoord[3] : TEXCOORD0)
 {
     UpsampleVS(ID, Position, TexCoord, 7.0);
 }
 
-void UpsampleVS6(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoord[3] : TEXCOORD0)
+void UpsampleVS5(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoord[3] : TEXCOORD0)
 {
     UpsampleVS(ID, Position, TexCoord, 6.0);
 }
 
-void UpsampleVS5(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoord[3] : TEXCOORD0)
+void UpsampleVS4(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoord[3] : TEXCOORD0)
 {
     UpsampleVS(ID, Position, TexCoord, 5.0);
 }
 
-void UpsampleVS4(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoord[3] : TEXCOORD0)
+void UpsampleVS3(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoord[3] : TEXCOORD0)
 {
     UpsampleVS(ID, Position, TexCoord, 4.0);
 }
 
-void UpsampleVS3(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoord[3] : TEXCOORD0)
+void UpsampleVS2(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoord[3] : TEXCOORD0)
 {
     UpsampleVS(ID, Position, TexCoord, 3.0);
 }
 
-void UpsampleVS2(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoord[3] : TEXCOORD0)
+void UpsampleVS1(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoord[3] : TEXCOORD0)
 {
     UpsampleVS(ID, Position, TexCoord, 2.0);
 }
@@ -390,77 +385,77 @@ float3 RRTAndODTFit(float3 v)
 
 void DownsamplePS1(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    OutputColor0 = DownsamplePS(_SampleBloom1, TexCoord);
+    OutputColor0 = DownsamplePS(_SampleBlit, TexCoord);
 }
 
 void DownsamplePS2(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    OutputColor0 = DownsamplePS(_SampleBloom2, TexCoord);
+    OutputColor0 = DownsamplePS(_SampleBloom1, TexCoord);
 }
 
 void DownsamplePS3(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    OutputColor0 = DownsamplePS(_SampleBloom3, TexCoord);
+    OutputColor0 = DownsamplePS(_SampleBloom2, TexCoord);
 }
 
 void DownsamplePS4(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    OutputColor0 = DownsamplePS(_SampleBloom4, TexCoord);
+    OutputColor0 = DownsamplePS(_SampleBloom3, TexCoord);
 }
 
 void DownsamplePS5(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    OutputColor0 = DownsamplePS(_SampleBloom5, TexCoord);
+    OutputColor0 = DownsamplePS(_SampleBloom4, TexCoord);
 }
 
 void DownsamplePS6(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    OutputColor0 = DownsamplePS(_SampleBloom6, TexCoord);
+    OutputColor0 = DownsamplePS(_SampleBloom5, TexCoord);
 }
 
 void DownsamplePS7(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    OutputColor0 = DownsamplePS(_SampleBloom7, TexCoord);
-}
-
-void UpsamplePS8(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
-{
-    OutputColor0 = UpsamplePS(_SampleBloom8, TexCoord);
-}
-
-void UpsamplePS7(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
-{
-    OutputColor0 = UpsamplePS(_SampleBloom7, TexCoord);
+    OutputColor0 = DownsamplePS(_SampleBloom6, TexCoord);
 }
 
 void UpsamplePS6(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    OutputColor0 = UpsamplePS(_SampleBloom6, TexCoord);
+    OutputColor0 = UpsamplePS(_SampleBloom7, TexCoord);
 }
 
 void UpsamplePS5(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    OutputColor0 = UpsamplePS(_SampleBloom5, TexCoord);
+    OutputColor0 = UpsamplePS(_SampleBloom6, TexCoord);
 }
 
 void UpsamplePS4(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    OutputColor0 = UpsamplePS(_SampleBloom4, TexCoord);
+    OutputColor0 = UpsamplePS(_SampleBloom5, TexCoord);
 }
 
 void UpsamplePS3(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    OutputColor0 = UpsamplePS(_SampleBloom3, TexCoord);
+    OutputColor0 = UpsamplePS(_SampleBloom4, TexCoord);
 }
 
 void UpsamplePS2(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
+    OutputColor0 = UpsamplePS(_SampleBloom3, TexCoord);
+}
+
+void UpsamplePS1(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+{
     OutputColor0 = UpsamplePS(_SampleBloom2, TexCoord);
+}
+
+void BlitPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+{
+    OutputColor0 = tex2D(_SampleBloom1, TexCoord);
 }
 
 void CompositePS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    float4 Src = tex2D(_SampleBloom1, TexCoord);
+    float4 Src = tex2D(_SampleBlit, TexCoord);
     Src *= _Intensity;
     Src = mul(ACESInputMat, Src.rgb);
     Src = RRTAndODTFit(Src.rgb);
@@ -476,87 +471,63 @@ technique cBloom
     {
         VertexShader = PostProcessVS;
         PixelShader = PrefilterPS;
-        RenderTarget0 = _RenderBloom1;
+        RenderTarget0 = _RenderBlit;
     }
 
     pass
     {
         VertexShader = DownsampleVS1;
         PixelShader = DownsamplePS1;
-        RenderTarget0 = _RenderBloom2;
+        RenderTarget0 = _RenderBloom1;
     }
 
     pass
     {
         VertexShader = DownsampleVS2;
         PixelShader = DownsamplePS2;
-        RenderTarget0 = _RenderBloom3;
+        RenderTarget0 = _RenderBloom2;
     }
 
     pass
     {
         VertexShader = DownsampleVS3;
         PixelShader = DownsamplePS3;
-        RenderTarget0 = _RenderBloom4;
+        RenderTarget0 = _RenderBloom3;
     }
 
     pass
     {
         VertexShader = DownsampleVS4;
         PixelShader = DownsamplePS4;
-        RenderTarget0 = _RenderBloom5;
+        RenderTarget0 = _RenderBloom4;
     }
 
     pass
     {
         VertexShader = DownsampleVS5;
         PixelShader = DownsamplePS5;
-        RenderTarget0 = _RenderBloom6;
+        RenderTarget0 = _RenderBloom5;
     }
 
     pass
     {
         VertexShader = DownsampleVS6;
         PixelShader = DownsamplePS6;
-        RenderTarget0 = _RenderBloom7;
+        RenderTarget0 = _RenderBloom6;
     }
 
     pass
     {
         VertexShader = DownsampleVS7;
         PixelShader = DownsamplePS7;
-        RenderTarget0 = _RenderBloom8;
-    }
-
-    pass
-    {
-        VertexShader = UpsampleVS8;
-        PixelShader = UpsamplePS8;
         RenderTarget0 = _RenderBloom7;
-        ClearRenderTargets = FALSE;
-        BlendEnable = TRUE;
-        BlendOp = ADD;
-        SrcBlend = ONE;
-        DestBlend = ONE;
-    }
-
-    pass
-    {
-        VertexShader = UpsampleVS7;
-        PixelShader = UpsamplePS7;
-        RenderTarget0 = _RenderBloom6;
-        ClearRenderTargets = FALSE;
-        BlendEnable = TRUE;
-        BlendOp = ADD;
-        SrcBlend = ONE;
-        DestBlend = ONE;
     }
 
     pass
     {
         VertexShader = UpsampleVS6;
         PixelShader = UpsamplePS6;
-        RenderTarget0 = _RenderBloom5;
+        RenderTarget0 = _RenderBloom6;
         ClearRenderTargets = FALSE;
         BlendEnable = TRUE;
         BlendOp = ADD;
@@ -568,7 +539,7 @@ technique cBloom
     {
         VertexShader = UpsampleVS5;
         PixelShader = UpsamplePS5;
-        RenderTarget0 = _RenderBloom4;
+        RenderTarget0 = _RenderBloom5;
         ClearRenderTargets = FALSE;
         BlendEnable = TRUE;
         BlendOp = ADD;
@@ -580,7 +551,7 @@ technique cBloom
     {
         VertexShader = UpsampleVS4;
         PixelShader = UpsamplePS4;
-        RenderTarget0 = _RenderBloom3;
+        RenderTarget0 = _RenderBloom4;
         ClearRenderTargets = FALSE;
         BlendEnable = TRUE;
         BlendOp = ADD;
@@ -592,7 +563,7 @@ technique cBloom
     {
         VertexShader = UpsampleVS3;
         PixelShader = UpsamplePS3;
-        RenderTarget0 = _RenderBloom2;
+        RenderTarget0 = _RenderBloom3;
         ClearRenderTargets = FALSE;
         BlendEnable = TRUE;
         BlendOp = ADD;
@@ -604,9 +575,31 @@ technique cBloom
     {
         VertexShader = UpsampleVS2;
         PixelShader = UpsamplePS2;
+        RenderTarget0 = _RenderBloom2;
+        ClearRenderTargets = FALSE;
+        BlendEnable = TRUE;
+        BlendOp = ADD;
+        SrcBlend = ONE;
+        DestBlend = ONE;
+    }
+
+    pass
+    {
+        VertexShader = UpsampleVS1;
+        PixelShader = UpsamplePS1;
         RenderTarget0 = _RenderBloom1;
         ClearRenderTargets = FALSE;
-        BlendEnable = FALSE;
+        BlendEnable = TRUE;
+        BlendOp = ADD;
+        SrcBlend = ONE;
+        DestBlend = ONE;
+    }
+
+    pass
+    {
+        VertexShader = PostProcessVS;
+        PixelShader = BlitPS;
+        RenderTarget0 = _RenderBlit;
     }
 
     pass
