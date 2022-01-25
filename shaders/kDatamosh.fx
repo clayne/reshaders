@@ -295,13 +295,24 @@ namespace DataMosh
             SampleFrames.zw = tex2Dlod(_SampleFrame1, float4(TexCoord + (OpticalFlow.xy * PixelSize), 0.0, Level)).rg;
             float2 Iz = SampleFrames.xy - SampleFrames.zw;
 
+            // Compute diagonal
             Smooth.x = dot(SampleI.xz, SampleI.xz) + Alpha;
             Smooth.y = dot(SampleI.yw, SampleI.yw) + Alpha;
+
+            // Compute right-hand side
             Data.x = dot(SampleI.xz, Iz.rg);
             Data.y = dot(SampleI.yw, Iz.rg);
+
+            // Compute upper and lower triangle
             Data.z = dot(SampleI.xz, SampleI.yw);
+
+            // Symmetric Gauss-Seidel (forward sweep)
             OpticalFlow.x = ((Alpha * OpticalFlow.x) - (OpticalFlow.y * Data.z) - Data.x) / Smooth.x;
             OpticalFlow.y = ((Alpha * OpticalFlow.y) - (OpticalFlow.x * Data.z) - Data.y) / Smooth.y;
+
+            // Symmetric Gauss-Seidel (backward sweep)
+            OpticalFlow.y = ((Alpha * OpticalFlow.y) - (OpticalFlow.x * Data.z) - Data.y) / Smooth.y;
+            OpticalFlow.x = ((Alpha * OpticalFlow.x) - (OpticalFlow.y * Data.z) - Data.x) / Smooth.x;
         }
 
         OutputColor0.xy = OpticalFlow.xy;

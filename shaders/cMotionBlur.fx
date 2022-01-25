@@ -448,13 +448,24 @@ namespace MotionBlur
         SampleFrames.zw = tex2Dlod(_SampleData2, float4(TexCoord, 0.0, Level)).rg;
         float2 Iz = SampleFrames.xy - SampleFrames.zw;
 
+        // Compute diagonal
         Smooth.x = dot(SampleI.xz, SampleI.xz) + Alpha;
         Smooth.y = dot(SampleI.yw, SampleI.yw) + Alpha;
+
+        // Compute right-hand side
         Data.x = dot(SampleI.xz, Iz.rg);
         Data.y = dot(SampleI.yw, Iz.rg);
+
+        // Compute upper and lower triangle
         Data.z = dot(SampleI.xz, SampleI.yw);
+
+        // Symmetric Gauss-Seidel (forward sweep)
         Estimation1.x = ((Alpha * Estimation0.x) - (Estimation0.y * Data.z) - Data.x) / Smooth.x;
         Estimation1.y = ((Alpha * Estimation0.y) - (Estimation1.x * Data.z) - Data.y) / Smooth.y;
+
+        // Symmetric Gauss-Seidel (backward sweep)
+        Estimation1.y = ((Alpha * Estimation1.y) - (Estimation1.x * Data.z) - Data.y) / Smooth.y;
+        Estimation1.x = ((Alpha * Estimation1.x) - (Estimation1.y * Data.z) - Data.x) / Smooth.x;
     }
 
     void CopyPS0(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
