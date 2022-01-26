@@ -276,14 +276,10 @@ namespace DataMosh
     {
         const float2 PixelSize = 2.0 / float2(BUFFER_WIDTH, BUFFER_HEIGHT);
         const float MaxLevel = 6.5;
-        float4 OpticalFlow;
-        float2 Smooth;
-        float3 Data;
+        float2 UV;
 
         for(float Level = MaxLevel; Level > 0.0; Level--)
         {
-            const float Alpha = max(ldexp(_Constraint * 1e-5, Level - MaxLevel), 1e-7);
-
             // .xy = Normalized Red Channel (x, y)
             // .zw = Normalized Green Channel (x, y)
             float4 SampleI = tex2Dlod(_SampleDerivatives, float4(TexCoord, 0.0, Level));
@@ -292,30 +288,35 @@ namespace DataMosh
             // .zw = Previous frame (r, g)
             float4 SampleFrames;
             SampleFrames.xy = tex2Dlod(_SampleFrame0, float4(TexCoord, 0.0, Level)).rg;
-            SampleFrames.zw = tex2Dlod(_SampleFrame1, float4(TexCoord + (OpticalFlow.xy * PixelSize), 0.0, Level)).rg;
+            SampleFrames.zw = tex2Dlod(_SampleFrame1, float4(TexCoord, 0.0, Level)).rg;
             float2 Iz = SampleFrames.xy - SampleFrames.zw;
 
+            const float Alpha = max(ldexp(_Constraint * 1e-5, Level - MaxLevel), 1e-7);
+
             // Compute diagonal
-            Smooth.x = dot(SampleI.xz, SampleI.xz) + Alpha;
-            Smooth.y = dot(SampleI.yw, SampleI.yw) + Alpha;
+            float2 Aii;
+            Aii.x = dot(SampleI.xz, SampleI.xz) + Alpha;
+            Aii.y = dot(SampleI.yw, SampleI.yw) + Alpha;
+            Aii.xy = 1.0 / Aii.xy;
 
             // Compute right-hand side
-            Data.x = dot(SampleI.xz, Iz.rg);
-            Data.y = dot(SampleI.yw, Iz.rg);
+            float2 RHS;
+            RHS.x = dot(SampleI.xz, Iz.rg);
+            RHS.y = dot(SampleI.yw, Iz.rg);
 
-            // Compute upper and lower triangle
-            Data.z = dot(SampleI.xz, SampleI.yw);
+            // Compute triangle
+            float Aij = dot(SampleI.xz, SampleI.yw);
 
-            // Symmetric Gauss-Seidel (forward sweep)
-            OpticalFlow.x = ((Alpha * OpticalFlow.x) - (OpticalFlow.y * Data.z) - Data.x) / Smooth.x;
-            OpticalFlow.y = ((Alpha * OpticalFlow.y) - (OpticalFlow.x * Data.z) - Data.y) / Smooth.y;
+            // Symmetric Gauss-Seidel (forward sweep, from 1...N)
+            UV.x = Aii.x * ((Alpha * UV.x) - RHS.x - (UV.y * Aij));
+            UV.y = Aii.y * ((Alpha * UV.y) - RHS.y - (UV.x * Aij));
 
-            // Symmetric Gauss-Seidel (backward sweep)
-            OpticalFlow.y = ((Alpha * OpticalFlow.y) - (OpticalFlow.x * Data.z) - Data.y) / Smooth.y;
-            OpticalFlow.x = ((Alpha * OpticalFlow.x) - (OpticalFlow.y * Data.z) - Data.x) / Smooth.x;
+            // Symmetric Gauss-Seidel (backward sweep, from N...1)
+            UV.y = Aii.y * ((Alpha * UV.y) - RHS.y - (UV.x * Aij));
+            UV.x = Aii.x * ((Alpha * UV.x) - RHS.x - (UV.y * Aij));
         }
 
-        OutputColor0.xy = OpticalFlow.xy;
+        OutputColor0.xy = UV.xy;
         OutputColor0.ba = float2(1.0, _BlendFactor);
     }
 

@@ -96,7 +96,7 @@ namespace PyramidalHornSchunck
         ui_label = "Line opacity";
         ui_min = 0.0;
         ui_max = 1.0;
-    > = 0.0;
+    > = 1.0;
 
     #ifndef RENDER_VELOCITY_STREAMS
         #define RENDER_VELOCITY_STREAMS 1
@@ -520,13 +520,8 @@ namespace PyramidalHornSchunck
 
     static const int MaxLevel = 7;
 
-    void OpticalFlow(in float2 TexCoord, in float2 Estimation0, in float Level, out float2 Estimation1)
+    void OpticalFlow(in float2 TexCoord, in float2 UV, in float Level, out float2 DUV)
     {
-        float2 Smooth;
-        float3 Data;
-
-        const float Alpha = max(ldexp(_Constraint * 1e-5, Level - MaxLevel), 1e-7);
-
         // .xy = Normalized Red Channel (x, y)
         // .zw = Normalized Green Channel (x, y)
         float4 SampleI = tex2Dlod(_SampleData1, float4(TexCoord, 0.0, Level)).xyzw;
@@ -538,24 +533,29 @@ namespace PyramidalHornSchunck
         SampleFrames.zw = tex2Dlod(_SampleData2, float4(TexCoord, 0.0, Level)).rg;
         float2 Iz = SampleFrames.xy - SampleFrames.zw;
 
+        const float Alpha = max(ldexp(_Constraint * 1e-5, Level - MaxLevel), 1e-7);
+
         // Compute diagonal
-        Smooth.x = dot(SampleI.xz, SampleI.xz) + Alpha;
-        Smooth.y = dot(SampleI.yw, SampleI.yw) + Alpha;
+        float2 Aii;
+        Aii.x = dot(SampleI.xz, SampleI.xz) + Alpha;
+        Aii.y = dot(SampleI.yw, SampleI.yw) + Alpha;
+        Aii.xy = 1.0 / Aii.xy;
 
         // Compute right-hand side
-        Data.x = dot(SampleI.xz, Iz.rg);
-        Data.y = dot(SampleI.yw, Iz.rg);
+        float2 RHS;
+        RHS.x = dot(SampleI.xz, Iz.rg);
+        RHS.y = dot(SampleI.yw, Iz.rg);
 
-        // Compute upper and lower triangle
-        Data.z = dot(SampleI.xz, SampleI.yw);
+        // Compute triangle
+        float Aij = dot(SampleI.xz, SampleI.yw);
 
-        // Symmetric Gauss-Seidel (forward sweep)
-        Estimation1.x = ((Alpha * Estimation0.x) - (Estimation0.y * Data.z) - Data.x) / Smooth.x;
-        Estimation1.y = ((Alpha * Estimation0.y) - (Estimation1.x * Data.z) - Data.y) / Smooth.y;
+        // Symmetric Gauss-Seidel (forward sweep, from 1...N)
+        DUV.x = Aii.x * ((Alpha * UV.x) - RHS.x - (UV.y * Aij));
+        DUV.y = Aii.y * ((Alpha * UV.y) - RHS.y - (DUV.x * Aij));
 
-        // Symmetric Gauss-Seidel (backward sweep)
-        Estimation1.y = ((Alpha * Estimation1.y) - (Estimation1.x * Data.z) - Data.y) / Smooth.y;
-        Estimation1.x = ((Alpha * Estimation1.x) - (Estimation1.y * Data.z) - Data.x) / Smooth.x;
+        // Symmetric Gauss-Seidel (backward sweep, from N...1)
+        DUV.y = Aii.y * ((Alpha * DUV.y) - RHS.y - (DUV.x * Aij));
+        DUV.x = Aii.x * ((Alpha * DUV.x) - RHS.x - (DUV.y * Aij));
     }
 
     void CopyPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
