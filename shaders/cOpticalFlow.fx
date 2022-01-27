@@ -88,7 +88,7 @@ namespace PyramidalHornSchunck
     uniform bool _BackgroundColor <
         ui_type = "radio";
         ui_category = "Velocity streaming";
-        ui_label = "Use plain color instead of backbuffer";
+        ui_label = "Plain base color";
     > = false;
 
     uniform bool _NormalDirection <
