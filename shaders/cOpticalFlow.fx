@@ -63,10 +63,32 @@ namespace PyramidalHornSchunck
         ui_label = "Normalize velocity shading";
     > = true;
 
-    uniform bool _ScaleLineVelocity <
+    uniform float3 _BaseColorShift <
+        ui_type = "color";
+        ui_category = "Velocity streaming";
+        ui_label = "Background color shift";
+        ui_min = 0.0;
+        ui_max = 1.0;
+    > = 0.0;
+
+    uniform float3 _LineColorShift <
+        ui_type = "color";
+        ui_category = "Velocity streaming";
+        ui_label = "Line color shifting";
+    > = 1.0;
+
+    uniform float _LineOpacity <
+        ui_type = "slider";
+        ui_category = "Velocity streaming";
+        ui_label = "Line opacity";
+        ui_min = 0.0;
+        ui_max = 1.0;
+    > = 1.0;
+
+    uniform bool _BackgroundColor <
         ui_type = "radio";
         ui_category = "Velocity streaming";
-        ui_label = "Scale velocity color";
+        ui_label = "Use plain color instead of backbuffer";
     > = false;
 
     uniform bool _NormalDirection <
@@ -76,27 +98,11 @@ namespace PyramidalHornSchunck
         ui_tooltip = "Normalize direction";
     > = false;
 
-    uniform float3 _ColorShift <
-        ui_type = "color";
+    uniform bool _ScaleLineVelocity <
+        ui_type = "radio";
         ui_category = "Velocity streaming";
-        ui_label = "Color shifting";
-    > = 1.0;
-
-    uniform float _BaseOpacity <
-        ui_type = "slider";
-        ui_category = "Velocity streaming";
-        ui_label = "Background opacity";
-        ui_min = 0.0;
-        ui_max = 1.0;
-    > = 0.0;
-
-    uniform float _LineOpacity <
-        ui_type = "slider";
-        ui_category = "Velocity streaming";
-        ui_label = "Line opacity";
-        ui_min = 0.0;
-        ui_max = 1.0;
-    > = 1.0;
+        ui_label = "Scale velocity color";
+    > = false;
 
     #ifndef RENDER_VELOCITY_STREAMS
         #define RENDER_VELOCITY_STREAMS 1
@@ -669,8 +675,8 @@ namespace PyramidalHornSchunck
     void VelocityStreamsDisplayPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float3 OutputColor0 : SV_Target0)
     {
         float4 Lines = tex2D(_SampleLines, TexCoord);
-        float3 MainColor = tex2D(_SampleColorGamma, TexCoord).rgb;
-        OutputColor0 = lerp(MainColor * _BaseOpacity, Lines.rgb * _ColorShift, Lines.aaa * _LineOpacity); // (MainColor) + (Lines);
+        float3 MainColor = (_BackgroundColor) ? _BaseColorShift : tex2D(_SampleColorGamma, TexCoord).rgb * _BaseColorShift;
+        OutputColor0 = lerp(MainColor, Lines.rgb * _LineColorShift, Lines.aaa * _LineOpacity);
     }
 
     technique cOpticalFlow
