@@ -808,7 +808,7 @@ namespace PyramidalHornSchunck
             RenderTarget0 = _RenderData1;
         }
 
-        // Begin pyramidal estimation
+        // Calculate pyramidal estimation
 
         pass
         {

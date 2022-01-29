@@ -184,28 +184,28 @@ void DownsampleVS(in uint ID, out float4 Position, out float4 TexCoord[4], float
 {
     float2 TexCoord0;
     PostProcessVS(ID, Position, TexCoord0);
-    const float2 pSize = 1.0 / ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -Factor);
+    const float2 PixelSize = 1.0 / ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -Factor);
     // Quadrant
-    TexCoord[0] = TexCoord0.xyxy + float4(-1.0, -1.0, 1.0, 1.0) * pSize.xyxy;
+    TexCoord[0] = TexCoord0.xyxy + float4(-1.0, -1.0, 1.0, 1.0) * PixelSize.xyxy;
     // Left column
-    TexCoord[1] = TexCoord0.xyyy + float4(-2.0, 2.0, 0.0, -2.0) * pSize.xyyy;
+    TexCoord[1] = TexCoord0.xyyy + float4(-2.0, 2.0, 0.0, -2.0) * PixelSize.xyyy;
     // Center column
-    TexCoord[2] = TexCoord0.xyyy + float4(0.0, 2.0, 0.0, -2.0) * pSize.xyyy;
+    TexCoord[2] = TexCoord0.xyyy + float4(0.0, 2.0, 0.0, -2.0) * PixelSize.xyyy;
     // Right column
-    TexCoord[3] = TexCoord0.xyyy + float4(2.0, 2.0, 0.0, -2.0) * pSize.xyyy;
+    TexCoord[3] = TexCoord0.xyyy + float4(2.0, 2.0, 0.0, -2.0) * PixelSize.xyyy;
 }
 
 void UpsampleVS(in uint ID, out float4 Position, out float4 TexCoord[3], float Factor)
 {
     float2 TexCoord0;
     PostProcessVS(ID, Position, TexCoord0);
-    const float2 pSize = 1.0 / ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -Factor);
+    const float2 PixelSize = 1.0 / ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -Factor);
     // Left column
-    TexCoord[0] = TexCoord0.xyyy + float4(-2.0, 2.0, 0.0, -2.0) * pSize.xyyy;
+    TexCoord[0] = TexCoord0.xyyy + float4(-2.0, 2.0, 0.0, -2.0) * PixelSize.xyyy;
     // Center column
-    TexCoord[1] = TexCoord0.xyyy + float4(0.0, 2.0, 0.0, -2.0) * pSize.xyyy;
+    TexCoord[1] = TexCoord0.xyyy + float4(0.0, 2.0, 0.0, -2.0) * PixelSize.xyyy;
     // Right column
-    TexCoord[2] = TexCoord0.xyyy + float4(2.0, 2.0, 0.0, -2.0) * pSize.xyyy;
+    TexCoord[2] = TexCoord0.xyyy + float4(2.0, 2.0, 0.0, -2.0) * PixelSize.xyyy;
 }
 
 void DownsampleVS1(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoord[4] : TEXCOORD0)
@@ -271,6 +271,11 @@ void UpsampleVS2(in uint ID : SV_VertexID, out float4 Position : SV_Position, ou
 void UpsampleVS1(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoord[3] : TEXCOORD0)
 {
     UpsampleVS(ID, Position, TexCoord, 2.0);
+}
+
+void UpsampleVS0(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoord[3] : TEXCOORD0)
+{
+    UpsampleVS(ID, Position, TexCoord, 1.0);
 }
 
 // Pixel shaders
@@ -448,9 +453,9 @@ void UpsamplePS1(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCO
     OutputColor0 = UpsamplePS(_SampleBloom2, TexCoord);
 }
 
-void BlitPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+void UpsamplePS0(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    OutputColor0 = tex2D(_SampleBloom1, TexCoord);
+    OutputColor0 = UpsamplePS(_SampleBloom1, TexCoord);
 }
 
 void CompositePS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
@@ -597,8 +602,8 @@ technique cBloom
 
     pass
     {
-        VertexShader = PostProcessVS;
-        PixelShader = BlitPS;
+        VertexShader = UpsampleVS0;
+        PixelShader = UpsamplePS0;
         RenderTarget0 = _RenderBlit;
     }
 
