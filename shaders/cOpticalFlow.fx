@@ -109,11 +109,11 @@ namespace OpticalFlow
     #endif
 
     #ifndef VERTEX_SPACING
-        #define VERTEX_SPACING 16
+        #define VERTEX_SPACING 20
     #endif
 
     #ifndef VELOCITY_SCALE_FACTOR
-        #define VELOCITY_SCALE_FACTOR 16
+        #define VELOCITY_SCALE_FACTOR 20
     #endif
 
     #define LINES_X uint(BUFFER_WIDTH / VERTEX_SPACING)

@@ -6,10 +6,11 @@
 + Fun
 + New developers can learn
 + Coping mechanism
-+ **Goals**
-  + More mosiac shapes
-  + Fluid simulation
-  + V-Cycle multigrid algorithm
+
+## Goals
+
++ More mosiac shapes
++ Cascade multigrid fluid simulation
 
 ## Shaders
 
@@ -62,3 +63,4 @@ Respectively suffix `VS` and `PS` | `PixelShader and VertexShader`
 
 + MartinBFFan and Pao on Discord for reporting bugs
 + BSD for bug propaganda and helping to solve my issue
++ TheGordinho for listening ear and funnies
