@@ -29,6 +29,7 @@ cFilmGrain          | Film grain without copying texture
 cFrameBlending      | Frame blending using the previous result
 cFrameDifference    | Frame differencing
 cGaussianBlur       | HLSL implementation of RasterGrid's linear Gaussian blur
+cHornSchunck        | HLSL implementation of pyramidal Horn Schunck without filtering
 cInterpolation      | Optical flow frame blending
 cLetterBox          | LetterBox without copying textures
 cLuminance          | Various grayscale algoritms

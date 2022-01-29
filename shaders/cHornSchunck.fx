@@ -1,6 +1,6 @@
 
 /*
-    Optical flow visualization
+    Basic pyramidal Horn Schunck without pre and post filtering
 
     BSD 3-Clause License
 
@@ -33,7 +33,7 @@
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-namespace PyramidalHornSchunck
+namespace HornSchunck
 {
     uniform float _Blend <
         ui_type = "slider";
@@ -373,7 +373,7 @@ namespace PyramidalHornSchunck
         }
     }
 
-    technique cOpticalFlow
+    technique cHornSchunck
     {
         // Copy previous frame
 

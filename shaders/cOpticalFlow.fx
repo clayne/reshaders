@@ -33,7 +33,7 @@
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-namespace PyramidalHornSchunck
+namespace OpticalFlow
 {
     uniform float _Blend <
         ui_type = "slider";
