@@ -268,17 +268,19 @@ namespace OpticalFlow
         Texture = _RenderTemporary0;
     };
 
-    texture2D _RenderLines
-    {
-        Width = BUFFER_WIDTH;
-        Height = BUFFER_HEIGHT;
-        Format = RGBA8;
-    };
+    #if RENDER_VELOCITY_STREAMS
+        texture2D _RenderLines
+        {
+            Width = BUFFER_WIDTH;
+            Height = BUFFER_HEIGHT;
+            Format = RGBA8;
+        };
 
-    sampler2D _SampleLines
-    {
-        Texture = _RenderLines;
-    };
+        sampler2D _SampleLines
+        {
+            Texture = _RenderLines;
+        };
+    #endif
 
     sampler2D _SampleColorGamma
     {
@@ -720,20 +722,22 @@ namespace OpticalFlow
         }
     }
 
-    void VelocityStreamsPS(in float4 Position : SV_Position, in float2 Velocity : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
-    {
-        OutputColor0.rg = (_ScaleLineVelocity) ? (Velocity.xy / (length(Velocity) * VELOCITY_SCALE * 0.05)) : normalize(Velocity.xy);
-        OutputColor0.rg = OutputColor0.xy * 0.5 + 0.5;
-        OutputColor0.b = -dot(OutputColor0.rg, 1.0) * 0.5 + 1.0;
-        OutputColor0.a = 1.0;
-    }
+    #if RENDER_VELOCITY_STREAMS
+        void VelocityStreamsPS(in float4 Position : SV_Position, in float2 Velocity : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+        {
+            OutputColor0.rg = (_ScaleLineVelocity) ? (Velocity.xy / (length(Velocity) * VELOCITY_SCALE * 0.05)) : normalize(Velocity.xy);
+            OutputColor0.rg = OutputColor0.xy * 0.5 + 0.5;
+            OutputColor0.b = -dot(OutputColor0.rg, 1.0) * 0.5 + 1.0;
+            OutputColor0.a = 1.0;
+        }
 
-    void VelocityStreamsDisplayPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float3 OutputColor0 : SV_Target0)
-    {
-        float4 Lines = tex2D(_SampleLines, TexCoord);
-        float3 MainColor = (_BackgroundColor) ? _BaseColorShift : tex2D(_SampleColorGamma, TexCoord).rgb * _BaseColorShift;
-        OutputColor0 = lerp(MainColor, Lines.rgb * _LineColorShift, Lines.aaa * _LineOpacity);
-    }
+        void VelocityStreamsDisplayPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float3 OutputColor0 : SV_Target0)
+        {
+            float4 Lines = tex2D(_SampleLines, TexCoord);
+            float3 MainColor = (_BackgroundColor) ? _BaseColorShift : tex2D(_SampleColorGamma, TexCoord).rgb * _BaseColorShift;
+            OutputColor0 = lerp(MainColor, Lines.rgb * _LineColorShift, Lines.aaa * _LineOpacity);
+        }
+    #endif
 
     technique cOpticalFlow
     {
