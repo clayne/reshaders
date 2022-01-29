@@ -180,7 +180,7 @@ void PostProcessVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, 
     Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
 
-void DownsampleVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoord[4] : TEXCOORD0, float Factor)
+void DownsampleVS(in uint ID, out float4 Position, out float4 TexCoord[4], float Factor)
 {
     float2 TexCoord0;
     PostProcessVS(ID, Position, TexCoord0);
@@ -195,7 +195,7 @@ void DownsampleVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, o
     TexCoord[3] = TexCoord0.xyyy + float4(2.0, 2.0, 0.0, -2.0) * pSize.xyyy;
 }
 
-void UpsampleVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoord[3] : TEXCOORD0, float Factor)
+void UpsampleVS(in uint ID, out float4 Position, out float4 TexCoord[3], float Factor)
 {
     float2 TexCoord0;
     PostProcessVS(ID, Position, TexCoord0);
