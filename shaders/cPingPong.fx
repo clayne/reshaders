@@ -47,6 +47,9 @@ texture2D _RenderColor : COLOR;
 sampler2D _SampleColor
 {
     Texture = _RenderColor;
+    MagFilter = LINEAR;
+    MinFilter = LINEAR;
+    MipFilter = LINEAR;
     #if BUFFER_COLOR_BIT_DEPTH == 8
         SRGBTexture = TRUE;
     #endif
@@ -62,6 +65,9 @@ texture2D _RenderBufferA
 sampler2D _SampleBufferA
 {
     Texture = _RenderBufferA;
+    MagFilter = LINEAR;
+    MinFilter = LINEAR;
+    MipFilter = LINEAR;
     #if BUFFER_COLOR_BIT_DEPTH == 8
         SRGBTexture = TRUE;
     #endif
@@ -77,6 +83,9 @@ texture2D _RenderBufferB
 sampler2D _SampleBufferB
 {
     Texture = _RenderBufferB;
+    MagFilter = LINEAR;
+    MinFilter = LINEAR;
+    MipFilter = LINEAR;
     #if BUFFER_COLOR_BIT_DEPTH == 8
         SRGBTexture = TRUE;
     #endif

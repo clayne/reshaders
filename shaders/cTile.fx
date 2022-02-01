@@ -52,6 +52,9 @@ sampler2D _SampleColor
     Texture = _RenderColor;
     AddressU = MIRROR;
     AddressV = MIRROR;
+    MagFilter = LINEAR;
+    MinFilter = LINEAR;
+    MipFilter = LINEAR;
     #if BUFFER_COLOR_BIT_DEPTH == 8
         SRGBTexture = TRUE;
     #endif

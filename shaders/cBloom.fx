@@ -69,6 +69,9 @@ texture2D _RenderColor : COLOR;
 sampler2D _SampleColor
 {
     Texture = _RenderColor;
+    MagFilter = LINEAR;
+    MinFilter = LINEAR;
+    MipFilter = LINEAR;
     #if BUFFER_COLOR_BIT_DEPTH == 8
         SRGBTexture = TRUE;
     #endif
@@ -84,6 +87,9 @@ texture2D _RenderBlit
 sampler2D _SampleBlit
 {
     Texture = _RenderBlit;
+    MagFilter = LINEAR;
+    MinFilter = LINEAR;
+    MipFilter = LINEAR;
 };
 
 texture2D _RenderBloom1
@@ -96,6 +102,9 @@ texture2D _RenderBloom1
 sampler2D _SampleBloom1
 {
     Texture = _RenderBloom1;
+    MagFilter = LINEAR;
+    MinFilter = LINEAR;
+    MipFilter = LINEAR;
 };
 
 texture2D _RenderBloom2
@@ -108,6 +117,9 @@ texture2D _RenderBloom2
 sampler2D _SampleBloom2
 {
     Texture = _RenderBloom2;
+    MagFilter = LINEAR;
+    MinFilter = LINEAR;
+    MipFilter = LINEAR;
 };
 
 texture2D _RenderBloom3
@@ -120,6 +132,9 @@ texture2D _RenderBloom3
 sampler2D _SampleBloom3
 {
     Texture = _RenderBloom3;
+    MagFilter = LINEAR;
+    MinFilter = LINEAR;
+    MipFilter = LINEAR;
 };
 
 texture2D _RenderBloom4
@@ -132,6 +147,9 @@ texture2D _RenderBloom4
 sampler2D _SampleBloom4
 {
     Texture = _RenderBloom4;
+    MagFilter = LINEAR;
+    MinFilter = LINEAR;
+    MipFilter = LINEAR;
 };
 
 texture2D _RenderBloom5
@@ -144,6 +162,9 @@ texture2D _RenderBloom5
 sampler2D _SampleBloom5
 {
     Texture = _RenderBloom5;
+    MagFilter = LINEAR;
+    MinFilter = LINEAR;
+    MipFilter = LINEAR;
 };
 
 texture2D _RenderBloom6
@@ -156,6 +177,9 @@ texture2D _RenderBloom6
 sampler2D _SampleBloom6
 {
     Texture = _RenderBloom6;
+    MagFilter = LINEAR;
+    MinFilter = LINEAR;
+    MipFilter = LINEAR;
 };
 
 texture2D _RenderBloom7
@@ -168,6 +192,9 @@ texture2D _RenderBloom7
 sampler2D _SampleBloom7
 {
     Texture = _RenderBloom7;
+    MagFilter = LINEAR;
+    MinFilter = LINEAR;
+    MipFilter = LINEAR;
 };
 
 // Vertex shaders

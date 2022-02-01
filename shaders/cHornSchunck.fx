@@ -78,6 +78,9 @@ namespace HornSchunck
     sampler2D _SampleColor
     {
         Texture = _RenderColor;
+        MagFilter = LINEAR;
+        MinFilter = LINEAR;
+        MipFilter = LINEAR;
         #if BUFFER_COLOR_BIT_DEPTH == 8
             SRGBTexture = TRUE;
         #endif
@@ -94,6 +97,9 @@ namespace HornSchunck
     sampler2D _SampleData0
     {
         Texture = _RenderData0;
+        MagFilter = LINEAR;
+        MinFilter = LINEAR;
+        MipFilter = LINEAR;
     };
 
     texture2D _RenderData1
@@ -107,6 +113,9 @@ namespace HornSchunck
     sampler2D _SampleData1
     {
         Texture = _RenderData1;
+        MagFilter = LINEAR;
+        MinFilter = LINEAR;
+        MipFilter = LINEAR;
     };
 
     texture2D _RenderData2
@@ -120,6 +129,9 @@ namespace HornSchunck
     sampler2D _SampleData2
     {
         Texture = _RenderData2;
+        MagFilter = LINEAR;
+        MinFilter = LINEAR;
+        MipFilter = LINEAR;
     };
 
     texture2D _RenderTemporary7
@@ -132,6 +144,9 @@ namespace HornSchunck
     sampler2D _SampleTemporary7
     {
         Texture = _RenderTemporary7;
+        MagFilter = LINEAR;
+        MinFilter = LINEAR;
+        MipFilter = LINEAR;
     };
 
     texture2D _RenderTemporary6
@@ -144,6 +159,9 @@ namespace HornSchunck
     sampler2D _SampleTemporary6
     {
         Texture = _RenderTemporary6;
+        MagFilter = LINEAR;
+        MinFilter = LINEAR;
+        MipFilter = LINEAR;
     };
 
     texture2D _RenderTemporary5
@@ -156,6 +174,9 @@ namespace HornSchunck
     sampler2D _SampleTemporary5
     {
         Texture = _RenderTemporary5;
+        MagFilter = LINEAR;
+        MinFilter = LINEAR;
+        MipFilter = LINEAR;
     };
 
     texture2D _RenderTemporary4
@@ -168,6 +189,9 @@ namespace HornSchunck
     sampler2D _SampleTemporary4
     {
         Texture = _RenderTemporary4;
+        MagFilter = LINEAR;
+        MinFilter = LINEAR;
+        MipFilter = LINEAR;
     };
 
     texture2D _RenderTemporary3
@@ -180,6 +204,9 @@ namespace HornSchunck
     sampler2D _SampleTemporary3
     {
         Texture = _RenderTemporary3;
+        MagFilter = LINEAR;
+        MinFilter = LINEAR;
+        MipFilter = LINEAR;
     };
 
     texture2D _RenderTemporary2
@@ -192,6 +219,9 @@ namespace HornSchunck
     sampler2D _SampleTemporary2
     {
         Texture = _RenderTemporary2;
+        MagFilter = LINEAR;
+        MinFilter = LINEAR;
+        MipFilter = LINEAR;
     };
 
     texture2D _RenderTemporary1
@@ -204,6 +234,9 @@ namespace HornSchunck
     sampler2D _SampleTemporary1
     {
         Texture = _RenderTemporary1;
+        MagFilter = LINEAR;
+        MinFilter = LINEAR;
+        MipFilter = LINEAR;
     };
 
     texture2D _RenderTemporary0
@@ -216,6 +249,9 @@ namespace HornSchunck
     sampler2D _SampleTemporary0
     {
         Texture = _RenderTemporary0;
+        MagFilter = LINEAR;
+        MinFilter = LINEAR;
+        MipFilter = LINEAR;
     };
 
     // Vertex shaders

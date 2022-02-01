@@ -120,6 +120,9 @@ namespace DataMosh
         Texture = _RenderColor;
         AddressU = MIRROR;
         AddressV = MIRROR;
+        MagFilter = LINEAR;
+        MinFilter = LINEAR;
+        MipFilter = LINEAR;
         #if BUFFER_COLOR_BIT_DEPTH == 8
             SRGBTexture = TRUE;
         #endif
@@ -138,6 +141,9 @@ namespace DataMosh
         Texture = _RenderFrame0;
         AddressU = MIRROR;
         AddressV = MIRROR;
+        MagFilter = LINEAR;
+        MinFilter = LINEAR;
+        MipFilter = LINEAR;
     };
 
     texture2D _RenderDerivatives
@@ -153,6 +159,9 @@ namespace DataMosh
         Texture = _RenderDerivatives;
         AddressU = MIRROR;
         AddressV = MIRROR;
+        MagFilter = LINEAR;
+        MinFilter = LINEAR;
+        MipFilter = LINEAR;
     };
 
     texture2D _RenderOpticalFlow
@@ -166,10 +175,10 @@ namespace DataMosh
     sampler2D _SampleOpticalFlow
     {
         Texture = _RenderOpticalFlow;
-        MinFilter = _FILTER;
-        MagFilter = _FILTER;
         AddressU = MIRROR;
         AddressV = MIRROR;
+        MinFilter = _FILTER;
+        MagFilter = _FILTER;
     };
 
     texture2D _RenderAccumulation
@@ -182,10 +191,10 @@ namespace DataMosh
     sampler2D _SampleAccumulation
     {
         Texture = _RenderAccumulation;
-        MinFilter = _FILTER;
-        MagFilter = _FILTER;
         AddressU = MIRROR;
         AddressV = MIRROR;
+        MinFilter = _FILTER;
+        MagFilter = _FILTER;
     };
 
     texture2D _RenderFrame1
@@ -201,6 +210,9 @@ namespace DataMosh
         Texture = _RenderFrame1;
         AddressU = MIRROR;
         AddressV = MIRROR;
+        MagFilter = LINEAR;
+        MinFilter = LINEAR;
+        MipFilter = LINEAR;
     };
 
     texture2D _RenderFeedback
@@ -215,6 +227,9 @@ namespace DataMosh
         Texture = _RenderFeedback;
         AddressU = MIRROR;
         AddressV = MIRROR;
+        MagFilter = LINEAR;
+        MinFilter = LINEAR;
+        MipFilter = LINEAR;
         #if BUFFER_COLOR_BIT_DEPTH == 8
             SRGBTexture = TRUE;
         #endif

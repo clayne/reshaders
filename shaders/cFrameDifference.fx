@@ -59,6 +59,9 @@ namespace FrameDifference
     sampler2D _SampleColor
     {
         Texture = _RenderColor;
+        MagFilter = LINEAR;
+        MinFilter = LINEAR;
+        MipFilter = LINEAR;
         #if BUFFER_COLOR_BIT_DEPTH == 8
             SRGBTexture = TRUE;
         #endif
@@ -74,6 +77,9 @@ namespace FrameDifference
     sampler2D _SampleCurrent
     {
         Texture = _RenderCurrent;
+        MagFilter = LINEAR;
+        MinFilter = LINEAR;
+        MipFilter = LINEAR;
     };
 
     texture2D _RenderDifference
@@ -86,6 +92,9 @@ namespace FrameDifference
     sampler2D _SampleDifference
     {
         Texture = _RenderDifference;
+        MagFilter = LINEAR;
+        MinFilter = LINEAR;
+        MipFilter = LINEAR;
     };
 
     texture2D _RenderPrevious
@@ -98,6 +107,9 @@ namespace FrameDifference
     sampler2D _SamplePrevious
     {
         Texture = _RenderPrevious;
+        MagFilter = LINEAR;
+        MinFilter = LINEAR;
+        MipFilter = LINEAR;
     };
 
     // Vertex shaders
