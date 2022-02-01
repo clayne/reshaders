@@ -358,7 +358,7 @@ namespace HornSchunck
 
     void VelocityShadingPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target)
     {
-        float2 Velocity = tex2Dlod(_SampleData2, float4(TexCoord, 0.0, _MipBias)).xy;
+        float2 Velocity = tex2Dlod(_SampleTemporary0, float4(TexCoord, 0.0, _MipBias)).xy;
 
         if(_NormalizedShading)
         {
