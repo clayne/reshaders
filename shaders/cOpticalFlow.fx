@@ -741,15 +741,6 @@ namespace OpticalFlow
 
     technique cOpticalFlow
     {
-        // Copy previous frame
-
-        pass
-        {
-            VertexShader = PostProcessVS;
-            PixelShader = CopyPS;
-            RenderTarget0 = _RenderData2;
-        }
-
         // Normalize current frame
 
         pass
@@ -919,6 +910,8 @@ namespace OpticalFlow
             RenderTarget0 = _RenderData2;
         }
 
+        // Render result
+
         #if RENDER_VELOCITY_STREAMS
             // Render to a fullscreen buffer (cringe!)
             pass
@@ -944,5 +937,14 @@ namespace OpticalFlow
                 PixelShader = VelocityShadingPS;
             }
         #endif
+
+        // Copy previous frame
+
+        pass
+        {
+            VertexShader = PostProcessVS;
+            PixelShader = CopyPS;
+            RenderTarget0 = _RenderData2;
+        }
     }
 }
