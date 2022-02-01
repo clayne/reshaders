@@ -4,7 +4,7 @@
 
     BSD 3-Clause License
 
-    Copyright (c) 2022, brimson
+    Copyright (c) 2022, Paul Dang
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
