@@ -36,7 +36,7 @@ cLetterBox          | LetterBox without copying textures
 cLuminance          | Various grayscale algoritms
 cMedian             | 3x3 median filter
 cMotionBlur         | Optical flow motion blur
-cOpticalFlow        | Display optical flow with lines or shading
+cOpticalFlow        | HLSL pyramidal Horn Schunck, with ability to display optical flow with lines or shading
 cPingPong           | Gaussian blur approximation using ping-pong box blurs
 cSMAA               | Minimalist version of SMAA, medium setting
 cShard              | Simple unmask sharpening
