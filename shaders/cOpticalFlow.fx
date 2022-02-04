@@ -575,11 +575,10 @@ namespace OpticalFlow
             + Pyramid process: https://www.youtube.com/watch?v=4v_keMNROv4
 
         Modifications
-            + Use pyramid process to get initial values from neighboring pixels
             + Compute averages with a 7x7 low-pass tent filter
-                + Original Horn-Schunck: T-shaped high-pass filter
+            + Estimate features in 2-dimensional chromaticity
+            + Use pyramid process to get initial values from neighboring pixels
             + Use symmetric Gauss-Seidel to solve linear equation at Page 8
-                + Original Horn-Schunck: Jacobi solver using Cramer's rule
     */
 
     static const int MaxLevel = 7;
