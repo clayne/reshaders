@@ -570,18 +570,16 @@ namespace OpticalFlow
     }
 
     /*
-        Horn Schunck
-            http://6.869.csail.mit.edu/fa12/lectures/lecture16/MotionEstimation1.pdf
-            - Use Gauss-Seidel at slide 52
-            - Use additional constraint (normalized RG)
+        Pyramidal Horn-Schunck optical flow
+            + Horn-Schunck: https://dspace.mit.edu/handle/1721.1/6337 (Page 8)
+            + Pyramid process: https://www.youtube.com/watch?v=4v_keMNROv4
 
-        Pyramid
-            https://www.cs.auckland.ac.nz/~rklette/CCV-CIMAT/pdfs/B08-HornSchunck.pdf
-            - Use a regular image pyramid for input frames I(., .,t)
-            - Processing starts at a selected level (of lower resolution)
-            - Obtained results are used for initializing optic flow values at a
-            lower level (of higher resolution)
-            - Repeat until full resolution level of original frames is reached
+        Modifications
+            + Use pyramid process to get initial values from neighboring pixels
+            + Compute averages with a 7x7 low-pass tent filter
+                + Original Horn-Schunck: T-shaped high-pass filter
+            + Use symmetric Gauss-Seidel to solve linear equation at Page 8
+                + Original Horn-Schunck: Jacobi solver using Cramer's rule
     */
 
     static const int MaxLevel = 7;
