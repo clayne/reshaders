@@ -65,7 +65,7 @@ namespace MotionBlur
         ui_tooltip = "Higher = Less temporal noise";
         ui_min = 0.0;
         ui_max = 0.5;
-    > = 0.25;
+    > = 0.1;
 
     uniform bool _FrameRateScaling <
         ui_type = "radio";
