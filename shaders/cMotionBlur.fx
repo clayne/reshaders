@@ -40,8 +40,8 @@ namespace MotionBlur
         ui_label = "Flow Smooth";
         ui_tooltip = "Higher = Smoother flow";
         ui_min = 0.0;
-        ui_max = 2.0;
-    > = 1.0;
+        ui_max = 1.0;
+    > = 0.5;
 
     uniform float _Scale <
         ui_type = "slider";
