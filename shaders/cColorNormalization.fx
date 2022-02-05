@@ -81,7 +81,7 @@ void PostProcessVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, 
 void NormalizationPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float3 OutputColor0 : SV_Target0)
 {
 	OutputColor0 = 0.0;
-    float3 Color = tex2D(_SampleColor, TexCoord).rgb;
+    float3 Color = max(tex2D(_SampleColor, TexCoord).rgb, 1e-7);
     switch(_Select)
     {
         case 0:
