@@ -346,22 +346,22 @@ namespace Interpolation
 
     void Downsample1VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 DownsampleOffsets[4] : TEXCOORD0)
     {
-        DownsampleVS(ID, 1.0 / ldexp(BUFFER_SIZE, -1.0), Position, DownsampleOffsets);
+        DownsampleVS(ID, 1.0 / (uint2)ldexp(BUFFER_SIZE, -1.0), Position, DownsampleOffsets);
     }
 
     void Downsample2VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 DownsampleOffsets[4] : TEXCOORD0)
     {
-        DownsampleVS(ID, 1.0 / ldexp(BUFFER_SIZE, -2.0), Position, DownsampleOffsets);
+        DownsampleVS(ID, 1.0 / (uint2)ldexp(BUFFER_SIZE, -2.0), Position, DownsampleOffsets);
     }
 
     void Upsample1VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 UpsampleOffsets[3] : TEXCOORD0)
     {
-        UpsampleVS(ID, 1.0 / ldexp(BUFFER_SIZE, -1.0), Position, UpsampleOffsets);
+        UpsampleVS(ID, 1.0 / (uint2)ldexp(BUFFER_SIZE, -1.0), Position, UpsampleOffsets);
     }
 
     void Upsample0VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 UpsampleOffsets[3] : TEXCOORD0)
     {
-        UpsampleVS(ID, 1.0 / ldexp(BUFFER_SIZE, 0.0), Position, UpsampleOffsets);
+        UpsampleVS(ID, 1.0 / (uint2)ldexp(BUFFER_SIZE, 0.0), Position, UpsampleOffsets);
     }
 
     void DerivativesVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 Offsets : TEXCOORD0)
@@ -377,49 +377,49 @@ namespace Interpolation
     {
         float2 TexCoord0;
         PostProcessVS(ID, Position, TexCoord0);
-        UpsampleOffsets(TexCoord0, 1.0 / ldexp(BUFFER_SIZE, -7.0), Offsets);
+        UpsampleOffsets(TexCoord0, 1.0 / (uint2)ldexp(BUFFER_SIZE, -7.0), Offsets);
     }
 
     void EstimateLevel5VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 Offsets[3] : TEXCOORD0)
     {
         float2 TexCoord0;
         PostProcessVS(ID, Position, TexCoord0);
-        UpsampleOffsets(TexCoord0, 1.0 / ldexp(BUFFER_SIZE, -6.0), Offsets);
+        UpsampleOffsets(TexCoord0, 1.0 / (uint2)ldexp(BUFFER_SIZE, -6.0), Offsets);
     }
 
     void EstimateLevel4VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 Offsets[3] : TEXCOORD0)
     {
         float2 TexCoord0;
         PostProcessVS(ID, Position, TexCoord0);
-        UpsampleOffsets(TexCoord0, 1.0 / ldexp(BUFFER_SIZE, -5.0), Offsets);
+        UpsampleOffsets(TexCoord0, 1.0 / (uint2)ldexp(BUFFER_SIZE, -5.0), Offsets);
     }
 
     void EstimateLevel3VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 Offsets[3] : TEXCOORD0)
     {
         float2 TexCoord0;
         PostProcessVS(ID, Position, TexCoord0);
-        UpsampleOffsets(TexCoord0, 1.0 / ldexp(BUFFER_SIZE, -4.0), Offsets);
+        UpsampleOffsets(TexCoord0, 1.0 / (uint2)ldexp(BUFFER_SIZE, -4.0), Offsets);
     }
 
     void EstimateLevel2VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 Offsets[3] : TEXCOORD0)
     {
         float2 TexCoord0;
         PostProcessVS(ID, Position, TexCoord0);
-        UpsampleOffsets(TexCoord0, 1.0 / ldexp(BUFFER_SIZE, -3.0), Offsets);
+        UpsampleOffsets(TexCoord0, 1.0 / (uint2)ldexp(BUFFER_SIZE, -3.0), Offsets);
     }
 
     void EstimateLevel1VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 Offsets[3] : TEXCOORD0)
     {
         float2 TexCoord0;
         PostProcessVS(ID, Position, TexCoord0);
-        UpsampleOffsets(TexCoord0, 1.0 / ldexp(BUFFER_SIZE, -2.0), Offsets);
+        UpsampleOffsets(TexCoord0, 1.0 / (uint2)ldexp(BUFFER_SIZE, -2.0), Offsets);
     }
 
     void EstimateLevel0VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 Offsets[3] : TEXCOORD0)
     {
         float2 TexCoord0;
         PostProcessVS(ID, Position, TexCoord0);
-        UpsampleOffsets(TexCoord0, 1.0 / ldexp(BUFFER_SIZE, -1.0), Offsets);
+        UpsampleOffsets(TexCoord0, 1.0 / (uint2)ldexp(BUFFER_SIZE, -1.0), Offsets);
     }
 
     // Pixel shaders
