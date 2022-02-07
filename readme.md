@@ -22,6 +22,7 @@ buggyassshaderlmao  | Shader that seems to cause problems on ReShade
 cAbberation         | Chromatic abberation using vertex shader offset
 cAutoExposure       | 2-pass automatic exposure
 cBloom              | Dual-filtering bloom
+cBlur               | Convolution using Vogel spiral sampling
 cCheckerBoard       | Customizable 2-pattern checkerboard
 cColorBlendOp       | Blend to backbuffer without copying textures
 cColorNormalization | Various color normalization algoritms
