@@ -66,7 +66,7 @@ void PostProcessVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, 
 
 /*
     Sources
-        Angle-Retaining Chromaticity  
+        Angle-Retaining Chromaticity
             Copyright 2020 Marco Buzzelli, Simone Bianco, Raimondo Schettini.
             If you use this code in your research, please cite:
             @article{buzzelli2020arc,
@@ -91,8 +91,9 @@ void PostProcessVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, 
 
 void NormalizationPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float3 OutputColor0 : SV_Target0)
 {
-	OutputColor0 = 0.0;
-    float3 Color = max(tex2D(_SampleColor, TexCoord).rgb, 1e-7);
+    OutputColor0 = 0.0;
+    const float Minima = ldexp(1.0, -8.0);
+    float3 Color = max(tex2D(_SampleColor, TexCoord).rgb, Minima);
     switch(_Select)
     {
         case 0:
@@ -113,8 +114,8 @@ void NormalizationPS(in float4 Position : SV_Position, in float2 TexCoord : TEXC
             break;
         case 4:
             // Jamie Wong's RG Chromaticity
-            OutputColor0 = Color / dot(Color, 1.0);
-            OutputColor0.rg = saturate(OutputColor0.rg / max(max(OutputColor0.r, OutputColor0.g), OutputColor0.b));
+            float3 NormalizedRGB = Color / dot(Color, 1.0);
+            OutputColor0.rg = saturate(NormalizedRGB.rg / max(max(NormalizedRGB.r, NormalizedRGB.g), NormalizedRGB.b));
             break;
         case 5:
             // Jamie Wong's RGB Chromaticity

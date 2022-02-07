@@ -333,7 +333,8 @@ namespace HornSchunck
 
     void NormalizePS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
     {
-        float3 Color = max(tex2D(_SampleColor, TexCoord).rgb, 1e-7);
+        const float Minima = ldexp(1.0, -8.0);
+        float3 Color = max(tex2D(_SampleColor, TexCoord).rgb, Minima);
         OutputColor0 = saturate(Color.xy / dot(Color, 1.0));
     }
 
