@@ -114,14 +114,16 @@ void ContourVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out 
     TexCoord[3] = TexCoord0.xyxy + float4(PixelSize, -PixelSize) * 0.5;
 }
 
-float Magnitude(float3 X, float3 Y)
-{
-    return sqrt(dot(X, X) + dot(Y, Y));
-}
-
-float3 NormalizeValue(float3 Input)
+float3 NormalizeOutput(float3 Input)
 {
     return (_NormalizeOutput) ? Input * rsqrt(dot(Input, Input) + _NormalWeight) : Input;
+}
+
+float Magnitude(float3 X, float3 Y)
+{
+    X = NormalizeOutput(X);
+    Y = NormalizeOutput(Y);
+    return sqrt(dot(X, X) + dot(Y, Y));
 }
 
 // Pixel shaders
@@ -147,34 +149,40 @@ void ContourPS(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOOR
     float3 C1 = tex2D(_SampleColor, TexCoord[2].xz).rgb;
     float3 C2 = tex2D(_SampleColor, TexCoord[2].xw).rgb;
 
+    float3 BilinearSample0, BilinearSample1, BilinearSample2, BilinearSample3;
+
     float3 Ix, Iy, Edge;
 
     switch(_Select)
     {
         case 0: // fwidth()
-            Ix = NormalizeValue(ddx(B1));
-            Iy = NormalizeValue(ddy(B1));
+            Ix = NormalizeOutput(ddx(B1));
+            Iy = NormalizeOutput(ddy(B1));
             Edge = Magnitude(Ix, Iy);
             break;
         case 1: // Laplacian
-            Edge = (A1 + C1 + B0 + B2) + (B1 * -4.0);
-            Edge = NormalizeValue(Edge);
+            BilinearSample0 = tex2D(_SampleColor, TexCoord[3].zy).rgb; // (-x, +y)
+            BilinearSample1 = tex2D(_SampleColor, TexCoord[3].xy).rgb; // (+x, +y)
+            BilinearSample2 = tex2D(_SampleColor, TexCoord[3].zw).rgb; // (-x, -y)
+            BilinearSample3 = tex2D(_SampleColor, TexCoord[3].xw).rgb; // (+x, -y)
+            Edge = (BilinearSample0 + BilinearSample1 + BilinearSample2 + BilinearSample3) - (B1 * 4.0);
+            Edge = NormalizeOutput(Edge);
             Edge = length(Edge) / sqrt(3.0);
             break;
         case 2: // Sobel
             Ix = (-A0 + ((-A1 * 2.0) + -A2)) + (C0 + (C1 * 2.0) + C2);
             Iy = (-A0 + ((-B0 * 2.0) + -C0)) + (A2 + (B2 * 2.0) + C2);
-            Edge = Magnitude(NormalizeValue(Ix), NormalizeValue(Iy));
+            Edge = Magnitude(Ix, Iy);
             break;
         case 3: // Prewitt
             Ix = (-A0 - A1 - A2) + (C0 + C1 + C2);
             Iy = (-A0 - B0 - C0) + (A2 + B2 + C2);
-            Edge = Magnitude(NormalizeValue(Ix), NormalizeValue(Iy));
+            Edge = Magnitude(Ix, Iy);
             break;
         case 4: // Robert's Cross
             Ix = C0 - B1;
             Iy = B0 - C1;
-            Edge = Magnitude(NormalizeValue(Ix), NormalizeValue(Iy));
+            Edge = Magnitude(Ix, Iy);
             break;
         case 5: // Scharr
             Ix += A0 * -3.0;
@@ -190,11 +198,10 @@ void ContourPS(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOOR
             Iy += A2 * -3.0;
             Iy += B2 * -10.0;
             Iy += C2 * -3.0;
-            Edge = Magnitude(NormalizeValue(Ix), NormalizeValue(Iy));
+            Edge = Magnitude(Ix, Iy);
             break;
         case 6: // Kayyali
             float3 Cross = (A0 * 6.0) + (C0 * -6.0) + (A2 * -6.0) + (C2 * 6.0);
-            Cross = NormalizeValue(Cross);
             Edge = Magnitude(Cross, -Cross);
             break;
         case 7: // Kroon
@@ -211,16 +218,16 @@ void ContourPS(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOOR
             Iy += A2 * -17.0;
             Iy += B2 * -61.0;
             Iy += C2 * -17.0;
-            Edge = Magnitude(NormalizeValue(Ix), NormalizeValue(Iy));
+            Edge = Magnitude(Ix, Iy);
             break;
         case 8: // Bilinear Sobel
-            float3 Sample0 = tex2D(_SampleColor, TexCoord[3].zy).rgb; // (-x, +y)
-            float3 Sample1 = tex2D(_SampleColor, TexCoord[3].xy).rgb; // (+x, +y)
-            float3 Sample2 = tex2D(_SampleColor, TexCoord[3].zw).rgb; // (-x, -y)
-            float3 Sample3 = tex2D(_SampleColor, TexCoord[3].xw).rgb; // (+x, -y)
-            Ix = ((-Sample2 + -Sample0) + (Sample3 + Sample1)) * 4.0;
-            Iy = ((Sample2 + Sample3) + (-Sample0 + -Sample1)) * 4.0;
-            Edge = Magnitude(NormalizeValue(Ix), NormalizeValue(Iy));
+            BilinearSample0 = tex2D(_SampleColor, TexCoord[3].zy).rgb; // (-x, +y)
+            BilinearSample1 = tex2D(_SampleColor, TexCoord[3].xy).rgb; // (+x, +y)
+            BilinearSample2 = tex2D(_SampleColor, TexCoord[3].zw).rgb; // (-x, -y)
+            BilinearSample3 = tex2D(_SampleColor, TexCoord[3].xw).rgb; // (+x, -y)
+            Ix = ((-BilinearSample2 + -BilinearSample0) + (BilinearSample3 + BilinearSample1)) * 4.0;
+            Iy = ((BilinearSample2 + BilinearSample3) + (-BilinearSample0 + -BilinearSample1)) * 4.0;
+            Edge = Magnitude(Ix, Iy);
             break;
         default:
             Edge = tex2D(_SampleColor, TexCoord[1].xz).rgb;
