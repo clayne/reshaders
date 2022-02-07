@@ -211,7 +211,7 @@ void DownsampleVS(in uint ID, out float4 Position, out float4 TexCoord[4], float
 {
     float2 TexCoord0;
     PostProcessVS(ID, Position, TexCoord0);
-    const float2 PixelSize = 1.0 / (uint2)ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -Factor);
+    const float2 PixelSize = 1.0 / uint2(ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -Factor));
     // Quadrant
     TexCoord[0] = TexCoord0.xyxy + float4(-1.0, -1.0, 1.0, 1.0) * PixelSize.xyxy;
     // Left column
@@ -226,7 +226,7 @@ void UpsampleVS(in uint ID, out float4 Position, out float4 TexCoord[3], float F
 {
     float2 TexCoord0;
     PostProcessVS(ID, Position, TexCoord0);
-    const float2 PixelSize = 1.0 / (uint2)ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -Factor);
+    const float2 PixelSize = 1.0 / uint2(ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -Factor));
     // Left column
     TexCoord[0] = TexCoord0.xyyy + float4(-2.0, 2.0, 0.0, -2.0) * PixelSize.xyyy;
     // Center column

@@ -379,32 +379,32 @@ namespace OpticalFlow
 
     void Downsample1VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 DownsampleCoords[4] : TEXCOORD0)
     {
-        DownsampleVS(ID, 1.0 / (uint2)ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -1.0), Position, DownsampleCoords);
+        DownsampleVS(ID, 1.0 / uint2(ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -1.0)), Position, DownsampleCoords);
     }
 
     void Downsample2VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 DownsampleCoords[4] : TEXCOORD0)
     {
-        DownsampleVS(ID, 1.0 / (uint2)ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -2.0), Position, DownsampleCoords);
+        DownsampleVS(ID, 1.0 / uint2(ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -2.0)), Position, DownsampleCoords);
     }
 
     void Downsample3VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 DownsampleCoords[4] : TEXCOORD0)
     {
-        DownsampleVS(ID, 1.0 / (uint2)ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -3.0), Position, DownsampleCoords);
+        DownsampleVS(ID, 1.0 / uint2(ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -3.0)), Position, DownsampleCoords);
     }
 
     void Upsample2VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 UpsampleCoords[3] : TEXCOORD0)
     {
-        UpsampleVS(ID, 1.0 / (uint2)ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -3.0), Position, UpsampleCoords);
+        UpsampleVS(ID, 1.0 / uint2(ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -3.0)), Position, UpsampleCoords);
     }
 
     void Upsample1VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 UpsampleCoords[3] : TEXCOORD0)
     {
-        UpsampleVS(ID, 1.0 / (uint2)ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -2.0), Position, UpsampleCoords);
+        UpsampleVS(ID, 1.0 / uint2(ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -2.0)), Position, UpsampleCoords);
     }
 
     void Upsample0VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 UpsampleCoords[3] : TEXCOORD0)
     {
-        UpsampleVS(ID, 1.0 / (uint2)ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -1.0), Position, UpsampleCoords);
+        UpsampleVS(ID, 1.0 / uint2(ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -1.0)), Position, UpsampleCoords);
     }
 
     void DerivativesVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 Offsets : TEXCOORD0)
@@ -425,37 +425,37 @@ namespace OpticalFlow
 
     void EstimateLevel6VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 Offsets[3] : TEXCOORD0)
     {
-        EstimateVS(ID, 1.0 / (uint2)ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -7.0), Position, Offsets);
+        EstimateVS(ID, 1.0 / uint2(ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -7.0)), Position, Offsets);
     }
 
     void EstimateLevel5VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 Offsets[3] : TEXCOORD0)
     {
-        EstimateVS(ID, 1.0 / (uint2)ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -6.0), Position, Offsets);
+        EstimateVS(ID, 1.0 / uint2(ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -6.0)), Position, Offsets);
     }
 
     void EstimateLevel4VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 Offsets[3] : TEXCOORD0)
     {
-        EstimateVS(ID, 1.0 / (uint2)ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -5.0), Position, Offsets);
+        EstimateVS(ID, 1.0 / uint2(ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -5.0)), Position, Offsets);
     }
 
     void EstimateLevel3VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 Offsets[3] : TEXCOORD0)
     {
-        EstimateVS(ID, 1.0 / (uint2)ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -4.0), Position, Offsets);
+        EstimateVS(ID, 1.0 / uint2(ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -4.0)), Position, Offsets);
     }
 
     void EstimateLevel2VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 Offsets[3] : TEXCOORD0)
     {
-        EstimateVS(ID, 1.0 / (uint2)ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -3.0), Position, Offsets);
+        EstimateVS(ID, 1.0 / uint2(ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -3.0)), Position, Offsets);
     }
 
     void EstimateLevel1VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 Offsets[3] : TEXCOORD0)
     {
-        EstimateVS(ID, 1.0 / (uint2)ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -2.0), Position, Offsets);
+        EstimateVS(ID, 1.0 / uint2(ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -2.0)), Position, Offsets);
     }
 
     void EstimateLevel0VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 Offsets[3] : TEXCOORD0)
     {
-        EstimateVS(ID, 1.0 / (uint2)ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -1.0), Position, Offsets);
+        EstimateVS(ID, 1.0 / uint2(ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -1.0)), Position, Offsets);
     }
 
     void VelocityStreamsVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float2 Velocity : TEXCOORD0)
