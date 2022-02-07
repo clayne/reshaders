@@ -500,13 +500,13 @@ namespace Interpolation
     {
         // .xy = Normalized Red Channel (x, y)
         // .zw = Normalized Green Channel (x, y)
-        float4 SampleI = tex2D(_SampleData1, TexCoord, 0.0, Level).xyzw;
+        float4 SampleI = tex2D(_SampleData1, TexCoord).xyzw;
 
         // .xy = Current frame (r, g)
         // .zw = Previous frame (r, g)
         float4 SampleFrames;
-        SampleFrames.xy = tex2D(_SampleData0, TexCoord, 0.0, Level).rg;
-        SampleFrames.zw = tex2D(_SampleData2, TexCoord, 0.0, Level).rg;
+        SampleFrames.xy = tex2D(_SampleData0, TexCoord).rg;
+        SampleFrames.zw = tex2D(_SampleData2, TexCoord).rg;
         float2 Iz = SampleFrames.xy - SampleFrames.zw;
 
         const float Alpha = max(ldexp(_Constraint * 1e-3, Level - MaxLevel), 1e-7);

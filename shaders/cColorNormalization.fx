@@ -66,11 +66,22 @@ void PostProcessVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, 
 
 /*
     Sources
-        Angle-Retaining Chromaticity
-            Title = "ARC: Angle-Retaining Chromaticity diagram for color constancy error analysis"
-            Authors = Marco Buzzelli and Simone Bianco and Raimondo Schettini
-            Year = 2020
-            Link = http://www.ivl.disco.unimib.it/activities/arc/
+        Angle-Retaining Chromaticity  
+            Copyright 2020 Marco Buzzelli, Simone Bianco, Raimondo Schettini.
+            If you use this code in your research, please cite:
+            @article{buzzelli2020arc,
+                title = {ARC: Angle-Retaining Chromaticity diagram for color constancy error analysis},
+                author = {Marco Buzzelli and Simone Bianco and Raimondo Schettini},
+                journal = {J. Opt. Soc. Am. A},
+                number = {11},
+                pages = {1721--1730},
+                publisher = {OSA},
+                volume = {37},
+                month = {Nov},
+                year = {2020},
+                doi = {10.1364/JOSAA.398692}
+            }
+
         Jamie Wong's Chromaticity
             Title = "Color: From Hexcodes to Eyeballs"
             Authors = Jamie Wong
