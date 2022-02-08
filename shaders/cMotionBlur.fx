@@ -33,8 +33,85 @@
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+// Shared textures
+
+texture2D _RenderTemporary1a < pooled = true; >
+{
+    Width = BUFFER_WIDTH / 2;
+    Height = BUFFER_HEIGHT / 2;
+    Format = RG16F;
+    MipLevels = 8;
+};
+
+texture2D _RenderTemporary1b < pooled = true; >
+{
+    Width = BUFFER_WIDTH / 2;
+    Height = BUFFER_HEIGHT / 2;
+    Format = RG16F;
+    MipLevels = 8;
+};
+
+texture2D _RenderTemporary1c < pooled = true; >
+{
+    Width = BUFFER_WIDTH / 2;
+    Height = BUFFER_HEIGHT / 2;
+    Format = RG16F;
+    MipLevels = 8;
+};
+
+texture2D _RenderTemporary2 < pooled = true; >
+{
+    Width = BUFFER_WIDTH / 4;
+    Height = BUFFER_HEIGHT / 4;
+    Format = RG16F;
+};
+
+texture2D _RenderTemporary3 < pooled = true; >
+{
+    Width = BUFFER_WIDTH / 8;
+    Height = BUFFER_HEIGHT / 8;
+    Format = RG16F;
+};
+
+texture2D _RenderTemporary4 < pooled = true; >
+{
+    Width = BUFFER_WIDTH / 16;
+    Height = BUFFER_HEIGHT / 16;
+    Format = RG16F;
+};
+
+texture2D _RenderTemporary5 < pooled = true; >
+{
+    Width = BUFFER_WIDTH / 32;
+    Height = BUFFER_HEIGHT / 32;
+    Format = RG16F;
+};
+
+texture2D _RenderTemporary6 < pooled = true; >
+{
+    Width = BUFFER_WIDTH / 64;
+    Height = BUFFER_HEIGHT / 64;
+    Format = RG16F;
+};
+
+texture2D _RenderTemporary7 < pooled = true; >
+{
+    Width = BUFFER_WIDTH / 128;
+    Height = BUFFER_HEIGHT / 128;
+    Format = RG16F;
+};
+
+texture2D _RenderTemporary8 < pooled = true; >
+{
+    Width = BUFFER_WIDTH / 256;
+    Height = BUFFER_HEIGHT / 256;
+    Format = RG16F;
+};
+
 namespace MotionBlur
 {
+    //Shader properties
+
     uniform float _Constraint <
         ui_type = "slider";
         ui_label = "Flow Smooth";
@@ -49,15 +126,15 @@ namespace MotionBlur
         ui_tooltip = "Higher = More motion blur";
         ui_min = 0.0;
         ui_max = 2.0;
-    > = 1.0;
+    > = 1.5;
 
     uniform float _MipBias <
         ui_type = "slider";
         ui_label = "Mipmap Bias";
         ui_tooltip = "Higher = Less spatial noise";
         ui_min = 0.0;
-        ui_max = 7.0;
-    > = 3.5;
+        ui_max = 8.0;
+    > = 5.5;
 
     uniform float _Blend <
         ui_type = "slider";
@@ -80,7 +157,8 @@ namespace MotionBlur
     > = 60.00;
 
     uniform float _FrameTime < source = "frametime"; >;
-    #define BUFFER_SIZE uint2(256, 256)
+
+    // Textures and samplers
 
     texture2D _RenderColor : COLOR;
 
@@ -95,7 +173,31 @@ namespace MotionBlur
         #endif
     };
 
-    texture2D _RenderBuffer
+    sampler2D _SampleTemporary1a
+    {
+        Texture = _RenderTemporary1a;
+        MagFilter = LINEAR;
+        MinFilter = LINEAR;
+        MipFilter = LINEAR;
+    };
+
+    sampler2D _SampleTemporary1b
+    {
+        Texture = _RenderTemporary1b;
+        MagFilter = LINEAR;
+        MinFilter = LINEAR;
+        MipFilter = LINEAR;
+    };
+
+    sampler2D _SampleTemporary1c
+    {
+        Texture = _RenderTemporary1c;
+        MagFilter = LINEAR;
+        MinFilter = LINEAR;
+        MipFilter = LINEAR;
+    };
+
+    texture2D _RenderTemporary1d
     {
         Width = BUFFER_WIDTH / 2;
         Height = BUFFER_HEIGHT / 2;
@@ -103,67 +205,20 @@ namespace MotionBlur
         MipLevels = 8;
     };
 
-    sampler2D _SampleBuffer
+    sampler2D _SampleTemporary1d
     {
-        Texture = _RenderBuffer;
+        Texture = _RenderTemporary1d;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
     };
 
-    texture2D _RenderData0
+    sampler2D _SampleTemporary8
     {
-        Width = BUFFER_SIZE.x;
-        Height = BUFFER_SIZE.y;
-        Format = RG16F;
-        MipLevels = 8;
-    };
-
-    sampler2D _SampleData0
-    {
-        Texture = _RenderData0;
+        Texture = _RenderTemporary8;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
-    };
-
-    texture2D _RenderData1
-    {
-        Width = BUFFER_SIZE.x;
-        Height = BUFFER_SIZE.y;
-        Format = RGBA16F;
-        MipLevels = 8;
-    };
-
-    sampler2D _SampleData1
-    {
-        Texture = _RenderData1;
-        MagFilter = LINEAR;
-        MinFilter = LINEAR;
-        MipFilter = LINEAR;
-    };
-
-    texture2D _RenderData2
-    {
-        Width = BUFFER_SIZE.x;
-        Height = BUFFER_SIZE.y;
-        Format = RG16F;
-        MipLevels = 8;
-    };
-
-    sampler2D _SampleData2
-    {
-        Texture = _RenderData2;
-        MagFilter = LINEAR;
-        MinFilter = LINEAR;
-        MipFilter = LINEAR;
-    };
-
-    texture2D _RenderTemporary7
-    {
-        Width = BUFFER_SIZE.x / 128;
-        Height = BUFFER_SIZE.y / 128;
-        Format = RG16F;
     };
 
     sampler2D _SampleTemporary7
@@ -174,26 +229,12 @@ namespace MotionBlur
         MipFilter = LINEAR;
     };
 
-    texture2D _RenderTemporary6
-    {
-        Width = BUFFER_SIZE.x / 64;
-        Height = BUFFER_SIZE.y / 64;
-        Format = RG16F;
-    };
-
     sampler2D _SampleTemporary6
     {
         Texture = _RenderTemporary6;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
-    };
-
-    texture2D _RenderTemporary5
-    {
-        Width = BUFFER_SIZE.x / 32;
-        Height = BUFFER_SIZE.y / 32;
-        Format = RG16F;
     };
 
     sampler2D _SampleTemporary5
@@ -204,26 +245,12 @@ namespace MotionBlur
         MipFilter = LINEAR;
     };
 
-    texture2D _RenderTemporary4
-    {
-        Width = BUFFER_SIZE.x / 16;
-        Height = BUFFER_SIZE.y / 16;
-        Format = RG16F;
-    };
-
     sampler2D _SampleTemporary4
     {
         Texture = _RenderTemporary4;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
-    };
-
-    texture2D _RenderTemporary3
-    {
-        Width = BUFFER_SIZE.x / 8;
-        Height = BUFFER_SIZE.y / 8;
-        Format = RG16F;
     };
 
     sampler2D _SampleTemporary3
@@ -234,13 +261,6 @@ namespace MotionBlur
         MipFilter = LINEAR;
     };
 
-    texture2D _RenderTemporary2
-    {
-        Width = BUFFER_SIZE.x / 4;
-        Height = BUFFER_SIZE.y / 4;
-        Format = RG16F;
-    };
-
     sampler2D _SampleTemporary2
     {
         Texture = _RenderTemporary2;
@@ -249,31 +269,41 @@ namespace MotionBlur
         MipFilter = LINEAR;
     };
 
-    texture2D _RenderTemporary1
+    texture2D _RenderTemporary1e
     {
-        Width = BUFFER_SIZE.x / 2;
-        Height = BUFFER_SIZE.y / 2;
+        Width = BUFFER_WIDTH / 2;
+        Height = BUFFER_HEIGHT / 2;
         Format = RG16F;
     };
 
-    sampler2D _SampleTemporary1
+    sampler2D _SampleTemporary1e
     {
-        Texture = _RenderTemporary1;
+        Texture = _RenderTemporary1e;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
     };
 
-    texture2D _RenderTemporary0
-    {
-        Width = BUFFER_SIZE.x / 1;
-        Height = BUFFER_SIZE.y / 1;
-        Format = RG16F;
-    };
+    #if RENDER_VELOCITY_STREAMS
+        texture2D _RenderLines
+        {
+            Width = BUFFER_WIDTH;
+            Height = BUFFER_HEIGHT;
+            Format = RGBA8;
+        };
 
-    sampler2D _SampleTemporary0
+        sampler2D _SampleLines
+        {
+            Texture = _RenderLines;
+            MagFilter = LINEAR;
+            MinFilter = LINEAR;
+            MipFilter = LINEAR;
+        };
+    #endif
+
+    sampler2D _SampleColorGamma
     {
-        Texture = _RenderTemporary0;
+        Texture = _RenderColor;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
@@ -327,87 +357,89 @@ namespace MotionBlur
         UpsampleOffsets(TexCoord0, PixelSize, Offsets);
     }
 
-    void Downsample1VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 DownsampleOffsets[4] : TEXCOORD0)
+    void Downsample1VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 DownsampleCoords[4] : TEXCOORD0)
     {
-        DownsampleVS(ID, 1.0 / uint2(ldexp(BUFFER_SIZE, -1.0)), Position, DownsampleOffsets);
+        DownsampleVS(ID, 1.0 / uint2(ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -1.0)), Position, DownsampleCoords);
     }
 
-    void Downsample2VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 DownsampleOffsets[4] : TEXCOORD0)
+    void Downsample2VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 DownsampleCoords[4] : TEXCOORD0)
     {
-        DownsampleVS(ID, 1.0 / uint2(ldexp(BUFFER_SIZE, -2.0)), Position, DownsampleOffsets);
+        DownsampleVS(ID, 1.0 / uint2(ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -2.0)), Position, DownsampleCoords);
     }
 
-    void Upsample1VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 UpsampleOffsets[3] : TEXCOORD0)
+    void Downsample3VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 DownsampleCoords[4] : TEXCOORD0)
     {
-        UpsampleVS(ID, 1.0 / uint2(ldexp(BUFFER_SIZE, -1.0)), Position, UpsampleOffsets);
+        DownsampleVS(ID, 1.0 / uint2(ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -3.0)), Position, DownsampleCoords);
     }
 
-    void Upsample0VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 UpsampleOffsets[3] : TEXCOORD0)
+    void Upsample2VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 UpsampleCoords[3] : TEXCOORD0)
     {
-        UpsampleVS(ID, 1.0 / uint2(ldexp(BUFFER_SIZE, 0.0)), Position, UpsampleOffsets);
+        UpsampleVS(ID, 1.0 / uint2(ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -3.0)), Position, UpsampleCoords);
+    }
+
+    void Upsample1VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 UpsampleCoords[3] : TEXCOORD0)
+    {
+        UpsampleVS(ID, 1.0 / uint2(ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -2.0)), Position, UpsampleCoords);
+    }
+
+    void Upsample0VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 UpsampleCoords[3] : TEXCOORD0)
+    {
+        UpsampleVS(ID, 1.0 / uint2(ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -1.0)), Position, UpsampleCoords);
     }
 
     void DerivativesVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 Offsets : TEXCOORD0)
     {
-        const float2 PixelSize = 0.5 / BUFFER_SIZE;
-        const float4 PixelOffset = float4(PixelSize, -PixelSize);
         float2 TexCoord0;
         PostProcessVS(ID, Position, TexCoord0);
-        Offsets = TexCoord0.xyxy + PixelOffset;
+        const float2 PixelSize = 1.0 / uint2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2);
+        Offsets = TexCoord0.xyxy + (float4(0.5, 0.5, -0.5, -0.5) * PixelSize.xyxy);
+    }
+
+    void EstimateVS(in uint ID, in float2 PixelSize, out float4 Position, out float4 TentFilterOffsets[3])
+    {
+        float2 TexCoord0 = 0.0;
+        PostProcessVS(ID, Position, TexCoord0);
+        UpsampleOffsets(TexCoord0, PixelSize, TentFilterOffsets);
+    }
+
+    void EstimateLevel7VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 Offsets[3] : TEXCOORD0)
+    {
+        EstimateVS(ID, 1.0 / uint2(ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -7.0)), Position, Offsets);
     }
 
     void EstimateLevel6VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 Offsets[3] : TEXCOORD0)
     {
-        float2 TexCoord0;
-        PostProcessVS(ID, Position, TexCoord0);
-        UpsampleOffsets(TexCoord0, 1.0 / uint2(ldexp(BUFFER_SIZE, -7.0)), Offsets);
+        EstimateVS(ID, 1.0 / uint2(ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -6.0)), Position, Offsets);
     }
 
     void EstimateLevel5VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 Offsets[3] : TEXCOORD0)
     {
-        float2 TexCoord0;
-        PostProcessVS(ID, Position, TexCoord0);
-        UpsampleOffsets(TexCoord0, 1.0 / uint2(ldexp(BUFFER_SIZE, -6.0)), Offsets);
+        EstimateVS(ID, 1.0 / uint2(ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -5.0)), Position, Offsets);
     }
 
     void EstimateLevel4VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 Offsets[3] : TEXCOORD0)
     {
-        float2 TexCoord0;
-        PostProcessVS(ID, Position, TexCoord0);
-        UpsampleOffsets(TexCoord0, 1.0 / uint2(ldexp(BUFFER_SIZE, -5.0)), Offsets);
+        EstimateVS(ID, 1.0 / uint2(ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -4.0)), Position, Offsets);
     }
 
     void EstimateLevel3VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 Offsets[3] : TEXCOORD0)
     {
-        float2 TexCoord0;
-        PostProcessVS(ID, Position, TexCoord0);
-        UpsampleOffsets(TexCoord0, 1.0 / uint2(ldexp(BUFFER_SIZE, -4.0)), Offsets);
+        EstimateVS(ID, 1.0 / uint2(ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -3.0)), Position, Offsets);
     }
 
     void EstimateLevel2VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 Offsets[3] : TEXCOORD0)
     {
-        float2 TexCoord0;
-        PostProcessVS(ID, Position, TexCoord0);
-        UpsampleOffsets(TexCoord0, 1.0 / uint2(ldexp(BUFFER_SIZE, -3.0)), Offsets);
+        EstimateVS(ID, 1.0 / uint2(ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -2.0)), Position, Offsets);
     }
 
     void EstimateLevel1VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 Offsets[3] : TEXCOORD0)
     {
-        float2 TexCoord0;
-        PostProcessVS(ID, Position, TexCoord0);
-        UpsampleOffsets(TexCoord0, 1.0 / uint2(ldexp(BUFFER_SIZE, -2.0)), Offsets);
-    }
-
-    void EstimateLevel0VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 Offsets[3] : TEXCOORD0)
-    {
-        float2 TexCoord0;
-        PostProcessVS(ID, Position, TexCoord0);
-        UpsampleOffsets(TexCoord0, 1.0 / uint2(ldexp(BUFFER_SIZE, -1.0)), Offsets);
+        EstimateVS(ID, 1.0 / uint2(ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -1.0)), Position, Offsets);
     }
 
     // Pixel shaders
 
-    float4 Downsample(sampler2D Source, float4 TexCoord[4])
+    float4 DownsamplePS(sampler2D Source, float4 TexCoord[4])
     {
         // A0    B0    C0
         //    D0    D1
@@ -442,7 +474,7 @@ namespace MotionBlur
         return Output;
     }
 
-    float4 Upsample(sampler2D Source, float4 Offsets[3])
+    float4 UpsamplePS(sampler2D Source, float4 Offsets[3])
     {
         // Sample locations:
         // [0].xy [1].xy [2].xy
@@ -481,32 +513,24 @@ namespace MotionBlur
 
     void OpticalFlow(in float2 TexCoord, in float2 UV, in float Level, out float2 DUV)
     {
-        // .xy = Normalized Red Channel (x, y)
-        // .zw = Normalized Green Channel (x, y)
-        float4 SampleI = tex2D(_SampleData1, TexCoord).xyzw;
-
-        // .xy = Current frame (r, g)
-        // .zw = Previous frame (r, g)
-        float4 SampleFrames;
-        SampleFrames.xy = tex2D(_SampleData0, TexCoord).rg;
-        SampleFrames.zw = tex2D(_SampleData2, TexCoord).rg;
-        float2 Iz = SampleFrames.xy - SampleFrames.zw;
-
-        const float Alpha = max(ldexp(_Constraint * 1e-3, Level - MaxLevel), 1e-7);
+        const float Alpha = max(ldexp(_Constraint * 1e-5, Level - MaxLevel), 1e-7);
+        float2 Iz = tex2D(_SampleTemporary1b, TexCoord).rg;
+        float2 Ix = tex2D(_SampleTemporary1c, TexCoord).rg;
+        float2 Iy = tex2D(_SampleTemporary1d, TexCoord).rg;
 
         // Compute diagonal
         float2 Aii;
-        Aii.x = dot(SampleI.xz, SampleI.xz) + Alpha;
-        Aii.y = dot(SampleI.yw, SampleI.yw) + Alpha;
+        Aii.x = dot(Ix, Ix) + Alpha;
+        Aii.y = dot(Iy, Iy) + Alpha;
         Aii.xy = 1.0 / Aii.xy;
 
         // Compute right-hand side
         float2 RHS;
-        RHS.x = dot(SampleI.xz, Iz.rg);
-        RHS.y = dot(SampleI.yw, Iz.rg);
+        RHS.x = dot(Ix, Iz);
+        RHS.y = dot(Iy, Iz);
 
         // Compute triangle
-        float Aij = dot(SampleI.xz, SampleI.yw);
+        float Aij = dot(Ix, Iy);
 
         // Symmetric Gauss-Seidel (forward sweep, from 1...N)
         DUV.x = Aii.x * ((Alpha * UV.x) - RHS.x - (UV.y * Aij));
@@ -524,109 +548,137 @@ namespace MotionBlur
         OutputColor0 = saturate(Color.xy / dot(Color, 1.0));
     }
 
-    void Copy0PS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
-    {
-        OutputColor0 = tex2D(_SampleBuffer, TexCoord).rg;
-    }
-
     void PreDownsample1PS(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
-        OutputColor0 = Downsample(_SampleData0, TexCoord);
+        OutputColor0 = DownsamplePS(_SampleTemporary1a, TexCoord);
     }
 
     void PreDownsample2PS(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
-        OutputColor0 = Downsample(_SampleTemporary1, TexCoord);
+        OutputColor0 = DownsamplePS(_SampleTemporary2, TexCoord);
+    }
+
+    void PreDownsample3PS(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+    {
+        OutputColor0 = DownsamplePS(_SampleTemporary3, TexCoord);
+    }
+
+    void PreUpsample2PS(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+    {
+        OutputColor0 = UpsamplePS(_SampleTemporary4, TexCoord);
     }
 
     void PreUpsample1PS(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
-        OutputColor0 = Upsample(_SampleTemporary2, TexCoord);
+        OutputColor0 = UpsamplePS(_SampleTemporary3, TexCoord);
     }
 
     void PreUpsample0PS(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
-        OutputColor0 = Upsample(_SampleTemporary1, TexCoord);
+        OutputColor0 = UpsamplePS(_SampleTemporary2, TexCoord);
     }
 
-    void DerivativesPS(in float4 Position : SV_Position, in float4 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+    void DerivativesZPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
     {
-        float2 Sample0 = tex2D(_SampleData0, TexCoord.zy).xy; // (-x, +y)
-        float2 Sample1 = tex2D(_SampleData0, TexCoord.xy).xy; // (+x, +y)
-        float2 Sample2 = tex2D(_SampleData0, TexCoord.zw).xy; // (-x, -y)
-        float2 Sample3 = tex2D(_SampleData0, TexCoord.xw).xy; // (+x, -y)
-        OutputColor0.xz = (Sample3 + Sample1) - (Sample2 + Sample0);
-        OutputColor0.yw = (Sample2 + Sample3) - (Sample0 + Sample1);
-        OutputColor0 *= 4.0;
+        float2 CurrentFrame = tex2D(_SampleTemporary1a, TexCoord).xy;
+        float2 PreviousFrame = tex2D(_SampleTemporary1d, TexCoord).xy;
+        OutputColor0 = CurrentFrame - PreviousFrame;
     }
 
-    void EstimateLevel7PS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputEstimation : SV_Target0)
+    void DerivativesXYPS(in float4 Position : SV_Position, in float4 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_Target0, out float2 OutputColor1 : SV_Target1)
+    {
+        float2 Sample0 = tex2D(_SampleTemporary1a, TexCoord.zy).xy; // (-x, +y)
+        float2 Sample1 = tex2D(_SampleTemporary1a, TexCoord.xy).xy; // (+x, +y)
+        float2 Sample2 = tex2D(_SampleTemporary1a, TexCoord.zw).xy; // (-x, -y)
+        float2 Sample3 = tex2D(_SampleTemporary1a, TexCoord.xw).xy; // (+x, -y)
+        OutputColor0 = ((Sample3 + Sample1) - (Sample2 + Sample0)) * 4.0;
+        OutputColor1 = ((Sample2 + Sample3) - (Sample0 + Sample1)) * 4.0;
+    }
+
+    void EstimateLevel8PS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputEstimation : SV_Target0)
     {
         OpticalFlow(TexCoord, 0.0, 7.0, OutputEstimation);
     }
 
+    void EstimateLevel7PS(in float4 Position : SV_Position, in float4 UpsampleOffsets[3] : TEXCOORD0, out float2 OutputEstimation : SV_Target0)
+    {
+        OpticalFlow(UpsampleOffsets[1].xz, UpsamplePS(_SampleTemporary8, UpsampleOffsets).xy, 6.0, OutputEstimation);
+    }
+
     void EstimateLevel6PS(in float4 Position : SV_Position, in float4 UpsampleOffsets[3] : TEXCOORD0, out float2 OutputEstimation : SV_Target0)
     {
-        OpticalFlow(UpsampleOffsets[1].xz, Upsample(_SampleTemporary7, UpsampleOffsets).xy, 6.0, OutputEstimation);
+        OpticalFlow(UpsampleOffsets[1].xz, UpsamplePS(_SampleTemporary7, UpsampleOffsets).xy, 5.0, OutputEstimation);
     }
 
     void EstimateLevel5PS(in float4 Position : SV_Position, in float4 UpsampleOffsets[3] : TEXCOORD0, out float2 OutputEstimation : SV_Target0)
     {
-        OpticalFlow(UpsampleOffsets[1].xz, Upsample(_SampleTemporary6, UpsampleOffsets).xy, 5.0, OutputEstimation);
+        OpticalFlow(UpsampleOffsets[1].xz, UpsamplePS(_SampleTemporary6, UpsampleOffsets).xy, 4.0, OutputEstimation);
     }
 
     void EstimateLevel4PS(in float4 Position : SV_Position, in float4 UpsampleOffsets[3] : TEXCOORD0, out float2 OutputEstimation : SV_Target0)
     {
-        OpticalFlow(UpsampleOffsets[1].xz, Upsample(_SampleTemporary5, UpsampleOffsets).xy, 4.0, OutputEstimation);
+        OpticalFlow(UpsampleOffsets[1].xz, UpsamplePS(_SampleTemporary5, UpsampleOffsets).xy, 3.0, OutputEstimation);
     }
 
     void EstimateLevel3PS(in float4 Position : SV_Position, in float4 UpsampleOffsets[3] : TEXCOORD0, out float2 OutputEstimation : SV_Target0)
     {
-        OpticalFlow(UpsampleOffsets[1].xz, Upsample(_SampleTemporary4, UpsampleOffsets).xy, 3.0, OutputEstimation);
+        OpticalFlow(UpsampleOffsets[1].xz, UpsamplePS(_SampleTemporary4, UpsampleOffsets).xy, 2.0, OutputEstimation);
     }
 
     void EstimateLevel2PS(in float4 Position : SV_Position, in float4 UpsampleOffsets[3] : TEXCOORD0, out float2 OutputEstimation : SV_Target0)
     {
-        OpticalFlow(UpsampleOffsets[1].xz, Upsample(_SampleTemporary3, UpsampleOffsets).xy, 2.0, OutputEstimation);
+        OpticalFlow(UpsampleOffsets[1].xz, UpsamplePS(_SampleTemporary3, UpsampleOffsets).xy, 1.0, OutputEstimation);
     }
 
-    void EstimateLevel1PS(in float4 Position : SV_Position, in float4 UpsampleOffsets[3] : TEXCOORD0, out float2 OutputEstimation : SV_Target0)
+    void EstimateLevel1PS(in float4 Position : SV_Position, in float4 UpsampleOffsets[3] : TEXCOORD0, out float4 OutputEstimation : SV_Target0)
     {
-        OpticalFlow(UpsampleOffsets[1].xz, Upsample(_SampleTemporary2, UpsampleOffsets).xy, 1.0, OutputEstimation);
-    }
-
-    void EstimateLevel0PS(in float4 Position : SV_Position, in float4 UpsampleOffsets[3] : TEXCOORD0, out float4 OutputEstimation : SV_Target0)
-    {
-        OpticalFlow(UpsampleOffsets[1].xz, Upsample(_SampleTemporary1, UpsampleOffsets).xy, 0.0, OutputEstimation.xy);
+        OpticalFlow(UpsampleOffsets[1].xz, UpsamplePS(_SampleTemporary2, UpsampleOffsets).xy, 0.0, OutputEstimation.xy);
         OutputEstimation.ba = (0.0, _Blend);
     }
 
     void PostDownsample1PS(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
-        OutputColor0 = Downsample(_SampleTemporary0, TexCoord);
+        OutputColor0 = DownsamplePS(_SampleTemporary1e, TexCoord);
     }
 
     void PostDownsample2PS(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
-        OutputColor0 = Downsample(_SampleTemporary1, TexCoord);
+        OutputColor0 = DownsamplePS(_SampleTemporary2, TexCoord);
+    }
+
+    void PostDownsample3PS(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+    {
+        OutputColor0 = DownsamplePS(_SampleTemporary3, TexCoord);
+    }
+
+    void PostUpsample2PS(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+    {
+        OutputColor0 = UpsamplePS(_SampleTemporary4, TexCoord);
     }
 
     void PostUpsample1PS(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
-        OutputColor0 = Upsample(_SampleTemporary2, TexCoord);
+        OutputColor0 = UpsamplePS(_SampleTemporary3, TexCoord);
     }
 
-    void PostUpsample0PS(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+    void PostUpsample0PS(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0, out float4 OutputColor1 : SV_Target1)
     {
-        OutputColor0 = Upsample(_SampleTemporary1, TexCoord);
+        OutputColor0 = UpsamplePS(_SampleTemporary2, TexCoord);
+
+        // Copy current convolved result to use at next frame
+        OutputColor1 = tex2D(_SampleTemporary1a, TexCoord[1].xz).rg;
     }
 
     void MotionBlurPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target)
     {
         const int Samples = 4;
+        const float2 PixelSize = 1.0 / uint2(BUFFER_WIDTH / 2, BUFFER_HEIGHT /2);
+
         float Noise = frac(52.9829189 * frac(dot(Position.xy, float2(0.06711056, 0.00583715))));
         float FrameTimeRatio = _TargetFrameRate / (1e+3 / _FrameTime);
-        float2 Velocity = (tex2Dlod(_SampleData2, float4(TexCoord, 0.0, _MipBias)).xy / BUFFER_SIZE) * _Scale;
+
+        float2 Velocity = (tex2Dlod(_SampleTemporary1b, float4(TexCoord, 0.0, _MipBias)).xy * PixelSize) * _Scale;
+
         Velocity /= (_FrameRateScaling) ? FrameTimeRatio : 1.0;
 
         for(int k = 0; k < Samples; ++k)
@@ -639,11 +691,6 @@ namespace MotionBlur
         OutputColor0 /= (Samples * 2.0);
     }
 
-    void Copy1PS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
-    {
-        OutputColor0 = tex2D(_SampleData0, TexCoord).rg;
-    }
-
     technique cMotionBlur
     {
         // Normalize current frame
@@ -652,14 +699,7 @@ namespace MotionBlur
         {
             VertexShader = PostProcessVS;
             PixelShader = NormalizePS;
-            RenderTarget0 = _RenderBuffer;
-        }
-
-        pass
-        {
-            VertexShader = PostProcessVS;
-            PixelShader = Copy0PS;
-            RenderTarget0 = _RenderData0;
+            RenderTarget0 = _RenderTemporary1a;
         }
 
         // Pre-process dual-filter blur
@@ -668,44 +708,73 @@ namespace MotionBlur
         {
             VertexShader = Downsample1VS;
             PixelShader = PreDownsample1PS;
-            RenderTarget0 = _RenderTemporary1;
+            RenderTarget0 = _RenderTemporary2;
         }
 
         pass
         {
             VertexShader = Downsample2VS;
             PixelShader = PreDownsample2PS;
-            RenderTarget0 = _RenderTemporary2;
+            RenderTarget0 = _RenderTemporary3;
+        }
+
+        pass
+        {
+            VertexShader = Downsample3VS;
+            PixelShader = PreDownsample3PS;
+            RenderTarget0 = _RenderTemporary4;
+        }
+
+        pass
+        {
+            VertexShader = Upsample2VS;
+            PixelShader = PreUpsample2PS;
+            RenderTarget0 = _RenderTemporary3;
         }
 
         pass
         {
             VertexShader = Upsample1VS;
             PixelShader = PreUpsample1PS;
-            RenderTarget0 = _RenderTemporary1;
+            RenderTarget0 = _RenderTemporary2;
         }
 
         pass
         {
             VertexShader = Upsample0VS;
             PixelShader = PreUpsample0PS;
-            RenderTarget0 = _RenderData0;
+            RenderTarget0 = _RenderTemporary1a;
         }
 
-        // Calculate derivative pyramid (to be removed)
-
-        pass
-        {
-            VertexShader = DerivativesVS;
-            PixelShader = DerivativesPS;
-            RenderTarget0 = _RenderData1;
-        }
-
-        // Calculate pyramidal estimation
+        // Construct pyramids
 
         pass
         {
             VertexShader = PostProcessVS;
+            PixelShader = DerivativesZPS;
+            RenderTarget0 = _RenderTemporary1b;
+        }
+
+        pass
+        {
+            VertexShader = DerivativesVS;
+            PixelShader = DerivativesXYPS;
+            RenderTarget0 = _RenderTemporary1c;
+            RenderTarget1 = _RenderTemporary1d;
+        }
+
+        // Pyramidal estimation
+
+        pass
+        {
+            VertexShader = PostProcessVS;
+            PixelShader = EstimateLevel8PS;
+            RenderTarget0 = _RenderTemporary8;
+        }
+
+        pass
+        {
+            VertexShader = EstimateLevel7VS;
             PixelShader = EstimateLevel7PS;
             RenderTarget0 = _RenderTemporary7;
         }
@@ -749,14 +818,7 @@ namespace MotionBlur
         {
             VertexShader = EstimateLevel1VS;
             PixelShader = EstimateLevel1PS;
-            RenderTarget0 = _RenderTemporary1;
-        }
-
-        pass
-        {
-            VertexShader = EstimateLevel0VS;
-            PixelShader = EstimateLevel0PS;
-            RenderTarget0 = _RenderTemporary0;
+            RenderTarget0 = _RenderTemporary1e;
             ClearRenderTargets = FALSE;
             BlendEnable = TRUE;
             BlendOp = ADD;
@@ -770,29 +832,48 @@ namespace MotionBlur
         {
             VertexShader = Downsample1VS;
             PixelShader = PostDownsample1PS;
-            RenderTarget0 = _RenderTemporary1;
+            RenderTarget0 = _RenderTemporary2;
         }
 
         pass
         {
             VertexShader = Downsample2VS;
             PixelShader = PostDownsample2PS;
-            RenderTarget0 = _RenderTemporary2;
+            RenderTarget0 = _RenderTemporary3;
+        }
+
+        pass
+        {
+            VertexShader = Downsample3VS;
+            PixelShader = PostDownsample3PS;
+            RenderTarget0 = _RenderTemporary4;
+        }
+
+        pass
+        {
+            VertexShader = Upsample2VS;
+            PixelShader = PostUpsample2PS;
+            RenderTarget0 = _RenderTemporary3;
         }
 
         pass
         {
             VertexShader = Upsample1VS;
             PixelShader = PostUpsample1PS;
-            RenderTarget0 = _RenderTemporary1;
+            RenderTarget0 = _RenderTemporary2;
         }
 
         pass
         {
             VertexShader = Upsample0VS;
             PixelShader = PostUpsample0PS;
-            RenderTarget0 = _RenderData2;
+            RenderTarget0 = _RenderTemporary1b;
+
+            // Copy previous frame
+            RenderTarget1 = _RenderTemporary1d;
         }
+
+        // Render result
 
         pass
         {
@@ -801,15 +882,6 @@ namespace MotionBlur
             #if BUFFER_COLOR_BIT_DEPTH == 8
                 SRGBWriteEnable = TRUE;
             #endif
-        }
-
-        // Store previous frame
-
-        pass
-        {
-            VertexShader = PostProcessVS;
-            PixelShader = Copy1PS;
-            RenderTarget0 = _RenderData2;
         }
     }
 }
