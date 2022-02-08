@@ -135,7 +135,6 @@ void BlitPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, ou
     OutputColor0 = tex2D(_SampleColor, TexCoord);
 }
 
-
 void VogelConvolutionPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
     VogelBlur(_SampleLevels, TexCoord, uint2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2), _Radius, _Samples, _Offset, OutputColor0);

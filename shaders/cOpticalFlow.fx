@@ -156,7 +156,7 @@ namespace OpticalFlow
     {
         Width = BUFFER_WIDTH / 2;
         Height = BUFFER_HEIGHT / 2;
-        Format = RGBA16F;
+        Format = RG16F;
         MipLevels = 8;
     };
 
@@ -179,6 +179,22 @@ namespace OpticalFlow
     sampler2D _SampleData2
     {
         Texture = _RenderData2;
+        MagFilter = LINEAR;
+        MinFilter = LINEAR;
+        MipFilter = LINEAR;
+    };
+
+    texture2D _RenderData3
+    {
+        Width = BUFFER_WIDTH / 2;
+        Height = BUFFER_HEIGHT / 2;
+        Format = RG16F;
+        MipLevels = 8;
+    };
+
+    sampler2D _SampleData3
+    {
+        Texture = _RenderData3;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
@@ -477,7 +493,7 @@ namespace OpticalFlow
         float2 VelocityCoord;
         VelocityCoord.xy = Origin.xy * PixelSize.xy;
         VelocityCoord.y = 1.0 - VelocityCoord.y;
-        Velocity = tex2Dlod(_SampleData2, float4(VelocityCoord, 0.0, _MipBias)).xy;
+        Velocity = tex2Dlod(_SampleData1, float4(VelocityCoord, 0.0, _MipBias)).xy;
 
         // Scale velocity
         float2 Direction = Velocity * VELOCITY_SCALE;
@@ -585,32 +601,24 @@ namespace OpticalFlow
 
     void OpticalFlow(in float2 TexCoord, in float2 UV, in float Level, out float2 DUV)
     {
-        // .xy = Normalized Red Channel (x, y)
-        // .zw = Normalized Green Channel (x, y)
-        float4 SampleI = tex2D(_SampleData1, TexCoord).xyzw;
-
-        // .xy = Current frame (r, g)
-        // .zw = Previous frame (r, g)
-        float4 SampleFrames;
-        SampleFrames.xy = tex2D(_SampleData0, TexCoord).rg;
-        SampleFrames.zw = tex2D(_SampleData2, TexCoord).rg;
-        float2 Iz = SampleFrames.xy - SampleFrames.zw;
-
         const float Alpha = max(ldexp(_Constraint * 1e-5, Level - MaxLevel), 1e-7);
+        float2 Iz = tex2D(_SampleData1, TexCoord).rg;
+        float2 Ix = tex2D(_SampleData2, TexCoord).rg;
+        float2 Iy = tex2D(_SampleData3, TexCoord).rg;
 
         // Compute diagonal
         float2 Aii;
-        Aii.x = dot(SampleI.xz, SampleI.xz) + Alpha;
-        Aii.y = dot(SampleI.yw, SampleI.yw) + Alpha;
+        Aii.x = dot(Ix, Ix) + Alpha;
+        Aii.y = dot(Iy, Iy) + Alpha;
         Aii.xy = 1.0 / Aii.xy;
 
         // Compute right-hand side
         float2 RHS;
-        RHS.x = dot(SampleI.xz, Iz.rg);
-        RHS.y = dot(SampleI.yw, Iz.rg);
+        RHS.x = dot(Ix, Iz);
+        RHS.y = dot(Iy, Iz);
 
         // Compute triangle
-        float Aij = dot(SampleI.xz, SampleI.yw);
+        float Aij = dot(Ix, Iy);
 
         // Symmetric Gauss-Seidel (forward sweep, from 1...N)
         DUV.x = Aii.x * ((Alpha * UV.x) - RHS.x - (UV.y * Aij));
@@ -619,11 +627,6 @@ namespace OpticalFlow
         // Symmetric Gauss-Seidel (backward sweep, from N...1)
         DUV.y = Aii.y * ((Alpha * DUV.y) - RHS.y - (DUV.x * Aij));
         DUV.x = Aii.x * ((Alpha * DUV.x) - RHS.x - (DUV.y * Aij));
-    }
-
-    void CopyPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
-    {
-        OutputColor0 = tex2D(_SampleData0, TexCoord).rg;
     }
 
     void NormalizePS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
@@ -663,15 +666,21 @@ namespace OpticalFlow
         OutputColor0 = UpsamplePS(_SampleTemporary1, TexCoord);
     }
 
-    void DerivativesPS(in float4 Position : SV_Position, in float4 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+    void DerivativesZPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
+    {
+        float2 CurrentFrame = tex2D(_SampleData0, TexCoord).xy;
+        float2 PreviousFrame = tex2D(_SampleData3, TexCoord).xy;
+        OutputColor0 = CurrentFrame - PreviousFrame;
+    }
+
+    void DerivativesXYPS(in float4 Position : SV_Position, in float4 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_Target0, out float2 OutputColor1 : SV_Target1)
     {
         float2 Sample0 = tex2D(_SampleData0, TexCoord.zy).xy; // (-x, +y)
         float2 Sample1 = tex2D(_SampleData0, TexCoord.xy).xy; // (+x, +y)
         float2 Sample2 = tex2D(_SampleData0, TexCoord.zw).xy; // (-x, -y)
         float2 Sample3 = tex2D(_SampleData0, TexCoord.xw).xy; // (+x, -y)
-        OutputColor0.xz = (Sample3 + Sample1) - (Sample2 + Sample0);
-        OutputColor0.yw = (Sample2 + Sample3) - (Sample0 + Sample1);
-        OutputColor0 *= 4.0;
+        OutputColor0 = ((Sample3 + Sample1) - (Sample2 + Sample0)) * 4.0;
+        OutputColor1 = ((Sample2 + Sample3) - (Sample0 + Sample1)) * 4.0;
     }
 
     void EstimateLevel7PS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputEstimation : SV_Target0)
@@ -740,14 +749,17 @@ namespace OpticalFlow
         OutputColor0 = UpsamplePS(_SampleTemporary2, TexCoord);
     }
 
-    void PostUpsample0PS(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+    void PostUpsample0PS(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0, out float4 OutputColor1 : SV_Target1)
     {
         OutputColor0 = UpsamplePS(_SampleTemporary1, TexCoord);
+
+        // Copy current convolved result to use at next frame
+        OutputColor1 = tex2D(_SampleData0, TexCoord[1].xz).rg;
     }
 
     void VelocityShadingPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target)
     {
-        float2 Velocity = tex2Dlod(_SampleData2, float4(TexCoord, 0.0, _MipBias)).xy;
+        float2 Velocity = tex2Dlod(_SampleData1, float4(TexCoord, 0.0, _MipBias)).xy;
 
         if(_NormalizedShading)
         {
@@ -834,16 +846,24 @@ namespace OpticalFlow
             RenderTarget0 = _RenderData0;
         }
 
-        // Calculate derivative pyramid (to be removed)
+        // Construct pyramids
+
+        pass
+        {
+            VertexShader = PostProcessVS;
+            PixelShader = DerivativesZPS;
+            RenderTarget0 = _RenderData1;
+        }
 
         pass
         {
             VertexShader = DerivativesVS;
-            PixelShader = DerivativesPS;
-            RenderTarget0 = _RenderData1;
+            PixelShader = DerivativesXYPS;
+            RenderTarget0 = _RenderData2;
+            RenderTarget1 = _RenderData3;
         }
 
-        // Calculate pyramidal estimation
+        // Pyramidal estimation
 
         pass
         {
@@ -947,7 +967,10 @@ namespace OpticalFlow
         {
             VertexShader = Upsample0VS;
             PixelShader = PostUpsample0PS;
-            RenderTarget0 = _RenderData2;
+            RenderTarget0 = _RenderData1;
+
+            // Copy previous frame
+            RenderTarget1 = _RenderData3;
         }
 
         // Render result
@@ -977,14 +1000,5 @@ namespace OpticalFlow
                 PixelShader = VelocityShadingPS;
             }
         #endif
-
-        // Copy previous frame
-
-        pass
-        {
-            VertexShader = PostProcessVS;
-            PixelShader = CopyPS;
-            RenderTarget0 = _RenderData2;
-        }
     }
 }
