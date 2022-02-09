@@ -35,78 +35,84 @@
 
 // Shared textures
 
-texture2D _RenderTemporary1a < pooled = true; >
+namespace SharedResources
 {
-    Width = BUFFER_WIDTH / 2;
-    Height = BUFFER_HEIGHT / 2;
-    Format = RG16F;
-    MipLevels = 8;
-};
+    namespace RG16F
+    {
+        texture2D _RenderTemporary1a < pooled = true; >
+        {
+            Width = BUFFER_WIDTH / 2;
+            Height = BUFFER_HEIGHT / 2;
+            Format = RG16F;
+            MipLevels = 8;
+        };
 
-texture2D _RenderTemporary1b < pooled = true; >
-{
-    Width = BUFFER_WIDTH / 2;
-    Height = BUFFER_HEIGHT / 2;
-    Format = RG16F;
-    MipLevels = 8;
-};
+        texture2D _RenderTemporary1b < pooled = true; >
+        {
+            Width = BUFFER_WIDTH / 2;
+            Height = BUFFER_HEIGHT / 2;
+            Format = RG16F;
+            MipLevels = 8;
+        };
 
-texture2D _RenderTemporary1c < pooled = true; >
-{
-    Width = BUFFER_WIDTH / 2;
-    Height = BUFFER_HEIGHT / 2;
-    Format = RG16F;
-    MipLevels = 8;
-};
+        texture2D _RenderTemporary1c < pooled = true; >
+        {
+            Width = BUFFER_WIDTH / 2;
+            Height = BUFFER_HEIGHT / 2;
+            Format = RG16F;
+            MipLevels = 8;
+        };
 
-texture2D _RenderTemporary2 < pooled = true; >
-{
-    Width = BUFFER_WIDTH / 4;
-    Height = BUFFER_HEIGHT / 4;
-    Format = RG16F;
-};
+        texture2D _RenderTemporary2 < pooled = true; >
+        {
+            Width = BUFFER_WIDTH / 4;
+            Height = BUFFER_HEIGHT / 4;
+            Format = RG16F;
+        };
 
-texture2D _RenderTemporary3 < pooled = true; >
-{
-    Width = BUFFER_WIDTH / 8;
-    Height = BUFFER_HEIGHT / 8;
-    Format = RG16F;
-};
+        texture2D _RenderTemporary3 < pooled = true; >
+        {
+            Width = BUFFER_WIDTH / 8;
+            Height = BUFFER_HEIGHT / 8;
+            Format = RG16F;
+        };
 
-texture2D _RenderTemporary4 < pooled = true; >
-{
-    Width = BUFFER_WIDTH / 16;
-    Height = BUFFER_HEIGHT / 16;
-    Format = RG16F;
-};
+        texture2D _RenderTemporary4 < pooled = true; >
+        {
+            Width = BUFFER_WIDTH / 16;
+            Height = BUFFER_HEIGHT / 16;
+            Format = RG16F;
+        };
 
-texture2D _RenderTemporary5 < pooled = true; >
-{
-    Width = BUFFER_WIDTH / 32;
-    Height = BUFFER_HEIGHT / 32;
-    Format = RG16F;
-};
+        texture2D _RenderTemporary5 < pooled = true; >
+        {
+            Width = BUFFER_WIDTH / 32;
+            Height = BUFFER_HEIGHT / 32;
+            Format = RG16F;
+        };
 
-texture2D _RenderTemporary6 < pooled = true; >
-{
-    Width = BUFFER_WIDTH / 64;
-    Height = BUFFER_HEIGHT / 64;
-    Format = RG16F;
-};
+        texture2D _RenderTemporary6 < pooled = true; >
+        {
+            Width = BUFFER_WIDTH / 64;
+            Height = BUFFER_HEIGHT / 64;
+            Format = RG16F;
+        };
 
-texture2D _RenderTemporary7 < pooled = true; >
-{
-    Width = BUFFER_WIDTH / 128;
-    Height = BUFFER_HEIGHT / 128;
-    Format = RG16F;
-};
+        texture2D _RenderTemporary7 < pooled = true; >
+        {
+            Width = BUFFER_WIDTH / 128;
+            Height = BUFFER_HEIGHT / 128;
+            Format = RG16F;
+        };
 
-texture2D _RenderTemporary8 < pooled = true; >
-{
-    Width = BUFFER_WIDTH / 256;
-    Height = BUFFER_HEIGHT / 256;
-    Format = RG16F;
-};
+        texture2D _RenderTemporary8 < pooled = true; >
+        {
+            Width = BUFFER_WIDTH / 256;
+            Height = BUFFER_HEIGHT / 256;
+            Format = RG16F;
+        };
+    }
+}
 
 namespace OpticalFlow
 {
@@ -217,7 +223,7 @@ namespace OpticalFlow
 
     sampler2D _SampleTemporary1a
     {
-        Texture = _RenderTemporary1a;
+        Texture = SharedResources::RG16F::_RenderTemporary1a;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
@@ -225,7 +231,7 @@ namespace OpticalFlow
 
     sampler2D _SampleTemporary1b
     {
-        Texture = _RenderTemporary1b;
+        Texture = SharedResources::RG16F::_RenderTemporary1b;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
@@ -233,7 +239,7 @@ namespace OpticalFlow
 
     sampler2D _SampleTemporary1c
     {
-        Texture = _RenderTemporary1c;
+        Texture = SharedResources::RG16F::_RenderTemporary1c;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
@@ -257,7 +263,7 @@ namespace OpticalFlow
 
     sampler2D _SampleTemporary8
     {
-        Texture = _RenderTemporary8;
+        Texture = SharedResources::RG16F::_RenderTemporary8;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
@@ -265,7 +271,7 @@ namespace OpticalFlow
 
     sampler2D _SampleTemporary7
     {
-        Texture = _RenderTemporary7;
+        Texture = SharedResources::RG16F::_RenderTemporary7;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
@@ -273,7 +279,7 @@ namespace OpticalFlow
 
     sampler2D _SampleTemporary6
     {
-        Texture = _RenderTemporary6;
+        Texture = SharedResources::RG16F::_RenderTemporary6;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
@@ -281,7 +287,7 @@ namespace OpticalFlow
 
     sampler2D _SampleTemporary5
     {
-        Texture = _RenderTemporary5;
+        Texture = SharedResources::RG16F::_RenderTemporary5;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
@@ -289,7 +295,7 @@ namespace OpticalFlow
 
     sampler2D _SampleTemporary4
     {
-        Texture = _RenderTemporary4;
+        Texture = SharedResources::RG16F::_RenderTemporary4;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
@@ -297,7 +303,7 @@ namespace OpticalFlow
 
     sampler2D _SampleTemporary3
     {
-        Texture = _RenderTemporary3;
+        Texture = SharedResources::RG16F::_RenderTemporary3;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
@@ -305,7 +311,7 @@ namespace OpticalFlow
 
     sampler2D _SampleTemporary2
     {
-        Texture = _RenderTemporary2;
+        Texture = SharedResources::RG16F::_RenderTemporary2;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
@@ -804,7 +810,7 @@ namespace OpticalFlow
         {
             VertexShader = PostProcessVS;
             PixelShader = NormalizePS;
-            RenderTarget0 = _RenderTemporary1a;
+            RenderTarget0 = SharedResources::RG16F::_RenderTemporary1a;
         }
 
         // Pre-process dual-filter blur
@@ -813,42 +819,42 @@ namespace OpticalFlow
         {
             VertexShader = Downsample1VS;
             PixelShader = PreDownsample1PS;
-            RenderTarget0 = _RenderTemporary2;
+            RenderTarget0 = SharedResources::RG16F::_RenderTemporary2;
         }
 
         pass
         {
             VertexShader = Downsample2VS;
             PixelShader = PreDownsample2PS;
-            RenderTarget0 = _RenderTemporary3;
+            RenderTarget0 = SharedResources::RG16F::_RenderTemporary3;
         }
 
         pass
         {
             VertexShader = Downsample3VS;
             PixelShader = PreDownsample3PS;
-            RenderTarget0 = _RenderTemporary4;
+            RenderTarget0 = SharedResources::RG16F::_RenderTemporary4;
         }
 
         pass
         {
             VertexShader = Upsample2VS;
             PixelShader = PreUpsample2PS;
-            RenderTarget0 = _RenderTemporary3;
+            RenderTarget0 = SharedResources::RG16F::_RenderTemporary3;
         }
 
         pass
         {
             VertexShader = Upsample1VS;
             PixelShader = PreUpsample1PS;
-            RenderTarget0 = _RenderTemporary2;
+            RenderTarget0 = SharedResources::RG16F::_RenderTemporary2;
         }
 
         pass
         {
             VertexShader = Upsample0VS;
             PixelShader = PreUpsample0PS;
-            RenderTarget0 = _RenderTemporary1a;
+            RenderTarget0 = SharedResources::RG16F::_RenderTemporary1a;
         }
 
         // Construct pyramids
@@ -857,14 +863,14 @@ namespace OpticalFlow
         {
             VertexShader = PostProcessVS;
             PixelShader = DerivativesZPS;
-            RenderTarget0 = _RenderTemporary1b;
+            RenderTarget0 = SharedResources::RG16F::_RenderTemporary1b;
         }
 
         pass
         {
             VertexShader = DerivativesVS;
             PixelShader = DerivativesXYPS;
-            RenderTarget0 = _RenderTemporary1c;
+            RenderTarget0 = SharedResources::RG16F::_RenderTemporary1c;
             RenderTarget1 = _RenderTemporary1d;
         }
 
@@ -874,49 +880,49 @@ namespace OpticalFlow
         {
             VertexShader = PostProcessVS;
             PixelShader = EstimateLevel8PS;
-            RenderTarget0 = _RenderTemporary8;
+            RenderTarget0 = SharedResources::RG16F::_RenderTemporary8;
         }
 
         pass
         {
             VertexShader = EstimateLevel7VS;
             PixelShader = EstimateLevel7PS;
-            RenderTarget0 = _RenderTemporary7;
+            RenderTarget0 = SharedResources::RG16F::_RenderTemporary7;
         }
 
         pass
         {
             VertexShader = EstimateLevel6VS;
             PixelShader = EstimateLevel6PS;
-            RenderTarget0 = _RenderTemporary6;
+            RenderTarget0 = SharedResources::RG16F::_RenderTemporary6;
         }
 
         pass
         {
             VertexShader = EstimateLevel5VS;
             PixelShader = EstimateLevel5PS;
-            RenderTarget0 = _RenderTemporary5;
+            RenderTarget0 = SharedResources::RG16F::_RenderTemporary5;
         }
 
         pass
         {
             VertexShader = EstimateLevel4VS;
             PixelShader = EstimateLevel4PS;
-            RenderTarget0 = _RenderTemporary4;
+            RenderTarget0 = SharedResources::RG16F::_RenderTemporary4;
         }
 
         pass
         {
             VertexShader = EstimateLevel3VS;
             PixelShader = EstimateLevel3PS;
-            RenderTarget0 = _RenderTemporary3;
+            RenderTarget0 = SharedResources::RG16F::_RenderTemporary3;
         }
 
         pass
         {
             VertexShader = EstimateLevel2VS;
             PixelShader = EstimateLevel2PS;
-            RenderTarget0 = _RenderTemporary2;
+            RenderTarget0 = SharedResources::RG16F::_RenderTemporary2;
         }
 
         pass
@@ -937,42 +943,42 @@ namespace OpticalFlow
         {
             VertexShader = Downsample1VS;
             PixelShader = PostDownsample1PS;
-            RenderTarget0 = _RenderTemporary2;
+            RenderTarget0 = SharedResources::RG16F::_RenderTemporary2;
         }
 
         pass
         {
             VertexShader = Downsample2VS;
             PixelShader = PostDownsample2PS;
-            RenderTarget0 = _RenderTemporary3;
+            RenderTarget0 = SharedResources::RG16F::_RenderTemporary3;
         }
 
         pass
         {
             VertexShader = Downsample3VS;
             PixelShader = PostDownsample3PS;
-            RenderTarget0 = _RenderTemporary4;
+            RenderTarget0 = SharedResources::RG16F::_RenderTemporary4;
         }
 
         pass
         {
             VertexShader = Upsample2VS;
             PixelShader = PostUpsample2PS;
-            RenderTarget0 = _RenderTemporary3;
+            RenderTarget0 = SharedResources::RG16F::_RenderTemporary3;
         }
 
         pass
         {
             VertexShader = Upsample1VS;
             PixelShader = PostUpsample1PS;
-            RenderTarget0 = _RenderTemporary2;
+            RenderTarget0 = SharedResources::RG16F::_RenderTemporary2;
         }
 
         pass
         {
             VertexShader = Upsample0VS;
             PixelShader = PostUpsample0PS;
-            RenderTarget0 = _RenderTemporary1b;
+            RenderTarget0 = SharedResources::RG16F::_RenderTemporary1b;
 
             // Copy previous frame
             RenderTarget1 = _RenderTemporary1d;
