@@ -616,8 +616,8 @@ namespace OpticalFlow
         float2 SampleC = tex2D(_SampleTemporary1a, TexCoord).xy;
         float2 SampleP = tex2D(_SampleTemporary1d, TexCoord).xy;
         float2 Iz = SampleC - SampleP;
-        float2 Ix = tex2D(_SampleTemporary1c, TexCoord).rg;
-        float2 Iy = tex2D(_SampleTemporary1d, TexCoord).rg;
+        float2 Ix = tex2D(_SampleTemporary1b, TexCoord).rg;
+        float2 Iy = tex2D(_SampleTemporary1c, TexCoord).rg;
 
         // Compute diagonal
         float2 Aii;
