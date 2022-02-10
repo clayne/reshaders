@@ -125,9 +125,8 @@ namespace FrameDifference
 
     void BlitPS0(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
-        float3 Color = tex2D(_SampleColor, TexCoord).rgb;
-        float3 NColor = saturate(Color / dot(Color, 1.0));
-        OutputColor0 = (_NormalizeInput) ? NColor : max(max(Color.r, Color.g), Color.b);
+        float3 Color = max(tex2D(_SampleColor, TexCoord).rgb, exp2(-8.0));
+        OutputColor0 = (_NormalizeInput) ? saturate(Color.xy / dot(Color, 1.0)) : max(max(Color.r, Color.g), Color.b);
     }
 
     void DifferencePS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
@@ -135,16 +134,14 @@ namespace FrameDifference
         if(_NormalizeInput)
         {
             float3 Current = tex2D(_SampleCurrent, TexCoord).rgb;
-            Current.b = 1.0 - Current.r - Current.g;
             float3 Previous = tex2D(_SamplePrevious, TexCoord).rgb;
-            Previous.b = 1.0 - Previous.r - Previous.g;
-            OutputColor0.rgb = length(Current - Previous) * _Weight;
+            OutputColor0.rgb = dot(Current - Previous, 1.0) * _Weight;
         }
         else
         {
             float Current = tex2D(_SampleCurrent, TexCoord).r;
             float Previous = tex2D(_SamplePrevious, TexCoord).r;
-            OutputColor0.rgb = (Current - Previous) * _Weight;
+            OutputColor0.rgb = abs(Current - Previous) * _Weight;
         }
 
         OutputColor0.a = _Blend;
