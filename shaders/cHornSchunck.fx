@@ -33,8 +33,16 @@
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#if RENDER_HIGH_QUALITY == 1
+    #define SCREEN_SIZE uint2(BUFFER_WIDTH * 2, BUFFER_HEIGHT * 2)
+#else
+    #define SCREEN_SIZE uint2(BUFFER_WIDTH, BUFFER_HEIGHT)
+#endif
+
 namespace HornSchunck
 {
+    //Shader properties
+
     uniform float _Blend <
         ui_type = "slider";
         ui_category = "Optical flow";
@@ -63,15 +71,7 @@ namespace HornSchunck
         ui_label = "Normalize velocity shading";
     > = true;
 
-    #ifndef RENDER_HIGH_QUALITY
-        #define RENDER_HIGH_QUALITY 0
-    #endif
-
-    #if RENDER_HIGH_QUALITY == 1
-        #define SCREEN_SIZE uint2(BUFFER_WIDTH * 2, BUFFER_HEIGHT * 2)
-    #else
-        #define SCREEN_SIZE uint2(BUFFER_WIDTH, BUFFER_HEIGHT)
-    #endif
+    // Textures and samplers
 
     texture2D _RenderColor : COLOR;
 
@@ -86,7 +86,7 @@ namespace HornSchunck
         #endif
     };
 
-    texture2D _RenderData0
+    texture2D _RenderTemporary1a < pooled = true; >
     {
         Width = SCREEN_SIZE.x / 2;
         Height = SCREEN_SIZE.y / 2;
@@ -94,31 +94,15 @@ namespace HornSchunck
         MipLevels = 8;
     };
 
-    sampler2D _SampleData0
+    sampler2D _SampleTemporary1a
     {
-        Texture = _RenderData0;
+        Texture = _RenderTemporary1a;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
     };
 
-    texture2D _RenderData1
-    {
-        Width = SCREEN_SIZE.x / 2;
-        Height = SCREEN_SIZE.y / 2;
-        Format = RGBA16F;
-        MipLevels = 8;
-    };
-
-    sampler2D _SampleData1
-    {
-        Texture = _RenderData1;
-        MagFilter = LINEAR;
-        MinFilter = LINEAR;
-        MipFilter = LINEAR;
-    };
-
-    texture2D _RenderData2
+    texture2D _RenderTemporary1b < pooled = true; >
     {
         Width = SCREEN_SIZE.x / 2;
         Height = SCREEN_SIZE.y / 2;
@@ -126,18 +110,65 @@ namespace HornSchunck
         MipLevels = 8;
     };
 
-    sampler2D _SampleData2
+    sampler2D _SampleTemporary1b
     {
-        Texture = _RenderData2;
+        Texture = _RenderTemporary1b;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
     };
 
-    texture2D _RenderTemporary7
+    texture2D _RenderTemporary1c < pooled = true; >
+    {
+        Width = SCREEN_SIZE.x / 2;
+        Height = SCREEN_SIZE.y / 2;
+        Format = RG16F;
+        MipLevels = 8;
+    };
+
+    sampler2D _SampleTemporary1c
+    {
+        Texture = _RenderTemporary1c;
+        MagFilter = LINEAR;
+        MinFilter = LINEAR;
+        MipFilter = LINEAR;
+    };
+
+    texture2D _RenderTemporary1d
+    {
+        Width = SCREEN_SIZE.x / 2;
+        Height = SCREEN_SIZE.y / 2;
+        Format = RG16F;
+        MipLevels = 8;
+    };
+
+    sampler2D _SampleTemporary1d
+    {
+        Texture = _RenderTemporary1d;
+        MagFilter = LINEAR;
+        MinFilter = LINEAR;
+        MipFilter = LINEAR;
+    };
+
+    texture2D _RenderTemporary8 < pooled = true; >
     {
         Width = SCREEN_SIZE.x / 256;
         Height = SCREEN_SIZE.y / 256;
+        Format = RG16F;
+    };
+
+    sampler2D _SampleTemporary8
+    {
+        Texture = _RenderTemporary8;
+        MagFilter = LINEAR;
+        MinFilter = LINEAR;
+        MipFilter = LINEAR;
+    };
+
+    texture2D _RenderTemporary7 < pooled = true; >
+    {
+        Width = SCREEN_SIZE.x / 128;
+        Height = SCREEN_SIZE.y / 128;
         Format = RG16F;
     };
 
@@ -149,10 +180,10 @@ namespace HornSchunck
         MipFilter = LINEAR;
     };
 
-    texture2D _RenderTemporary6
+    texture2D _RenderTemporary6 < pooled = true; >
     {
-        Width = SCREEN_SIZE.x / 128;
-        Height = SCREEN_SIZE.y / 128;
+        Width = SCREEN_SIZE.x / 64;
+        Height = SCREEN_SIZE.y / 64;
         Format = RG16F;
     };
 
@@ -164,10 +195,10 @@ namespace HornSchunck
         MipFilter = LINEAR;
     };
 
-    texture2D _RenderTemporary5
+    texture2D _RenderTemporary5 < pooled = true; >
     {
-        Width = SCREEN_SIZE.x / 64;
-        Height = SCREEN_SIZE.y / 64;
+        Width = SCREEN_SIZE.x / 32;
+        Height = SCREEN_SIZE.y / 32;
         Format = RG16F;
     };
 
@@ -179,10 +210,10 @@ namespace HornSchunck
         MipFilter = LINEAR;
     };
 
-    texture2D _RenderTemporary4
+    texture2D _RenderTemporary4 < pooled = true; >
     {
-        Width = SCREEN_SIZE.x / 32;
-        Height = SCREEN_SIZE.y / 32;
+        Width = SCREEN_SIZE.x / 16;
+        Height = SCREEN_SIZE.y / 16;
         Format = RG16F;
     };
 
@@ -194,10 +225,10 @@ namespace HornSchunck
         MipFilter = LINEAR;
     };
 
-    texture2D _RenderTemporary3
+    texture2D _RenderTemporary3 < pooled = true; >
     {
-        Width = SCREEN_SIZE.x / 16;
-        Height = SCREEN_SIZE.y / 16;
+        Width = SCREEN_SIZE.x / 8;
+        Height = SCREEN_SIZE.y / 8;
         Format = RG16F;
     };
 
@@ -209,10 +240,10 @@ namespace HornSchunck
         MipFilter = LINEAR;
     };
 
-    texture2D _RenderTemporary2
+    texture2D _RenderTemporary2 < pooled = true; >
     {
-        Width = SCREEN_SIZE.x / 8;
-        Height = SCREEN_SIZE.y / 8;
+        Width = SCREEN_SIZE.x / 4;
+        Height = SCREEN_SIZE.y / 4;
         Format = RG16F;
     };
 
@@ -224,31 +255,24 @@ namespace HornSchunck
         MipFilter = LINEAR;
     };
 
-    texture2D _RenderTemporary1
-    {
-        Width = SCREEN_SIZE.x / 4;
-        Height = SCREEN_SIZE.y / 4;
-        Format = RG16F;
-    };
-
-    sampler2D _SampleTemporary1
-    {
-        Texture = _RenderTemporary1;
-        MagFilter = LINEAR;
-        MinFilter = LINEAR;
-        MipFilter = LINEAR;
-    };
-
-    texture2D _RenderTemporary0
+    texture2D _RenderTemporary1e
     {
         Width = SCREEN_SIZE.x / 2;
         Height = SCREEN_SIZE.y / 2;
         Format = RG16F;
     };
 
-    sampler2D _SampleTemporary0
+    sampler2D _SampleTemporary1e
     {
-        Texture = _RenderTemporary0;
+        Texture = _RenderTemporary1e;
+        MagFilter = LINEAR;
+        MinFilter = LINEAR;
+        MipFilter = LINEAR;
+    };
+
+    sampler2D _SampleColorGamma
+    {
+        Texture = _RenderColor;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
@@ -265,11 +289,10 @@ namespace HornSchunck
 
     void DerivativesVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 Offsets : TEXCOORD0)
     {
-        const float2 PixelSize = 0.5 / float2(SCREEN_SIZE.x / 2, SCREEN_SIZE.y / 2);
-        const float4 PixelOffset = float4(PixelSize, -PixelSize);
         float2 TexCoord0;
         PostProcessVS(ID, Position, TexCoord0);
-        Offsets = TexCoord0.xyxy + PixelOffset;
+        const float2 PixelSize = 1.0 / uint2(SCREEN_SIZE.x / 2, SCREEN_SIZE.y / 2);
+        Offsets = TexCoord0.xyxy + (float4(0.5, 0.5, -0.5, -0.5) * PixelSize.xyxy);
     }
 
     // Pixel shaders
@@ -290,32 +313,24 @@ namespace HornSchunck
 
     void OpticalFlow(in float2 TexCoord, in float2 UV, in float Level, out float2 DUV)
     {
-        // .xy = Normalized Red Channel (x, y)
-        // .zw = Normalized Green Channel (x, y)
-        float4 SampleI = tex2D(_SampleData1, TexCoord).xyzw;
-
-        // .xy = Current frame (r, g)
-        // .zw = Previous frame (r, g)
-        float4 SampleFrames;
-        SampleFrames.xy = tex2D(_SampleData0, TexCoord).rg;
-        SampleFrames.zw = tex2D(_SampleData2, TexCoord).rg;
-        float2 Iz = SampleFrames.xy - SampleFrames.zw;
-
         const float Alpha = max(ldexp(_Constraint * 1e-5, Level - MaxLevel), 1e-7);
+        float2 Iz = tex2D(_SampleTemporary1b, TexCoord).rg;
+        float2 Ix = tex2D(_SampleTemporary1c, TexCoord).rg;
+        float2 Iy = tex2D(_SampleTemporary1d, TexCoord).rg;
 
         // Compute diagonal
         float2 Aii;
-        Aii.x = dot(SampleI.xz, SampleI.xz) + Alpha;
-        Aii.y = dot(SampleI.yw, SampleI.yw) + Alpha;
+        Aii.x = dot(Ix, Ix) + Alpha;
+        Aii.y = dot(Iy, Iy) + Alpha;
         Aii.xy = 1.0 / Aii.xy;
 
         // Compute right-hand side
         float2 RHS;
-        RHS.x = dot(SampleI.xz, Iz.rg);
-        RHS.y = dot(SampleI.yw, Iz.rg);
+        RHS.x = dot(Ix, Iz);
+        RHS.y = dot(Iy, Iz);
 
         // Compute triangle
-        float Aij = dot(SampleI.xz, SampleI.yw);
+        float Aij = dot(Ix, Iy);
 
         // Symmetric Gauss-Seidel (forward sweep, from 1...N)
         DUV.x = Aii.x * ((Alpha * UV.x) - RHS.x - (UV.y * Aij));
@@ -326,11 +341,6 @@ namespace HornSchunck
         DUV.x = Aii.x * ((Alpha * DUV.x) - RHS.x - (DUV.y * Aij));
     }
 
-    void CopyPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
-    {
-        OutputColor0 = tex2D(_SampleData0, TexCoord).rg;
-    }
-
     void NormalizePS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
     {
         const float Minima = ldexp(1.0, -8.0);
@@ -338,61 +348,71 @@ namespace HornSchunck
         OutputColor0 = saturate(Color.xy / dot(Color, 1.0));
     }
 
-    void DerivativesPS(in float4 Position : SV_Position, in float4 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+    void DerivativesZPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
     {
-        float2 Sample0 = tex2D(_SampleData0, TexCoord.zy).xy; // (-x, +y)
-        float2 Sample1 = tex2D(_SampleData0, TexCoord.xy).xy; // (+x, +y)
-        float2 Sample2 = tex2D(_SampleData0, TexCoord.zw).xy; // (-x, -y)
-        float2 Sample3 = tex2D(_SampleData0, TexCoord.xw).xy; // (+x, -y)
-        OutputColor0.xz = (Sample3 + Sample1) - (Sample2 + Sample0);
-        OutputColor0.yw = (Sample2 + Sample3) - (Sample0 + Sample1);
-        OutputColor0 *= 4.0;
+        float2 CurrentFrame = tex2D(_SampleTemporary1a, TexCoord).xy;
+        float2 PreviousFrame = tex2D(_SampleTemporary1d, TexCoord).xy;
+        OutputColor0 = CurrentFrame - PreviousFrame;
     }
 
-    void EstimateLevel7PS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputEstimation : SV_Target0)
+    void DerivativesXYPS(in float4 Position : SV_Position, in float4 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_Target0, out float2 OutputColor1 : SV_Target1)
+    {
+        float2 Sample0 = tex2D(_SampleTemporary1a, TexCoord.zy).xy; // (-x, +y)
+        float2 Sample1 = tex2D(_SampleTemporary1a, TexCoord.xy).xy; // (+x, +y)
+        float2 Sample2 = tex2D(_SampleTemporary1a, TexCoord.zw).xy; // (-x, -y)
+        float2 Sample3 = tex2D(_SampleTemporary1a, TexCoord.xw).xy; // (+x, -y)
+        OutputColor0 = ((Sample3 + Sample1) - (Sample2 + Sample0)) * 4.0;
+        OutputColor1 = ((Sample2 + Sample3) - (Sample0 + Sample1)) * 4.0;
+    }
+
+    void EstimateLevel8PS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputEstimation : SV_Target0)
     {
         OpticalFlow(TexCoord, 0.0, 7.0, OutputEstimation);
     }
 
+    void EstimateLevel7PS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputEstimation : SV_Target0)
+    {
+        OpticalFlow(TexCoord, tex2D(_SampleTemporary8, TexCoord).xy, 6.0, OutputEstimation);
+    }
+
     void EstimateLevel6PS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputEstimation : SV_Target0)
     {
-        OpticalFlow(TexCoord, tex2D(_SampleTemporary7, TexCoord).xy, 6.0, OutputEstimation);
+        OpticalFlow(TexCoord, tex2D(_SampleTemporary7, TexCoord).xy, 5.0, OutputEstimation);
     }
 
     void EstimateLevel5PS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputEstimation : SV_Target0)
     {
-        OpticalFlow(TexCoord, tex2D(_SampleTemporary6, TexCoord).xy, 5.0, OutputEstimation);
+        OpticalFlow(TexCoord, tex2D(_SampleTemporary6, TexCoord).xy, 4.0, OutputEstimation);
     }
 
     void EstimateLevel4PS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputEstimation : SV_Target0)
     {
-        OpticalFlow(TexCoord, tex2D(_SampleTemporary5, TexCoord).xy, 4.0, OutputEstimation);
+        OpticalFlow(TexCoord, tex2D(_SampleTemporary5, TexCoord).xy, 3.0, OutputEstimation);
     }
 
     void EstimateLevel3PS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputEstimation : SV_Target0)
     {
-        OpticalFlow(TexCoord, tex2D(_SampleTemporary4, TexCoord).xy, 3.0, OutputEstimation);
+        OpticalFlow(TexCoord, tex2D(_SampleTemporary4, TexCoord).xy, 2.0, OutputEstimation);
     }
 
     void EstimateLevel2PS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputEstimation : SV_Target0)
     {
-        OpticalFlow(TexCoord, tex2D(_SampleTemporary3, TexCoord).xy, 2.0, OutputEstimation);
+        OpticalFlow(TexCoord, tex2D(_SampleTemporary3, TexCoord).xy, 1.0, OutputEstimation);
     }
 
-    void EstimateLevel1PS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputEstimation : SV_Target0)
+    void EstimateLevel1PS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0, out float4 OutputColor1 : SV_Target1)
     {
-        OpticalFlow(TexCoord, tex2D(_SampleTemporary2, TexCoord).xy, 1.0, OutputEstimation);
-    }
+        OpticalFlow(TexCoord, tex2D(_SampleTemporary2, TexCoord).xy, 0.0, OutputColor0.xy);
+        OutputColor0.ba = (0.0, _Blend);
 
-    void EstimateLevel0PS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputEstimation : SV_Target0)
-    {
-        OpticalFlow(TexCoord, tex2D(_SampleTemporary1, TexCoord).xy, 0.0, OutputEstimation.xy);
-        OutputEstimation.ba = (0.0, _Blend);
+        // Copy current convolved result to use at next frame
+        OutputColor1 = tex2D(_SampleTemporary1a, TexCoord).rg;
+        OutputColor1.ba = 0.0;
     }
 
     void VelocityShadingPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target)
     {
-        float2 Velocity = tex2Dlod(_SampleTemporary0, float4(TexCoord, 0.0, _MipBias)).xy;
+        float2 Velocity = tex2Dlod(_SampleTemporary1e, float4(TexCoord, 0.0, _MipBias)).xy;
 
         if(_NormalizedShading)
         {
@@ -409,34 +429,40 @@ namespace HornSchunck
 
     technique cHornSchunck
     {
-        // Copy previous frame
-
-        pass
-        {
-            VertexShader = PostProcessVS;
-            PixelShader = CopyPS;
-            RenderTarget0 = _RenderData2;
-        }
-
         // Normalize current frame
 
         pass
         {
             VertexShader = PostProcessVS;
             PixelShader = NormalizePS;
-            RenderTarget0 = _RenderData0;
+            RenderTarget0 = _RenderTemporary1a;
         }
 
-        // Calculate derivative pyramid (to be removed)
+        // Construct pyramids
+
+        pass
+        {
+            VertexShader = PostProcessVS;
+            PixelShader = DerivativesZPS;
+            RenderTarget0 = _RenderTemporary1b;
+        }
 
         pass
         {
             VertexShader = DerivativesVS;
-            PixelShader = DerivativesPS;
-            RenderTarget0 = _RenderData1;
+            PixelShader = DerivativesXYPS;
+            RenderTarget0 = _RenderTemporary1c;
+            RenderTarget1 = _RenderTemporary1d;
         }
 
-        // Begin pyramidal estimation
+        // Pyramidal estimation
+
+        pass
+        {
+            VertexShader = PostProcessVS;
+            PixelShader = EstimateLevel8PS;
+            RenderTarget0 = _RenderTemporary8;
+        }
 
         pass
         {
@@ -484,20 +510,19 @@ namespace HornSchunck
         {
             VertexShader = PostProcessVS;
             PixelShader = EstimateLevel1PS;
-            RenderTarget0 = _RenderTemporary1;
-        }
+            RenderTarget0 = _RenderTemporary1e;
 
-        pass
-        {
-            VertexShader = PostProcessVS;
-            PixelShader = EstimateLevel0PS;
-            RenderTarget0 = _RenderTemporary0;
+            // Copy previous frame
+            RenderTarget1 = _RenderTemporary1d;
+
             ClearRenderTargets = FALSE;
             BlendEnable = TRUE;
             BlendOp = ADD;
             SrcBlend = INVSRCALPHA;
             DestBlend = SRCALPHA;
         }
+
+        // Render result
 
         pass
         {
