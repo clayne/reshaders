@@ -33,6 +33,20 @@
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+namespace SharedResources
+{
+    namespace RGBA16F
+    {
+        texture2D _RenderTemporary1 < pooled = true; >
+        {
+            Width = BUFFER_WIDTH / 2;
+            Height = BUFFER_HEIGHT / 2;
+            Format = RGBA16F;
+            MipLevels = 8;
+        };
+    }
+}
+
 uniform float _Threshold <
     ui_type = "drag";
     ui_min = 0.0;
@@ -77,16 +91,9 @@ sampler2D _SampleColor
     #endif
 };
 
-texture2D _RenderBlit
+sampler2D _SampleTemporary1_RG16AF_1a
 {
-    Width = BUFFER_WIDTH / 2;
-    Height = BUFFER_HEIGHT / 2;
-    Format = RGBA16F;
-};
-
-sampler2D _SampleBlit
-{
-    Texture = _RenderBlit;
+    Texture = SharedResources::RGBA16F::_RenderTemporary1;
     MagFilter = LINEAR;
     MinFilter = LINEAR;
     MipFilter = LINEAR;
@@ -417,7 +424,7 @@ float3 RRTAndODTFit(float3 v)
 
 void DownsamplePS1(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    OutputColor0 = DownsamplePS(_SampleBlit, TexCoord);
+    OutputColor0 = DownsamplePS(_SampleTemporary1_RG16AF_1a, TexCoord);
 }
 
 void DownsamplePS2(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
@@ -487,7 +494,7 @@ void UpsamplePS0(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCO
 
 void CompositePS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    float4 Src = tex2D(_SampleBlit, TexCoord);
+    float4 Src = tex2D(_SampleTemporary1_RG16AF_1a, TexCoord);
     Src *= _Intensity;
     Src = mul(ACESInputMat, Src.rgb);
     Src = RRTAndODTFit(Src.rgb);
@@ -503,7 +510,7 @@ technique cBloom
     {
         VertexShader = PostProcessVS;
         PixelShader = PrefilterPS;
-        RenderTarget0 = _RenderBlit;
+        RenderTarget0 = SharedResources::RGBA16F::_RenderTemporary1;
     }
 
     pass
@@ -631,7 +638,7 @@ technique cBloom
     {
         VertexShader = UpsampleVS0;
         PixelShader = UpsamplePS0;
-        RenderTarget0 = _RenderBlit;
+        RenderTarget0 = SharedResources::RGBA16F::_RenderTemporary1;
     }
 
     pass
