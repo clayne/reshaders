@@ -33,6 +33,20 @@
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+namespace SharedResources
+{
+    namespace RGBA8
+    {
+        texture2D _RenderTemporary1 < pooled = true; >
+        {
+            Width = BUFFER_WIDTH / 2;
+            Height = BUFFER_HEIGHT / 2;
+            Format = RGBA8;
+            MipLevels = 8;
+        };
+    }
+}
+
 uniform float _Offset <
     ui_label = "Sample offset";
     ui_type = "drag";
@@ -64,17 +78,9 @@ sampler2D _SampleColor
     #endif
 };
 
-texture2D _RenderLevels
+sampler2D _SampleTemporary_RGBA8_1
 {
-    Width = BUFFER_WIDTH / 2;
-    Height = BUFFER_HEIGHT / 2;
-    MipLevels = 9;
-    Format = RGBA8;
-};
-
-sampler2D _SampleLevels
-{
-    Texture = _RenderLevels;
+    Texture = SharedResources::RGBA8::_RenderTemporary1;
     MagFilter = LINEAR;
     MinFilter = LINEAR;
     MipFilter = LINEAR;
@@ -137,7 +143,7 @@ void BlitPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, ou
 
 void VogelConvolutionPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    VogelBlur(_SampleLevels, TexCoord, uint2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2), _Radius, _Samples, _Offset, OutputColor0);
+    VogelBlur(_SampleTemporary_RGBA8_1, TexCoord, uint2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2), _Radius, _Samples, _Offset, OutputColor0);
 }
 
 technique cBlur
@@ -146,7 +152,7 @@ technique cBlur
     {
         VertexShader = PostProcessVS;
         PixelShader = BlitPS;
-        RenderTarget0 = _RenderLevels;
+        RenderTarget0 = SharedResources::RGBA8::_RenderTemporary1;
         #if BUFFER_COLOR_BIT_DEPTH == 8
             SRGBWriteEnable = TRUE;
         #endif

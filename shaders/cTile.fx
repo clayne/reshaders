@@ -36,8 +36,8 @@
 uniform float2 _Scale <
     ui_label = "Scale";
     ui_type = "drag";
-    ui_step = 0.1;
-> = 100.0;
+    ui_step = 0.001;
+> = 1.0;
 
 uniform float2 _Offset <
     ui_label = "Center";

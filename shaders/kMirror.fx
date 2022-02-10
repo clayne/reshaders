@@ -64,7 +64,7 @@ void PostProcessVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, 
 void MirrorPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
     // Convert to polar coordinates
-    float2 Polar = TexCoord - 0.5;
+    float2 Polar = TexCoord * 2.0 - 1.0;
     float Phi = atan2(Polar.y, Polar.x);
     float Radius = length(Polar);
 
@@ -76,7 +76,7 @@ void MirrorPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, 
 
     // Convert back to the texture coordinate.
     float2 PhiSinCos; sincos(Phi, PhiSinCos.x, PhiSinCos.y);
-    TexCoord = PhiSinCos.yx * Radius + 0.5;
+    TexCoord = (PhiSinCos.yx * Radius) * 0.5 + 0.5;
 
     // Reflection at the border of the screen.
     TexCoord = max(min(TexCoord, 2.0 - TexCoord), -TexCoord);
