@@ -35,7 +35,7 @@
 
 uniform int _Select <
     ui_type = "combo";
-    ui_items = " Average\0 Sum\0 Max\0 Median\0 Length\0 Clamped Length\0 None\0";
+    ui_items = " Average\0 Sum\0 Max\0 Median\0 Min\0 Length\0 Clamped Length\0 None\0";
     ui_label = "Method";
     ui_tooltip = "Select Luminance";
 > = 0;
@@ -86,10 +86,14 @@ void LuminancePS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD
             OutputColor0 = max(min(Color.r, Color.g), min(max(Color.r, Color.g), Color.b));
             break;
         case 4:
+            // Min
+            OutputColor0 = min(Color.r, min(Color.g, Color.b));
+            break;
+        case 5:
             // Length
             OutputColor0 = length(Color.rgb);
             break;
-        case 5:
+        case 6:
             // Clamped Length
             OutputColor0 = length(Color.rgb) * rsqrt(3.0);
             break;
