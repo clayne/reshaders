@@ -613,7 +613,9 @@ namespace OpticalFlow
     void OpticalFlow(in float2 TexCoord, in float2 UV, in float Level, out float2 DUV)
     {
         const float Alpha = max(ldexp(_Constraint * 1e-5, Level - MaxLevel), 1e-7);
-        float2 Iz = tex2D(_SampleTemporary1b, TexCoord).rg;
+        float2 SampleC = tex2D(_SampleTemporary1a, TexCoord).xy;
+        float2 SampleP = tex2D(_SampleTemporary1d, TexCoord).xy;
+        float2 Iz = SampleC - SampleP;
         float2 Ix = tex2D(_SampleTemporary1c, TexCoord).rg;
         float2 Iy = tex2D(_SampleTemporary1d, TexCoord).rg;
 
@@ -677,14 +679,7 @@ namespace OpticalFlow
         OutputColor0 = UpsamplePS(_SampleTemporary2, TexCoord);
     }
 
-    void DerivativesZPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
-    {
-        float2 CurrentFrame = tex2D(_SampleTemporary1a, TexCoord).xy;
-        float2 PreviousFrame = tex2D(_SampleTemporary1d, TexCoord).xy;
-        OutputColor0 = CurrentFrame - PreviousFrame;
-    }
-
-    void DerivativesXYPS(in float4 Position : SV_Position, in float4 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_Target0, out float2 OutputColor1 : SV_Target1)
+    void DerivativesPS(in float4 Position : SV_Position, in float4 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_Target0, out float2 OutputColor1 : SV_Target1)
     {
         float2 Sample0 = tex2D(_SampleTemporary1a, TexCoord.zy).xy; // (-x, +y)
         float2 Sample1 = tex2D(_SampleTemporary1a, TexCoord.xy).xy; // (+x, +y)
@@ -861,17 +856,10 @@ namespace OpticalFlow
 
         pass
         {
-            VertexShader = PostProcessVS;
-            PixelShader = DerivativesZPS;
-            RenderTarget0 = SharedResources::RG16F::_RenderTemporary1b;
-        }
-
-        pass
-        {
             VertexShader = DerivativesVS;
-            PixelShader = DerivativesXYPS;
-            RenderTarget0 = SharedResources::RG16F::_RenderTemporary1c;
-            RenderTarget1 = _RenderTemporary1d;
+            PixelShader = DerivativesPS;
+            RenderTarget0 = SharedResources::RG16F::_RenderTemporary1b;
+            RenderTarget1 = SharedResources::RG16F::_RenderTemporary1c;
         }
 
         // Pyramidal estimation
