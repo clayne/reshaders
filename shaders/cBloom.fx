@@ -316,7 +316,7 @@ void UpsampleVS0(in uint ID : SV_VertexID, out float4 Position : SV_Position, ou
 // Thresholding: https://github.com/keijiro/Kino [MIT]
 // Tonemapping: https://github.com/TheRealMJP/BakingLab [MIT]
 
-float4 DownsamplePS(sampler2D Source, float4 TexCoord[4])
+void Downsample(sampler2D Source, float4 TexCoord[4], out float4 Output)
 {
     // A0    B0    C0
     //    D0    D1
@@ -341,17 +341,15 @@ float4 DownsamplePS(sampler2D Source, float4 TexCoord[4])
     float4 C1 = tex2D(Source, TexCoord[3].xz);
     float4 C2 = tex2D(Source, TexCoord[3].xw);
 
-    float4 Output;
     const float2 Weights = float2(0.5, 0.125) / 4.0;
-    Output += (D0 + D1 + D2 + D3) * Weights.x;
+    Output  = (D0 + D1 + D2 + D3) * Weights.x;
     Output += (A0 + B0 + A1 + B1) * Weights.y;
     Output += (B0 + C0 + B1 + C1) * Weights.y;
     Output += (A1 + B1 + A2 + B2) * Weights.y;
     Output += (B1 + C1 + B2 + C2) * Weights.y;
-    return Output;
 }
 
-float4 UpsamplePS(sampler2D Source, float4 TexCoord[3])
+void Upsample(sampler2D Source, float4 TexCoord[3], out float4 Output)
 {
     // A0 B0 C0
     // A1 B1 C1
@@ -369,11 +367,10 @@ float4 UpsamplePS(sampler2D Source, float4 TexCoord[3])
     float4 C1 = tex2D(Source, TexCoord[2].xz);
     float4 C2 = tex2D(Source, TexCoord[2].xw);
 
-    float4 Output;
     Output  = (A0 + C0 + A2 + C2) * 1.0;
     Output += (A1 + B0 + C1 + B2) * 2.0;
     Output += B1 * 4.0;
-    return Output / 16.0;
+    Output *= (1.0 / 16.0);
 }
 
 float Med3(float x, float y, float z)
@@ -424,72 +421,72 @@ float3 RRTAndODTFit(float3 v)
 
 void DownsamplePS1(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    OutputColor0 = DownsamplePS(_SampleTemporary_RGBA16F_1, TexCoord);
+    Downsample(_SampleTemporary_RGBA16F_1, TexCoord, OutputColor0);
 }
 
 void DownsamplePS2(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    OutputColor0 = DownsamplePS(_SampleTemporary_RGBA16F_2, TexCoord);
+    Downsample(_SampleTemporary_RGBA16F_2, TexCoord, OutputColor0);
 }
 
 void DownsamplePS3(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    OutputColor0 = DownsamplePS(_SampleTemporary_RGBA16F_3, TexCoord);
+    Downsample(_SampleTemporary_RGBA16F_3, TexCoord, OutputColor0);
 }
 
 void DownsamplePS4(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    OutputColor0 = DownsamplePS(_SampleTemporary_RGBA16F_4, TexCoord);
+    Downsample(_SampleTemporary_RGBA16F_4, TexCoord, OutputColor0);
 }
 
 void DownsamplePS5(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    OutputColor0 = DownsamplePS(_SampleTemporary_RGBA16F_5, TexCoord);
+    Downsample(_SampleTemporary_RGBA16F_5, TexCoord, OutputColor0);
 }
 
 void DownsamplePS6(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    OutputColor0 = DownsamplePS(_SampleTemporary_RGBA16F_6, TexCoord);
+    Downsample(_SampleTemporary_RGBA16F_6, TexCoord, OutputColor0);
 }
 
 void DownsamplePS7(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    OutputColor0 = DownsamplePS(_SampleTemporary_RGBA16F_7, TexCoord);
+    Downsample(_SampleTemporary_RGBA16F_7, TexCoord, OutputColor0);
 }
 
 void UpsamplePS6(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    OutputColor0 = UpsamplePS(_SampleTemporary_RGBA16F_8, TexCoord);
+    Upsample(_SampleTemporary_RGBA16F_8, TexCoord, OutputColor0);
 }
 
 void UpsamplePS5(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    OutputColor0 = UpsamplePS(_SampleTemporary_RGBA16F_7, TexCoord);
+    Upsample(_SampleTemporary_RGBA16F_7, TexCoord, OutputColor0);
 }
 
 void UpsamplePS4(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    OutputColor0 = UpsamplePS(_SampleTemporary_RGBA16F_6, TexCoord);
+    Upsample(_SampleTemporary_RGBA16F_6, TexCoord, OutputColor0);
 }
 
 void UpsamplePS3(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    OutputColor0 = UpsamplePS(_SampleTemporary_RGBA16F_5, TexCoord);
+    Upsample(_SampleTemporary_RGBA16F_5, TexCoord, OutputColor0);
 }
 
 void UpsamplePS2(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    OutputColor0 = UpsamplePS(_SampleTemporary_RGBA16F_4, TexCoord);
+    Upsample(_SampleTemporary_RGBA16F_4, TexCoord, OutputColor0);
 }
 
 void UpsamplePS1(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    OutputColor0 = UpsamplePS(_SampleTemporary_RGBA16F_3, TexCoord);
+    Upsample(_SampleTemporary_RGBA16F_3, TexCoord, OutputColor0);
 }
 
 void UpsamplePS0(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    OutputColor0 = UpsamplePS(_SampleTemporary_RGBA16F_2, TexCoord);
+    Upsample(_SampleTemporary_RGBA16F_2, TexCoord, OutputColor0);
 }
 
 void CompositePS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
