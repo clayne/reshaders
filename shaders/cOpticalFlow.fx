@@ -35,14 +35,23 @@
 
 // Shared textures
 
+#define BUFFER_SIZE_1 uint2(BUFFER_WIDTH >> 1, BUFFER_HEIGHT >> 1)
+#define BUFFER_SIZE_2 uint2(BUFFER_WIDTH >> 2, BUFFER_HEIGHT >> 2)
+#define BUFFER_SIZE_3 uint2(BUFFER_WIDTH >> 3, BUFFER_HEIGHT >> 3)
+#define BUFFER_SIZE_4 uint2(BUFFER_WIDTH >> 4, BUFFER_HEIGHT >> 4)
+#define BUFFER_SIZE_5 uint2(BUFFER_WIDTH >> 5, BUFFER_HEIGHT >> 5)
+#define BUFFER_SIZE_6 uint2(BUFFER_WIDTH >> 6, BUFFER_HEIGHT >> 6)
+#define BUFFER_SIZE_7 uint2(BUFFER_WIDTH >> 7, BUFFER_HEIGHT >> 7)
+#define BUFFER_SIZE_8 uint2(BUFFER_WIDTH >> 8, BUFFER_HEIGHT >> 8)
+
 namespace SharedResources
 {
     namespace RGBA16F
     {
         texture2D _RenderTemporary1 < pooled = true; >
         {
-            Width = BUFFER_WIDTH / 2;
-            Height = BUFFER_HEIGHT / 2;
+            Width = BUFFER_SIZE_1.x;
+            Height = BUFFER_SIZE_1.y;
             Format = RGBA16F;
             MipLevels = 8;
         };
@@ -52,58 +61,58 @@ namespace SharedResources
     {
         texture2D _RenderTemporary1 < pooled = true; >
         {
-            Width = BUFFER_WIDTH / 2;
-            Height = BUFFER_HEIGHT / 2;
+            Width = BUFFER_SIZE_1.x;
+            Height = BUFFER_SIZE_1.y;
             Format = RG16F;
             MipLevels = 8;
         };
 
         texture2D _RenderTemporary2 < pooled = true; >
         {
-            Width = BUFFER_WIDTH / 4;
-            Height = BUFFER_HEIGHT / 4;
+            Width = BUFFER_SIZE_2.x;
+            Height = BUFFER_SIZE_2.y;
             Format = RG16F;
         };
 
         texture2D _RenderTemporary3 < pooled = true; >
         {
-            Width = BUFFER_WIDTH / 8;
-            Height = BUFFER_HEIGHT / 8;
+            Width = BUFFER_SIZE_3.x;
+            Height = BUFFER_SIZE_3.y;
             Format = RG16F;
         };
 
         texture2D _RenderTemporary4 < pooled = true; >
         {
-            Width = BUFFER_WIDTH / 16;
-            Height = BUFFER_HEIGHT / 16;
+            Width = BUFFER_SIZE_4.x;
+            Height = BUFFER_SIZE_4.y;
             Format = RG16F;
         };
 
         texture2D _RenderTemporary5 < pooled = true; >
         {
-            Width = BUFFER_WIDTH / 32;
-            Height = BUFFER_HEIGHT / 32;
+            Width = BUFFER_SIZE_5.x;
+            Height = BUFFER_SIZE_5.y;
             Format = RG16F;
         };
 
         texture2D _RenderTemporary6 < pooled = true; >
         {
-            Width = BUFFER_WIDTH / 64;
-            Height = BUFFER_HEIGHT / 64;
+            Width = BUFFER_SIZE_6.x;
+            Height = BUFFER_SIZE_6.y;
             Format = RG16F;
         };
 
         texture2D _RenderTemporary7 < pooled = true; >
         {
-            Width = BUFFER_WIDTH / 128;
-            Height = BUFFER_HEIGHT / 128;
+            Width = BUFFER_SIZE_7.x;
+            Height = BUFFER_SIZE_7.y;
             Format = RG16F;
         };
 
         texture2D _RenderTemporary8 < pooled = true; >
         {
-            Width = BUFFER_WIDTH / 256;
-            Height = BUFFER_HEIGHT / 256;
+            Width = BUFFER_SIZE_8.x;
+            Height = BUFFER_SIZE_8.y;
             Format = RG16F;
         };
     }
@@ -306,8 +315,8 @@ namespace OpticalFlow
 
     texture2D _RenderTemporary1e
     {
-        Width = BUFFER_WIDTH / 2;
-        Height = BUFFER_HEIGHT / 2;
+        Width = BUFFER_SIZE_1.x;
+        Height = BUFFER_SIZE_1.y;
         Format = RG16F;
     };
 
@@ -360,7 +369,7 @@ namespace OpticalFlow
         SampleOffsets[3] = TexCoord.xyyy + float4(2.0, 2.0, 0.0, -2.0) * PixelSize.xyyy;
     }
 
-    void UpsampleOffsets(in float2 TexCoord, in float2 PixelSize, out float4 SampleOffsets[3])
+    void TexCoord(in float2 TexCoord, in float2 PixelSize, out float4 SampleOffsets[3])
     {
         // Sample locations:
         // [0].xy [1].xy [2].xy
@@ -389,44 +398,44 @@ namespace OpticalFlow
     {
         float2 TexCoord0 = 0.0;
         PostProcessVS(ID, Position, TexCoord0);
-        UpsampleOffsets(TexCoord0, PixelSize, Offsets);
+        TexCoord(TexCoord0, PixelSize, Offsets);
     }
 
     void Downsample1VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 DownsampleCoords[4] : TEXCOORD0)
     {
-        DownsampleVS(ID, 1.0 / uint2(ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -1.0)), Position, DownsampleCoords);
+        DownsampleVS(ID, 1.0 / BUFFER_SIZE_1, Position, DownsampleCoords);
     }
 
     void Downsample2VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 DownsampleCoords[4] : TEXCOORD0)
     {
-        DownsampleVS(ID, 1.0 / uint2(ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -2.0)), Position, DownsampleCoords);
+        DownsampleVS(ID, 1.0 / BUFFER_SIZE_2, Position, DownsampleCoords);
     }
 
     void Downsample3VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 DownsampleCoords[4] : TEXCOORD0)
     {
-        DownsampleVS(ID, 1.0 / uint2(ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -3.0)), Position, DownsampleCoords);
+        DownsampleVS(ID, 1.0 / BUFFER_SIZE_3, Position, DownsampleCoords);
     }
 
-    void Upsample2VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 UpsampleCoords[3] : TEXCOORD0)
+    void Upsample3VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoord[3] : TEXCOORD0)
     {
-        UpsampleVS(ID, 1.0 / uint2(ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -3.0)), Position, UpsampleCoords);
+        UpsampleVS(ID, 1.0 / BUFFER_SIZE_3, Position, TexCoord);
     }
 
-    void Upsample1VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 UpsampleCoords[3] : TEXCOORD0)
+    void Upsample2VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoord[3] : TEXCOORD0)
     {
-        UpsampleVS(ID, 1.0 / uint2(ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -2.0)), Position, UpsampleCoords);
+        UpsampleVS(ID, 1.0 / BUFFER_SIZE_2, Position, TexCoord);
     }
 
-    void Upsample0VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 UpsampleCoords[3] : TEXCOORD0)
+    void Upsample1VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoord[3] : TEXCOORD0)
     {
-        UpsampleVS(ID, 1.0 / uint2(ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -1.0)), Position, UpsampleCoords);
+        UpsampleVS(ID, 1.0 / BUFFER_SIZE_1, Position, TexCoord);
     }
 
     void DerivativesVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 Offsets : TEXCOORD0)
     {
         float2 TexCoord0;
         PostProcessVS(ID, Position, TexCoord0);
-        const float2 PixelSize = 1.0 / uint2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2);
+        const float2 PixelSize = 1.0 / BUFFER_SIZE_1;
         Offsets = TexCoord0.xyxy + (float4(0.5, 0.5, -0.5, -0.5) * PixelSize.xyxy);
     }
 
@@ -434,42 +443,42 @@ namespace OpticalFlow
     {
         float2 TexCoord0 = 0.0;
         PostProcessVS(ID, Position, TexCoord0);
-        UpsampleOffsets(TexCoord0, PixelSize, TentFilterOffsets);
+        TexCoord(TexCoord0, PixelSize, TentFilterOffsets);
     }
 
     void EstimateLevel7VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 Offsets[3] : TEXCOORD0)
     {
-        EstimateVS(ID, 1.0 / uint2(ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -7.0)), Position, Offsets);
+        EstimateVS(ID, 1.0 / BUFFER_SIZE_7, Position, Offsets);
     }
 
     void EstimateLevel6VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 Offsets[3] : TEXCOORD0)
     {
-        EstimateVS(ID, 1.0 / uint2(ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -6.0)), Position, Offsets);
+        EstimateVS(ID, 1.0 / BUFFER_SIZE_6, Position, Offsets);
     }
 
     void EstimateLevel5VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 Offsets[3] : TEXCOORD0)
     {
-        EstimateVS(ID, 1.0 / uint2(ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -5.0)), Position, Offsets);
+        EstimateVS(ID, 1.0 / BUFFER_SIZE_5, Position, Offsets);
     }
 
     void EstimateLevel4VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 Offsets[3] : TEXCOORD0)
     {
-        EstimateVS(ID, 1.0 / uint2(ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -4.0)), Position, Offsets);
+        EstimateVS(ID, 1.0 / BUFFER_SIZE_4, Position, Offsets);
     }
 
     void EstimateLevel3VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 Offsets[3] : TEXCOORD0)
     {
-        EstimateVS(ID, 1.0 / uint2(ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -3.0)), Position, Offsets);
+        EstimateVS(ID, 1.0 / BUFFER_SIZE_3, Position, Offsets);
     }
 
     void EstimateLevel2VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 Offsets[3] : TEXCOORD0)
     {
-        EstimateVS(ID, 1.0 / uint2(ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -2.0)), Position, Offsets);
+        EstimateVS(ID, 1.0 / BUFFER_SIZE_2, Position, Offsets);
     }
 
     void EstimateLevel1VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 Offsets[3] : TEXCOORD0)
     {
-        EstimateVS(ID, 1.0 / uint2(ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -1.0)), Position, Offsets);
+        EstimateVS(ID, 1.0 / BUFFER_SIZE_1, Position, Offsets);
     }
 
     void VelocityStreamsVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float2 Velocity : TEXCOORD0)
@@ -672,17 +681,17 @@ namespace OpticalFlow
         OutputColor0 = DownsamplePS(_SampleTemporary_RG16F_3, TexCoord);
     }
 
-    void PreUpsample2PS(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+    void PreUpsample3PS(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
         OutputColor0 = UpsamplePS(_SampleTemporary_RG16F_4, TexCoord);
     }
 
-    void PreUpsample1PS(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+    void PreUpsample2PS(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
         OutputColor0 = UpsamplePS(_SampleTemporary_RG16F_3, TexCoord);
     }
 
-    void PreUpsample0PS(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+    void PreUpsample1PS(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
         OutputColor0 = UpsamplePS(_SampleTemporary_RG16F_2, TexCoord);
     }
@@ -698,45 +707,45 @@ namespace OpticalFlow
         OutputColor0 *= 4.0;
     }
 
-    void EstimateLevel8PS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputEstimation : SV_Target0)
+    void EstimateLevel8PS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
     {
-        OpticalFlow(TexCoord, 0.0, 7.0, OutputEstimation);
+        OpticalFlow(TexCoord, 0.0, 7.0, OutputColor0);
     }
 
-    void EstimateLevel7PS(in float4 Position : SV_Position, in float4 UpsampleOffsets[3] : TEXCOORD0, out float2 OutputEstimation : SV_Target0)
+    void EstimateLevel7PS(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
     {
-        OpticalFlow(UpsampleOffsets[1].xz, UpsamplePS(_SampleTemporary_RG16F_8, UpsampleOffsets).xy, 6.0, OutputEstimation);
+        OpticalFlow(TexCoord[1].xz, UpsamplePS(_SampleTemporary_RG16F_8, TexCoord).xy, 6.0, OutputColor0);
     }
 
-    void EstimateLevel6PS(in float4 Position : SV_Position, in float4 UpsampleOffsets[3] : TEXCOORD0, out float2 OutputEstimation : SV_Target0)
+    void EstimateLevel6PS(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
     {
-        OpticalFlow(UpsampleOffsets[1].xz, UpsamplePS(_SampleTemporary_RG16F_7, UpsampleOffsets).xy, 5.0, OutputEstimation);
+        OpticalFlow(TexCoord[1].xz, UpsamplePS(_SampleTemporary_RG16F_7, TexCoord).xy, 5.0, OutputColor0);
     }
 
-    void EstimateLevel5PS(in float4 Position : SV_Position, in float4 UpsampleOffsets[3] : TEXCOORD0, out float2 OutputEstimation : SV_Target0)
+    void EstimateLevel5PS(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
     {
-        OpticalFlow(UpsampleOffsets[1].xz, UpsamplePS(_SampleTemporary_RG16F_6, UpsampleOffsets).xy, 4.0, OutputEstimation);
+        OpticalFlow(TexCoord[1].xz, UpsamplePS(_SampleTemporary_RG16F_6, TexCoord).xy, 4.0, OutputColor0);
     }
 
-    void EstimateLevel4PS(in float4 Position : SV_Position, in float4 UpsampleOffsets[3] : TEXCOORD0, out float2 OutputEstimation : SV_Target0)
+    void EstimateLevel4PS(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
     {
-        OpticalFlow(UpsampleOffsets[1].xz, UpsamplePS(_SampleTemporary_RG16F_5, UpsampleOffsets).xy, 3.0, OutputEstimation);
+        OpticalFlow(TexCoord[1].xz, UpsamplePS(_SampleTemporary_RG16F_5, TexCoord).xy, 3.0, OutputColor0);
     }
 
-    void EstimateLevel3PS(in float4 Position : SV_Position, in float4 UpsampleOffsets[3] : TEXCOORD0, out float2 OutputEstimation : SV_Target0)
+    void EstimateLevel3PS(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
     {
-        OpticalFlow(UpsampleOffsets[1].xz, UpsamplePS(_SampleTemporary_RG16F_4, UpsampleOffsets).xy, 2.0, OutputEstimation);
+        OpticalFlow(TexCoord[1].xz, UpsamplePS(_SampleTemporary_RG16F_4, TexCoord).xy, 2.0, OutputColor0);
     }
 
-    void EstimateLevel2PS(in float4 Position : SV_Position, in float4 UpsampleOffsets[3] : TEXCOORD0, out float2 OutputEstimation : SV_Target0)
+    void EstimateLevel2PS(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
     {
-        OpticalFlow(UpsampleOffsets[1].xz, UpsamplePS(_SampleTemporary_RG16F_3, UpsampleOffsets).xy, 1.0, OutputEstimation);
+        OpticalFlow(TexCoord[1].xz, UpsamplePS(_SampleTemporary_RG16F_3, TexCoord).xy, 1.0, OutputColor0);
     }
 
-    void EstimateLevel1PS(in float4 Position : SV_Position, in float4 UpsampleOffsets[3] : TEXCOORD0, out float4 OutputEstimation : SV_Target0)
+    void EstimateLevel1PS(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
-        OpticalFlow(UpsampleOffsets[1].xz, UpsamplePS(_SampleTemporary_RG16F_2, UpsampleOffsets).xy, 0.0, OutputEstimation.xy);
-        OutputEstimation.ba = (0.0, _Blend);
+        OpticalFlow(TexCoord[1].xz, UpsamplePS(_SampleTemporary_RG16F_2, TexCoord).xy, 0.0, OutputColor0.xy);
+        OutputColor0.ba = (0.0, _Blend);
     }
 
     void PostDownsample1PS(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
@@ -754,17 +763,17 @@ namespace OpticalFlow
         OutputColor0 = DownsamplePS(_SampleTemporary_RG16F_3, TexCoord);
     }
 
-    void PostUpsample2PS(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+    void PostUpsample3PS(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
         OutputColor0 = UpsamplePS(_SampleTemporary_RG16F_4, TexCoord);
     }
 
-    void PostUpsample1PS(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+    void PostUpsample2PS(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
         OutputColor0 = UpsamplePS(_SampleTemporary_RG16F_3, TexCoord);
     }
 
-    void PostUpsample0PS(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0, out float4 OutputColor1 : SV_Target1)
+    void PostUpsample1PS(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0, out float4 OutputColor1 : SV_Target1)
     {
         OutputColor0 = UpsamplePS(_SampleTemporary_RG16F_2, TexCoord);
 
@@ -842,22 +851,22 @@ namespace OpticalFlow
 
         pass
         {
+            VertexShader = Upsample3VS;
+            PixelShader = PreUpsample3PS;
+            RenderTarget0 = SharedResources::RG16F::_RenderTemporary3;
+        }
+
+        pass
+        {
             VertexShader = Upsample2VS;
             PixelShader = PreUpsample2PS;
-            RenderTarget0 = SharedResources::RG16F::_RenderTemporary3;
+            RenderTarget0 = SharedResources::RG16F::_RenderTemporary2;
         }
 
         pass
         {
             VertexShader = Upsample1VS;
             PixelShader = PreUpsample1PS;
-            RenderTarget0 = SharedResources::RG16F::_RenderTemporary2;
-        }
-
-        pass
-        {
-            VertexShader = Upsample0VS;
-            PixelShader = PreUpsample0PS;
             RenderTarget0 = SharedResources::RG16F::_RenderTemporary1;
         }
 
@@ -958,22 +967,22 @@ namespace OpticalFlow
 
         pass
         {
+            VertexShader = Upsample3VS;
+            PixelShader = PostUpsample3PS;
+            RenderTarget0 = SharedResources::RG16F::_RenderTemporary3;
+        }
+
+        pass
+        {
             VertexShader = Upsample2VS;
             PixelShader = PostUpsample2PS;
-            RenderTarget0 = SharedResources::RG16F::_RenderTemporary3;
+            RenderTarget0 = SharedResources::RG16F::_RenderTemporary2;
         }
 
         pass
         {
             VertexShader = Upsample1VS;
             PixelShader = PostUpsample1PS;
-            RenderTarget0 = SharedResources::RG16F::_RenderTemporary2;
-        }
-
-        pass
-        {
-            VertexShader = Upsample0VS;
-            PixelShader = PostUpsample0PS;
             RenderTarget0 = SharedResources::RGBA16F::_RenderTemporary1;
 
             // Copy previous frame

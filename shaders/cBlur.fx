@@ -39,8 +39,8 @@ namespace SharedResources
     {
         texture2D _RenderTemporary1 < pooled = true; >
         {
-            Width = BUFFER_WIDTH / 2;
-            Height = BUFFER_HEIGHT / 2;
+            Width = BUFFER_WIDTH >> 1;
+            Height = BUFFER_HEIGHT >> 1;
             Format = RGBA8;
             MipLevels = 8;
         };

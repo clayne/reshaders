@@ -33,64 +33,73 @@
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#define BUFFER_SIZE_1 uint2(BUFFER_WIDTH >> 1, BUFFER_HEIGHT >> 1)
+#define BUFFER_SIZE_2 uint2(BUFFER_WIDTH >> 2, BUFFER_HEIGHT >> 2)
+#define BUFFER_SIZE_3 uint2(BUFFER_WIDTH >> 3, BUFFER_HEIGHT >> 3)
+#define BUFFER_SIZE_4 uint2(BUFFER_WIDTH >> 4, BUFFER_HEIGHT >> 4)
+#define BUFFER_SIZE_5 uint2(BUFFER_WIDTH >> 5, BUFFER_HEIGHT >> 5)
+#define BUFFER_SIZE_6 uint2(BUFFER_WIDTH >> 6, BUFFER_HEIGHT >> 6)
+#define BUFFER_SIZE_7 uint2(BUFFER_WIDTH >> 7, BUFFER_HEIGHT >> 7)
+#define BUFFER_SIZE_8 uint2(BUFFER_WIDTH >> 8, BUFFER_HEIGHT >> 8)
+
 namespace SharedResources
 {
     namespace RGBA16F
     {
         texture2D _RenderTemporary1 < pooled = true; >
         {
-            Width = BUFFER_WIDTH / 2;
-            Height = BUFFER_HEIGHT / 2;
+            Width = BUFFER_SIZE_1.x;
+            Height = BUFFER_SIZE_1.y;
             Format = RGBA16F;
             MipLevels = 8;
         };
 
         texture2D _RenderTemporary2 < pooled = true; >
         {
-            Width = BUFFER_WIDTH / 4;
-            Height = BUFFER_HEIGHT / 4;
+            Width = BUFFER_SIZE_2.x;
+            Height = BUFFER_SIZE_2.y;
             Format = RGBA16F;
         };
 
         texture2D _RenderTemporary3 < pooled = true; >
         {
-            Width = BUFFER_WIDTH / 8;
-            Height = BUFFER_HEIGHT / 8;
+            Width = BUFFER_SIZE_3.x;
+            Height = BUFFER_SIZE_3.y;
             Format = RGBA16F;
         };
 
         texture2D _RenderTemporary4 < pooled = true; >
         {
-            Width = BUFFER_WIDTH / 16;
-            Height = BUFFER_HEIGHT / 16;
+            Width = BUFFER_SIZE_4.x;
+            Height = BUFFER_SIZE_4.y;
             Format = RGBA16F;
         };
 
         texture2D _RenderTemporary5 < pooled = true; >
         {
-            Width = BUFFER_WIDTH / 32;
-            Height = BUFFER_HEIGHT / 32;
+            Width = BUFFER_SIZE_5.x;
+            Height = BUFFER_SIZE_5.y;
             Format = RGBA16F;
         };
 
         texture2D _RenderTemporary6 < pooled = true; >
         {
-            Width = BUFFER_WIDTH / 64;
-            Height = BUFFER_HEIGHT / 64;
+            Width = BUFFER_SIZE_6.x;
+            Height = BUFFER_SIZE_6.y;
             Format = RGBA16F;
         };
 
         texture2D _RenderTemporary7 < pooled = true; >
         {
-            Width = BUFFER_WIDTH / 128;
-            Height = BUFFER_HEIGHT / 128;
+            Width = BUFFER_SIZE_7.x;
+            Height = BUFFER_SIZE_7.y;
             Format = RGBA16F;
         };
 
         texture2D _RenderTemporary8 < pooled = true; >
         {
-            Width = BUFFER_WIDTH / 256;
-            Height = BUFFER_HEIGHT / 256;
+            Width = BUFFER_SIZE_8.x;
+            Height = BUFFER_SIZE_8.y;
             Format = RGBA16F;
         };
     }
@@ -214,11 +223,10 @@ void PostProcessVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, 
     Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
 
-void DownsampleVS(in uint ID, out float4 Position, out float4 TexCoord[4], float Factor)
+void DownsampleVS(in uint ID, out float4 Position, out float4 TexCoord[4], float2 PixelSize)
 {
     float2 TexCoord0;
     PostProcessVS(ID, Position, TexCoord0);
-    const float2 PixelSize = 1.0 / uint2(ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -Factor));
     // Quadrant
     TexCoord[0] = TexCoord0.xyxy + float4(-1.0, -1.0, 1.0, 1.0) * PixelSize.xyxy;
     // Left column
@@ -229,11 +237,10 @@ void DownsampleVS(in uint ID, out float4 Position, out float4 TexCoord[4], float
     TexCoord[3] = TexCoord0.xyyy + float4(2.0, 2.0, 0.0, -2.0) * PixelSize.xyyy;
 }
 
-void UpsampleVS(in uint ID, out float4 Position, out float4 TexCoord[3], float Factor)
+void UpsampleVS(in uint ID, out float4 Position, out float4 TexCoord[3], float2 PixelSize)
 {
     float2 TexCoord0;
     PostProcessVS(ID, Position, TexCoord0);
-    const float2 PixelSize = 1.0 / uint2(ldexp(float2(BUFFER_WIDTH, BUFFER_HEIGHT), -Factor));
     // Left column
     TexCoord[0] = TexCoord0.xyyy + float4(-2.0, 2.0, 0.0, -2.0) * PixelSize.xyyy;
     // Center column
@@ -244,72 +251,72 @@ void UpsampleVS(in uint ID, out float4 Position, out float4 TexCoord[3], float F
 
 void DownsampleVS1(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoord[4] : TEXCOORD0)
 {
-    DownsampleVS(ID, Position, TexCoord, 1.0);
+    DownsampleVS(ID, Position, TexCoord, 1.0 / BUFFER_SIZE_1);
 }
 
 void DownsampleVS2(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoord[4] : TEXCOORD0)
 {
-    DownsampleVS(ID, Position, TexCoord, 2.0);
+    DownsampleVS(ID, Position, TexCoord, 1.0 / BUFFER_SIZE_2);
 }
 
 void DownsampleVS3(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoord[4] : TEXCOORD0)
 {
-    DownsampleVS(ID, Position, TexCoord, 3.0);
+    DownsampleVS(ID, Position, TexCoord, 1.0 / BUFFER_SIZE_3);
 }
 
 void DownsampleVS4(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoord[4] : TEXCOORD0)
 {
-    DownsampleVS(ID, Position, TexCoord, 4.0);
+    DownsampleVS(ID, Position, TexCoord, 1.0 / BUFFER_SIZE_4);
 }
 
 void DownsampleVS5(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoord[4] : TEXCOORD0)
 {
-    DownsampleVS(ID, Position, TexCoord, 5.0);
+    DownsampleVS(ID, Position, TexCoord, 1.0 / BUFFER_SIZE_5);
 }
 
 void DownsampleVS6(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoord[4] : TEXCOORD0)
 {
-    DownsampleVS(ID, Position, TexCoord, 6.0);
+    DownsampleVS(ID, Position, TexCoord, 1.0 / BUFFER_SIZE_6);
 }
 
 void DownsampleVS7(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoord[4] : TEXCOORD0)
 {
-    DownsampleVS(ID, Position, TexCoord, 7.0);
+    DownsampleVS(ID, Position, TexCoord, 1.0 / BUFFER_SIZE_7);
+}
+
+void UpsampleVS7(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoord[3] : TEXCOORD0)
+{
+    UpsampleVS(ID, Position, TexCoord, 1.0 / BUFFER_SIZE_7);
 }
 
 void UpsampleVS6(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoord[3] : TEXCOORD0)
 {
-    UpsampleVS(ID, Position, TexCoord, 7.0);
+    UpsampleVS(ID, Position, TexCoord, 1.0 / BUFFER_SIZE_6);
 }
 
 void UpsampleVS5(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoord[3] : TEXCOORD0)
 {
-    UpsampleVS(ID, Position, TexCoord, 6.0);
+    UpsampleVS(ID, Position, TexCoord, 1.0 / BUFFER_SIZE_5);
 }
 
 void UpsampleVS4(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoord[3] : TEXCOORD0)
 {
-    UpsampleVS(ID, Position, TexCoord, 5.0);
+    UpsampleVS(ID, Position, TexCoord, 1.0 / BUFFER_SIZE_4);
 }
 
 void UpsampleVS3(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoord[3] : TEXCOORD0)
 {
-    UpsampleVS(ID, Position, TexCoord, 4.0);
+    UpsampleVS(ID, Position, TexCoord, 1.0 / BUFFER_SIZE_3);
 }
 
 void UpsampleVS2(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoord[3] : TEXCOORD0)
 {
-    UpsampleVS(ID, Position, TexCoord, 3.0);
+    UpsampleVS(ID, Position, TexCoord, 1.0 / BUFFER_SIZE_2);
 }
 
 void UpsampleVS1(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoord[3] : TEXCOORD0)
 {
-    UpsampleVS(ID, Position, TexCoord, 2.0);
-}
-
-void UpsampleVS0(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoord[3] : TEXCOORD0)
-{
-    UpsampleVS(ID, Position, TexCoord, 1.0);
+    UpsampleVS(ID, Position, TexCoord, 1.0 / BUFFER_SIZE_1);
 }
 
 // Pixel shaders
@@ -454,37 +461,37 @@ void DownsamplePS7(in float4 Position : SV_Position, in float4 TexCoord[4] : TEX
     Downsample(_SampleTemporary_RGBA16F_7, TexCoord, OutputColor0);
 }
 
-void UpsamplePS6(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+void UpsamplePS7(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
     Upsample(_SampleTemporary_RGBA16F_8, TexCoord, OutputColor0);
 }
 
-void UpsamplePS5(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+void UpsamplePS6(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
     Upsample(_SampleTemporary_RGBA16F_7, TexCoord, OutputColor0);
 }
 
-void UpsamplePS4(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+void UpsamplePS5(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
     Upsample(_SampleTemporary_RGBA16F_6, TexCoord, OutputColor0);
 }
 
-void UpsamplePS3(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+void UpsamplePS4(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
     Upsample(_SampleTemporary_RGBA16F_5, TexCoord, OutputColor0);
 }
 
-void UpsamplePS2(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+void UpsamplePS3(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
     Upsample(_SampleTemporary_RGBA16F_4, TexCoord, OutputColor0);
 }
 
-void UpsamplePS1(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+void UpsamplePS2(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
     Upsample(_SampleTemporary_RGBA16F_3, TexCoord, OutputColor0);
 }
 
-void UpsamplePS0(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+void UpsamplePS1(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
     Upsample(_SampleTemporary_RGBA16F_2, TexCoord, OutputColor0);
 }
@@ -561,9 +568,21 @@ technique cBloom
 
     pass
     {
+        VertexShader = UpsampleVS7;
+        PixelShader = UpsamplePS7;
+        RenderTarget0 = SharedResources::RGBA16F::_RenderTemporary7;
+        ClearRenderTargets = FALSE;
+        BlendEnable = TRUE;
+        BlendOp = ADD;
+        SrcBlend = ONE;
+        DestBlend = ONE;
+    }
+
+    pass
+    {
         VertexShader = UpsampleVS6;
         PixelShader = UpsamplePS6;
-        RenderTarget0 = SharedResources::RGBA16F::_RenderTemporary7;
+        RenderTarget0 = SharedResources::RGBA16F::_RenderTemporary6;
         ClearRenderTargets = FALSE;
         BlendEnable = TRUE;
         BlendOp = ADD;
@@ -575,7 +594,7 @@ technique cBloom
     {
         VertexShader = UpsampleVS5;
         PixelShader = UpsamplePS5;
-        RenderTarget0 = SharedResources::RGBA16F::_RenderTemporary6;
+        RenderTarget0 = SharedResources::RGBA16F::_RenderTemporary5;
         ClearRenderTargets = FALSE;
         BlendEnable = TRUE;
         BlendOp = ADD;
@@ -587,7 +606,7 @@ technique cBloom
     {
         VertexShader = UpsampleVS4;
         PixelShader = UpsamplePS4;
-        RenderTarget0 = SharedResources::RGBA16F::_RenderTemporary5;
+        RenderTarget0 = SharedResources::RGBA16F::_RenderTemporary4;
         ClearRenderTargets = FALSE;
         BlendEnable = TRUE;
         BlendOp = ADD;
@@ -599,7 +618,7 @@ technique cBloom
     {
         VertexShader = UpsampleVS3;
         PixelShader = UpsamplePS3;
-        RenderTarget0 = SharedResources::RGBA16F::_RenderTemporary4;
+        RenderTarget0 = SharedResources::RGBA16F::_RenderTemporary3;
         ClearRenderTargets = FALSE;
         BlendEnable = TRUE;
         BlendOp = ADD;
@@ -611,7 +630,7 @@ technique cBloom
     {
         VertexShader = UpsampleVS2;
         PixelShader = UpsamplePS2;
-        RenderTarget0 = SharedResources::RGBA16F::_RenderTemporary3;
+        RenderTarget0 = SharedResources::RGBA16F::_RenderTemporary2;
         ClearRenderTargets = FALSE;
         BlendEnable = TRUE;
         BlendOp = ADD;
@@ -623,18 +642,6 @@ technique cBloom
     {
         VertexShader = UpsampleVS1;
         PixelShader = UpsamplePS1;
-        RenderTarget0 = SharedResources::RGBA16F::_RenderTemporary2;
-        ClearRenderTargets = FALSE;
-        BlendEnable = TRUE;
-        BlendOp = ADD;
-        SrcBlend = ONE;
-        DestBlend = ONE;
-    }
-
-    pass
-    {
-        VertexShader = UpsampleVS0;
-        PixelShader = UpsamplePS0;
         RenderTarget0 = SharedResources::RGBA16F::_RenderTemporary1;
     }
 
