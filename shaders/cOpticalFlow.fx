@@ -599,35 +599,55 @@ namespace OpticalFlow
 
     void OpticalFlow(in float2 TexCoord, in float2 UV, in float Level, out float2 DUV)
     {
+        float2 CurrentFrame = tex2D(_SampleTemporary_RG16F_1a, TexCoord).xy;
+        float2 PreviousFrame = tex2D(_SampleTemporary_RG16F_1d, TexCoord).xy;
+
+        // SpatialI = <Rx, Gx, Ry, Gy>
+        float4 SpatialI = tex2D(_SampleTemporary_RGBA16F_1a, TexCoord);
+        float2 TemporalI = CurrentFrame - PreviousFrame;
+
         const float Alpha = max(ldexp(_Constraint * 1e-5, Level - MaxLevel), 1e-7);
-        float2 SampleC = tex2D(_SampleTemporary_RG16F_1a, TexCoord).xy;
-        float2 SampleP = tex2D(_SampleTemporary_RG16F_1d, TexCoord).xy;
 
-        // <Rx, Gx, Ry, Gy>
-        float4 SampleI = tex2D(_SampleTemporary_RGBA16F_1a, TexCoord);
+        /*
+            We solve for X[N] (UV)
+            Matrix => Horn–Schunck Matrix => Horn–Schunck Equation => Solving Equation
 
-        // Compute diagonal
-        float2 Aii;
-        Aii.x = dot(SampleI.xy, SampleI.xy) + Alpha;
-        Aii.y = dot(SampleI.zw, SampleI.zw) + Alpha;
-        Aii.xy = 1.0 / Aii.xy;
+            Matrix
+                [A11 A12] [X1] = [B1]
+                [A21 A22] [X2] = [B2]
 
-        // Compute right-hand side
-        float2 Iz = SampleC - SampleP;
-        float2 RHS;
-        RHS.x = dot(SampleI.xy, Iz);
-        RHS.y = dot(SampleI.zw, Iz);
+            Horn–Schunck Matrix
+                [(Ix^2 + a) (IxIy)] [U] = [aU - IxIt]
+                [(IxIy) (Iy^2 + a)] [V] = [aV - IyIt]
 
-        // Compute triangle
-        float Aij = dot(SampleI.xy, SampleI.zw);
+            Horn–Schunck Equation
+                (Ix^2 + a)U + IxIyV = aU - IxIt
+                IxIyU + (Iy^2 + a)V = aV - IyIt
+
+            Solving Equation
+                U = ((aU - IxIt) - IxIyV) / (Ix^2 + a)
+                V = ((aV - IxIt) - IxIyu) / (Iy^2 + a)
+        */
+
+        // A11 = 1.0 / (Rx^2 + Gx^2 + a)
+        // A22 = 1.0 / (Ry^2 + Gy^2 + a)
+        // Aij = Rxy + Gxy
+        float A11 = 1.0 / (dot(SpatialI.xy, SpatialI.xy) + Alpha);
+        float A22 = 1.0 / (dot(SpatialI.zw, SpatialI.zw) + Alpha);
+        float Aij = dot(SpatialI.xy, SpatialI.zw);
+
+        // B1 = Rxt + Gxt
+        // B2 = Ryt + Gyt
+        float B1 = dot(SpatialI.xy, TemporalI);
+        float B2 = dot(SpatialI.zw, TemporalI);
 
         // Symmetric Gauss-Seidel (forward sweep, from 1...N)
-        DUV.x = Aii.x * ((Alpha * UV.x) - RHS.x - (UV.y * Aij));
-        DUV.y = Aii.y * ((Alpha * UV.y) - RHS.y - (DUV.x * Aij));
+        DUV.x = A11 * ((Alpha * UV.x - B1) - (UV.y * Aij));
+        DUV.y = A22 * ((Alpha * UV.y - B2) - (DUV.x * Aij));
 
         // Symmetric Gauss-Seidel (backward sweep, from N...1)
-        DUV.y = Aii.y * ((Alpha * DUV.y) - RHS.y - (DUV.x * Aij));
-        DUV.x = Aii.x * ((Alpha * DUV.x) - RHS.x - (DUV.y * Aij));
+        DUV.y = A22 * ((Alpha * DUV.y - B2) - (DUV.x * Aij));
+        DUV.x = A11 * ((Alpha * DUV.x - B1) - (DUV.y * Aij));
     }
 
     void NormalizePS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
