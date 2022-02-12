@@ -539,7 +539,8 @@ namespace MotionBlur
 
     void NormalizePS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
     {
-        float3 Color = tex2D(_SampleColor, TexCoord).rgb;
+    	const float Minima = exp2(-8.0);
+        float3 Color = max(tex2D(_SampleColor, TexCoord).rgb, Minima);
         OutputColor0 = saturate(Color.xy / dot(Color, 1.0));
     }
 
