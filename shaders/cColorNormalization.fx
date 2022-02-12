@@ -35,9 +35,9 @@
 
 uniform int _Select <
     ui_type = "combo";
-    ui_items = " Built-in RG Chromaticity\0 Built-in RGB Chromaticity\0 Standard RG Chromaticity\0 Standard RGB Chromaticity\0 Jamie Wong's RG Chromaticity\0 Jamie Wong's RGB Chromaticity\0 Angle-Retaining Chromaticity \0 None\0";
+    ui_items = " Built-in RG\0 Built-in RGB\0 Standard RG\0 Standard RGB\0 Jamie Wong's RG\0 Jamie Wong's RGB\0 Ratio\0 UV\0 Maxwell\0 Angle-Retaining\0 None\0";
     ui_label = "Method";
-    ui_tooltip = "Select Luminance";
+    ui_tooltip = "Select Chromaticity";
 > = 0;
 
 texture2D _RenderColor : COLOR;
@@ -66,7 +66,7 @@ void PostProcessVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, 
 
 /*
     Sources
-        Angle-Retaining Chromaticity
+        Ratio, UV, Maxwell, and Angle-Retaining Chromaticity
             Copyright 2020 Marco Buzzelli, Simone Bianco, Raimondo Schettini.
             If you use this code in your research, please cite:
             @article{buzzelli2020arc,
@@ -97,32 +97,43 @@ void NormalizationPS(in float4 Position : SV_Position, in float2 TexCoord : TEXC
     switch(_Select)
     {
         case 0:
-            // Built-in RG Chromaticity
+            // Built-in RG
             OutputColor0.rg = saturate(normalize(Color).rg);
             break;
         case 1:
-            // Built-in RGB Chromaticity
+            // Built-in RGB
             OutputColor0 = saturate(normalize(Color));
             break;
         case 2:
-            // Standard RG Chromaticity
+            // Standard RG
             OutputColor0.rg = saturate(Color.rg / dot(Color, 1.0));
             break;
         case 3:
-            // Standard RGB Chromaticity
+            // Standard RGB
             OutputColor0 = saturate(Color / dot(Color, 1.0));
             break;
         case 4:
-            // Jamie Wong's RG Chromaticity
+            // Jamie Wong's RG
             float3 NormalizedRGB = Color / dot(Color, 1.0);
             OutputColor0.rg = saturate(NormalizedRGB.rg / max(max(NormalizedRGB.r, NormalizedRGB.g), NormalizedRGB.b));
             break;
         case 5:
-            // Jamie Wong's RGB Chromaticity
+            // Jamie Wong's RGB
             OutputColor0 = Color / dot(Color, 1.0);
             OutputColor0 = saturate(OutputColor0 / max(max(OutputColor0.r, OutputColor0.g), OutputColor0.b));
             break;
-        case 6:
+        case 6: // Ratio
+            OutputColor0.rg = saturate(Color.rg / Color.bb);
+            break;
+        case 7: // UV
+            OutputColor0.rg = saturate(log(Color.rg / Color.bb));
+            break;
+        case 8: // Maxwell
+            float TotalColor = dot(Color, 1.0);
+            OutputColor0.r = saturate(dot(Color, float3(-1.0, 2.0, -1.0)) / (sqrt(3.0) * TotalColor));
+            OutputColor0.g = saturate((Color.r - Color.b) / TotalColor);
+            break;
+        case 9:
             // Angle-Retaining Chromaticity (Optimized for GPU)
             float2 AlphaA;
             AlphaA.x = dot(Color.gb, float2(sqrt(3.0), -sqrt(3.0)));
