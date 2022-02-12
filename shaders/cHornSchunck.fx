@@ -106,7 +106,7 @@ namespace HornSchunck
     {
         Width = SCREEN_SIZE.x / 2;
         Height = SCREEN_SIZE.y / 2;
-        Format = RG16F;
+        Format = RGBA16F;
         MipLevels = 8;
     };
 
@@ -118,23 +118,7 @@ namespace HornSchunck
         MipFilter = LINEAR;
     };
 
-    texture2D _RenderTemporary1c < pooled = true; >
-    {
-        Width = SCREEN_SIZE.x / 2;
-        Height = SCREEN_SIZE.y / 2;
-        Format = RG16F;
-        MipLevels = 8;
-    };
-
-    sampler2D _SampleTemporary1c
-    {
-        Texture = _RenderTemporary1c;
-        MagFilter = LINEAR;
-        MinFilter = LINEAR;
-        MipFilter = LINEAR;
-    };
-
-    texture2D _RenderTemporary1d
+    texture2D _RenderTemporary1d < pooled = false; >
     {
         Width = SCREEN_SIZE.x / 2;
         Height = SCREEN_SIZE.y / 2;
@@ -255,16 +239,16 @@ namespace HornSchunck
         MipFilter = LINEAR;
     };
 
-    texture2D _RenderTemporary1e
+    texture2D _RenderTemporary1c
     {
         Width = SCREEN_SIZE.x / 2;
         Height = SCREEN_SIZE.y / 2;
         Format = RG16F;
     };
 
-    sampler2D _SampleTemporary1e
+    sampler2D _SampleTemporary1c
     {
-        Texture = _RenderTemporary1e;
+        Texture = _RenderTemporary1c;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
@@ -314,31 +298,53 @@ namespace HornSchunck
     void OpticalFlow(in float2 TexCoord, in float2 UV, in float Level, out float2 DUV)
     {
         const float Alpha = max(ldexp(_Constraint * 1e-5, Level - MaxLevel), 1e-7);
-        float2 Iz = tex2D(_SampleTemporary1b, TexCoord).rg;
-        float2 Ix = tex2D(_SampleTemporary1c, TexCoord).rg;
-        float2 Iy = tex2D(_SampleTemporary1d, TexCoord).rg;
+        float2 CurrentFrame = tex2D(_SampleTemporary1a, TexCoord).xy;
+        float2 PreviousFrame = tex2D(_SampleTemporary1d, TexCoord).xy;
 
-        // Compute diagonal
-        float2 Aii;
-        Aii.x = dot(Ix, Ix) + Alpha;
-        Aii.y = dot(Iy, Iy) + Alpha;
-        Aii.xy = 1.0 / Aii.xy;
+        // SpatialI = <Rx, Gx, Ry, Gy>
+        float4 SpatialI = tex2D(_SampleTemporary1b, TexCoord);
+        float2 TemporalI = CurrentFrame - PreviousFrame;
 
-        // Compute right-hand side
-        float2 RHS;
-        RHS.x = dot(Ix, Iz);
-        RHS.y = dot(Iy, Iz);
+        /*
+            We solve for X[N] (UV)
+            Matrix => Horn–Schunck Matrix => Horn–Schunck Equation => Solving Equation
 
-        // Compute triangle
-        float Aij = dot(Ix, Iy);
+            Matrix
+                [A11 A12] [X1] = [B1]
+                [A21 A22] [X2] = [B2]
+
+            Horn–Schunck Matrix
+                [(Ix^2 + a) (IxIy)] [U] = [aU - IxIt]
+                [(IxIy) (Iy^2 + a)] [V] = [aV - IyIt]
+
+            Horn–Schunck Equation
+                (Ix^2 + a)U + IxIyV = aU - IxIt
+                IxIyU + (Iy^2 + a)V = aV - IyIt
+
+            Solving Equation
+                U = ((aU - IxIt) - IxIyV) / (Ix^2 + a)
+                V = ((aV - IxIt) - IxIyu) / (Iy^2 + a)
+        */
+
+        // A11 = 1.0 / (Rx^2 + Gx^2 + a)
+        // A22 = 1.0 / (Ry^2 + Gy^2 + a)
+        // Aij = Rxy + Gxy
+        float A11 = 1.0 / (dot(SpatialI.xy, SpatialI.xy) + Alpha);
+        float A22 = 1.0 / (dot(SpatialI.zw, SpatialI.zw) + Alpha);
+        float Aij = dot(SpatialI.xy, SpatialI.zw);
+
+        // B1 = Rxt + Gxt
+        // B2 = Ryt + Gyt
+        float B1 = dot(SpatialI.xy, TemporalI);
+        float B2 = dot(SpatialI.zw, TemporalI);
 
         // Symmetric Gauss-Seidel (forward sweep, from 1...N)
-        DUV.x = Aii.x * ((Alpha * UV.x) - RHS.x - (UV.y * Aij));
-        DUV.y = Aii.y * ((Alpha * UV.y) - RHS.y - (DUV.x * Aij));
+        DUV.x = A11 * ((Alpha * UV.x - B1) - (UV.y * Aij));
+        DUV.y = A22 * ((Alpha * UV.y - B2) - (DUV.x * Aij));
 
         // Symmetric Gauss-Seidel (backward sweep, from N...1)
-        DUV.y = Aii.y * ((Alpha * DUV.y) - RHS.y - (DUV.x * Aij));
-        DUV.x = Aii.x * ((Alpha * DUV.x) - RHS.x - (DUV.y * Aij));
+        DUV.y = A22 * ((Alpha * DUV.y - B2) - (DUV.x * Aij));
+        DUV.x = A11 * ((Alpha * DUV.x - B1) - (DUV.y * Aij));
     }
 
     void NormalizePS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
@@ -355,14 +361,15 @@ namespace HornSchunck
         OutputColor0 = CurrentFrame - PreviousFrame;
     }
 
-    void DerivativesXYPS(in float4 Position : SV_Position, in float4 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_Target0, out float2 OutputColor1 : SV_Target1)
+    void DerivativesXYPS(in float4 Position : SV_Position, in float4 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
         float2 Sample0 = tex2D(_SampleTemporary1a, TexCoord.zy).xy; // (-x, +y)
         float2 Sample1 = tex2D(_SampleTemporary1a, TexCoord.xy).xy; // (+x, +y)
         float2 Sample2 = tex2D(_SampleTemporary1a, TexCoord.zw).xy; // (-x, -y)
         float2 Sample3 = tex2D(_SampleTemporary1a, TexCoord.xw).xy; // (+x, -y)
-        OutputColor0 = ((Sample3 + Sample1) - (Sample2 + Sample0)) * 4.0;
-        OutputColor1 = ((Sample2 + Sample3) - (Sample0 + Sample1)) * 4.0;
+        OutputColor0.xy = ((Sample3 + Sample1) - (Sample2 + Sample0));
+        OutputColor0.zw = ((Sample2 + Sample3) - (Sample0 + Sample1));
+        OutputColor0 = OutputColor0 * 4.0;
     }
 
     void EstimateLevel8PS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputEstimation : SV_Target0)
@@ -412,7 +419,7 @@ namespace HornSchunck
 
     void VelocityShadingPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target)
     {
-        float2 Velocity = tex2Dlod(_SampleTemporary1e, float4(TexCoord, 0.0, _MipBias)).xy;
+        float2 Velocity = tex2Dlod(_SampleTemporary1c, float4(TexCoord, 0.0, _MipBias)).xy;
 
         if(_NormalizedShading)
         {
@@ -442,17 +449,9 @@ namespace HornSchunck
 
         pass
         {
-            VertexShader = PostProcessVS;
-            PixelShader = DerivativesZPS;
-            RenderTarget0 = _RenderTemporary1b;
-        }
-
-        pass
-        {
             VertexShader = DerivativesVS;
             PixelShader = DerivativesXYPS;
-            RenderTarget0 = _RenderTemporary1c;
-            RenderTarget1 = _RenderTemporary1d;
+            RenderTarget0 = _RenderTemporary1b;
         }
 
         // Pyramidal estimation
@@ -510,11 +509,10 @@ namespace HornSchunck
         {
             VertexShader = PostProcessVS;
             PixelShader = EstimateLevel1PS;
-            RenderTarget0 = _RenderTemporary1e;
+            RenderTarget0 = _RenderTemporary1c;
 
             // Copy previous frame
             RenderTarget1 = _RenderTemporary1d;
-
             ClearRenderTargets = FALSE;
             BlendEnable = TRUE;
             BlendOp = ADD;
