@@ -33,7 +33,14 @@
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#define POW2SIZE uint(256)
+#define POW2SIZE_0 uint(256)
+#define POW2SIZE_1 uint(POW2SIZE_0 >> 1)
+#define POW2SIZE_2 uint(POW2SIZE_0 >> 2)
+#define POW2SIZE_3 uint(POW2SIZE_0 >> 3)
+#define POW2SIZE_4 uint(POW2SIZE_0 >> 4)
+#define POW2SIZE_5 uint(POW2SIZE_0 >> 5)
+#define POW2SIZE_6 uint(POW2SIZE_0 >> 6)
+#define POW2SIZE_7 uint(POW2SIZE_0 >> 7)
 
 namespace SharedResources
 {
@@ -41,8 +48,8 @@ namespace SharedResources
     {
         texture2D _RenderTemporary1a
         {
-            Width = BUFFER_WIDTH / 2;
-            Height = BUFFER_HEIGHT / 2;
+            Width = BUFFER_WIDTH >> 1;
+            Height = BUFFER_HEIGHT >> 1;
             Format = RG16F;
             MipLevels = 8;
         };
@@ -51,74 +58,74 @@ namespace SharedResources
         {
             texture2D _RenderTemporary0a
             {
-                Width = POW2SIZE;
-                Height = POW2SIZE;
+                Width = POW2SIZE_0;
+                Height = POW2SIZE_0;
                 Format = RG16F;
                 MipLevels = 8;
             };
 
             texture2D _RenderTemporary0b
             {
-                Width = POW2SIZE;
-                Height = POW2SIZE;
+                Width = POW2SIZE_0;
+                Height = POW2SIZE_0;
                 Format = RG16F;
                 MipLevels = 8;
             };
 
             texture2D _RenderTemporary0c
             {
-                Width = POW2SIZE;
-                Height = POW2SIZE;
+                Width = POW2SIZE_0;
+                Height = POW2SIZE_0;
                 Format = RG16F;
                 MipLevels = 8;
             };
 
             texture2D _RenderTemporary1
             {
-                Width = POW2SIZE / 2;
-                Height = POW2SIZE / 2;
+                Width = POW2SIZE_1;
+                Height = POW2SIZE_1;
                 Format = RG16F;
             };
 
             texture2D _RenderTemporary2
             {
-                Width = POW2SIZE / 4;
-                Height = POW2SIZE / 4;
+                Width = POW2SIZE_2;
+                Height = POW2SIZE_2;
                 Format = RG16F;
             };
 
             texture2D _RenderTemporary3
             {
-                Width = POW2SIZE / 8;
-                Height = POW2SIZE / 8;
+                Width = POW2SIZE_3;
+                Height = POW2SIZE_3;
                 Format = RG16F;
             };
 
             texture2D _RenderTemporary4
             {
-                Width = POW2SIZE / 16;
-                Height = POW2SIZE / 16;
+                Width = POW2SIZE_4;
+                Height = POW2SIZE_4;
                 Format = RG16F;
             };
 
             texture2D _RenderTemporary5
             {
-                Width = POW2SIZE / 32;
-                Height = POW2SIZE / 32;
+                Width = POW2SIZE_5;
+                Height = POW2SIZE_5;
                 Format = RG16F;
             };
 
             texture2D _RenderTemporary6
             {
-                Width = POW2SIZE / 64;
-                Height = POW2SIZE / 64;
+                Width = POW2SIZE_6;
+                Height = POW2SIZE_6;
                 Format = RG16F;
             };
 
             texture2D _RenderTemporary7
             {
-                Width = POW2SIZE / 128;
-                Height = POW2SIZE / 128;
+                Width = POW2SIZE_7;
+                Height = POW2SIZE_7;
                 Format = RG16F;
             };
         }
@@ -220,8 +227,8 @@ namespace MotionBlur
 
     texture2D _RenderData3
     {
-        Width = POW2SIZE;
-        Height = POW2SIZE;
+        Width = POW2SIZE_0;
+        Height = POW2SIZE_0;
         Format = RG16F;
         MipLevels = 8;
     };
@@ -292,8 +299,8 @@ namespace MotionBlur
 
     texture2D _RenderTemporary0
     {
-        Width = POW2SIZE / 1;
-        Height = POW2SIZE / 1;
+        Width = POW2SIZE_0;
+        Height = POW2SIZE_0;
         Format = RG16F;
     };
 
@@ -355,27 +362,27 @@ namespace MotionBlur
 
     void Downsample1VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 DownsampleCoords[4] : TEXCOORD0)
     {
-        DownsampleVS(ID, 1.0 / ldexp(POW2SIZE, -1.0), Position, DownsampleCoords);
+        DownsampleVS(ID, 1.0 / POW2SIZE_0, Position, DownsampleCoords);
     }
 
     void Downsample2VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 DownsampleCoords[4] : TEXCOORD0)
     {
-        DownsampleVS(ID, 1.0 / ldexp(POW2SIZE, -2.0), Position, DownsampleCoords);
+        DownsampleVS(ID, 1.0 / POW2SIZE_1, Position, DownsampleCoords);
     }
 
     void Upsample1VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 UpsampleCoords[3] : TEXCOORD0)
     {
-        UpsampleVS(ID, 1.0 / ldexp(POW2SIZE, -1.0), Position, UpsampleCoords);
+        UpsampleVS(ID, 1.0 / POW2SIZE_1, Position, UpsampleCoords);
     }
 
     void Upsample0VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 UpsampleCoords[3] : TEXCOORD0)
     {
-        UpsampleVS(ID, 1.0 / ldexp(POW2SIZE, 0.0), Position, UpsampleCoords);
+        UpsampleVS(ID, 1.0 / POW2SIZE_0, Position, UpsampleCoords);
     }
 
     void DerivativesVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoord : TEXCOORD0)
     {
-        const float2 PixelSize = 0.5 / POW2SIZE;
+        const float2 PixelSize = 0.5 / POW2SIZE_0;
         const float4 PixelOffset = float4(PixelSize, -PixelSize);
         float2 TexCoord0;
         PostProcessVS(ID, Position, TexCoord0);
@@ -386,49 +393,49 @@ namespace MotionBlur
     {
         float2 TexCoord0;
         PostProcessVS(ID, Position, TexCoord0);
-        UpsampleOffsets(TexCoord0, 1.0 / ldexp(POW2SIZE, -6.0), UpsampleCoords);
+        UpsampleOffsets(TexCoord0, 1.0 / POW2SIZE_6, UpsampleCoords);
     }
 
     void EstimateLevel5VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 UpsampleCoords[3] : TEXCOORD0)
     {
         float2 TexCoord0;
         PostProcessVS(ID, Position, TexCoord0);
-        UpsampleOffsets(TexCoord0, 1.0 / ldexp(POW2SIZE, -5.0), UpsampleCoords);
+        UpsampleOffsets(TexCoord0, 1.0 / POW2SIZE_5, UpsampleCoords);
     }
 
     void EstimateLevel4VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 UpsampleCoords[3] : TEXCOORD0)
     {
         float2 TexCoord0;
         PostProcessVS(ID, Position, TexCoord0);
-        UpsampleOffsets(TexCoord0, 1.0 / ldexp(POW2SIZE, -4.0), UpsampleCoords);
+        UpsampleOffsets(TexCoord0, 1.0 / POW2SIZE_4, UpsampleCoords);
     }
 
     void EstimateLevel3VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 UpsampleCoords[3] : TEXCOORD0)
     {
         float2 TexCoord0;
         PostProcessVS(ID, Position, TexCoord0);
-        UpsampleOffsets(TexCoord0, 1.0 / ldexp(POW2SIZE, -3.0), UpsampleCoords);
+        UpsampleOffsets(TexCoord0, 1.0 / POW2SIZE_3, UpsampleCoords);
     }
 
     void EstimateLevel2VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 UpsampleCoords[3] : TEXCOORD0)
     {
         float2 TexCoord0;
         PostProcessVS(ID, Position, TexCoord0);
-        UpsampleOffsets(TexCoord0, 1.0 / ldexp(POW2SIZE, -2.0), UpsampleCoords);
+        UpsampleOffsets(TexCoord0, 1.0 / POW2SIZE_2, UpsampleCoords);
     }
 
     void EstimateLevel1VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 UpsampleCoords[3] : TEXCOORD0)
     {
         float2 TexCoord0;
         PostProcessVS(ID, Position, TexCoord0);
-        UpsampleOffsets(TexCoord0, 1.0 / ldexp(POW2SIZE, -1.0), UpsampleCoords);
+        UpsampleOffsets(TexCoord0, 1.0 / POW2SIZE_1, UpsampleCoords);
     }
 
     void EstimateLevel0VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 UpsampleCoords[3] : TEXCOORD0)
     {
         float2 TexCoord0;
         PostProcessVS(ID, Position, TexCoord0);
-        UpsampleOffsets(TexCoord0, 1.0 / ldexp(POW2SIZE, 0.0), UpsampleCoords);
+        UpsampleOffsets(TexCoord0, 1.0 / POW2SIZE_0, UpsampleCoords);
     }
 
     // Pixel shaders
@@ -539,7 +546,7 @@ namespace MotionBlur
 
     void NormalizePS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
     {
-    	const float Minima = exp2(-8.0);
+        const float Minima = exp2(-8.0);
         float3 Color = max(tex2D(_SampleColor, TexCoord).rgb, Minima);
         OutputColor0 = saturate(Color.xy / dot(Color, 1.0));
     }
@@ -646,7 +653,7 @@ namespace MotionBlur
         const int Samples = 4;
         float Noise = frac(52.9829189 * frac(dot(Position.xy, float2(0.06711056, 0.00583715))));
         float FrameTimeRatio = _TargetFrameRate / (1e+3 / _FrameTime);
-        float2 Velocity = (tex2Dlod(_SamplePOW2Temporary0c, float4(TexCoord, 0.0, _MipBias)).xy / POW2SIZE) * _Scale;
+        float2 Velocity = (tex2Dlod(_SamplePOW2Temporary0c, float4(TexCoord, 0.0, _MipBias)).xy / POW2SIZE_0) * _Scale;
         Velocity /= (_FrameRateScaling) ? FrameTimeRatio : 1.0;
 
         for(int k = 0; k < Samples; ++k)
