@@ -369,7 +369,17 @@ namespace MotionBlur
     {
         DownsampleVS(ID, 1.0 / POW2SIZE_1, Position, DownsampleCoords);
     }
+    
+    void Downsample3VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 DownsampleCoords[4] : TEXCOORD0)
+    {
+        DownsampleVS(ID, 1.0 / POW2SIZE_2, Position, DownsampleCoords);
+    }
 
+    void Upsample2VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 UpsampleCoords[3] : TEXCOORD0)
+    {
+        UpsampleVS(ID, 1.0 / POW2SIZE_2, Position, UpsampleCoords);
+    }
+    
     void Upsample1VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 UpsampleCoords[3] : TEXCOORD0)
     {
         UpsampleVS(ID, 1.0 / POW2SIZE_1, Position, UpsampleCoords);
@@ -565,6 +575,16 @@ namespace MotionBlur
     {
         OutputColor0 = Downsample(_SamplePOW2Temporary1, DownsampleCoords);
     }
+    
+    void PreDownsample3PS(in float4 Position : SV_Position, in float4 DownsampleCoords[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+    {
+        OutputColor0 = Downsample(_SamplePOW2Temporary2, DownsampleCoords);
+    }
+    
+    void PreUpsample2PS(in float4 Position : SV_Position, in float4 UpsampleCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+    {
+        OutputColor0 = Upsample(_SamplePOW2Temporary3, UpsampleCoords);
+    }
 
     void PreUpsample1PS(in float4 Position : SV_Position, in float4 UpsampleCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
@@ -637,6 +657,16 @@ namespace MotionBlur
         OutputColor0 = Downsample(_SamplePOW2Temporary1, DownsampleCoords);
     }
 
+    void PostDownsample3PS(in float4 Position : SV_Position, in float4 DownsampleCoords[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+    {
+        OutputColor0 = Downsample(_SamplePOW2Temporary2, DownsampleCoords);
+    }
+    
+    void PostUpsample2PS(in float4 Position : SV_Position, in float4 UpsampleCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+    {
+        OutputColor0 = Upsample(_SamplePOW2Temporary3, UpsampleCoords);
+    }
+    
     void PostUpsample1PS(in float4 Position : SV_Position, in float4 UpsampleCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
         OutputColor0 = Upsample(_SamplePOW2Temporary2, UpsampleCoords);
@@ -699,7 +729,21 @@ namespace MotionBlur
             PixelShader = PreDownsample2PS;
             RenderTarget0 = SharedResources::RG16F::POW2::_RenderTemporary2;
         }
+        
+        pass
+        {
+            VertexShader = Downsample3VS;
+            PixelShader = PreDownsample3PS;
+            RenderTarget0 = SharedResources::RG16F::POW2::_RenderTemporary3;
+        }
 
+        pass
+        {
+            VertexShader = Upsample2VS;
+            PixelShader = PreUpsample2PS;
+            RenderTarget0 = SharedResources::RG16F::POW2::_RenderTemporary2;
+        }
+        
         pass
         {
             VertexShader = Upsample1VS;
@@ -800,6 +844,20 @@ namespace MotionBlur
         {
             VertexShader = Downsample2VS;
             PixelShader = PostDownsample2PS;
+            RenderTarget0 = SharedResources::RG16F::POW2::_RenderTemporary2;
+        }
+        
+        pass
+        {
+            VertexShader = Downsample3VS;
+            PixelShader = PostDownsample3PS;
+            RenderTarget0 = SharedResources::RG16F::POW2::_RenderTemporary3;
+        }
+        
+        pass
+        {
+            VertexShader = Upsample2VS;
+            PixelShader = PostUpsample2PS;
             RenderTarget0 = SharedResources::RG16F::POW2::_RenderTemporary2;
         }
 
