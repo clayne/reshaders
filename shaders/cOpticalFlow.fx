@@ -369,7 +369,7 @@ namespace OpticalFlow
         SampleOffsets[3] = TexCoord.xyyy + float4(2.0, 2.0, 0.0, -2.0) * PixelSize.xyyy;
     }
 
-    void TexCoord(in float2 TexCoord, in float2 PixelSize, out float4 SampleOffsets[3])
+    void UpsampleOffsets(in float2 TexCoord, in float2 PixelSize, out float4 SampleOffsets[3])
     {
         // Sample locations:
         // [0].xy [1].xy [2].xy
@@ -398,7 +398,7 @@ namespace OpticalFlow
     {
         float2 TexCoord0 = 0.0;
         PostProcessVS(ID, Position, TexCoord0);
-        TexCoord(TexCoord0, PixelSize, Offsets);
+        UpsampleOffsets(TexCoord0, PixelSize, Offsets);
     }
 
     void Downsample1VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 DownsampleCoords[4] : TEXCOORD0)
@@ -443,7 +443,7 @@ namespace OpticalFlow
     {
         float2 TexCoord0 = 0.0;
         PostProcessVS(ID, Position, TexCoord0);
-        TexCoord(TexCoord0, PixelSize, TentFilterOffsets);
+        UpsampleOffsets(TexCoord0, PixelSize, TentFilterOffsets);
     }
 
     void EstimateLevel7VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 Offsets[3] : TEXCOORD0)

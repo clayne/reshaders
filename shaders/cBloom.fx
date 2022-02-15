@@ -136,6 +136,48 @@ uniform float _Intensity <
     ui_label = "Color Intensity";
 > = 1.0;
 
+uniform float _Level6Weight <
+    ui_type = "drag";
+    ui_min = 0.0;
+    ui_label = "Level 6 Weight";
+    ui_category = "Level Weights";
+> = 1.0;
+
+uniform float _Level5Weight <
+    ui_type = "drag";
+    ui_min = 0.0;
+    ui_label = "Level 5 Weight";
+    ui_category = "Level Weights";
+> = 1.0;
+
+uniform float _Level4Weight <
+    ui_type = "drag";
+    ui_min = 0.0;
+    ui_label = "Level 4 Weight";
+    ui_category = "Level Weights";
+> = 1.0;
+
+uniform float _Level3Weight <
+    ui_type = "drag";
+    ui_min = 0.0;
+    ui_label = "Level 3 Weight";
+    ui_category = "Level Weights";
+> = 1.0;
+
+uniform float _Level2Weight <
+    ui_type = "drag";
+    ui_min = 0.0;
+    ui_label = "Level 2 Weight";
+    ui_category = "Level Weights";
+> = 1.0;
+
+uniform float _Level1Weight <
+    ui_type = "drag";
+    ui_min = 0.0;
+    ui_label = "Level 1 Weight";
+    ui_category = "Level Weights";
+> = 1.0;
+
 texture2D _RenderColor : COLOR;
 
 sampler2D _SampleColor
@@ -323,7 +365,7 @@ void UpsampleVS1(in uint ID : SV_VertexID, out float4 Position : SV_Position, ou
 // Thresholding: https://github.com/keijiro/Kino [MIT]
 // Tonemapping: https://github.com/TheRealMJP/BakingLab [MIT]
 
-void Downsample(sampler2D Source, float4 TexCoord[4], out float4 Output)
+void Downsample(in sampler2D Source, in float4 TexCoord[4], out float4 Output)
 {
     // A0    B0    C0
     //    D0    D1
@@ -356,7 +398,7 @@ void Downsample(sampler2D Source, float4 TexCoord[4], out float4 Output)
     Output += (B1 + C1 + B2 + C2) * Weights.y;
 }
 
-void Upsample(sampler2D Source, float4 TexCoord[3], out float4 Output)
+void Upsample(in sampler2D Source, in float4 TexCoord[3], in float Weight, out float4 Output)
 {
     // A0 B0 C0
     // A1 B1 C1
@@ -378,6 +420,7 @@ void Upsample(sampler2D Source, float4 TexCoord[3], out float4 Output)
     Output += (A1 + B0 + C1 + B2) * 2.0;
     Output += B1 * 4.0;
     Output *= (1.0 / 16.0);
+    Output.a = abs(Weight);
 }
 
 float Med3(float x, float y, float z)
@@ -463,37 +506,37 @@ void DownsamplePS7(in float4 Position : SV_Position, in float4 TexCoord[4] : TEX
 
 void UpsamplePS7(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    Upsample(_SampleTemporary_RGBA16F_8, TexCoord, OutputColor0);
+    Upsample(_SampleTemporary_RGBA16F_8, TexCoord, _Level6Weight, OutputColor0);
 }
 
 void UpsamplePS6(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    Upsample(_SampleTemporary_RGBA16F_7, TexCoord, OutputColor0);
+    Upsample(_SampleTemporary_RGBA16F_7, TexCoord, _Level5Weight, OutputColor0);
 }
 
 void UpsamplePS5(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    Upsample(_SampleTemporary_RGBA16F_6, TexCoord, OutputColor0);
+    Upsample(_SampleTemporary_RGBA16F_6, TexCoord, _Level4Weight, OutputColor0);
 }
 
 void UpsamplePS4(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    Upsample(_SampleTemporary_RGBA16F_5, TexCoord, OutputColor0);
+    Upsample(_SampleTemporary_RGBA16F_5, TexCoord, _Level3Weight, OutputColor0);
 }
 
 void UpsamplePS3(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    Upsample(_SampleTemporary_RGBA16F_4, TexCoord, OutputColor0);
+    Upsample(_SampleTemporary_RGBA16F_4, TexCoord, _Level2Weight, OutputColor0);
 }
 
 void UpsamplePS2(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    Upsample(_SampleTemporary_RGBA16F_3, TexCoord, OutputColor0);
+    Upsample(_SampleTemporary_RGBA16F_3, TexCoord, _Level1Weight, OutputColor0);
 }
 
 void UpsamplePS1(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    Upsample(_SampleTemporary_RGBA16F_2, TexCoord, OutputColor0);
+    Upsample(_SampleTemporary_RGBA16F_2, TexCoord, 0.0, OutputColor0);
 }
 
 void CompositePS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
@@ -574,7 +617,7 @@ technique cBloom
         ClearRenderTargets = FALSE;
         BlendEnable = TRUE;
         BlendOp = ADD;
-        SrcBlend = ONE;
+        SrcBlend = SRCALPHA;
         DestBlend = ONE;
     }
 
@@ -586,7 +629,7 @@ technique cBloom
         ClearRenderTargets = FALSE;
         BlendEnable = TRUE;
         BlendOp = ADD;
-        SrcBlend = ONE;
+        SrcBlend = SRCALPHA;
         DestBlend = ONE;
     }
 
@@ -598,7 +641,7 @@ technique cBloom
         ClearRenderTargets = FALSE;
         BlendEnable = TRUE;
         BlendOp = ADD;
-        SrcBlend = ONE;
+        SrcBlend = SRCALPHA;
         DestBlend = ONE;
     }
 
@@ -610,7 +653,7 @@ technique cBloom
         ClearRenderTargets = FALSE;
         BlendEnable = TRUE;
         BlendOp = ADD;
-        SrcBlend = ONE;
+        SrcBlend = SRCALPHA;
         DestBlend = ONE;
     }
 
@@ -622,7 +665,7 @@ technique cBloom
         ClearRenderTargets = FALSE;
         BlendEnable = TRUE;
         BlendOp = ADD;
-        SrcBlend = ONE;
+        SrcBlend = SRCALPHA;
         DestBlend = ONE;
     }
 
@@ -634,7 +677,7 @@ technique cBloom
         ClearRenderTargets = FALSE;
         BlendEnable = TRUE;
         BlendOp = ADD;
-        SrcBlend = ONE;
+        SrcBlend = SRCALPHA;
         DestBlend = ONE;
     }
 
