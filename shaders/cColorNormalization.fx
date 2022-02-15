@@ -64,14 +64,6 @@ void PostProcessVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, 
 
 // Pixel shaders
 
-/*
-        Jamie Wong's Chromaticity
-            Title = "Color: From Hexcodes to Eyeballs"
-            Authors = Jamie Wong
-            Year = 2018
-            Link = http://jamie-wong.com/post/color/
-*/
-
 void NormalizationPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float3 OutputColor0 : SV_Target0)
 {
     OutputColor0 = 0.0;
