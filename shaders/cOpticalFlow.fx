@@ -449,12 +449,14 @@ namespace OpticalFlow
         UpsampleVS(ID, 1.0 / BUFFER_SIZE_1, Position, TexCoord);
     }
 
-    void DerivativesVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 Offsets : TEXCOORD0)
+    void DerivativesVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoords[3] : TEXCOORD0)
     {
         float2 TexCoord0;
         PostProcessVS(ID, Position, TexCoord0);
         const float2 PixelSize = 1.0 / BUFFER_SIZE_1;
-        Offsets = TexCoord0.xyxy + (float4(0.5, 0.5, -0.5, -0.5) * PixelSize.xyxy);
+        TexCoords[0] = TexCoord0.xyyy + float4(-1.5, 1.5, 0.0, -1.5) * PixelSize.xyyy;
+        TexCoords[1] = TexCoord0.xyyy + float4( 0.0, 1.5, 0.0, -1.5) * PixelSize.xyyy;
+        TexCoords[2] = TexCoord0.xyyy + float4( 1.5, 1.5, 0.0, -1.5) * PixelSize.xyyy;
     }
 
     void EstimateVS(in uint ID, in float2 PixelSize, out float4 Position, out float4 TentFilterOffsets[3])
@@ -765,15 +767,21 @@ namespace OpticalFlow
         OutputColor0 = UpsamplePS(_SampleTemporary_RG16F_2, TexCoord);
     }
 
-    void DerivativesPS(in float4 Position : SV_Position, in float4 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+    void DerivativesPS(in float4 Position : SV_Position, in float4 TexCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
-        float2 Sample0 = tex2D(_SampleTemporary_RG16F_1a, TexCoord.zy).xy; // (-x, +y)
-        float2 Sample1 = tex2D(_SampleTemporary_RG16F_1a, TexCoord.xy).xy; // (+x, +y)
-        float2 Sample2 = tex2D(_SampleTemporary_RG16F_1a, TexCoord.zw).xy; // (-x, -y)
-        float2 Sample3 = tex2D(_SampleTemporary_RG16F_1a, TexCoord.xw).xy; // (+x, -y)
-        OutputColor0.xy = (Sample3 + Sample1) - (Sample2 + Sample0);
-        OutputColor0.zw = (Sample2 + Sample3) - (Sample0 + Sample1);
-        OutputColor0 *= 4.0;
+        // A0 B0 C0
+        // A1    C1
+        // A2 B2 C2
+        float2 A0 = tex2D(_SampleTemporary_RG16F_1a, TexCoords[0].xy).xy;
+        float2 A1 = tex2D(_SampleTemporary_RG16F_1a, TexCoords[0].xz).xy;
+        float2 A2 = tex2D(_SampleTemporary_RG16F_1a, TexCoords[0].xw).xy;
+        float2 B0 = tex2D(_SampleTemporary_RG16F_1a, TexCoords[1].xy).xy;
+        float2 B2 = tex2D(_SampleTemporary_RG16F_1a, TexCoords[1].xw).xy;
+        float2 C0 = tex2D(_SampleTemporary_RG16F_1a, TexCoords[2].xy).xy;
+        float2 C1 = tex2D(_SampleTemporary_RG16F_1a, TexCoords[2].xz).xy;
+        float2 C2 = tex2D(_SampleTemporary_RG16F_1a, TexCoords[2].xw).xy;
+        OutputColor0.xy  = (((C0 * 4.0) + (C1 * 2.0) + (C2 * 4.0)) - ((A0 * 4.0) + (A1 * 2.0) + (A2 * 4.0))) / 10.0;
+        OutputColor0.zw = (((A0 * 4.0) + (B0 * 2.0) + (C0 * 4.0)) - ((A2 * 4.0) + (B2 * 2.0) + (C2 * 4.0))) / 10.0;
     }
 
     void EstimateLevel8PS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
