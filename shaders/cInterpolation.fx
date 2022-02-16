@@ -541,7 +541,7 @@ namespace Interpolation
 
     void NormalizePS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
     {
-        const float Minima = exp2(-8.0);
+        const float Minima = exp2(-10.0);
         float3 Color = max(tex2D(_SampleFrame0, TexCoord).rgb, Minima);
         OutputColor0 = saturate(Color.xy / dot(Color, 1.0));
     }

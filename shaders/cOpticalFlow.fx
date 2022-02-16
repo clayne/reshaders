@@ -710,7 +710,7 @@ namespace OpticalFlow
     {
         float4 Color;
         Color = tex2D(Source, TexCoord);
-        Color = max(Color, exp2(-8.0));
+        Color = max(Color, exp2(-10.0));
         return saturate(Color / dot(Color.rgb, 1.0));
     }
 

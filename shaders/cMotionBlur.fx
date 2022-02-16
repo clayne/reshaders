@@ -546,31 +546,50 @@ namespace MotionBlur
         const float Alpha = max(ldexp(_Constraint * 1e-3, Level - MaxLevel), 1e-7);
         float2 SampleC = tex2D(_SamplePOW2Temporary0a, TexCoord).rg;
         float2 SampleP = tex2D(_SampleData3, TexCoord).rg;
-        float2 Iz = SampleC - SampleP;
+        float2 It = SampleC - SampleP;
         float2 Ix = tex2D(_SamplePOW2Temporary0b, TexCoord).rg;
         float2 Iy = tex2D(_SamplePOW2Temporary0c, TexCoord).rg;
 
-        // Compute diagonal
-        float2 Aii;
-        Aii.x = dot(Ix, Ix) + Alpha;
-        Aii.y = dot(Iy, Iy) + Alpha;
-        Aii.xy = 1.0 / Aii.xy;
+        /*
+            We solve for X[N] (UV)
+            Matrix => Horn–Schunck Matrix => Horn–Schunck Equation => Solving Equation
 
-        // Compute right-hand side
-        float2 RHS;
-        RHS.x = dot(Ix, Iz);
-        RHS.y = dot(Iy, Iz);
+            Matrix
+                [A11 A12] [X1] = [B1]
+                [A21 A22] [X2] = [B2]
 
-        // Compute triangle
+            Horn–Schunck Matrix
+                [(Ix^2 + a) (IxIy)] [U] = [aU - IxIt]
+                [(IxIy) (Iy^2 + a)] [V] = [aV - IyIt]
+
+            Horn–Schunck Equation
+                (Ix^2 + a)U + IxIyV = aU - IxIt
+                IxIyU + (Iy^2 + a)V = aV - IyIt
+
+            Solving Equation
+                U = ((aU - IxIt) - IxIyV) / (Ix^2 + a)
+                V = ((aV - IxIt) - IxIyu) / (Iy^2 + a)
+        */
+
+        // A11 = 1.0 / (Rx^2 + Gx^2 + a)
+        // A22 = 1.0 / (Ry^2 + Gy^2 + a)
+        // Aij = Rxy + Gxy
+        float A11 = 1.0 / (dot(Ix, Ix) + Alpha);
+        float A22 = 1.0 / (dot(Iy, Iy) + Alpha);
         float Aij = dot(Ix, Iy);
 
+        // B1 = Rxt + Gxt
+        // B2 = Ryt + Gyt
+        float B1 = dot(Ix, It);
+        float B2 = dot(Iy, It);
+
         // Symmetric Gauss-Seidel (forward sweep, from 1...N)
-        DUV.x = Aii.x * ((Alpha * UV.x) - RHS.x - (UV.y * Aij));
-        DUV.y = Aii.y * ((Alpha * UV.y) - RHS.y - (DUV.x * Aij));
+        DUV.x = A11 * ((Alpha * UV.x - B1) - (UV.y * Aij));
+        DUV.y = A22 * ((Alpha * UV.y - B2) - (DUV.x * Aij));
 
         // Symmetric Gauss-Seidel (backward sweep, from N...1)
-        DUV.y = Aii.y * ((Alpha * DUV.y) - RHS.y - (DUV.x * Aij));
-        DUV.x = Aii.x * ((Alpha * DUV.x) - RHS.x - (DUV.y * Aij));
+        DUV.y = A22 * ((Alpha * DUV.y - B2) - (DUV.x * Aij));
+        DUV.x = A11 * ((Alpha * DUV.x - B1) - (DUV.y * Aij));
     }
 
     // Math functions: https://github.com/microsoft/DirectX-Graphics-Samples/blob/master/MiniEngine/Core/Shaders/DoFMedianFilterCS.hlsl
@@ -604,7 +623,7 @@ namespace MotionBlur
     {
         float4 Color;
         Color = tex2D(Source, TexCoord);
-        Color = max(Color, exp2(-8.0));
+        Color = max(Color, exp2(-10.0));
         return saturate(Color / dot(Color.rgb, 1.0));
     }
 
@@ -667,6 +686,7 @@ namespace MotionBlur
 
     void DerivativesPS(in float4 Position : SV_Position, in float4 TexCoords[3] : TEXCOORD0, out float2 OutputColor0 : SV_Target0, out float2 OutputColor1 : SV_Target1)
     {
+        // Custom 5x5 bilinear derivatives, normalized to [-1, 1]
         // A0 B0 C0
         // A1    C1
         // A2 B2 C2
@@ -678,7 +698,19 @@ namespace MotionBlur
         float2 C0 = tex2D(_SamplePOW2Temporary0a, TexCoords[2].xy).xy;
         float2 C1 = tex2D(_SamplePOW2Temporary0a, TexCoords[2].xz).xy;
         float2 C2 = tex2D(_SamplePOW2Temporary0a, TexCoords[2].xw).xy;
+
+        // -1 -1  0  +1 +1
+        // -1 -1  0  +1 +1
+        // -1 -1  0  +1 +1
+        // -1 -1  0  +1 +1
+        // -1 -1  0  +1 +1
         OutputColor0 = (((C0 * 4.0) + (C1 * 2.0) + (C2 * 4.0)) - ((A0 * 4.0) + (A1 * 2.0) + (A2 * 4.0))) / 10.0;
+
+        // +1 +1 +1 +1 +1
+        // +1 +1 +1 +1 +1
+        //  0  0  0  0  0
+        // -1 -1 -1 -1 -1
+        // -1 -1 -1 -1 -1
         OutputColor1 = (((A0 * 4.0) + (B0 * 2.0) + (C0 * 4.0)) - ((A2 * 4.0) + (B2 * 2.0) + (C2 * 4.0))) / 10.0;
     }
 

@@ -125,7 +125,7 @@ namespace FrameDifference
 
     void BlitPS0(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
-        float3 Color = max(tex2D(_SampleColor, TexCoord).rgb, exp2(-8.0));
+        float3 Color = max(tex2D(_SampleColor, TexCoord).rgb, exp2(-10.0));
         OutputColor0 = (_NormalizeInput) ? saturate(Color.xy / dot(Color, 1.0)) : max(max(Color.r, Color.g), Color.b);
     }
 
