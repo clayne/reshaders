@@ -592,24 +592,19 @@ namespace OpticalFlow
     float4 UpsamplePS(sampler2D Source, float4 Offsets[3])
     {
         // Sample locations:
-        // [0].xy [1].xy [2].xy
-        // [0].xz [1].xz [2].xz
-        // [0].xw [1].xw [2].xw
-        float4 OutputColor = 0.0;
-        float4 Sample[9];
-        Sample[0] = tex2D(Source, Offsets[0].xy);
-        Sample[1] = tex2D(Source, Offsets[1].xy);
-        Sample[2] = tex2D(Source, Offsets[2].xy);
-        Sample[3] = tex2D(Source, Offsets[0].xz);
-        Sample[4] = tex2D(Source, Offsets[1].xz);
-        Sample[5] = tex2D(Source, Offsets[2].xz);
-        Sample[6] = tex2D(Source, Offsets[0].xw);
-        Sample[7] = tex2D(Source, Offsets[1].xw);
-        Sample[8] = tex2D(Source, Offsets[2].xw);
-
-        return ((Sample[0] + Sample[2] + Sample[6] + Sample[8]) * 1.0
-              + (Sample[1] + Sample[3] + Sample[5] + Sample[7]) * 2.0
-              + (Sample[4]) * 4.0) / 16.0;
+        // A0 B0 C0
+        // A1 B1 C1
+        // A2 B2 C2
+        float4 A0 = tex2D(Source, Offsets[0].xy);
+        float4 A1 = tex2D(Source, Offsets[0].xz);
+        float4 A2 = tex2D(Source, Offsets[0].xw);
+        float4 B0 = tex2D(Source, Offsets[1].xy);
+        float4 B1 = tex2D(Source, Offsets[1].xz);
+        float4 B2 = tex2D(Source, Offsets[1].xw);
+        float4 C0 = tex2D(Source, Offsets[2].xy);
+        float4 C1 = tex2D(Source, Offsets[2].xz);
+        float4 C2 = tex2D(Source, Offsets[2].xw);
+        return (((A0 + C0 + A2 + C2) * 1.0) + ((B0 + A1 + C1 + B2) * 2.0) + (B1 * 4.0)) / 16.0;
     }
 
     /*
@@ -717,24 +712,21 @@ namespace OpticalFlow
     void NormalizePS(in float4 Position : SV_Position, in float4 TexCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
         // Sample locations:
-        // [0].xy [1].xy [2].xy
-        // [0].xz [1].xz [2].xz
-        // [0].xw [1].xw [2].xw
-        float4 OutputColor = 0.0;
-        float4 Sample[9];
-        Sample[0] = Chroma(_SampleColor, TexCoords[0].xy);
-        Sample[1] = Chroma(_SampleColor, TexCoords[1].xy);
-        Sample[2] = Chroma(_SampleColor, TexCoords[2].xy);
-        Sample[3] = Chroma(_SampleColor, TexCoords[0].xz);
-        Sample[4] = Chroma(_SampleColor, TexCoords[1].xz);
-        Sample[5] = Chroma(_SampleColor, TexCoords[2].xz);
-        Sample[6] = Chroma(_SampleColor, TexCoords[0].xw);
-        Sample[7] = Chroma(_SampleColor, TexCoords[1].xw);
-        Sample[8] = Chroma(_SampleColor, TexCoords[2].xw);
-        OutputColor0 = Med9(Sample[0], Sample[1], Sample[2],
-                            Sample[3], Sample[4], Sample[5],
-                            Sample[6], Sample[7], Sample[8]);
-        OutputColor0 = saturate(OutputColor0.xy / dot(OutputColor0.rgb, 1.0));
+        // A0 B0 C0
+        // A1 B1 C1
+        // A2 B2 C2
+        float4 A0 = Chroma(_SampleColor, TexCoords[0].xy);
+        float4 A1 = Chroma(_SampleColor, TexCoords[0].xz);
+        float4 A2 = Chroma(_SampleColor, TexCoords[0].xw);
+        float4 B0 = Chroma(_SampleColor, TexCoords[1].xy);
+        float4 B1 = Chroma(_SampleColor, TexCoords[1].xz);
+        float4 B2 = Chroma(_SampleColor, TexCoords[1].xw);
+        float4 C0 = Chroma(_SampleColor, TexCoords[2].xy);
+        float4 C1 = Chroma(_SampleColor, TexCoords[2].xz);
+        float4 C2 = Chroma(_SampleColor, TexCoords[2].xw);
+        OutputColor0 = Med9(A0, B0, C0,
+                            A1, B1, C1,
+                            A2, B2, C2);
     }
 
     void PreDownsample1PS(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
@@ -769,6 +761,7 @@ namespace OpticalFlow
 
     void DerivativesPS(in float4 Position : SV_Position, in float4 TexCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
+        // Custom 5x5 bilinear derivatives, normalized to [-1, 1]
         // A0 B0 C0
         // A1    C1
         // A2 B2 C2
@@ -780,8 +773,20 @@ namespace OpticalFlow
         float2 C0 = tex2D(_SampleTemporary_RG16F_1a, TexCoords[2].xy).xy;
         float2 C1 = tex2D(_SampleTemporary_RG16F_1a, TexCoords[2].xz).xy;
         float2 C2 = tex2D(_SampleTemporary_RG16F_1a, TexCoords[2].xw).xy;
-        OutputColor0.xy  = (((C0 * 4.0) + (C1 * 2.0) + (C2 * 4.0)) - ((A0 * 4.0) + (A1 * 2.0) + (A2 * 4.0))) / 10.0;
-        OutputColor0.zw = (((A0 * 4.0) + (B0 * 2.0) + (C0 * 4.0)) - ((A2 * 4.0) + (B2 * 2.0) + (C2 * 4.0))) / 10.0;
+
+        // -1 -1  0  +1 +1
+        // -1 -1  0  +1 +1
+        // -1 -1  0  +1 +1
+        // -1 -1  0  +1 +1
+        // -1 -1  0  +1 +1
+        OutputColor0.xy  = (((C0 * 4.0) + (C1 * 2.0) + (C2 * 4.0)) - ((A0 * 4.0) + (A1 * 2.0) + (A2 * 4.0))) / 20.0;
+
+        // +1 +1 +1 +1 +1
+        // +1 +1 +1 +1 +1
+        //  0  0  0  0  0
+        // -1 -1 -1 -1 -1
+        // -1 -1 -1 -1 -1
+        OutputColor0.zw = (((A0 * 4.0) + (B0 * 2.0) + (C0 * 4.0)) - ((A2 * 4.0) + (B2 * 2.0) + (C2 * 4.0))) / 20.0;
     }
 
     void EstimateLevel8PS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
