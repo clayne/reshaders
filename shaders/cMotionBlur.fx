@@ -314,6 +314,17 @@ namespace MotionBlur
 
     // Vertex shaders
 
+    void MedianOffsets(in float2 TexCoord, in float2 PixelSize, out float4 SampleOffsets[3])
+    {
+        // Sample locations:
+        // [0].xy [1].xy [2].xy
+        // [0].xz [1].xz [2].xz
+        // [0].xw [1].xw [2].xw
+        SampleOffsets[0] = TexCoord.xyyy + (float4(-1.0, 1.0, 0.0, -1.0) * PixelSize.xyyy);
+        SampleOffsets[1] = TexCoord.xyyy + (float4(0.0, 1.0, 0.0, -1.0) * PixelSize.xyyy);
+        SampleOffsets[2] = TexCoord.xyyy + (float4(1.0, 1.0, 0.0, -1.0) * PixelSize.xyyy);
+    }
+
     void DownsampleOffsets(in float2 TexCoord, in float2 PixelSize, out float4 SampleOffsets[4])
     {
         // Sample locations:
@@ -346,6 +357,13 @@ namespace MotionBlur
         Position = TexCoord.xyxy * float4(2.0, -2.0, 0.0, 0.0) + float4(-1.0, 1.0, 0.0, 1.0);
     }
 
+    void MedianVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 Offsets[3] : TEXCOORD0)
+    {
+        float2 TexCoord0;
+        PostProcessVS(ID, Position, TexCoord0);
+        MedianOffsets(TexCoord0, 1.0 / uint2(BUFFER_WIDTH >> 1, BUFFER_HEIGHT >> 1), Offsets);
+    }
+
     void DownsampleVS(in uint ID, in float2 PixelSize, out float4 Position, out float4 Offsets[4])
     {
         float2 TexCoord0 = 0.0;
@@ -369,7 +387,7 @@ namespace MotionBlur
     {
         DownsampleVS(ID, 1.0 / POW2SIZE_1, Position, DownsampleCoords);
     }
-    
+
     void Downsample3VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 DownsampleCoords[4] : TEXCOORD0)
     {
         DownsampleVS(ID, 1.0 / POW2SIZE_2, Position, DownsampleCoords);
@@ -379,7 +397,7 @@ namespace MotionBlur
     {
         UpsampleVS(ID, 1.0 / POW2SIZE_2, Position, UpsampleCoords);
     }
-    
+
     void Upsample1VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 UpsampleCoords[3] : TEXCOORD0)
     {
         UpsampleVS(ID, 1.0 / POW2SIZE_1, Position, UpsampleCoords);
@@ -554,11 +572,61 @@ namespace MotionBlur
         DUV.x = Aii.x * ((Alpha * DUV.x) - RHS.x - (DUV.y * Aij));
     }
 
-    void NormalizePS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
+    // Math functions: https://github.com/microsoft/DirectX-Graphics-Samples/blob/master/MiniEngine/Core/Shaders/DoFMedianFilterCS.hlsl
+
+    float4 Max3(float4 a, float4 b, float4 c)
     {
-        const float Minima = exp2(-8.0);
-        float3 Color = max(tex2D(_SampleColor, TexCoord).rgb, Minima);
-        OutputColor0 = saturate(Color.xy / dot(Color, 1.0));
+        return max(max(a, b), c);
+    }
+
+    float4 Min3(float4 a, float4 b, float4 c)
+    {
+        return min(min(a, b), c);
+    }
+
+    float4 Med3(float4 a, float4 b, float4 c)
+    {
+        return clamp(a, min(b, c), max(b, c));
+    }
+
+    float4 Med9(float4 x0, float4 x1, float4 x2,
+                float4 x3, float4 x4, float4 x5,
+                float4 x6, float4 x7, float4 x8)
+    {
+        float4 A = Max3(Min3(x0, x1, x2), Min3(x3, x4, x5), Min3(x6, x7, x8));
+        float4 B = Min3(Max3(x0, x1, x2), Max3(x3, x4, x5), Max3(x6, x7, x8));
+        float4 C = Med3(Med3(x0, x1, x2), Med3(x3, x4, x5), Med3(x6, x7, x8));
+        return Med3(A, B, C);
+    }
+
+    float4 Chroma(in sampler2D Source, in float2 TexCoord)
+    {
+        float4 Color;
+        Color = tex2D(Source, TexCoord);
+        Color = max(Color, exp2(-8.0));
+        return saturate(Color / dot(Color.rgb, 1.0));
+    }
+
+    void NormalizePS(in float4 Position : SV_Position, in float4 TexCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+    {
+        // Sample locations:
+        // [0].xy [1].xy [2].xy
+        // [0].xz [1].xz [2].xz
+        // [0].xw [1].xw [2].xw
+        float4 OutputColor = 0.0;
+        float4 Sample[9];
+        Sample[0] = Chroma(_SampleColor, TexCoords[0].xy);
+        Sample[1] = Chroma(_SampleColor, TexCoords[1].xy);
+        Sample[2] = Chroma(_SampleColor, TexCoords[2].xy);
+        Sample[3] = Chroma(_SampleColor, TexCoords[0].xz);
+        Sample[4] = Chroma(_SampleColor, TexCoords[1].xz);
+        Sample[5] = Chroma(_SampleColor, TexCoords[2].xz);
+        Sample[6] = Chroma(_SampleColor, TexCoords[0].xw);
+        Sample[7] = Chroma(_SampleColor, TexCoords[1].xw);
+        Sample[8] = Chroma(_SampleColor, TexCoords[2].xw);
+        OutputColor0 = Med9(Sample[0], Sample[1], Sample[2],
+                            Sample[3], Sample[4], Sample[5],
+                            Sample[6], Sample[7], Sample[8]);
     }
 
     void Copy0PS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
@@ -575,12 +643,12 @@ namespace MotionBlur
     {
         OutputColor0 = Downsample(_SamplePOW2Temporary1, DownsampleCoords);
     }
-    
+
     void PreDownsample3PS(in float4 Position : SV_Position, in float4 DownsampleCoords[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
         OutputColor0 = Downsample(_SamplePOW2Temporary2, DownsampleCoords);
     }
-    
+
     void PreUpsample2PS(in float4 Position : SV_Position, in float4 UpsampleCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
         OutputColor0 = Upsample(_SamplePOW2Temporary3, UpsampleCoords);
@@ -661,12 +729,12 @@ namespace MotionBlur
     {
         OutputColor0 = Downsample(_SamplePOW2Temporary2, DownsampleCoords);
     }
-    
+
     void PostUpsample2PS(in float4 Position : SV_Position, in float4 UpsampleCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
         OutputColor0 = Upsample(_SamplePOW2Temporary3, UpsampleCoords);
     }
-    
+
     void PostUpsample1PS(in float4 Position : SV_Position, in float4 UpsampleCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
         OutputColor0 = Upsample(_SamplePOW2Temporary2, UpsampleCoords);
@@ -702,7 +770,7 @@ namespace MotionBlur
 
         pass
         {
-            VertexShader = PostProcessVS;
+            VertexShader = MedianVS;
             PixelShader = NormalizePS;
             RenderTarget0 = SharedResources::RG16F::_RenderTemporary1a;
         }
@@ -729,7 +797,7 @@ namespace MotionBlur
             PixelShader = PreDownsample2PS;
             RenderTarget0 = SharedResources::RG16F::POW2::_RenderTemporary2;
         }
-        
+
         pass
         {
             VertexShader = Downsample3VS;
@@ -743,7 +811,7 @@ namespace MotionBlur
             PixelShader = PreUpsample2PS;
             RenderTarget0 = SharedResources::RG16F::POW2::_RenderTemporary2;
         }
-        
+
         pass
         {
             VertexShader = Upsample1VS;
@@ -846,14 +914,14 @@ namespace MotionBlur
             PixelShader = PostDownsample2PS;
             RenderTarget0 = SharedResources::RG16F::POW2::_RenderTemporary2;
         }
-        
+
         pass
         {
             VertexShader = Downsample3VS;
             PixelShader = PostDownsample3PS;
             RenderTarget0 = SharedResources::RG16F::POW2::_RenderTemporary3;
         }
-        
+
         pass
         {
             VertexShader = Upsample2VS;
