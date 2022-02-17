@@ -139,8 +139,8 @@ namespace MotionBlur
         ui_label = "Flow Scale";
         ui_tooltip = "Higher = More motion blur";
         ui_min = 0.0;
-        ui_max = 1.0;
-    > = 0.5;
+        ui_max = 2.0;
+    > = 1.0;
 
     uniform float _Constraint <
         ui_type = "slider";
@@ -408,13 +408,14 @@ namespace MotionBlur
         UpsampleVS(ID, 1.0 / POW2SIZE_0, Position, UpsampleCoords);
     }
 
-    void DerivativesVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoords[2] : TEXCOORD0)
+    void DerivativesVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoords[3] : TEXCOORD0)
     {
         float2 TexCoord0;
         PostProcessVS(ID, Position, TexCoord0);
         const float2 PixelSize = 1.0 / POW2SIZE_0;
-        TexCoords[0] = TexCoord0.xxyy + float4(-1.5, 1.5, -0.5, 0.5) * PixelSize.xxyy;
-        TexCoords[1] = TexCoord0.xxyy + float4(-0.5, 0.5, -1.5, 1.5) * PixelSize.xxyy;
+        TexCoords[0] = TexCoord0.xyyy + float4(-1.5, 1.5, 0.0, -1.5) * PixelSize.xyyy;
+        TexCoords[1] = TexCoord0.xyyy + float4( 0.0, 1.5, 0.0, -1.5) * PixelSize.xyyy;
+        TexCoords[2] = TexCoord0.xyyy + float4( 1.5, 1.5, 0.0, -1.5) * PixelSize.xyyy;
     }
 
     void EstimateLevel6VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 UpsampleCoords[3] : TEXCOORD0)
@@ -676,37 +677,34 @@ namespace MotionBlur
         OutputColor0 = Upsample(_SamplePOW2Temporary1, UpsampleCoords);
     }
 
-    void DerivativesPS(in float4 Position : SV_Position, in float4 TexCoords[2] : TEXCOORD0, out float2 OutputColor0 : SV_Target0, out float2 OutputColor1 : SV_Target1)
+    void DerivativesPS(in float4 Position : SV_Position, in float4 TexCoords[3] : TEXCOORD0, out float2 OutputColor0 : SV_Target0, out float2 OutputColor1 : SV_Target1)
     {
-        // Custom 5x5 bilinear derivatives, normalized to [-1, 1], by CeeJayDK
-        //   B0 B1
-        // A0     A1
-        //     C
-        // A2     A3
-        //   B2 B3
-        float2 A0 = tex2D(_SamplePOW2Temporary0a, TexCoords[0].xw).rg * 4.0; // <-1.5, +0.5>
-        float2 A1 = tex2D(_SamplePOW2Temporary0a, TexCoords[0].yw).rg * 4.0; // <+1.5, +0.5>
-        float2 A2 = tex2D(_SamplePOW2Temporary0a, TexCoords[0].xz).rg * 4.0; // <-1.5, -0.5>
-        float2 A3 = tex2D(_SamplePOW2Temporary0a, TexCoords[0].yz).rg * 4.0; // <+1.5, -0.5>
+        // Custom 5x5 bilinear derivatives, normalized to [-1, 1]
+        // A0 B0 C0
+        // A1    C1
+        // A2 B2 C2
+        float2 A0 = tex2D(_SamplePOW2Temporary0a, TexCoords[0].xy).xy;
+        float2 A1 = tex2D(_SamplePOW2Temporary0a, TexCoords[0].xz).xy;
+        float2 A2 = tex2D(_SamplePOW2Temporary0a, TexCoords[0].xw).xy;
+        float2 B0 = tex2D(_SamplePOW2Temporary0a, TexCoords[1].xy).xy;
+        float2 B2 = tex2D(_SamplePOW2Temporary0a, TexCoords[1].xw).xy;
+        float2 C0 = tex2D(_SamplePOW2Temporary0a, TexCoords[2].xy).xy;
+        float2 C1 = tex2D(_SamplePOW2Temporary0a, TexCoords[2].xz).xy;
+        float2 C2 = tex2D(_SamplePOW2Temporary0a, TexCoords[2].xw).xy;
 
-        float2 B0 = tex2D(_SamplePOW2Temporary0a, TexCoords[1].xw).rg * 4.0; // <-0.5, +1.5>
-        float2 B1 = tex2D(_SamplePOW2Temporary0a, TexCoords[1].yw).rg * 4.0; // <+0.5, +1.5>
-        float2 B2 = tex2D(_SamplePOW2Temporary0a, TexCoords[1].xz).rg * 4.0; // <-0.5, -1.5>
-        float2 B3 = tex2D(_SamplePOW2Temporary0a, TexCoords[1].yz).rg * 4.0; // <+0.5, -1.5>
+        // -1 -1  0  +1 +1
+        // -1 -1  0  +1 +1
+        // -1 -1  0  +1 +1
+        // -1 -1  0  +1 +1
+        // -1 -1  0  +1 +1
+        OutputColor0 = (((C0 * 4.0) + (C1 * 2.0) + (C2 * 4.0)) - ((A0 * 4.0) + (A1 * 2.0) + (A2 * 4.0))) / 10.0;
 
-        //    -1 0 +1
-        // -1 -2 0 +2 +1
-        // -2 -2 0 +2 +2
-        // -1 -2 0 +2 +1
-        //    -1 0 +1
-        OutputColor0 = ((B1 + A1 + A3 + B3) - (B0 + A0 + A2 + B2)) / 12.0;
-
-        //    +1 +2 +1
-        // +1 +2 +2 +2 +1
+        // +1 +1 +1 +1 +1
+        // +1 +1 +1 +1 +1
         //  0  0  0  0  0
-        // -1 -2 -2 -2 -1
-        //    -1 -2 -1
-        OutputColor1 = ((B0 + B1 + A0 + A1) - (A2 + A3 + B2 + B3)) / 12.0;
+        // -1 -1 -1 -1 -1
+        // -1 -1 -1 -1 -1
+        OutputColor1 = (((A0 * 4.0) + (B0 * 2.0) + (C0 * 4.0)) - ((A2 * 4.0) + (B2 * 2.0) + (C2 * 4.0))) / 10.0;
     }
 
     void EstimateLevel7PS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_Target0)

@@ -30,6 +30,7 @@ void DerivativesVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, 
 
 void DerivativesPS(in float4 Position : SV_Position, in float4 TexCoords[2] : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
 {
+    // Custom 5x5 bilinear edge-detection by CeeJayDK
     //   B0 B1
     // A0     A1
     //     C
