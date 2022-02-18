@@ -120,7 +120,7 @@ namespace SharedResources
 
 namespace OpticalFlow
 {
-    //Shader properties
+    // Shader properties
 
     uniform float _Blend <
         ui_type = "slider";
