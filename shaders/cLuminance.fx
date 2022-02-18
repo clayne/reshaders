@@ -40,11 +40,11 @@ uniform int _Select <
     ui_tooltip = "Select Luminance";
 > = 0;
 
-texture2D _RenderColor : COLOR;
+texture2D RenderColor : COLOR;
 
-sampler2D _SampleColor
+sampler2D SampleColor
 {
-    Texture = _RenderColor;
+    Texture = RenderColor;
     MagFilter = LINEAR;
     MinFilter = LINEAR;
     MipFilter = LINEAR;
@@ -66,7 +66,7 @@ void PostProcessVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, 
 
 void LuminancePS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    float4 Color = tex2D(_SampleColor, TexCoord);
+    float4 Color = tex2D(SampleColor, TexCoord);
     switch(_Select)
     {
         case 0:

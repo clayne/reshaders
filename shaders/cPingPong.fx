@@ -42,11 +42,11 @@ uniform int _Radius <
     #define ENABLE_PINGPONG 1
 #endif
 
-texture2D _RenderColor : COLOR;
+texture2D RenderColor : COLOR;
 
-sampler2D _SampleColor
+sampler2D SampleColor
 {
-    Texture = _RenderColor;
+    Texture = RenderColor;
     MagFilter = LINEAR;
     MinFilter = LINEAR;
     MipFilter = LINEAR;
@@ -55,16 +55,16 @@ sampler2D _SampleColor
     #endif
 };
 
-texture2D _RenderBufferA
+texture2D RenderBufferA
 {
     Width = BUFFER_WIDTH / 2;
     Height = BUFFER_HEIGHT / 2;
     Format = RGBA8;
 };
 
-sampler2D _SampleBufferA
+sampler2D SampleBufferA
 {
-    Texture = _RenderBufferA;
+    Texture = RenderBufferA;
     MagFilter = LINEAR;
     MinFilter = LINEAR;
     MipFilter = LINEAR;
@@ -73,16 +73,16 @@ sampler2D _SampleBufferA
     #endif
 };
 
-texture2D _RenderBufferB
+texture2D RenderBufferB
 {
     Width = BUFFER_WIDTH / 2;
     Height = BUFFER_HEIGHT / 2;
     Format = RGBA8;
 };
 
-sampler2D _SampleBufferB
+sampler2D SampleBufferB
 {
-    Texture = _RenderBufferB;
+    Texture = RenderBufferB;
     MagFilter = LINEAR;
     MinFilter = LINEAR;
     MipFilter = LINEAR;
@@ -115,11 +115,11 @@ void PostProcessVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, 
             3. The way the player hits the ball (PixelShader)
 
     This shader's technique is an example of the 2 steps above
-        Pregame: Set up 2 players (_RenderBufferA and _RenderBufferB)
-        PingPong1: _RenderBufferA hits (HorizontalBlurPS0) to _RenderBufferB
-        PingPong2: _RenderBufferB hits (VerticalBlurPS0) to _RenderBufferA
-        PingPong3: _RenderBufferA hits (HorizontalBlurPS1) to _RenderBufferB
-        PingPong4: _RenderBufferB hits (VerticalBlurPS1) to _RenderBufferA
+        Pregame: Set up 2 players (RenderBufferA and RenderBufferB)
+        PingPong1: RenderBufferA hits (HorizontalBlurPS0) to RenderBufferB
+        PingPong2: RenderBufferB hits (VerticalBlurPS0) to RenderBufferA
+        PingPong3: RenderBufferA hits (HorizontalBlurPS1) to RenderBufferB
+        PingPong4: RenderBufferB hits (VerticalBlurPS1) to RenderBufferA
 
     "Why two textures? Can't we just read and write to one texture"?
         Unfortunately we cannot sample from and to memory at the same time
@@ -147,32 +147,32 @@ float4 GaussianBlur(sampler2D Source, float2 TexCoord, const float2 Direction)
 
 void BlitPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    OutputColor0 = tex2D(_SampleColor, TexCoord);
+    OutputColor0 = tex2D(SampleColor, TexCoord);
 }
 
 void HorizontalBlurPS0(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    OutputColor0 = GaussianBlur(_SampleBufferA, TexCoord, float2(1.0, 0.0));
+    OutputColor0 = GaussianBlur(SampleBufferA, TexCoord, float2(1.0, 0.0));
 }
 
 void VerticalBlurPS0(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    OutputColor0 = GaussianBlur(_SampleBufferB, TexCoord, float2(0.0, 1.0));
+    OutputColor0 = GaussianBlur(SampleBufferB, TexCoord, float2(0.0, 1.0));
 }
 
 void HorizontalBlurPS1(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    OutputColor0 = GaussianBlur(_SampleBufferA, TexCoord, float2(1.0, 0.0));
+    OutputColor0 = GaussianBlur(SampleBufferA, TexCoord, float2(1.0, 0.0));
 }
 
 void VerticalBlurPS1(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    OutputColor0 = GaussianBlur(_SampleBufferB, TexCoord, float2(0.0, 1.0));
+    OutputColor0 = GaussianBlur(SampleBufferB, TexCoord, float2(0.0, 1.0));
 }
 
 void OutputPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    OutputColor0 = tex2D(_SampleBufferA, TexCoord);
+    OutputColor0 = tex2D(SampleBufferA, TexCoord);
 }
 
 technique cPingPong
@@ -181,7 +181,7 @@ technique cPingPong
     {
         VertexShader = PostProcessVS;
         PixelShader = BlitPS;
-        RenderTarget0 = _RenderBufferA;
+        RenderTarget0 = RenderBufferA;
         #if BUFFER_COLOR_BIT_DEPTH == 8
             SRGBWriteEnable = TRUE;
         #endif
@@ -191,7 +191,7 @@ technique cPingPong
     {
         VertexShader = PostProcessVS;
         PixelShader = HorizontalBlurPS0;
-        RenderTarget0 = _RenderBufferB;
+        RenderTarget0 = RenderBufferB;
         #if BUFFER_COLOR_BIT_DEPTH == 8
             SRGBWriteEnable = TRUE;
         #endif
@@ -201,7 +201,7 @@ technique cPingPong
     {
         VertexShader = PostProcessVS;
         PixelShader = VerticalBlurPS0;
-        RenderTarget0 = _RenderBufferA;
+        RenderTarget0 = RenderBufferA;
         #if BUFFER_COLOR_BIT_DEPTH == 8
             SRGBWriteEnable = TRUE;
         #endif
@@ -212,7 +212,7 @@ technique cPingPong
         {
             VertexShader = PostProcessVS;
             PixelShader = HorizontalBlurPS1;
-            RenderTarget0 = _RenderBufferB;
+            RenderTarget0 = RenderBufferB;
             #if BUFFER_COLOR_BIT_DEPTH == 8
                 SRGBWriteEnable = TRUE;
             #endif
@@ -222,7 +222,7 @@ technique cPingPong
         {
             VertexShader = PostProcessVS;
             PixelShader = VerticalBlurPS1;
-            RenderTarget0 = _RenderBufferA;
+            RenderTarget0 = RenderBufferA;
             #if BUFFER_COLOR_BIT_DEPTH == 8
                 SRGBWriteEnable = TRUE;
             #endif

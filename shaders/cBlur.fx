@@ -37,7 +37,7 @@ namespace SharedResources
 {
     namespace RGBA8
     {
-        texture2D _RenderCommon1 < pooled = true; >
+        texture2D RenderCommon1 < pooled = true; >
         {
             Width = BUFFER_WIDTH >> 1;
             Height = BUFFER_HEIGHT >> 1;
@@ -59,17 +59,17 @@ uniform float _Radius <
     ui_min = 0.0;
 > = 64.0;
 
-uniform int _Samples <
+uniform int Samples <
     ui_label = "Convolution sample count";
     ui_type = "drag";
     ui_min = 0;
 > = 16;
 
-texture2D _RenderColor : COLOR;
+texture2D RenderColor : COLOR;
 
-sampler2D _SampleColor
+sampler2D SampleColor
 {
-    Texture = _RenderColor;
+    Texture = RenderColor;
     MagFilter = LINEAR;
     MinFilter = LINEAR;
     MipFilter = LINEAR;
@@ -78,9 +78,9 @@ sampler2D _SampleColor
     #endif
 };
 
-sampler2D _SampleCommon_RGBA8_1
+sampler2D SampleCommon_RGBA8_1
 {
-    Texture = SharedResources::RGBA8::_RenderCommon1;
+    Texture = SharedResources::RGBA8::RenderCommon1;
     MagFilter = LINEAR;
     MinFilter = LINEAR;
     MipFilter = LINEAR;
@@ -138,12 +138,12 @@ void VogelBlur(sampler2D Source, float2 TexCoord, float2 ScreenSize, float Radiu
 
 void BlitPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    OutputColor0 = tex2D(_SampleColor, TexCoord);
+    OutputColor0 = tex2D(SampleColor, TexCoord);
 }
 
 void VogelConvolutionPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    VogelBlur(_SampleCommon_RGBA8_1, TexCoord, uint2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2), _Radius, _Samples, _Offset, OutputColor0);
+    VogelBlur(SampleCommon_RGBA8_1, TexCoord, uint2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2), _Radius, Samples, _Offset, OutputColor0);
 }
 
 technique cBlur
@@ -152,7 +152,7 @@ technique cBlur
     {
         VertexShader = PostProcessVS;
         PixelShader = BlitPS;
-        RenderTarget0 = SharedResources::RGBA8::_RenderCommon1;
+        RenderTarget0 = SharedResources::RGBA8::RenderCommon1;
         #if BUFFER_COLOR_BIT_DEPTH == 8
             SRGBWriteEnable = TRUE;
         #endif

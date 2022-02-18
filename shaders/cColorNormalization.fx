@@ -40,11 +40,11 @@ uniform int _Select <
     ui_tooltip = "Select Chromaticity";
 > = 0;
 
-texture2D _RenderColor : COLOR;
+texture2D RenderColor : COLOR;
 
-sampler2D _SampleColor
+sampler2D SampleColor
 {
-    Texture = _RenderColor;
+    Texture = RenderColor;
     MagFilter = LINEAR;
     MinFilter = LINEAR;
     MipFilter = LINEAR;
@@ -68,7 +68,7 @@ void NormalizationPS(in float4 Position : SV_Position, in float2 TexCoord : TEXC
 {
     OutputColor0 = 0.0;
     const float Minima = exp2(-10.0);
-    float3 Color = max(tex2D(_SampleColor, TexCoord).rgb, Minima);
+    float3 Color = max(tex2D(SampleColor, TexCoord).rgb, Minima);
     switch(_Select)
     {
         case 0: // Length (RG)

@@ -46,7 +46,7 @@ namespace SharedResources
 {
     namespace RG16F
     {
-        texture2D _RenderCommon1a
+        texture2D RenderCommon1a
         {
             Width = BUFFER_WIDTH >> 1;
             Height = BUFFER_HEIGHT >> 1;
@@ -56,7 +56,7 @@ namespace SharedResources
 
         namespace POW2
         {
-            texture2D _RenderCommon0a
+            texture2D RenderCommon0a
             {
                 Width = POW2SIZE_0;
                 Height = POW2SIZE_0;
@@ -64,7 +64,7 @@ namespace SharedResources
                 MipLevels = 8;
             };
 
-            texture2D _RenderCommon0b
+            texture2D RenderCommon0b
             {
                 Width = POW2SIZE_0;
                 Height = POW2SIZE_0;
@@ -72,7 +72,7 @@ namespace SharedResources
                 MipLevels = 8;
             };
 
-            texture2D _RenderCommon0c
+            texture2D RenderCommon0c
             {
                 Width = POW2SIZE_0;
                 Height = POW2SIZE_0;
@@ -80,49 +80,49 @@ namespace SharedResources
                 MipLevels = 8;
             };
 
-            texture2D _RenderCommon1
+            texture2D RenderCommon1
             {
                 Width = POW2SIZE_1;
                 Height = POW2SIZE_1;
                 Format = RG16F;
             };
 
-            texture2D _RenderCommon2
+            texture2D RenderCommon2
             {
                 Width = POW2SIZE_2;
                 Height = POW2SIZE_2;
                 Format = RG16F;
             };
 
-            texture2D _RenderCommon3
+            texture2D RenderCommon3
             {
                 Width = POW2SIZE_3;
                 Height = POW2SIZE_3;
                 Format = RG16F;
             };
 
-            texture2D _RenderCommon4
+            texture2D RenderCommon4
             {
                 Width = POW2SIZE_4;
                 Height = POW2SIZE_4;
                 Format = RG16F;
             };
 
-            texture2D _RenderCommon5
+            texture2D RenderCommon5
             {
                 Width = POW2SIZE_5;
                 Height = POW2SIZE_5;
                 Format = RG16F;
             };
 
-            texture2D _RenderCommon6
+            texture2D RenderCommon6
             {
                 Width = POW2SIZE_6;
                 Height = POW2SIZE_6;
                 Format = RG16F;
             };
 
-            texture2D _RenderCommon7
+            texture2D RenderCommon7
             {
                 Width = POW2SIZE_7;
                 Height = POW2SIZE_7;
@@ -180,11 +180,11 @@ namespace MotionBlur
 
     uniform float _FrameTime < source = "frametime"; >;
 
-    texture2D _RenderColor : COLOR;
+    texture2D RenderColor : COLOR;
 
-    sampler2D _SampleColor
+    sampler2D SampleColor
     {
-        Texture = _RenderColor;
+        Texture = RenderColor;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
@@ -193,39 +193,39 @@ namespace MotionBlur
         #endif
     };
 
-    sampler2D _SampleCommon1a
+    sampler2D SampleCommon1a
     {
-        Texture = SharedResources::RG16F::_RenderCommon1a;
+        Texture = SharedResources::RG16F::RenderCommon1a;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
     };
 
-    sampler2D _SamplePOW2Common0a
+    sampler2D SamplePOW2Common0a
     {
-        Texture = SharedResources::RG16F::POW2::_RenderCommon0a;
+        Texture = SharedResources::RG16F::POW2::RenderCommon0a;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
     };
 
-    sampler2D _SamplePOW2Common0b
+    sampler2D SamplePOW2Common0b
     {
-        Texture = SharedResources::RG16F::POW2::_RenderCommon0b;
+        Texture = SharedResources::RG16F::POW2::RenderCommon0b;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
     };
 
-    sampler2D _SamplePOW2Common0c
+    sampler2D SamplePOW2Common0c
     {
-        Texture = SharedResources::RG16F::POW2::_RenderCommon0c;
+        Texture = SharedResources::RG16F::POW2::RenderCommon0c;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
     };
 
-    texture2D _RenderData3
+    texture2D RenderData3
     {
         Width = POW2SIZE_0;
         Height = POW2SIZE_0;
@@ -233,80 +233,80 @@ namespace MotionBlur
         MipLevels = 8;
     };
 
-    sampler2D _SampleData3
+    sampler2D SampleData3
     {
-        Texture = _RenderData3;
+        Texture = RenderData3;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
     };
 
-    sampler2D _SamplePOW2Common7
+    sampler2D SamplePOW2Common7
     {
-        Texture = SharedResources::RG16F::POW2::_RenderCommon7;
+        Texture = SharedResources::RG16F::POW2::RenderCommon7;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
     };
 
-    sampler2D _SamplePOW2Common6
+    sampler2D SamplePOW2Common6
     {
-        Texture = SharedResources::RG16F::POW2::_RenderCommon6;
+        Texture = SharedResources::RG16F::POW2::RenderCommon6;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
     };
 
-    sampler2D _SamplePOW2Common5
+    sampler2D SamplePOW2Common5
     {
-        Texture = SharedResources::RG16F::POW2::_RenderCommon5;
+        Texture = SharedResources::RG16F::POW2::RenderCommon5;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
     };
 
-    sampler2D _SamplePOW2Common4
+    sampler2D SamplePOW2Common4
     {
-        Texture = SharedResources::RG16F::POW2::_RenderCommon4;
+        Texture = SharedResources::RG16F::POW2::RenderCommon4;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
     };
 
-    sampler2D _SamplePOW2Common3
+    sampler2D SamplePOW2Common3
     {
-        Texture = SharedResources::RG16F::POW2::_RenderCommon3;
+        Texture = SharedResources::RG16F::POW2::RenderCommon3;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
     };
 
-    sampler2D _SamplePOW2Common2
+    sampler2D SamplePOW2Common2
     {
-        Texture = SharedResources::RG16F::POW2::_RenderCommon2;
+        Texture = SharedResources::RG16F::POW2::RenderCommon2;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
     };
 
-    sampler2D _SamplePOW2Common1
+    sampler2D SamplePOW2Common1
     {
-        Texture = SharedResources::RG16F::POW2::_RenderCommon1;
+        Texture = SharedResources::RG16F::POW2::RenderCommon1;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
     };
 
-    texture2D _RenderCommon0
+    texture2D RenderCommon0
     {
         Width = POW2SIZE_0;
         Height = POW2SIZE_0;
         Format = RG16F;
     };
 
-    sampler2D _SamplePOW2Common0
+    sampler2D SamplePOW2Common0
     {
-        Texture = _RenderCommon0;
+        Texture = RenderCommon0;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
@@ -539,11 +539,11 @@ namespace MotionBlur
     void OpticalFlow(in float2 TexCoord, in float2 UV, in float Level, out float2 DUV)
     {
         const float Alpha = max(ldexp(_Constraint * 1e-3, Level - MaxLevel), 1e-7);
-        float2 SampleC = tex2D(_SamplePOW2Common0a, TexCoord).rg;
-        float2 SampleP = tex2D(_SampleData3, TexCoord).rg;
+        float2 SampleC = tex2D(SamplePOW2Common0a, TexCoord).rg;
+        float2 SampleP = tex2D(SampleData3, TexCoord).rg;
         float2 It = SampleC - SampleP;
-        float2 Ix = tex2D(_SamplePOW2Common0b, TexCoord).rg;
-        float2 Iy = tex2D(_SamplePOW2Common0c, TexCoord).rg;
+        float2 Ix = tex2D(SamplePOW2Common0b, TexCoord).rg;
+        float2 Iy = tex2D(SamplePOW2Common0c, TexCoord).rg;
 
         /*
             We solve for X[N] (UV)
@@ -628,15 +628,15 @@ namespace MotionBlur
         // A0 B0 C0
         // A1 B1 C1
         // A2 B2 C2
-        float4 A0 = Chroma(_SampleColor, TexCoords[0].xy);
-        float4 A1 = Chroma(_SampleColor, TexCoords[0].xz);
-        float4 A2 = Chroma(_SampleColor, TexCoords[0].xw);
-        float4 B0 = Chroma(_SampleColor, TexCoords[1].xy);
-        float4 B1 = Chroma(_SampleColor, TexCoords[1].xz);
-        float4 B2 = Chroma(_SampleColor, TexCoords[1].xw);
-        float4 C0 = Chroma(_SampleColor, TexCoords[2].xy);
-        float4 C1 = Chroma(_SampleColor, TexCoords[2].xz);
-        float4 C2 = Chroma(_SampleColor, TexCoords[2].xw);
+        float4 A0 = Chroma(SampleColor, TexCoords[0].xy);
+        float4 A1 = Chroma(SampleColor, TexCoords[0].xz);
+        float4 A2 = Chroma(SampleColor, TexCoords[0].xw);
+        float4 B0 = Chroma(SampleColor, TexCoords[1].xy);
+        float4 B1 = Chroma(SampleColor, TexCoords[1].xz);
+        float4 B2 = Chroma(SampleColor, TexCoords[1].xw);
+        float4 C0 = Chroma(SampleColor, TexCoords[2].xy);
+        float4 C1 = Chroma(SampleColor, TexCoords[2].xz);
+        float4 C2 = Chroma(SampleColor, TexCoords[2].xw);
         OutputColor0 = Med9(A0, B0, C0,
                             A1, B1, C1,
                             A2, B2, C2);
@@ -644,37 +644,37 @@ namespace MotionBlur
 
     void Copy0PS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
     {
-        OutputColor0 = tex2D(_SampleCommon1a, TexCoord).rg;
+        OutputColor0 = tex2D(SampleCommon1a, TexCoord).rg;
     }
 
     void PreDownsample1PS(in float4 Position : SV_Position, in float4 DownsampleCoords[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
-        OutputColor0 = Downsample(_SamplePOW2Common0a, DownsampleCoords);
+        OutputColor0 = Downsample(SamplePOW2Common0a, DownsampleCoords);
     }
 
     void PreDownsample2PS(in float4 Position : SV_Position, in float4 DownsampleCoords[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
-        OutputColor0 = Downsample(_SamplePOW2Common1, DownsampleCoords);
+        OutputColor0 = Downsample(SamplePOW2Common1, DownsampleCoords);
     }
 
     void PreDownsample3PS(in float4 Position : SV_Position, in float4 DownsampleCoords[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
-        OutputColor0 = Downsample(_SamplePOW2Common2, DownsampleCoords);
+        OutputColor0 = Downsample(SamplePOW2Common2, DownsampleCoords);
     }
 
     void PreUpsample2PS(in float4 Position : SV_Position, in float4 UpsampleCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
-        OutputColor0 = Upsample(_SamplePOW2Common3, UpsampleCoords);
+        OutputColor0 = Upsample(SamplePOW2Common3, UpsampleCoords);
     }
 
     void PreUpsample1PS(in float4 Position : SV_Position, in float4 UpsampleCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
-        OutputColor0 = Upsample(_SamplePOW2Common2, UpsampleCoords);
+        OutputColor0 = Upsample(SamplePOW2Common2, UpsampleCoords);
     }
 
     void PreUpsample0PS(in float4 Position : SV_Position, in float4 UpsampleCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
-        OutputColor0 = Upsample(_SamplePOW2Common1, UpsampleCoords);
+        OutputColor0 = Upsample(SamplePOW2Common1, UpsampleCoords);
     }
 
     void DerivativesPS(in float4 Position : SV_Position, in float4 TexCoords[3] : TEXCOORD0, out float2 OutputColor0 : SV_Target0, out float2 OutputColor1 : SV_Target1)
@@ -683,14 +683,14 @@ namespace MotionBlur
         // A0 B0 C0
         // A1    C1
         // A2 B2 C2
-        float2 A0 = tex2D(_SamplePOW2Common0a, TexCoords[0].xy).xy;
-        float2 A1 = tex2D(_SamplePOW2Common0a, TexCoords[0].xz).xy;
-        float2 A2 = tex2D(_SamplePOW2Common0a, TexCoords[0].xw).xy;
-        float2 B0 = tex2D(_SamplePOW2Common0a, TexCoords[1].xy).xy;
-        float2 B2 = tex2D(_SamplePOW2Common0a, TexCoords[1].xw).xy;
-        float2 C0 = tex2D(_SamplePOW2Common0a, TexCoords[2].xy).xy;
-        float2 C1 = tex2D(_SamplePOW2Common0a, TexCoords[2].xz).xy;
-        float2 C2 = tex2D(_SamplePOW2Common0a, TexCoords[2].xw).xy;
+        float2 A0 = tex2D(SamplePOW2Common0a, TexCoords[0].xy).xy;
+        float2 A1 = tex2D(SamplePOW2Common0a, TexCoords[0].xz).xy;
+        float2 A2 = tex2D(SamplePOW2Common0a, TexCoords[0].xw).xy;
+        float2 B0 = tex2D(SamplePOW2Common0a, TexCoords[1].xy).xy;
+        float2 B2 = tex2D(SamplePOW2Common0a, TexCoords[1].xw).xy;
+        float2 C0 = tex2D(SamplePOW2Common0a, TexCoords[2].xy).xy;
+        float2 C1 = tex2D(SamplePOW2Common0a, TexCoords[2].xz).xy;
+        float2 C2 = tex2D(SamplePOW2Common0a, TexCoords[2].xw).xy;
 
         // -1 -1  0  +1 +1
         // -1 -1  0  +1 +1
@@ -714,69 +714,69 @@ namespace MotionBlur
 
     void EstimateLevel6PS(in float4 Position : SV_Position, in float4 UpsampleCoords[3] : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
     {
-        OpticalFlow(UpsampleCoords[1].xz, Upsample(_SamplePOW2Common7, UpsampleCoords).xy, 6.0, OutputColor0);
+        OpticalFlow(UpsampleCoords[1].xz, Upsample(SamplePOW2Common7, UpsampleCoords).xy, 6.0, OutputColor0);
     }
 
     void EstimateLevel5PS(in float4 Position : SV_Position, in float4 UpsampleCoords[3] : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
     {
-        OpticalFlow(UpsampleCoords[1].xz, Upsample(_SamplePOW2Common6, UpsampleCoords).xy, 5.0, OutputColor0);
+        OpticalFlow(UpsampleCoords[1].xz, Upsample(SamplePOW2Common6, UpsampleCoords).xy, 5.0, OutputColor0);
     }
 
     void EstimateLevel4PS(in float4 Position : SV_Position, in float4 UpsampleCoords[3] : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
     {
-        OpticalFlow(UpsampleCoords[1].xz, Upsample(_SamplePOW2Common5, UpsampleCoords).xy, 4.0, OutputColor0);
+        OpticalFlow(UpsampleCoords[1].xz, Upsample(SamplePOW2Common5, UpsampleCoords).xy, 4.0, OutputColor0);
     }
 
     void EstimateLevel3PS(in float4 Position : SV_Position, in float4 UpsampleCoords[3] : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
     {
-        OpticalFlow(UpsampleCoords[1].xz, Upsample(_SamplePOW2Common4, UpsampleCoords).xy, 3.0, OutputColor0);
+        OpticalFlow(UpsampleCoords[1].xz, Upsample(SamplePOW2Common4, UpsampleCoords).xy, 3.0, OutputColor0);
     }
 
     void EstimateLevel2PS(in float4 Position : SV_Position, in float4 UpsampleCoords[3] : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
     {
-        OpticalFlow(UpsampleCoords[1].xz, Upsample(_SamplePOW2Common3, UpsampleCoords).xy, 2.0, OutputColor0);
+        OpticalFlow(UpsampleCoords[1].xz, Upsample(SamplePOW2Common3, UpsampleCoords).xy, 2.0, OutputColor0);
     }
 
     void EstimateLevel1PS(in float4 Position : SV_Position, in float4 UpsampleCoords[3] : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
     {
-        OpticalFlow(UpsampleCoords[1].xz, Upsample(_SamplePOW2Common2, UpsampleCoords).xy, 1.0, OutputColor0);
+        OpticalFlow(UpsampleCoords[1].xz, Upsample(SamplePOW2Common2, UpsampleCoords).xy, 1.0, OutputColor0);
     }
 
     void EstimateLevel0PS(in float4 Position : SV_Position, in float4 UpsampleCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
-        OpticalFlow(UpsampleCoords[1].xz, Upsample(_SamplePOW2Common1, UpsampleCoords).xy, 0.0, OutputColor0.xy);
+        OpticalFlow(UpsampleCoords[1].xz, Upsample(SamplePOW2Common1, UpsampleCoords).xy, 0.0, OutputColor0.xy);
         OutputColor0.ba = (0.0, _Blend);
     }
 
     void PostDownsample1PS(in float4 Position : SV_Position, in float4 DownsampleCoords[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
-        OutputColor0 = Downsample(_SamplePOW2Common0, DownsampleCoords);
+        OutputColor0 = Downsample(SamplePOW2Common0, DownsampleCoords);
     }
 
     void PostDownsample2PS(in float4 Position : SV_Position, in float4 DownsampleCoords[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
-        OutputColor0 = Downsample(_SamplePOW2Common1, DownsampleCoords);
+        OutputColor0 = Downsample(SamplePOW2Common1, DownsampleCoords);
     }
 
     void PostDownsample3PS(in float4 Position : SV_Position, in float4 DownsampleCoords[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
-        OutputColor0 = Downsample(_SamplePOW2Common2, DownsampleCoords);
+        OutputColor0 = Downsample(SamplePOW2Common2, DownsampleCoords);
     }
 
     void PostUpsample2PS(in float4 Position : SV_Position, in float4 UpsampleCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
-        OutputColor0 = Upsample(_SamplePOW2Common3, UpsampleCoords);
+        OutputColor0 = Upsample(SamplePOW2Common3, UpsampleCoords);
     }
 
     void PostUpsample1PS(in float4 Position : SV_Position, in float4 UpsampleCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
-        OutputColor0 = Upsample(_SamplePOW2Common2, UpsampleCoords);
+        OutputColor0 = Upsample(SamplePOW2Common2, UpsampleCoords);
     }
 
     void PostUpsample0PS(in float4 Position : SV_Position, in float4 UpsampleCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0, out float2 OutputColor1 : SV_Target1)
     {
-        OutputColor0 = Upsample(_SamplePOW2Common1, UpsampleCoords);
-        OutputColor1 = tex2D(_SamplePOW2Common0a, UpsampleCoords[1].xz).rg;
+        OutputColor0 = Upsample(SamplePOW2Common1, UpsampleCoords);
+        OutputColor1 = tex2D(SamplePOW2Common0a, UpsampleCoords[1].xz).rg;
     }
 
     void MotionBlurPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target)
@@ -784,14 +784,14 @@ namespace MotionBlur
         const int Samples = 4;
         float Noise = frac(52.9829189 * frac(dot(Position.xy, float2(0.06711056, 0.00583715))));
         float FrameTimeRatio = _TargetFrameRate / (1e+3 / _FrameTime);
-        float2 Velocity = (tex2Dlod(_SamplePOW2Common0c, float4(TexCoord, 0.0, _MipBias)).xy / POW2SIZE_0) * _Scale;
+        float2 Velocity = (tex2Dlod(SamplePOW2Common0c, float4(TexCoord, 0.0, _MipBias)).xy / POW2SIZE_0) * _Scale;
         Velocity /= (_FrameRateScaling) ? FrameTimeRatio : 1.0;
 
         for(int k = 0; k < Samples; ++k)
         {
             float2 Offset = Velocity * (Noise + k);
-            OutputColor0 += tex2D(_SampleColor, (TexCoord + Offset));
-            OutputColor0 += tex2D(_SampleColor, (TexCoord - Offset));
+            OutputColor0 += tex2D(SampleColor, (TexCoord + Offset));
+            OutputColor0 += tex2D(SampleColor, (TexCoord - Offset));
         }
 
         OutputColor0 /= (Samples * 2.0);
@@ -805,14 +805,14 @@ namespace MotionBlur
         {
             VertexShader = MedianVS;
             PixelShader = NormalizePS;
-            RenderTarget0 = SharedResources::RG16F::_RenderCommon1a;
+            RenderTarget0 = SharedResources::RG16F::RenderCommon1a;
         }
 
         pass
         {
             VertexShader = PostProcessVS;
             PixelShader = Copy0PS;
-            RenderTarget0 = SharedResources::RG16F::POW2::_RenderCommon0a;
+            RenderTarget0 = SharedResources::RG16F::POW2::RenderCommon0a;
         }
 
         // Pre-process dual-filter blur
@@ -821,42 +821,42 @@ namespace MotionBlur
         {
             VertexShader = Downsample1VS;
             PixelShader = PreDownsample1PS;
-            RenderTarget0 = SharedResources::RG16F::POW2::_RenderCommon1;
+            RenderTarget0 = SharedResources::RG16F::POW2::RenderCommon1;
         }
 
         pass
         {
             VertexShader = Downsample2VS;
             PixelShader = PreDownsample2PS;
-            RenderTarget0 = SharedResources::RG16F::POW2::_RenderCommon2;
+            RenderTarget0 = SharedResources::RG16F::POW2::RenderCommon2;
         }
 
         pass
         {
             VertexShader = Downsample3VS;
             PixelShader = PreDownsample3PS;
-            RenderTarget0 = SharedResources::RG16F::POW2::_RenderCommon3;
+            RenderTarget0 = SharedResources::RG16F::POW2::RenderCommon3;
         }
 
         pass
         {
             VertexShader = Upsample2VS;
             PixelShader = PreUpsample2PS;
-            RenderTarget0 = SharedResources::RG16F::POW2::_RenderCommon2;
+            RenderTarget0 = SharedResources::RG16F::POW2::RenderCommon2;
         }
 
         pass
         {
             VertexShader = Upsample1VS;
             PixelShader = PreUpsample1PS;
-            RenderTarget0 = SharedResources::RG16F::POW2::_RenderCommon1;
+            RenderTarget0 = SharedResources::RG16F::POW2::RenderCommon1;
         }
 
         pass
         {
             VertexShader = Upsample0VS;
             PixelShader = PreUpsample0PS;
-            RenderTarget0 = SharedResources::RG16F::POW2::_RenderCommon0a;
+            RenderTarget0 = SharedResources::RG16F::POW2::RenderCommon0a;
         }
 
         // Calculate discrete derivative pyramid
@@ -865,8 +865,8 @@ namespace MotionBlur
         {
             VertexShader = DerivativesVS;
             PixelShader = DerivativesPS;
-            RenderTarget0 = SharedResources::RG16F::POW2::_RenderCommon0b;
-            RenderTarget1 = SharedResources::RG16F::POW2::_RenderCommon0c;
+            RenderTarget0 = SharedResources::RG16F::POW2::RenderCommon0b;
+            RenderTarget1 = SharedResources::RG16F::POW2::RenderCommon0c;
         }
 
         // Calculate pyramidal estimation
@@ -875,56 +875,56 @@ namespace MotionBlur
         {
             VertexShader = PostProcessVS;
             PixelShader = EstimateLevel7PS;
-            RenderTarget0 = SharedResources::RG16F::POW2::_RenderCommon7;
+            RenderTarget0 = SharedResources::RG16F::POW2::RenderCommon7;
         }
 
         pass
         {
             VertexShader = EstimateLevel6VS;
             PixelShader = EstimateLevel6PS;
-            RenderTarget0 = SharedResources::RG16F::POW2::_RenderCommon6;
+            RenderTarget0 = SharedResources::RG16F::POW2::RenderCommon6;
         }
 
         pass
         {
             VertexShader = EstimateLevel5VS;
             PixelShader = EstimateLevel5PS;
-            RenderTarget0 = SharedResources::RG16F::POW2::_RenderCommon5;
+            RenderTarget0 = SharedResources::RG16F::POW2::RenderCommon5;
         }
 
         pass
         {
             VertexShader = EstimateLevel4VS;
             PixelShader = EstimateLevel4PS;
-            RenderTarget0 = SharedResources::RG16F::POW2::_RenderCommon4;
+            RenderTarget0 = SharedResources::RG16F::POW2::RenderCommon4;
         }
 
         pass
         {
             VertexShader = EstimateLevel3VS;
             PixelShader = EstimateLevel3PS;
-            RenderTarget0 = SharedResources::RG16F::POW2::_RenderCommon3;
+            RenderTarget0 = SharedResources::RG16F::POW2::RenderCommon3;
         }
 
         pass
         {
             VertexShader = EstimateLevel2VS;
             PixelShader = EstimateLevel2PS;
-            RenderTarget0 = SharedResources::RG16F::POW2::_RenderCommon2;
+            RenderTarget0 = SharedResources::RG16F::POW2::RenderCommon2;
         }
 
         pass
         {
             VertexShader = EstimateLevel1VS;
             PixelShader = EstimateLevel1PS;
-            RenderTarget0 = SharedResources::RG16F::POW2::_RenderCommon1;
+            RenderTarget0 = SharedResources::RG16F::POW2::RenderCommon1;
         }
 
         pass
         {
             VertexShader = EstimateLevel0VS;
             PixelShader = EstimateLevel0PS;
-            RenderTarget0 = _RenderCommon0;
+            RenderTarget0 = RenderCommon0;
             ClearRenderTargets = FALSE;
             BlendEnable = TRUE;
             BlendOp = ADD;
@@ -938,45 +938,45 @@ namespace MotionBlur
         {
             VertexShader = Downsample1VS;
             PixelShader = PostDownsample1PS;
-            RenderTarget0 = SharedResources::RG16F::POW2::_RenderCommon1;
+            RenderTarget0 = SharedResources::RG16F::POW2::RenderCommon1;
         }
 
         pass
         {
             VertexShader = Downsample2VS;
             PixelShader = PostDownsample2PS;
-            RenderTarget0 = SharedResources::RG16F::POW2::_RenderCommon2;
+            RenderTarget0 = SharedResources::RG16F::POW2::RenderCommon2;
         }
 
         pass
         {
             VertexShader = Downsample3VS;
             PixelShader = PostDownsample3PS;
-            RenderTarget0 = SharedResources::RG16F::POW2::_RenderCommon3;
+            RenderTarget0 = SharedResources::RG16F::POW2::RenderCommon3;
         }
 
         pass
         {
             VertexShader = Upsample2VS;
             PixelShader = PostUpsample2PS;
-            RenderTarget0 = SharedResources::RG16F::POW2::_RenderCommon2;
+            RenderTarget0 = SharedResources::RG16F::POW2::RenderCommon2;
         }
 
         pass
         {
             VertexShader = Upsample1VS;
             PixelShader = PostUpsample1PS;
-            RenderTarget0 = SharedResources::RG16F::POW2::_RenderCommon1;
+            RenderTarget0 = SharedResources::RG16F::POW2::RenderCommon1;
         }
 
         pass
         {
             VertexShader = Upsample0VS;
             PixelShader = PostUpsample0PS;
-            RenderTarget0 = SharedResources::RG16F::POW2::_RenderCommon0c;
+            RenderTarget0 = SharedResources::RG16F::POW2::RenderCommon0c;
 
             // Store previous frame
-            RenderTarget1 = _RenderData3;
+            RenderTarget1 = RenderData3;
         }
 
         pass

@@ -48,11 +48,11 @@ uniform float _ManualBias <
     ui_min = 0.0;
 > = 2.0;
 
-texture2D _RenderColor : COLOR;
+texture2D RenderColor : COLOR;
 
-sampler2D _SampleColor
+sampler2D SampleColor
 {
-    Texture = _RenderColor;
+    Texture = RenderColor;
     MagFilter = LINEAR;
     MinFilter = LINEAR;
     MipFilter = LINEAR;
@@ -61,7 +61,7 @@ sampler2D _SampleColor
     #endif
 };
 
-texture2D _RenderLumaLOD
+texture2D RenderLumaLOD
 {
     Width = 256;
     Height = 256;
@@ -69,9 +69,9 @@ texture2D _RenderLumaLOD
     Format = R16F;
 };
 
-sampler2D _SampleLumaLOD
+sampler2D SampleLumaLOD
 {
-    Texture = _RenderLumaLOD;
+    Texture = RenderLumaLOD;
     MagFilter = LINEAR;
     MinFilter = LINEAR;
     MipFilter = LINEAR;
@@ -90,7 +90,7 @@ void PostProcessVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, 
 
 void BlitPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    float4 Color = tex2D(_SampleColor, TexCoord);
+    float4 Color = tex2D(SampleColor, TexCoord);
 
     // OutputColor.rgb = Output the highest brightness out of red/green/blue component
     // OutputColor.a = Output the weight for temporal blending
@@ -100,8 +100,8 @@ void BlitPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, ou
 void ExposurePS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
     // Average Luma = Average value (1x1) for all of the pixels
-    float AverageLuma = tex2Dlod(_SampleLumaLOD, float4(TexCoord, 0.0, 8.0)).r;
-    float4 Color = tex2D(_SampleColor, TexCoord);
+    float AverageLuma = tex2Dlod(SampleLumaLOD, float4(TexCoord, 0.0, 8.0)).r;
+    float4 Color = tex2D(SampleColor, TexCoord);
 
     // KeyValue is an exposure compensation curve
     // Source: https://knarkowicz.wordpress.com/2016/01/09/automatic-exposure/
@@ -116,7 +116,7 @@ technique cAutoExposure
     {
         VertexShader = PostProcessVS;
         PixelShader = BlitPS;
-        RenderTarget = _RenderLumaLOD;
+        RenderTarget = RenderLumaLOD;
         ClearRenderTargets = FALSE;
         BlendEnable = TRUE;
         BlendOp = ADD;

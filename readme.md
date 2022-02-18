@@ -53,11 +53,11 @@ kVignette           | Natural vignetting effect
 
 Practice | Variable
 -------- | --------
-Prefix `_` | Global objects and parameters
+Prefix `_` | Global variables
 Respectively suffix `VS` and `PS` | `PixelShader and VertexShader`
 **ALLCAPS** | Semantics and state parameters
 **Pascal_Case** | System-Value Semantics (`SV_Position`)
-**PascalCase** | Namespaces, structs, methods, and local parameters
+**PascalCase** | Namespaces, structs, methods, global objects, and local variables
 **SNAKE_CASE** | Macros and preprocessor defines
 
 ## Acknowledgements

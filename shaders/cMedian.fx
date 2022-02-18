@@ -33,11 +33,11 @@
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-texture2D _RenderColor : COLOR;
+texture2D RenderColor : COLOR;
 
-sampler2D _SampleColor
+sampler2D SampleColor
 {
-    Texture = _RenderColor;
+    Texture = RenderColor;
     MagFilter = LINEAR;
     MinFilter = LINEAR;
     MipFilter = LINEAR;
@@ -106,15 +106,15 @@ void MedianPS(in float4 Position : SV_Position, in float4 Offsets[3] : TEXCOORD0
     // [0].xw [1].xw [2].xw
     float4 OutputColor = 0.0;
     float4 Sample[9];
-    Sample[0] = tex2D(_SampleColor, Offsets[0].xy);
-    Sample[1] = tex2D(_SampleColor, Offsets[1].xy);
-    Sample[2] = tex2D(_SampleColor, Offsets[2].xy);
-    Sample[3] = tex2D(_SampleColor, Offsets[0].xz);
-    Sample[4] = tex2D(_SampleColor, Offsets[1].xz);
-    Sample[5] = tex2D(_SampleColor, Offsets[2].xz);
-    Sample[6] = tex2D(_SampleColor, Offsets[0].xw);
-    Sample[7] = tex2D(_SampleColor, Offsets[1].xw);
-    Sample[8] = tex2D(_SampleColor, Offsets[2].xw);
+    Sample[0] = tex2D(SampleColor, Offsets[0].xy);
+    Sample[1] = tex2D(SampleColor, Offsets[1].xy);
+    Sample[2] = tex2D(SampleColor, Offsets[2].xy);
+    Sample[3] = tex2D(SampleColor, Offsets[0].xz);
+    Sample[4] = tex2D(SampleColor, Offsets[1].xz);
+    Sample[5] = tex2D(SampleColor, Offsets[2].xz);
+    Sample[6] = tex2D(SampleColor, Offsets[0].xw);
+    Sample[7] = tex2D(SampleColor, Offsets[1].xw);
+    Sample[8] = tex2D(SampleColor, Offsets[2].xw);
     OutputColor0 = Med9(Sample[0], Sample[1], Sample[2],
                         Sample[3], Sample[4], Sample[5],
                         Sample[6], Sample[7], Sample[8]);

@@ -38,11 +38,11 @@ uniform float _Sigma <
     ui_min = 0.0;
 > = 1.0;
 
-texture2D _RenderColor : COLOR;
+texture2D RenderColor : COLOR;
 
-sampler2D _SampleColor
+sampler2D SampleColor
 {
-    Texture = _RenderColor;
+    Texture = RenderColor;
     MagFilter = LINEAR;
     MinFilter = LINEAR;
     MipFilter = LINEAR;
@@ -78,13 +78,13 @@ void GaussianBlur(in float2 TexCoord, in bool Horizontal, out float4 OutputColor
 
     if(_Sigma == 0.0)
     {
-        OutputColor0 = tex2Dlod(_SampleColor, float4(TexCoord, 0.0, 0.0));
+        OutputColor0 = tex2Dlod(SampleColor, float4(TexCoord, 0.0, 0.0));
     }
     else
     {
         // Sample and weight center first to get even number sides
         float TotalWeight = Gaussian(0.0, _Sigma);
-        float4 OutputColor = tex2D(_SampleColor, TexCoord) * TotalWeight;
+        float4 OutputColor = tex2D(SampleColor, TexCoord) * TotalWeight;
 
         for(float i = 1.0; i < KernelSize; i += 2.0)
         {
@@ -95,8 +95,8 @@ void GaussianBlur(in float2 TexCoord, in bool Horizontal, out float4 OutputColor
             float LinearWeight = Weight1 + Weight2;
             float LinearOffset = ((Offset1 * Weight1) + (Offset2 * Weight2)) / LinearWeight;
 
-            OutputColor += tex2Dlod(_SampleColor, float4(TexCoord - LinearOffset * PixelSize, 0.0, 0.0)) * LinearWeight;
-            OutputColor += tex2Dlod(_SampleColor, float4(TexCoord + LinearOffset * PixelSize, 0.0, 0.0)) * LinearWeight;
+            OutputColor += tex2Dlod(SampleColor, float4(TexCoord - LinearOffset * PixelSize, 0.0, 0.0)) * LinearWeight;
+            OutputColor += tex2Dlod(SampleColor, float4(TexCoord + LinearOffset * PixelSize, 0.0, 0.0)) * LinearWeight;
             TotalWeight += LinearWeight * 2.0;
         }
 

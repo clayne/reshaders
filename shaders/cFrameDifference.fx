@@ -54,11 +54,11 @@ namespace FrameDifference
         ui_label = "Normalize Input";
     > = false;
 
-    texture2D _RenderColor : COLOR;
+    texture2D RenderColor : COLOR;
 
-    sampler2D _SampleColor
+    sampler2D SampleColor
     {
-        Texture = _RenderColor;
+        Texture = RenderColor;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
@@ -67,46 +67,46 @@ namespace FrameDifference
         #endif
     };
 
-    texture2D _RenderCurrent
+    texture2D RenderCurrent
     {
         Width = BUFFER_WIDTH;
         Height = BUFFER_HEIGHT;
         Format = RG8;
     };
 
-    sampler2D _SampleCurrent
+    sampler2D SampleCurrent
     {
-        Texture = _RenderCurrent;
+        Texture = RenderCurrent;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
     };
 
-    texture2D _RenderDifference
+    texture2D RenderDifference
     {
         Width = BUFFER_WIDTH;
         Height = BUFFER_HEIGHT;
         Format = RGBA8;
     };
 
-    sampler2D _SampleDifference
+    sampler2D SampleDifference
     {
-        Texture = _RenderDifference;
+        Texture = RenderDifference;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
     };
 
-    texture2D _RenderPrevious
+    texture2D RenderPrevious
     {
         Width = BUFFER_WIDTH;
         Height = BUFFER_HEIGHT;
         Format = RG8;
     };
 
-    sampler2D _SamplePrevious
+    sampler2D SamplePrevious
     {
-        Texture = _RenderPrevious;
+        Texture = RenderPrevious;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
@@ -125,7 +125,7 @@ namespace FrameDifference
 
     void BlitPS0(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
-        float3 Color = max(tex2D(_SampleColor, TexCoord).rgb, exp2(-10.0));
+        float3 Color = max(tex2D(SampleColor, TexCoord).rgb, exp2(-10.0));
         OutputColor0 = (_NormalizeInput) ? saturate(Color.xy / dot(Color, 1.0)) : max(max(Color.r, Color.g), Color.b);
     }
 
@@ -133,14 +133,14 @@ namespace FrameDifference
     {
         if(_NormalizeInput)
         {
-            float3 Current = tex2D(_SampleCurrent, TexCoord).rgb;
-            float3 Previous = tex2D(_SamplePrevious, TexCoord).rgb;
+            float3 Current = tex2D(SampleCurrent, TexCoord).rgb;
+            float3 Previous = tex2D(SamplePrevious, TexCoord).rgb;
             OutputColor0.rgb = dot(Current - Previous, 1.0) * _Weight;
         }
         else
         {
-            float Current = tex2D(_SampleCurrent, TexCoord).r;
-            float Previous = tex2D(_SamplePrevious, TexCoord).r;
+            float Current = tex2D(SampleCurrent, TexCoord).r;
+            float Previous = tex2D(SamplePrevious, TexCoord).r;
             OutputColor0.rgb = abs(Current - Previous) * _Weight;
         }
 
@@ -149,12 +149,12 @@ namespace FrameDifference
 
     void OutputPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
-        OutputColor0 = tex2D(_SampleDifference, TexCoord).r;
+        OutputColor0 = tex2D(SampleDifference, TexCoord).r;
     }
 
     void BlitPS1(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
-        OutputColor0 = tex2D(_SampleCurrent, TexCoord);
+        OutputColor0 = tex2D(SampleCurrent, TexCoord);
     }
 
     technique cFrameDifference
@@ -163,14 +163,14 @@ namespace FrameDifference
         {
             VertexShader = PostProcessVS;
             PixelShader = BlitPS0;
-            RenderTarget0 = _RenderCurrent;
+            RenderTarget0 = RenderCurrent;
         }
 
         pass
         {
             VertexShader = PostProcessVS;
             PixelShader = DifferencePS;
-            RenderTarget0 = _RenderDifference;
+            RenderTarget0 = RenderDifference;
             ClearRenderTargets = FALSE;
             BlendEnable = TRUE;
             BlendOp = ADD;
@@ -191,7 +191,7 @@ namespace FrameDifference
         {
             VertexShader = PostProcessVS;
             PixelShader = BlitPS1;
-            RenderTarget0 = _RenderPrevious;
+            RenderTarget0 = RenderPrevious;
         }
     }
 }

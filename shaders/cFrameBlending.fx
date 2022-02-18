@@ -40,11 +40,11 @@ uniform float _BlendFactor <
     ui_max = 1.0;
 > = 0.5;
 
-texture2D _RenderColor : COLOR;
+texture2D RenderColor : COLOR;
 
-sampler2D _SampleColor
+sampler2D SampleColor
 {
-    Texture = _RenderColor;
+    Texture = RenderColor;
     MagFilter = LINEAR;
     MinFilter = LINEAR;
     MipFilter = LINEAR;
@@ -53,16 +53,16 @@ sampler2D _SampleColor
     #endif
 };
 
-texture2D _RenderCopy
+texture2D RenderCopy
 {
     Width = BUFFER_WIDTH;
     Height = BUFFER_HEIGHT;
     Format = RGBA8;
 };
 
-sampler2D _SampleCopy
+sampler2D SampleCopy
 {
-    Texture = _RenderCopy;
+    Texture = RenderCopy;
     MagFilter = LINEAR;
     MinFilter = LINEAR;
     MipFilter = LINEAR;
@@ -85,13 +85,13 @@ void PostProcessVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, 
 void BlendPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
     // Copy backbuffer to a that continuously blends with its previous result 
-    OutputColor0 = float4(tex2D(_SampleColor, TexCoord).rgb, _BlendFactor);
+    OutputColor0 = float4(tex2D(SampleColor, TexCoord).rgb, _BlendFactor);
 }
 
 void DisplayPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
     // Display the buffer
-    OutputColor0 = tex2D(_SampleCopy, TexCoord);
+    OutputColor0 = tex2D(SampleCopy, TexCoord);
 }
 
 technique cFrameBlending
@@ -100,7 +100,7 @@ technique cFrameBlending
     {
         VertexShader = PostProcessVS;
         PixelShader = BlendPS;
-        RenderTarget0 = _RenderCopy;
+        RenderTarget0 = RenderCopy;
         ClearRenderTargets = FALSE;
         BlendEnable = TRUE;
         BlendOp = ADD;

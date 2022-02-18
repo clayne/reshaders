@@ -45,11 +45,11 @@ uniform float2 _ShiftBlue <
     ui_type = "drag";
 > = 1.0;
 
-texture2D _RenderColor : COLOR;
+texture2D RenderColor : COLOR;
 
-sampler2D _SampleColor
+sampler2D SampleColor
 {
-    Texture = _RenderColor;
+    Texture = RenderColor;
     MagFilter = LINEAR;
     MinFilter = LINEAR;
     MipFilter = LINEAR;
@@ -73,11 +73,11 @@ void AbberationPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOOR
 {
     const float2 PixelSize = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
     // Shift red channel
-    OutputColor0.r = tex2D(_SampleColor, TexCoord + _ShiftRed * PixelSize).r;
+    OutputColor0.r = tex2D(SampleColor, TexCoord + _ShiftRed * PixelSize).r;
     // Keep green channel to the center
-    OutputColor0.g = tex2D(_SampleColor, TexCoord + _ShiftGreen * PixelSize).g;
+    OutputColor0.g = tex2D(SampleColor, TexCoord + _ShiftGreen * PixelSize).g;
     // Shift blue channel
-    OutputColor0.b = tex2D(_SampleColor, TexCoord + _ShiftBlue * PixelSize).b;
+    OutputColor0.b = tex2D(SampleColor, TexCoord + _ShiftBlue * PixelSize).b;
     // Write alpha value
     OutputColor0.a = 1.0;
 }

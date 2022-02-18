@@ -113,11 +113,11 @@ namespace DataMosh
 
     #define _HALFSIZE uint2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2)
 
-    texture2D _RenderColor : COLOR;
+    texture2D RenderColor : COLOR;
 
-    sampler2D _SampleColor
+    sampler2D SampleColor
     {
-        Texture = _RenderColor;
+        Texture = RenderColor;
         AddressU = MIRROR;
         AddressV = MIRROR;
         MagFilter = LINEAR;
@@ -128,7 +128,7 @@ namespace DataMosh
         #endif
     };
 
-    texture2D _RenderFrame0
+    texture2D RenderFrame0
     {
         Width = _HALFSIZE.x;
         Height = _HALFSIZE.y;
@@ -136,9 +136,9 @@ namespace DataMosh
         MipLevels = 8;
     };
 
-    sampler2D _SampleFrame0
+    sampler2D SampleFrame0
     {
-        Texture = _RenderFrame0;
+        Texture = RenderFrame0;
         AddressU = MIRROR;
         AddressV = MIRROR;
         MagFilter = LINEAR;
@@ -146,7 +146,7 @@ namespace DataMosh
         MipFilter = LINEAR;
     };
 
-    texture2D _RenderDerivatives
+    texture2D RenderDerivatives
     {
         Width = _HALFSIZE.x;
         Height = _HALFSIZE.y;
@@ -154,9 +154,9 @@ namespace DataMosh
         MipLevels = 8;
     };
 
-    sampler2D _SampleDerivatives
+    sampler2D SampleDerivatives
     {
-        Texture = _RenderDerivatives;
+        Texture = RenderDerivatives;
         AddressU = MIRROR;
         AddressV = MIRROR;
         MagFilter = LINEAR;
@@ -164,7 +164,7 @@ namespace DataMosh
         MipFilter = LINEAR;
     };
 
-    texture2D _RenderOpticalFlow
+    texture2D RenderOpticalFlow
     {
         Width = _HALFSIZE.x;
         Height = _HALFSIZE.y;
@@ -172,32 +172,32 @@ namespace DataMosh
         MipLevels = 8;
     };
 
-    sampler2D _SampleOpticalFlow
+    sampler2D SampleOpticalFlow
     {
-        Texture = _RenderOpticalFlow;
+        Texture = RenderOpticalFlow;
         AddressU = MIRROR;
         AddressV = MIRROR;
         MinFilter = _FILTER;
         MagFilter = _FILTER;
     };
 
-    texture2D _RenderAccumulation
+    texture2D RenderAccumulation
     {
         Width = _HALFSIZE.x;
         Height = _HALFSIZE.y;
         Format = R16F;
     };
 
-    sampler2D _SampleAccumulation
+    sampler2D SampleAccumulation
     {
-        Texture = _RenderAccumulation;
+        Texture = RenderAccumulation;
         AddressU = MIRROR;
         AddressV = MIRROR;
         MinFilter = _FILTER;
         MagFilter = _FILTER;
     };
 
-    texture2D _RenderFrame1
+    texture2D RenderFrame1
     {
         Width = _HALFSIZE.x;
         Height = _HALFSIZE.y;
@@ -205,9 +205,9 @@ namespace DataMosh
         MipLevels = 8;
     };
 
-    sampler2D _SampleFrame1
+    sampler2D SampleFrame1
     {
-        Texture = _RenderFrame1;
+        Texture = RenderFrame1;
         AddressU = MIRROR;
         AddressV = MIRROR;
         MagFilter = LINEAR;
@@ -215,16 +215,16 @@ namespace DataMosh
         MipFilter = LINEAR;
     };
 
-    texture2D _RenderFeedback
+    texture2D RenderFeedback
     {
         Width = BUFFER_WIDTH;
         Height = BUFFER_HEIGHT;
         Format = RGBA8;
     };
 
-    sampler2D _SampleFeedback
+    sampler2D SampleFeedback
     {
-        Texture = _RenderFeedback;
+        Texture = RenderFeedback;
         AddressU = MIRROR;
         AddressV = MIRROR;
         MagFilter = LINEAR;
@@ -258,16 +258,16 @@ namespace DataMosh
     void ConvertPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
     {
         const float Minima = exp2(-10.0);
-        float3 Color = max(tex2D(_SampleColor, TexCoord).rgb, Minima);
+        float3 Color = max(tex2D(SampleColor, TexCoord).rgb, Minima);
         OutputColor0 = saturate(Color.xy / dot(Color, 1.0));
     }
 
     void DerivativesPS(in float4 Position : SV_Position, in float4 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
-        float2 Sample0 = tex2D(_SampleFrame0, TexCoord.zy).xy; // (-x, +y)
-        float2 Sample1 = tex2D(_SampleFrame0, TexCoord.xy).xy; // (+x, +y)
-        float2 Sample2 = tex2D(_SampleFrame0, TexCoord.zw).xy; // (-x, -y)
-        float2 Sample3 = tex2D(_SampleFrame0, TexCoord.xw).xy; // (+x, -y)
+        float2 Sample0 = tex2D(SampleFrame0, TexCoord.zy).xy; // (-x, +y)
+        float2 Sample1 = tex2D(SampleFrame0, TexCoord.xy).xy; // (+x, +y)
+        float2 Sample2 = tex2D(SampleFrame0, TexCoord.zw).xy; // (-x, -y)
+        float2 Sample3 = tex2D(SampleFrame0, TexCoord.xw).xy; // (+x, -y)
         OutputColor0.xz = (Sample3 + Sample1) - (Sample2 + Sample0);
         OutputColor0.yw = (Sample0 + Sample1) - (Sample2 + Sample3);
         OutputColor0 *= 4.0;
@@ -295,13 +295,13 @@ namespace DataMosh
         {
             // .xy = Normalized Red Channel (x, y)
             // .zw = Normalized Green Channel (x, y)
-            float4 SampleI = tex2Dlod(_SampleDerivatives, float4(TexCoord, 0.0, Level));
+            float4 SampleI = tex2Dlod(SampleDerivatives, float4(TexCoord, 0.0, Level));
 
             // .xy = Current frame (r, g)
             // .zw = Previous frame (r, g)
             float4 SampleFrames;
-            SampleFrames.xy = tex2Dlod(_SampleFrame0, float4(TexCoord, 0.0, Level)).rg;
-            SampleFrames.zw = tex2Dlod(_SampleFrame1, float4(TexCoord, 0.0, Level)).rg;
+            SampleFrames.xy = tex2Dlod(SampleFrame0, float4(TexCoord, 0.0, Level)).rg;
+            SampleFrames.zw = tex2Dlod(SampleFrame1, float4(TexCoord, 0.0, Level)).rg;
             float2 Iz = SampleFrames.xy - SampleFrames.zw;
 
             const float Alpha = max(ldexp(_Constraint * 1e-5, Level - MaxLevel), 1e-7);
@@ -351,7 +351,7 @@ namespace DataMosh
         Random.z = RandomNoise(TexCoord.yx - Time.xx);
 
         // Motion vector
-        float2 MotionVectors = tex2Dlod(_SampleOpticalFlow, float4(TexCoord, 0.0, _Detail)).xy;
+        float2 MotionVectors = tex2Dlod(SampleOpticalFlow, float4(TexCoord, 0.0, _Detail)).xy;
         MotionVectors *= _Scale;
         MotionVectors = MotionVectors * _HALFSIZE; // Normalized screen space -> Pixel coordinates
         MotionVectors += (Random.xy - 0.5)  * _Diffusion; // Small random displacement (diffusion)
@@ -370,7 +370,7 @@ namespace DataMosh
         // - Reset if the amount of motion is larger than the block size.
         OutputColor0.rgb = MotionVectorLength > _BlockSize ? ResetAccumulation : UpdateAccumulation;
         OutputColor0.a = MotionVectorLength > _BlockSize ? 0.0 : 1.0;
-        OutputColor1 = float4(tex2D(_SampleFrame0, TexCoord).rgb, 0.0);
+        OutputColor1 = float4(tex2D(SampleFrame0, TexCoord).rgb, 0.0);
     }
 
     void OutputPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
@@ -385,12 +385,12 @@ namespace DataMosh
         Random.y = RandomNoise(TexCoord.xy + Time.yx);
         Random.z = RandomNoise(TexCoord.yx - Time.xx);
 
-        float2 MotionVectors = tex2Dlod(_SampleOpticalFlow, float4(TexCoord, 0.0, _Detail)).xy;
+        float2 MotionVectors = tex2Dlod(SampleOpticalFlow, float4(TexCoord, 0.0, _Detail)).xy;
         MotionVectors *= _Scale;
 
-        float4 Source = tex2D(_SampleColor, TexCoord); // Color from the original image
-        float Displacement = tex2D(_SampleAccumulation, TexCoord).r; // Displacement vector
-        float4 Working = tex2D(_SampleFeedback, TexCoord - MotionVectors * DisplacementTexel);
+        float4 Source = tex2D(SampleColor, TexCoord); // Color from the original image
+        float Displacement = tex2D(SampleAccumulation, TexCoord).r; // Displacement vector
+        float4 Working = tex2D(SampleFeedback, TexCoord - MotionVectors * DisplacementTexel);
 
         MotionVectors *= float2(BUFFER_WIDTH, BUFFER_HEIGHT); // Normalized screen space -> Pixel coordinates
         MotionVectors += (Random.xy - 0.5) * _Diffusion; // Small random displacement (diffusion)
@@ -420,7 +420,7 @@ namespace DataMosh
 
     void BlitPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
-        OutputColor0 = tex2D(_SampleColor, TexCoord);
+        OutputColor0 = tex2D(SampleColor, TexCoord);
     }
 
     technique KinoDatamosh
@@ -429,14 +429,14 @@ namespace DataMosh
         {
             VertexShader = PostProcessVS;
             PixelShader = ConvertPS;
-            RenderTarget0 = _RenderFrame0;
+            RenderTarget0 = RenderFrame0;
         }
 
         pass
         {
             VertexShader = DerivativesVS;
             PixelShader = DerivativesPS;
-            RenderTarget0 = _RenderDerivatives;
+            RenderTarget0 = RenderDerivatives;
         }
 
         /*
@@ -457,7 +457,7 @@ namespace DataMosh
         {
             VertexShader = PostProcessVS;
             PixelShader = OpticalFlowPS;
-            RenderTarget0 = _RenderOpticalFlow;
+            RenderTarget0 = RenderOpticalFlow;
             ClearRenderTargets = FALSE;
             BlendEnable = TRUE;
             BlendOp = ADD;
@@ -491,8 +491,8 @@ namespace DataMosh
         {
             VertexShader = PostProcessVS;
             PixelShader = AccumulatePS;
-            RenderTarget0 = _RenderAccumulation;
-            RenderTarget1 = _RenderFrame1;
+            RenderTarget0 = RenderAccumulation;
+            RenderTarget1 = RenderFrame1;
             ClearRenderTargets = FALSE;
             BlendEnable = TRUE;
             BlendOp = ADD;
@@ -513,7 +513,7 @@ namespace DataMosh
         {
             VertexShader = PostProcessVS;
             PixelShader = BlitPS;
-            RenderTarget = _RenderFeedback;
+            RenderTarget = RenderFeedback;
             #if BUFFER_COLOR_BIT_DEPTH == 8
                 SRGBWriteEnable = TRUE;
             #endif

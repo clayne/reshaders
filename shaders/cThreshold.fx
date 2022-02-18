@@ -57,11 +57,11 @@ uniform float _Intensity <
     ui_label = "Intensity";
 > = 1.0;
 
-texture2D _RenderColor : COLOR;
+texture2D RenderColor : COLOR;
 
-sampler2D _SampleColor
+sampler2D SampleColor
 {
-    Texture = _RenderColor;
+    Texture = RenderColor;
     MagFilter = LINEAR;
     MinFilter = LINEAR;
     MipFilter = LINEAR;
@@ -90,7 +90,7 @@ void ThresholdPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD
 {
     const float Knee = mad(_Threshold, _Smooth, 1e-5f);
     const float3 Curve = float3(_Threshold - Knee, Knee * 2.0, 0.25 / Knee);
-    float4 Color = tex2D(_SampleColor, TexCoord);
+    float4 Color = tex2D(SampleColor, TexCoord);
 
     // Under-threshold
     float Brightness = Med3(Color.r, Color.g, Color.b);

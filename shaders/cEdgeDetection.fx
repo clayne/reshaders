@@ -1,9 +1,9 @@
 
-texture2D _RenderColor : COLOR;
+texture2D RenderColor : COLOR;
 
-sampler2D _SampleColor
+sampler2D SampleColor
 {
-    Texture = _RenderColor;
+    Texture = RenderColor;
     MagFilter = LINEAR;
     MinFilter = LINEAR;
     MipFilter = LINEAR;
@@ -36,15 +36,15 @@ void DerivativesPS(in float4 Position : SV_Position, in float4 TexCoords[2] : TE
     //     C
     // A2     A3
     //   B2 B3
-    float4 A0 = tex2D(_SampleColor, TexCoords[0].xw) * 4.0; // <-1.5, +0.5>
-    float4 A1 = tex2D(_SampleColor, TexCoords[0].yw) * 4.0; // <+1.5, +0.5>
-    float4 A2 = tex2D(_SampleColor, TexCoords[0].xz) * 4.0; // <-1.5, -0.5>
-    float4 A3 = tex2D(_SampleColor, TexCoords[0].yz) * 4.0; // <+1.5, -0.5>
+    float4 A0 = tex2D(SampleColor, TexCoords[0].xw) * 4.0; // <-1.5, +0.5>
+    float4 A1 = tex2D(SampleColor, TexCoords[0].yw) * 4.0; // <+1.5, +0.5>
+    float4 A2 = tex2D(SampleColor, TexCoords[0].xz) * 4.0; // <-1.5, -0.5>
+    float4 A3 = tex2D(SampleColor, TexCoords[0].yz) * 4.0; // <+1.5, -0.5>
 
-    float4 B0 = tex2D(_SampleColor, TexCoords[1].xw) * 4.0; // <-0.5, +1.5>
-    float4 B1 = tex2D(_SampleColor, TexCoords[1].yw) * 4.0; // <+0.5, +1.5>
-    float4 B2 = tex2D(_SampleColor, TexCoords[1].xz) * 4.0; // <-0.5, -1.5>
-    float4 B3 = tex2D(_SampleColor, TexCoords[1].yz) * 4.0; // <+0.5, -1.5>
+    float4 B0 = tex2D(SampleColor, TexCoords[1].xw) * 4.0; // <-0.5, +1.5>
+    float4 B1 = tex2D(SampleColor, TexCoords[1].yw) * 4.0; // <+0.5, +1.5>
+    float4 B2 = tex2D(SampleColor, TexCoords[1].xz) * 4.0; // <-0.5, -1.5>
+    float4 B3 = tex2D(SampleColor, TexCoords[1].yz) * 4.0; // <+0.5, -1.5>
 
     //    -1 0 +1
     // -1 -2 0 +2 +1

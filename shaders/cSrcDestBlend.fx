@@ -39,11 +39,11 @@ uniform int _Blend <
     ui_items = " Add\0 Subtract\0 Multiply\0 Min\0 Max\0 Screen\0";
 > = 0;
 
-texture2D _RenderColor : COLOR;
+texture2D RenderColor : COLOR;
 
-sampler2D _SampleColor
+sampler2D SampleColor
 {
-    Texture = _RenderColor;
+    Texture = RenderColor;
     MagFilter = LINEAR;
     MinFilter = LINEAR;
     MipFilter = LINEAR;
@@ -52,16 +52,16 @@ sampler2D _SampleColor
     #endif
 };
 
-texture2D _RenderFrame
+texture2D RenderFrame
 {
     Width = BUFFER_WIDTH;
     Height = BUFFER_HEIGHT;
     Format = RGBA8;
 };
 
-sampler2D _SampleFrame
+sampler2D SampleFrame
 {
-    Texture = _RenderFrame;
+    Texture = RenderFrame;
     MagFilter = LINEAR;
     MinFilter = LINEAR;
     MipFilter = LINEAR;
@@ -83,13 +83,13 @@ void PostProcessVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, 
 
 void BlitPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    OutputColor0 = tex2D(_SampleColor, TexCoord);
+    OutputColor0 = tex2D(SampleColor, TexCoord);
 }
 
 void BlendPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    float4 Src = tex2D(_SampleFrame, TexCoord);
-    float4 Dest = tex2D(_SampleColor, TexCoord);
+    float4 Src = tex2D(SampleFrame, TexCoord);
+    float4 Dest = tex2D(SampleColor, TexCoord);
 
     switch(_Blend)
     {
@@ -123,7 +123,7 @@ technique cCopyBuffer
     {
         VertexShader = PostProcessVS;
         PixelShader = BlitPS;
-        RenderTarget0 = _RenderFrame;
+        RenderTarget0 = RenderFrame;
         #if BUFFER_COLOR_BIT_DEPTH == 8
             SRGBWriteEnable = TRUE;
         #endif

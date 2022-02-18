@@ -37,11 +37,11 @@ uniform float _Roll <
 uniform bool _Symmetry <
 > = true;
 
-texture2D _RenderColor : COLOR;
+texture2D RenderColor : COLOR;
 
-sampler2D _SampleColor
+sampler2D SampleColor
 {
-    Texture = _RenderColor;
+    Texture = RenderColor;
     MagFilter = LINEAR;
     MinFilter = LINEAR;
     MipFilter = LINEAR;
@@ -80,7 +80,7 @@ void MirrorPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, 
 
     // Reflection at the border of the screen.
     TexCoord = max(min(TexCoord, 2.0 - TexCoord), -TexCoord);
-    OutputColor0 = tex2D(_SampleColor, TexCoord);
+    OutputColor0 = tex2D(SampleColor, TexCoord);
 }
 
 technique KinoMirror

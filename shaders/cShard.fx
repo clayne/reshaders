@@ -37,11 +37,11 @@ uniform float _Weight <
     ui_type = "drag";
 > = 1.0;
 
-texture2D _RenderColor : COLOR;
+texture2D RenderColor : COLOR;
 
-sampler2D _SampleColor
+sampler2D SampleColor
 {
-    Texture = _RenderColor;
+    Texture = RenderColor;
     MagFilter = LINEAR;
     MinFilter = LINEAR;
     MipFilter = LINEAR;
@@ -65,12 +65,12 @@ void ShardVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out fl
 
 void ShardPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, in float4 Offset : TEXCOORD1, out float4 OutputColor0 : SV_Target0)
 {
-    float4 OriginalSample = tex2D(_SampleColor, TexCoord);
+    float4 OriginalSample = tex2D(SampleColor, TexCoord);
     float4 BlurSample;
-    BlurSample += tex2D(_SampleColor, Offset.xw) * 0.25;
-    BlurSample += tex2D(_SampleColor, Offset.zw) * 0.25;
-    BlurSample += tex2D(_SampleColor, Offset.xy) * 0.25;
-    BlurSample += tex2D(_SampleColor, Offset.zy) * 0.25;
+    BlurSample += tex2D(SampleColor, Offset.xw) * 0.25;
+    BlurSample += tex2D(SampleColor, Offset.zw) * 0.25;
+    BlurSample += tex2D(SampleColor, Offset.xy) * 0.25;
+    BlurSample += tex2D(SampleColor, Offset.zy) * 0.25;
     OutputColor0 = OriginalSample + (OriginalSample - BlurSample) * _Weight;
 }
 

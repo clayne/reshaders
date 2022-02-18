@@ -45,11 +45,11 @@ uniform float2 _Offset <
     ui_step = 0.001;
 > = float2(0.0, 0.0);
 
-texture2D _RenderColor : COLOR;
+texture2D RenderColor : COLOR;
 
-sampler2D _SampleColor
+sampler2D SampleColor
 {
-    Texture = _RenderColor;
+    Texture = RenderColor;
     AddressU = MIRROR;
     AddressV = MIRROR;
     MagFilter = LINEAR;
@@ -76,7 +76,7 @@ void TileVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out flo
 
 void TilePS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    OutputColor0 = tex2D(_SampleColor, TexCoord);
+    OutputColor0 = tex2D(SampleColor, TexCoord);
 }
 
 technique cTiles

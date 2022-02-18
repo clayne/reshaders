@@ -81,11 +81,11 @@ uniform float _NormalWeight <
     ui_min = 0.0;
 > = 0.1;
 
-texture2D _RenderColor : COLOR;
+texture2D RenderColor : COLOR;
 
-sampler2D _SampleColor
+sampler2D SampleColor
 {
-    Texture = _RenderColor;
+    Texture = RenderColor;
     MagFilter = LINEAR;
     MinFilter = LINEAR;
     MipFilter = LINEAR;
@@ -137,17 +137,17 @@ void ContourPS(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOOR
         A2 B2 C2
     */
 
-    float3 A0 = tex2D(_SampleColor, TexCoord[0].xy).rgb;
-    float3 A1 = tex2D(_SampleColor, TexCoord[0].xz).rgb;
-    float3 A2 = tex2D(_SampleColor, TexCoord[0].xw).rgb;
+    float3 A0 = tex2D(SampleColor, TexCoord[0].xy).rgb;
+    float3 A1 = tex2D(SampleColor, TexCoord[0].xz).rgb;
+    float3 A2 = tex2D(SampleColor, TexCoord[0].xw).rgb;
 
-    float3 B0 = tex2D(_SampleColor, TexCoord[1].xy).rgb;
-    float3 B1 = tex2D(_SampleColor, TexCoord[1].xz).rgb;
-    float3 B2 = tex2D(_SampleColor, TexCoord[1].xw).rgb;
+    float3 B0 = tex2D(SampleColor, TexCoord[1].xy).rgb;
+    float3 B1 = tex2D(SampleColor, TexCoord[1].xz).rgb;
+    float3 B2 = tex2D(SampleColor, TexCoord[1].xw).rgb;
 
-    float3 C0 = tex2D(_SampleColor, TexCoord[2].xy).rgb;
-    float3 C1 = tex2D(_SampleColor, TexCoord[2].xz).rgb;
-    float3 C2 = tex2D(_SampleColor, TexCoord[2].xw).rgb;
+    float3 C0 = tex2D(SampleColor, TexCoord[2].xy).rgb;
+    float3 C1 = tex2D(SampleColor, TexCoord[2].xz).rgb;
+    float3 C2 = tex2D(SampleColor, TexCoord[2].xw).rgb;
 
     float3 BilinearSample0, BilinearSample1, BilinearSample2, BilinearSample3;
 
@@ -161,10 +161,10 @@ void ContourPS(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOOR
             Edge = Magnitude(Ix, Iy);
             break;
         case 1: // Laplacian
-            BilinearSample0 = tex2D(_SampleColor, TexCoord[3].zy).rgb; // (-x, +y)
-            BilinearSample1 = tex2D(_SampleColor, TexCoord[3].xy).rgb; // (+x, +y)
-            BilinearSample2 = tex2D(_SampleColor, TexCoord[3].zw).rgb; // (-x, -y)
-            BilinearSample3 = tex2D(_SampleColor, TexCoord[3].xw).rgb; // (+x, -y)
+            BilinearSample0 = tex2D(SampleColor, TexCoord[3].zy).rgb; // (-x, +y)
+            BilinearSample1 = tex2D(SampleColor, TexCoord[3].xy).rgb; // (+x, +y)
+            BilinearSample2 = tex2D(SampleColor, TexCoord[3].zw).rgb; // (-x, -y)
+            BilinearSample3 = tex2D(SampleColor, TexCoord[3].xw).rgb; // (+x, -y)
             Edge = (BilinearSample0 + BilinearSample1 + BilinearSample2 + BilinearSample3) - (B1 * 4.0);
             Edge = NormalizeOutput(Edge);
             Edge = length(Edge) / sqrt(3.0);
@@ -221,23 +221,23 @@ void ContourPS(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOOR
             Edge = Magnitude(Ix, Iy);
             break;
         case 8: // Bilinear Sobel
-            BilinearSample0 = tex2D(_SampleColor, TexCoord[3].zy).rgb; // (-x, +y)
-            BilinearSample1 = tex2D(_SampleColor, TexCoord[3].xy).rgb; // (+x, +y)
-            BilinearSample2 = tex2D(_SampleColor, TexCoord[3].zw).rgb; // (-x, -y)
-            BilinearSample3 = tex2D(_SampleColor, TexCoord[3].xw).rgb; // (+x, -y)
+            BilinearSample0 = tex2D(SampleColor, TexCoord[3].zy).rgb; // (-x, +y)
+            BilinearSample1 = tex2D(SampleColor, TexCoord[3].xy).rgb; // (+x, +y)
+            BilinearSample2 = tex2D(SampleColor, TexCoord[3].zw).rgb; // (-x, -y)
+            BilinearSample3 = tex2D(SampleColor, TexCoord[3].xw).rgb; // (+x, -y)
             Ix = ((-BilinearSample2 + -BilinearSample0) + (BilinearSample3 + BilinearSample1)) * 4.0;
             Iy = ((BilinearSample2 + BilinearSample3) + (-BilinearSample0 + -BilinearSample1)) * 4.0;
             Edge = Magnitude(Ix, Iy);
             break;
         default:
-            Edge = tex2D(_SampleColor, TexCoord[1].xz).rgb;
+            Edge = tex2D(SampleColor, TexCoord[1].xz).rgb;
             break;
     }
 
     // Thresholding
     Edge = Edge * _ColorSensitivity;
     Edge = saturate((Edge - _Threshold) * _InvRange);
-    float3 Base = tex2D(_SampleColor, TexCoord[1].xz).rgb;
+    float3 Base = tex2D(SampleColor, TexCoord[1].xz).rgb;
     float3 ColorBackground = lerp(Base, _BackColor.rgb, _BackColor.a);
     OutputColor0 = lerp(ColorBackground, _FrontColor.rgb, Edge * _FrontColor.a);
 }
