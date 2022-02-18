@@ -86,7 +86,7 @@ namespace HornSchunck
         #endif
     };
 
-    texture2D _RenderTemporary1a < pooled = true; >
+    texture2D _RenderCommon1a < pooled = true; >
     {
         Width = SCREEN_SIZE.x / 2;
         Height = SCREEN_SIZE.y / 2;
@@ -94,15 +94,15 @@ namespace HornSchunck
         MipLevels = 8;
     };
 
-    sampler2D _SampleTemporary1a
+    sampler2D _SampleCommon1a
     {
-        Texture = _RenderTemporary1a;
+        Texture = _RenderCommon1a;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
     };
 
-    texture2D _RenderTemporary1b < pooled = true; >
+    texture2D _RenderCommon1b < pooled = true; >
     {
         Width = SCREEN_SIZE.x / 2;
         Height = SCREEN_SIZE.y / 2;
@@ -110,15 +110,15 @@ namespace HornSchunck
         MipLevels = 8;
     };
 
-    sampler2D _SampleTemporary1b
+    sampler2D _SampleCommon1b
     {
-        Texture = _RenderTemporary1b;
+        Texture = _RenderCommon1b;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
     };
 
-    texture2D _RenderTemporary1d < pooled = false; >
+    texture2D _RenderCommon1d < pooled = false; >
     {
         Width = SCREEN_SIZE.x / 2;
         Height = SCREEN_SIZE.y / 2;
@@ -126,129 +126,129 @@ namespace HornSchunck
         MipLevels = 8;
     };
 
-    sampler2D _SampleTemporary1d
+    sampler2D _SampleCommon1d
     {
-        Texture = _RenderTemporary1d;
+        Texture = _RenderCommon1d;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
     };
 
-    texture2D _RenderTemporary8 < pooled = true; >
+    texture2D _RenderCommon8 < pooled = true; >
     {
         Width = SCREEN_SIZE.x / 256;
         Height = SCREEN_SIZE.y / 256;
         Format = RG16F;
     };
 
-    sampler2D _SampleTemporary8
+    sampler2D _SampleCommon8
     {
-        Texture = _RenderTemporary8;
+        Texture = _RenderCommon8;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
     };
 
-    texture2D _RenderTemporary7 < pooled = true; >
+    texture2D _RenderCommon7 < pooled = true; >
     {
         Width = SCREEN_SIZE.x / 128;
         Height = SCREEN_SIZE.y / 128;
         Format = RG16F;
     };
 
-    sampler2D _SampleTemporary7
+    sampler2D _SampleCommon7
     {
-        Texture = _RenderTemporary7;
+        Texture = _RenderCommon7;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
     };
 
-    texture2D _RenderTemporary6 < pooled = true; >
+    texture2D _RenderCommon6 < pooled = true; >
     {
         Width = SCREEN_SIZE.x / 64;
         Height = SCREEN_SIZE.y / 64;
         Format = RG16F;
     };
 
-    sampler2D _SampleTemporary6
+    sampler2D _SampleCommon6
     {
-        Texture = _RenderTemporary6;
+        Texture = _RenderCommon6;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
     };
 
-    texture2D _RenderTemporary5 < pooled = true; >
+    texture2D _RenderCommon5 < pooled = true; >
     {
         Width = SCREEN_SIZE.x / 32;
         Height = SCREEN_SIZE.y / 32;
         Format = RG16F;
     };
 
-    sampler2D _SampleTemporary5
+    sampler2D _SampleCommon5
     {
-        Texture = _RenderTemporary5;
+        Texture = _RenderCommon5;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
     };
 
-    texture2D _RenderTemporary4 < pooled = true; >
+    texture2D _RenderCommon4 < pooled = true; >
     {
         Width = SCREEN_SIZE.x / 16;
         Height = SCREEN_SIZE.y / 16;
         Format = RG16F;
     };
 
-    sampler2D _SampleTemporary4
+    sampler2D _SampleCommon4
     {
-        Texture = _RenderTemporary4;
+        Texture = _RenderCommon4;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
     };
 
-    texture2D _RenderTemporary3 < pooled = true; >
+    texture2D _RenderCommon3 < pooled = true; >
     {
         Width = SCREEN_SIZE.x / 8;
         Height = SCREEN_SIZE.y / 8;
         Format = RG16F;
     };
 
-    sampler2D _SampleTemporary3
+    sampler2D _SampleCommon3
     {
-        Texture = _RenderTemporary3;
+        Texture = _RenderCommon3;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
     };
 
-    texture2D _RenderTemporary2 < pooled = true; >
+    texture2D _RenderCommon2 < pooled = true; >
     {
         Width = SCREEN_SIZE.x / 4;
         Height = SCREEN_SIZE.y / 4;
         Format = RG16F;
     };
 
-    sampler2D _SampleTemporary2
+    sampler2D _SampleCommon2
     {
-        Texture = _RenderTemporary2;
+        Texture = _RenderCommon2;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
     };
 
-    texture2D _RenderTemporary1c
+    texture2D _RenderCommon1c
     {
         Width = SCREEN_SIZE.x / 2;
         Height = SCREEN_SIZE.y / 2;
         Format = RG16F;
     };
 
-    sampler2D _SampleTemporary1c
+    sampler2D _SampleCommon1c
     {
-        Texture = _RenderTemporary1c;
+        Texture = _RenderCommon1c;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
@@ -298,11 +298,11 @@ namespace HornSchunck
     void OpticalFlow(in float2 TexCoord, in float2 UV, in float Level, out float2 DUV)
     {
         const float Alpha = max(ldexp(_Constraint * 1e-5, Level - MaxLevel), 1e-7);
-        float2 CurrentFrame = tex2D(_SampleTemporary1a, TexCoord).xy;
-        float2 PreviousFrame = tex2D(_SampleTemporary1d, TexCoord).xy;
+        float2 CurrentFrame = tex2D(_SampleCommon1a, TexCoord).xy;
+        float2 PreviousFrame = tex2D(_SampleCommon1d, TexCoord).xy;
 
         // SpatialI = <Rx, Gx, Ry, Gy>
-        float4 SpatialI = tex2D(_SampleTemporary1b, TexCoord);
+        float4 SpatialI = tex2D(_SampleCommon1b, TexCoord);
         float2 TemporalI = CurrentFrame - PreviousFrame;
 
         /*
@@ -356,17 +356,17 @@ namespace HornSchunck
 
     void DerivativesZPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
     {
-        float2 CurrentFrame = tex2D(_SampleTemporary1a, TexCoord).xy;
-        float2 PreviousFrame = tex2D(_SampleTemporary1d, TexCoord).xy;
+        float2 CurrentFrame = tex2D(_SampleCommon1a, TexCoord).xy;
+        float2 PreviousFrame = tex2D(_SampleCommon1d, TexCoord).xy;
         OutputColor0 = CurrentFrame - PreviousFrame;
     }
 
     void DerivativesXYPS(in float4 Position : SV_Position, in float4 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
-        float2 Sample0 = tex2D(_SampleTemporary1a, TexCoord.zy).xy; // (-x, +y)
-        float2 Sample1 = tex2D(_SampleTemporary1a, TexCoord.xy).xy; // (+x, +y)
-        float2 Sample2 = tex2D(_SampleTemporary1a, TexCoord.zw).xy; // (-x, -y)
-        float2 Sample3 = tex2D(_SampleTemporary1a, TexCoord.xw).xy; // (+x, -y)
+        float2 Sample0 = tex2D(_SampleCommon1a, TexCoord.zy).xy; // (-x, +y)
+        float2 Sample1 = tex2D(_SampleCommon1a, TexCoord.xy).xy; // (+x, +y)
+        float2 Sample2 = tex2D(_SampleCommon1a, TexCoord.zw).xy; // (-x, -y)
+        float2 Sample3 = tex2D(_SampleCommon1a, TexCoord.xw).xy; // (+x, -y)
         OutputColor0.xy = ((Sample3 + Sample1) - (Sample2 + Sample0));
         OutputColor0.zw = ((Sample2 + Sample3) - (Sample0 + Sample1));
         OutputColor0 = OutputColor0 * 4.0;
@@ -379,47 +379,47 @@ namespace HornSchunck
 
     void EstimateLevel7PS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputEstimation : SV_Target0)
     {
-        OpticalFlow(TexCoord, tex2D(_SampleTemporary8, TexCoord).xy, 6.0, OutputEstimation);
+        OpticalFlow(TexCoord, tex2D(_SampleCommon8, TexCoord).xy, 6.0, OutputEstimation);
     }
 
     void EstimateLevel6PS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputEstimation : SV_Target0)
     {
-        OpticalFlow(TexCoord, tex2D(_SampleTemporary7, TexCoord).xy, 5.0, OutputEstimation);
+        OpticalFlow(TexCoord, tex2D(_SampleCommon7, TexCoord).xy, 5.0, OutputEstimation);
     }
 
     void EstimateLevel5PS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputEstimation : SV_Target0)
     {
-        OpticalFlow(TexCoord, tex2D(_SampleTemporary6, TexCoord).xy, 4.0, OutputEstimation);
+        OpticalFlow(TexCoord, tex2D(_SampleCommon6, TexCoord).xy, 4.0, OutputEstimation);
     }
 
     void EstimateLevel4PS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputEstimation : SV_Target0)
     {
-        OpticalFlow(TexCoord, tex2D(_SampleTemporary5, TexCoord).xy, 3.0, OutputEstimation);
+        OpticalFlow(TexCoord, tex2D(_SampleCommon5, TexCoord).xy, 3.0, OutputEstimation);
     }
 
     void EstimateLevel3PS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputEstimation : SV_Target0)
     {
-        OpticalFlow(TexCoord, tex2D(_SampleTemporary4, TexCoord).xy, 2.0, OutputEstimation);
+        OpticalFlow(TexCoord, tex2D(_SampleCommon4, TexCoord).xy, 2.0, OutputEstimation);
     }
 
     void EstimateLevel2PS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputEstimation : SV_Target0)
     {
-        OpticalFlow(TexCoord, tex2D(_SampleTemporary3, TexCoord).xy, 1.0, OutputEstimation);
+        OpticalFlow(TexCoord, tex2D(_SampleCommon3, TexCoord).xy, 1.0, OutputEstimation);
     }
 
     void EstimateLevel1PS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0, out float4 OutputColor1 : SV_Target1)
     {
-        OpticalFlow(TexCoord, tex2D(_SampleTemporary2, TexCoord).xy, 0.0, OutputColor0.xy);
+        OpticalFlow(TexCoord, tex2D(_SampleCommon2, TexCoord).xy, 0.0, OutputColor0.xy);
         OutputColor0.ba = (0.0, _Blend);
 
         // Copy current convolved result to use at next frame
-        OutputColor1 = tex2D(_SampleTemporary1a, TexCoord).rg;
+        OutputColor1 = tex2D(_SampleCommon1a, TexCoord).rg;
         OutputColor1.ba = 0.0;
     }
 
     void VelocityShadingPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target)
     {
-        float2 Velocity = tex2Dlod(_SampleTemporary1c, float4(TexCoord, 0.0, _MipBias)).xy;
+        float2 Velocity = tex2Dlod(_SampleCommon1c, float4(TexCoord, 0.0, _MipBias)).xy;
 
         if(_NormalizedShading)
         {
@@ -442,7 +442,7 @@ namespace HornSchunck
         {
             VertexShader = PostProcessVS;
             PixelShader = NormalizePS;
-            RenderTarget0 = _RenderTemporary1a;
+            RenderTarget0 = _RenderCommon1a;
         }
 
         // Construct pyramids
@@ -451,7 +451,7 @@ namespace HornSchunck
         {
             VertexShader = DerivativesVS;
             PixelShader = DerivativesXYPS;
-            RenderTarget0 = _RenderTemporary1b;
+            RenderTarget0 = _RenderCommon1b;
         }
 
         // Pyramidal estimation
@@ -460,59 +460,59 @@ namespace HornSchunck
         {
             VertexShader = PostProcessVS;
             PixelShader = EstimateLevel8PS;
-            RenderTarget0 = _RenderTemporary8;
+            RenderTarget0 = _RenderCommon8;
         }
 
         pass
         {
             VertexShader = PostProcessVS;
             PixelShader = EstimateLevel7PS;
-            RenderTarget0 = _RenderTemporary7;
+            RenderTarget0 = _RenderCommon7;
         }
 
         pass
         {
             VertexShader = PostProcessVS;
             PixelShader = EstimateLevel6PS;
-            RenderTarget0 = _RenderTemporary6;
+            RenderTarget0 = _RenderCommon6;
         }
 
         pass
         {
             VertexShader = PostProcessVS;
             PixelShader = EstimateLevel5PS;
-            RenderTarget0 = _RenderTemporary5;
+            RenderTarget0 = _RenderCommon5;
         }
 
         pass
         {
             VertexShader = PostProcessVS;
             PixelShader = EstimateLevel4PS;
-            RenderTarget0 = _RenderTemporary4;
+            RenderTarget0 = _RenderCommon4;
         }
 
         pass
         {
             VertexShader = PostProcessVS;
             PixelShader = EstimateLevel3PS;
-            RenderTarget0 = _RenderTemporary3;
+            RenderTarget0 = _RenderCommon3;
         }
 
         pass
         {
             VertexShader = PostProcessVS;
             PixelShader = EstimateLevel2PS;
-            RenderTarget0 = _RenderTemporary2;
+            RenderTarget0 = _RenderCommon2;
         }
 
         pass
         {
             VertexShader = PostProcessVS;
             PixelShader = EstimateLevel1PS;
-            RenderTarget0 = _RenderTemporary1c;
+            RenderTarget0 = _RenderCommon1c;
 
             // Copy previous frame
-            RenderTarget1 = _RenderTemporary1d;
+            RenderTarget1 = _RenderCommon1d;
             ClearRenderTargets = FALSE;
             BlendEnable = TRUE;
             BlendOp = ADD;

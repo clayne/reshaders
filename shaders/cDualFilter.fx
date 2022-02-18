@@ -42,7 +42,7 @@ namespace SharedResources
 {
     namespace RGBA16F
     {
-        texture2D _RenderTemporary1 < pooled = true; >
+        texture2D _RenderCommon1 < pooled = true; >
         {
             Width = BUFFER_SIZE_1.x;
             Height = BUFFER_SIZE_1.y;
@@ -50,21 +50,21 @@ namespace SharedResources
             MipLevels = 8;
         };
 
-        texture2D _RenderTemporary2 < pooled = true; >
+        texture2D _RenderCommon2 < pooled = true; >
         {
             Width = BUFFER_SIZE_2.x;
             Height = BUFFER_SIZE_2.y;
             Format = RGBA16F;
         };
 
-        texture2D _RenderTemporary3 < pooled = true; >
+        texture2D _RenderCommon3 < pooled = true; >
         {
             Width = BUFFER_SIZE_3.x;
             Height = BUFFER_SIZE_3.y;
             Format = RGBA16F;
         };
 
-        texture2D _RenderTemporary4 < pooled = true; >
+        texture2D _RenderCommon4 < pooled = true; >
         {
             Width = BUFFER_SIZE_4.x;
             Height = BUFFER_SIZE_4.y;

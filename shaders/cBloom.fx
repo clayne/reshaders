@@ -46,7 +46,7 @@ namespace SharedResources
 {
     namespace RGBA16F
     {
-        texture2D _RenderTemporary1 < pooled = true; >
+        texture2D _RenderCommon1 < pooled = true; >
         {
             Width = BUFFER_SIZE_1.x;
             Height = BUFFER_SIZE_1.y;
@@ -54,49 +54,49 @@ namespace SharedResources
             MipLevels = 8;
         };
 
-        texture2D _RenderTemporary2 < pooled = true; >
+        texture2D _RenderCommon2 < pooled = true; >
         {
             Width = BUFFER_SIZE_2.x;
             Height = BUFFER_SIZE_2.y;
             Format = RGBA16F;
         };
 
-        texture2D _RenderTemporary3 < pooled = true; >
+        texture2D _RenderCommon3 < pooled = true; >
         {
             Width = BUFFER_SIZE_3.x;
             Height = BUFFER_SIZE_3.y;
             Format = RGBA16F;
         };
 
-        texture2D _RenderTemporary4 < pooled = true; >
+        texture2D _RenderCommon4 < pooled = true; >
         {
             Width = BUFFER_SIZE_4.x;
             Height = BUFFER_SIZE_4.y;
             Format = RGBA16F;
         };
 
-        texture2D _RenderTemporary5 < pooled = true; >
+        texture2D _RenderCommon5 < pooled = true; >
         {
             Width = BUFFER_SIZE_5.x;
             Height = BUFFER_SIZE_5.y;
             Format = RGBA16F;
         };
 
-        texture2D _RenderTemporary6 < pooled = true; >
+        texture2D _RenderCommon6 < pooled = true; >
         {
             Width = BUFFER_SIZE_6.x;
             Height = BUFFER_SIZE_6.y;
             Format = RGBA16F;
         };
 
-        texture2D _RenderTemporary7 < pooled = true; >
+        texture2D _RenderCommon7 < pooled = true; >
         {
             Width = BUFFER_SIZE_7.x;
             Height = BUFFER_SIZE_7.y;
             Format = RGBA16F;
         };
 
-        texture2D _RenderTemporary8 < pooled = true; >
+        texture2D _RenderCommon8 < pooled = true; >
         {
             Width = BUFFER_SIZE_8.x;
             Height = BUFFER_SIZE_8.y;
@@ -191,65 +191,65 @@ sampler2D _SampleColor
     #endif
 };
 
-sampler2D _SampleTemporary_RGBA16F_1
+sampler2D _SampleCommon_RGBA16F_1
 {
-    Texture = SharedResources::RGBA16F::_RenderTemporary1;
+    Texture = SharedResources::RGBA16F::_RenderCommon1;
     MagFilter = LINEAR;
     MinFilter = LINEAR;
     MipFilter = LINEAR;
 };
 
-sampler2D _SampleTemporary_RGBA16F_2
+sampler2D _SampleCommon_RGBA16F_2
 {
-    Texture = SharedResources::RGBA16F::_RenderTemporary2;
+    Texture = SharedResources::RGBA16F::_RenderCommon2;
     MagFilter = LINEAR;
     MinFilter = LINEAR;
     MipFilter = LINEAR;
 };
 
-sampler2D _SampleTemporary_RGBA16F_3
+sampler2D _SampleCommon_RGBA16F_3
 {
-    Texture = SharedResources::RGBA16F::_RenderTemporary3;
+    Texture = SharedResources::RGBA16F::_RenderCommon3;
     MagFilter = LINEAR;
     MinFilter = LINEAR;
     MipFilter = LINEAR;
 };
 
-sampler2D _SampleTemporary_RGBA16F_4
+sampler2D _SampleCommon_RGBA16F_4
 {
-    Texture = SharedResources::RGBA16F::_RenderTemporary4;
+    Texture = SharedResources::RGBA16F::_RenderCommon4;
     MagFilter = LINEAR;
     MinFilter = LINEAR;
     MipFilter = LINEAR;
 };
 
-sampler2D _SampleTemporary_RGBA16F_5
+sampler2D _SampleCommon_RGBA16F_5
 {
-    Texture = SharedResources::RGBA16F::_RenderTemporary5;
+    Texture = SharedResources::RGBA16F::_RenderCommon5;
     MagFilter = LINEAR;
     MinFilter = LINEAR;
     MipFilter = LINEAR;
 };
 
-sampler2D _SampleTemporary_RGBA16F_6
+sampler2D _SampleCommon_RGBA16F_6
 {
-    Texture = SharedResources::RGBA16F::_RenderTemporary6;
+    Texture = SharedResources::RGBA16F::_RenderCommon6;
     MagFilter = LINEAR;
     MinFilter = LINEAR;
     MipFilter = LINEAR;
 };
 
-sampler2D _SampleTemporary_RGBA16F_7
+sampler2D _SampleCommon_RGBA16F_7
 {
-    Texture = SharedResources::RGBA16F::_RenderTemporary7;
+    Texture = SharedResources::RGBA16F::_RenderCommon7;
     MagFilter = LINEAR;
     MinFilter = LINEAR;
     MipFilter = LINEAR;
 };
 
-sampler2D _SampleTemporary_RGBA16F_8
+sampler2D _SampleCommon_RGBA16F_8
 {
-    Texture = SharedResources::RGBA16F::_RenderTemporary8;
+    Texture = SharedResources::RGBA16F::_RenderCommon8;
     MagFilter = LINEAR;
     MinFilter = LINEAR;
     MipFilter = LINEAR;
@@ -471,77 +471,77 @@ float3 RRTAndODTFit(float3 v)
 
 void DownsamplePS1(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    Downsample(_SampleTemporary_RGBA16F_1, TexCoord, OutputColor0);
+    Downsample(_SampleCommon_RGBA16F_1, TexCoord, OutputColor0);
 }
 
 void DownsamplePS2(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    Downsample(_SampleTemporary_RGBA16F_2, TexCoord, OutputColor0);
+    Downsample(_SampleCommon_RGBA16F_2, TexCoord, OutputColor0);
 }
 
 void DownsamplePS3(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    Downsample(_SampleTemporary_RGBA16F_3, TexCoord, OutputColor0);
+    Downsample(_SampleCommon_RGBA16F_3, TexCoord, OutputColor0);
 }
 
 void DownsamplePS4(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    Downsample(_SampleTemporary_RGBA16F_4, TexCoord, OutputColor0);
+    Downsample(_SampleCommon_RGBA16F_4, TexCoord, OutputColor0);
 }
 
 void DownsamplePS5(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    Downsample(_SampleTemporary_RGBA16F_5, TexCoord, OutputColor0);
+    Downsample(_SampleCommon_RGBA16F_5, TexCoord, OutputColor0);
 }
 
 void DownsamplePS6(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    Downsample(_SampleTemporary_RGBA16F_6, TexCoord, OutputColor0);
+    Downsample(_SampleCommon_RGBA16F_6, TexCoord, OutputColor0);
 }
 
 void DownsamplePS7(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    Downsample(_SampleTemporary_RGBA16F_7, TexCoord, OutputColor0);
+    Downsample(_SampleCommon_RGBA16F_7, TexCoord, OutputColor0);
 }
 
 void UpsamplePS7(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    Upsample(_SampleTemporary_RGBA16F_8, TexCoord, _Level6Weight, OutputColor0);
+    Upsample(_SampleCommon_RGBA16F_8, TexCoord, _Level6Weight, OutputColor0);
 }
 
 void UpsamplePS6(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    Upsample(_SampleTemporary_RGBA16F_7, TexCoord, _Level5Weight, OutputColor0);
+    Upsample(_SampleCommon_RGBA16F_7, TexCoord, _Level5Weight, OutputColor0);
 }
 
 void UpsamplePS5(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    Upsample(_SampleTemporary_RGBA16F_6, TexCoord, _Level4Weight, OutputColor0);
+    Upsample(_SampleCommon_RGBA16F_6, TexCoord, _Level4Weight, OutputColor0);
 }
 
 void UpsamplePS4(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    Upsample(_SampleTemporary_RGBA16F_5, TexCoord, _Level3Weight, OutputColor0);
+    Upsample(_SampleCommon_RGBA16F_5, TexCoord, _Level3Weight, OutputColor0);
 }
 
 void UpsamplePS3(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    Upsample(_SampleTemporary_RGBA16F_4, TexCoord, _Level2Weight, OutputColor0);
+    Upsample(_SampleCommon_RGBA16F_4, TexCoord, _Level2Weight, OutputColor0);
 }
 
 void UpsamplePS2(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    Upsample(_SampleTemporary_RGBA16F_3, TexCoord, _Level1Weight, OutputColor0);
+    Upsample(_SampleCommon_RGBA16F_3, TexCoord, _Level1Weight, OutputColor0);
 }
 
 void UpsamplePS1(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    Upsample(_SampleTemporary_RGBA16F_2, TexCoord, 0.0, OutputColor0);
+    Upsample(_SampleCommon_RGBA16F_2, TexCoord, 0.0, OutputColor0);
 }
 
 void CompositePS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    float4 Src = tex2D(_SampleTemporary_RGBA16F_1, TexCoord);
+    float4 Src = tex2D(_SampleCommon_RGBA16F_1, TexCoord);
     Src *= _Intensity;
     Src = mul(ACESInputMat, Src.rgb);
     Src = RRTAndODTFit(Src.rgb);
@@ -557,63 +557,63 @@ technique cBloom
     {
         VertexShader = PostProcessVS;
         PixelShader = PrefilterPS;
-        RenderTarget0 = SharedResources::RGBA16F::_RenderTemporary1;
+        RenderTarget0 = SharedResources::RGBA16F::_RenderCommon1;
     }
 
     pass
     {
         VertexShader = DownsampleVS1;
         PixelShader = DownsamplePS1;
-        RenderTarget0 = SharedResources::RGBA16F::_RenderTemporary2;
+        RenderTarget0 = SharedResources::RGBA16F::_RenderCommon2;
     }
 
     pass
     {
         VertexShader = DownsampleVS2;
         PixelShader = DownsamplePS2;
-        RenderTarget0 = SharedResources::RGBA16F::_RenderTemporary3;
+        RenderTarget0 = SharedResources::RGBA16F::_RenderCommon3;
     }
 
     pass
     {
         VertexShader = DownsampleVS3;
         PixelShader = DownsamplePS3;
-        RenderTarget0 = SharedResources::RGBA16F::_RenderTemporary4;
+        RenderTarget0 = SharedResources::RGBA16F::_RenderCommon4;
     }
 
     pass
     {
         VertexShader = DownsampleVS4;
         PixelShader = DownsamplePS4;
-        RenderTarget0 = SharedResources::RGBA16F::_RenderTemporary5;
+        RenderTarget0 = SharedResources::RGBA16F::_RenderCommon5;
     }
 
     pass
     {
         VertexShader = DownsampleVS5;
         PixelShader = DownsamplePS5;
-        RenderTarget0 = SharedResources::RGBA16F::_RenderTemporary6;
+        RenderTarget0 = SharedResources::RGBA16F::_RenderCommon6;
     }
 
     pass
     {
         VertexShader = DownsampleVS6;
         PixelShader = DownsamplePS6;
-        RenderTarget0 = SharedResources::RGBA16F::_RenderTemporary7;
+        RenderTarget0 = SharedResources::RGBA16F::_RenderCommon7;
     }
 
     pass
     {
         VertexShader = DownsampleVS7;
         PixelShader = DownsamplePS7;
-        RenderTarget0 = SharedResources::RGBA16F::_RenderTemporary8;
+        RenderTarget0 = SharedResources::RGBA16F::_RenderCommon8;
     }
 
     pass
     {
         VertexShader = UpsampleVS7;
         PixelShader = UpsamplePS7;
-        RenderTarget0 = SharedResources::RGBA16F::_RenderTemporary7;
+        RenderTarget0 = SharedResources::RGBA16F::_RenderCommon7;
         ClearRenderTargets = FALSE;
         BlendEnable = TRUE;
         BlendOp = ADD;
@@ -625,7 +625,7 @@ technique cBloom
     {
         VertexShader = UpsampleVS6;
         PixelShader = UpsamplePS6;
-        RenderTarget0 = SharedResources::RGBA16F::_RenderTemporary6;
+        RenderTarget0 = SharedResources::RGBA16F::_RenderCommon6;
         ClearRenderTargets = FALSE;
         BlendEnable = TRUE;
         BlendOp = ADD;
@@ -637,7 +637,7 @@ technique cBloom
     {
         VertexShader = UpsampleVS5;
         PixelShader = UpsamplePS5;
-        RenderTarget0 = SharedResources::RGBA16F::_RenderTemporary5;
+        RenderTarget0 = SharedResources::RGBA16F::_RenderCommon5;
         ClearRenderTargets = FALSE;
         BlendEnable = TRUE;
         BlendOp = ADD;
@@ -649,7 +649,7 @@ technique cBloom
     {
         VertexShader = UpsampleVS4;
         PixelShader = UpsamplePS4;
-        RenderTarget0 = SharedResources::RGBA16F::_RenderTemporary4;
+        RenderTarget0 = SharedResources::RGBA16F::_RenderCommon4;
         ClearRenderTargets = FALSE;
         BlendEnable = TRUE;
         BlendOp = ADD;
@@ -661,7 +661,7 @@ technique cBloom
     {
         VertexShader = UpsampleVS3;
         PixelShader = UpsamplePS3;
-        RenderTarget0 = SharedResources::RGBA16F::_RenderTemporary3;
+        RenderTarget0 = SharedResources::RGBA16F::_RenderCommon3;
         ClearRenderTargets = FALSE;
         BlendEnable = TRUE;
         BlendOp = ADD;
@@ -673,7 +673,7 @@ technique cBloom
     {
         VertexShader = UpsampleVS2;
         PixelShader = UpsamplePS2;
-        RenderTarget0 = SharedResources::RGBA16F::_RenderTemporary2;
+        RenderTarget0 = SharedResources::RGBA16F::_RenderCommon2;
         ClearRenderTargets = FALSE;
         BlendEnable = TRUE;
         BlendOp = ADD;
@@ -685,7 +685,7 @@ technique cBloom
     {
         VertexShader = UpsampleVS1;
         PixelShader = UpsamplePS1;
-        RenderTarget0 = SharedResources::RGBA16F::_RenderTemporary1;
+        RenderTarget0 = SharedResources::RGBA16F::_RenderCommon1;
     }
 
     pass
