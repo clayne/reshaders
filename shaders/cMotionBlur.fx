@@ -781,6 +781,7 @@ namespace MotionBlur
 
     void MotionBlurPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target)
     {
+        OutputColor0 = 0.0;
         const int Samples = 4;
         float Noise = frac(52.9829189 * frac(dot(Position.xy, float2(0.06711056, 0.00583715))));
         float FrameTimeRatio = _TargetFrameRate / (1e+3 / _FrameTime);
