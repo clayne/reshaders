@@ -48,6 +48,7 @@ namespace SharedResources
             Width = BUFFER_SIZE_1.x;
             Height = BUFFER_SIZE_1.y;
             Format = RGBA16F;
+            MipLevels = 8;
         };
 
         texture2D RenderCommon2 < pooled = true; >
@@ -189,7 +190,7 @@ void UpsampleVS(in uint ID, inout float4 Position, inout float4 TexCoords[3], fl
             TexCoords[1] = VSTexCoord.xyyy + float4(0.0, 2.0, 0.0, -2.0) * PixelSize.xyyy;
             TexCoords[2] = VSTexCoord.xyyy + float4(2.0, 2.0, 0.0, -2.0) * PixelSize.xyyy;
             break;
-        case 2: // Kawase
+        case 2:
             TexCoords[0] = VSTexCoord.xyxy + float4(-1.0, -1.0, 1.0, 1.0) * PixelSize.xyxy;
             TexCoords[1] = VSTexCoord.xxxy + float4(1.0, 0.0, -1.0, 0.0) * PixelSize.xxxy;
             TexCoords[2] = VSTexCoord.xyyy + float4(0.0, 1.0, 0.0, -1.0) * PixelSize.xyyy;
@@ -199,22 +200,22 @@ void UpsampleVS(in uint ID, inout float4 Position, inout float4 TexCoords[3], fl
 
 void Downsample1VS(in uint ID : SV_VertexID, inout float4 Position : SV_Position, inout float4 TexCoords[4] : TEXCOORD0)
 {
-    DownsampleVS(ID, Position, TexCoords, 1.0 / BUFFER_SIZE_1);
+    DownsampleVS(ID, Position, TexCoords, 1.0 / BUFFER_SIZE_0);
 }
 
 void Downsample2VS(in uint ID : SV_VertexID, inout float4 Position : SV_Position, inout float4 TexCoords[4] : TEXCOORD0)
 {
-    DownsampleVS(ID, Position, TexCoords, 1.0 / BUFFER_SIZE_2);
+    DownsampleVS(ID, Position, TexCoords, 1.0 / BUFFER_SIZE_1);
 }
 
 void Downsample3VS(in uint ID : SV_VertexID, inout float4 Position : SV_Position, inout float4 TexCoords[4] : TEXCOORD0)
 {
-    DownsampleVS(ID, Position, TexCoords, 1.0 / BUFFER_SIZE_3);
+    DownsampleVS(ID, Position, TexCoords, 1.0 / BUFFER_SIZE_2);
 }
 
 void Downsample4VS(in uint ID : SV_VertexID, inout float4 Position : SV_Position, inout float4 TexCoords[4] : TEXCOORD0)
 {
-    DownsampleVS(ID, Position, TexCoords, 1.0 / BUFFER_SIZE_4);
+    DownsampleVS(ID, Position, TexCoords, 1.0 / BUFFER_SIZE_3);
 }
 
 void Upsample3VS(in uint ID : SV_VertexID, inout float4 Position : SV_Position, inout float4 TexCoords[3] : TEXCOORD0)
@@ -329,11 +330,17 @@ void UpsamplePS(in sampler2D Source, in float4 TexCoords[3], out float4 OutputCo
             float4 C2 = tex2D(Source, TexCoords[2].xw);
             OutputColor = (((A0 + C0 + A2 + C2) * 1.0) + ((B0 + A1 + C1 + B2) * 2.0) + (B1 * 4.0)) / 16.0;
             break;
-        case 2:
+        case 2: // Kawase
             OutputColor += tex2D(Source, TexCoords[0].xw) * 2.0;
-            OutputColor += tex2D(Source, TexCoords[0].zw);
-            OutputColor += tex2D(Source, TexCoords[0].xy);
-            OutputColor += tex2D(Source, TexCoords[0].zy);
+            OutputColor += tex2D(Source, TexCoords[0].zw) * 2.0;
+            OutputColor += tex2D(Source, TexCoords[0].xy) * 2.0;
+            OutputColor += tex2D(Source, TexCoords[0].zy) * 2.0;
+            OutputColor += tex2D(Source, TexCoords[1].xw);
+            OutputColor += tex2D(Source, TexCoords[1].zw);
+            OutputColor += tex2D(Source, TexCoords[2].xy);
+            OutputColor += tex2D(Source, TexCoords[2].xw);
+            OutputColor = OutputColor / 12.0;
+            break;
     }
 
     OutputColor.a = 1.0;

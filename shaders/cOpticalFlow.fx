@@ -419,17 +419,17 @@ namespace OpticalFlow
         UpsampleOffsets(TexCoord0, PixelSize, Offsets);
     }
 
-    void Downsample1VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 DownsampleCoords[4] : TEXCOORD0)
+    void Downsample2VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 DownsampleCoords[4] : TEXCOORD0)
     {
         DownsampleVS(ID, 1.0 / BUFFER_SIZE_1, Position, DownsampleCoords);
     }
 
-    void Downsample2VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 DownsampleCoords[4] : TEXCOORD0)
+    void Downsample3VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 DownsampleCoords[4] : TEXCOORD0)
     {
         DownsampleVS(ID, 1.0 / BUFFER_SIZE_2, Position, DownsampleCoords);
     }
 
-    void Downsample3VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 DownsampleCoords[4] : TEXCOORD0)
+    void Downsample4VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 DownsampleCoords[4] : TEXCOORD0)
     {
         DownsampleVS(ID, 1.0 / BUFFER_SIZE_3, Position, DownsampleCoords);
     }
@@ -729,17 +729,17 @@ namespace OpticalFlow
                             A2, B2, C2);
     }
 
-    void PreDownsample1PS(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+    void PreDownsample2PS(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
         OutputColor0 = DownsamplePS(SampleCommon_RG16F_1a, TexCoord);
     }
 
-    void PreDownsample2PS(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+    void PreDownsample3PS(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
         OutputColor0 = DownsamplePS(SampleCommon_RG16F_2, TexCoord);
     }
 
-    void PreDownsample3PS(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+    void PreDownsample4PS(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
         OutputColor0 = DownsamplePS(SampleCommon_RG16F_3, TexCoord);
     }
@@ -830,17 +830,17 @@ namespace OpticalFlow
         OutputColor0.ba = (0.0, _Blend);
     }
 
-    void PostDownsample1PS(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+    void PostDownsample2PS(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
         OutputColor0 = DownsamplePS(SampleCommon_RG16F_1e, TexCoord);
     }
 
-    void PostDownsample2PS(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+    void PostDownsample3PS(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
         OutputColor0 = DownsamplePS(SampleCommon_RG16F_2, TexCoord);
     }
 
-    void PostDownsample3PS(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+    void PostDownsample4PS(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
         OutputColor0 = DownsamplePS(SampleCommon_RG16F_3, TexCoord);
     }
@@ -912,22 +912,22 @@ namespace OpticalFlow
 
         pass
         {
-            VertexShader = Downsample1VS;
-            PixelShader = PreDownsample1PS;
-            RenderTarget0 = SharedResources::RG16F::RenderCommon2;
-        }
-
-        pass
-        {
             VertexShader = Downsample2VS;
             PixelShader = PreDownsample2PS;
-            RenderTarget0 = SharedResources::RG16F::RenderCommon3;
+            RenderTarget0 = SharedResources::RG16F::RenderCommon2;
         }
 
         pass
         {
             VertexShader = Downsample3VS;
             PixelShader = PreDownsample3PS;
+            RenderTarget0 = SharedResources::RG16F::RenderCommon3;
+        }
+
+        pass
+        {
+            VertexShader = Downsample4VS;
+            PixelShader = PreDownsample4PS;
             RenderTarget0 = SharedResources::RG16F::RenderCommon4;
         }
 
@@ -1028,22 +1028,22 @@ namespace OpticalFlow
 
         pass
         {
-            VertexShader = Downsample1VS;
-            PixelShader = PostDownsample1PS;
-            RenderTarget0 = SharedResources::RG16F::RenderCommon2;
-        }
-
-        pass
-        {
             VertexShader = Downsample2VS;
             PixelShader = PostDownsample2PS;
-            RenderTarget0 = SharedResources::RG16F::RenderCommon3;
+            RenderTarget0 = SharedResources::RG16F::RenderCommon2;
         }
 
         pass
         {
             VertexShader = Downsample3VS;
             PixelShader = PostDownsample3PS;
+            RenderTarget0 = SharedResources::RG16F::RenderCommon3;
+        }
+
+        pass
+        {
+            VertexShader = Downsample4VS;
+            PixelShader = PostDownsample4PS;
             RenderTarget0 = SharedResources::RG16F::RenderCommon4;
         }
 
