@@ -48,15 +48,7 @@ namespace SharedResources
 {
     namespace RG16F
     {
-        texture2D RenderCommon1a < pooled = true; >
-        {
-            Width = BUFFER_SIZE_1.x;
-            Height = BUFFER_SIZE_1.y;
-            Format = RG16F;
-            MipLevels = 8;
-        };
-        
-        texture2D RenderCommon1b < pooled = true; >
+        texture2D RenderCommon1 < pooled = true; >
         {
             Width = BUFFER_SIZE_1.x;
             Height = BUFFER_SIZE_1.y;
@@ -222,23 +214,15 @@ namespace OpticalFlow
         #endif
     };
 
-    sampler2D SampleCommon_RG16F_1a
+    sampler2D SampleCommon_RG16F_1
     {
-        Texture = SharedResources::RG16F::RenderCommon1a;
+        Texture = SharedResources::RG16F::RenderCommon1;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
     };
 
-    sampler2D SampleCommon_RG16F_1b
-    {
-        Texture = SharedResources::RG16F::RenderCommon1b;
-        MagFilter = LINEAR;
-        MinFilter = LINEAR;
-        MipFilter = LINEAR;
-    };
-
-    texture2D RenderCommon1d
+    texture2D RenderCommon1b
     {
         Width = BUFFER_SIZE_1.x;
         Height = BUFFER_SIZE_1.y;
@@ -246,9 +230,9 @@ namespace OpticalFlow
         MipLevels = 8;
     };
 
-    sampler2D SampleCommon_RG16F_1d
+    sampler2D SampleCommon_RG16F_1b
     {
-        Texture = RenderCommon1d;
+        Texture = RenderCommon1b;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
@@ -660,11 +644,11 @@ namespace OpticalFlow
 
     void OpticalFlow(in float2 TexCoord, in float4 PrewittCoords[3], in float2 UV, in float Level, out float2 DUV)
     {
-        float2 CurrentFrame = tex2D(SampleCommon_RG16F_1a, TexCoord).xy;
-        float2 PreviousFrame = tex2D(SampleCommon_RG16F_1d, TexCoord).xy;
+        float2 CurrentFrame = tex2D(SampleCommon_RG16F_1, TexCoord).xy;
+        float2 PreviousFrame = tex2D(SampleCommon_RG16F_1b, TexCoord).xy;
 
         // SpatialI = <Rx, Gx, Ry, Gy>
-        float4 SpatialI = Derivatives(SampleCommon_RG16F_1a, PrewittCoords);
+        float4 SpatialI = Derivatives(SampleCommon_RG16F_1, PrewittCoords);
         float2 TemporalI = CurrentFrame - PreviousFrame;
 
         const float Alpha = max(ldexp(_Constraint * 1e-5, Level - MaxLevel), 1e-7);
@@ -768,7 +752,7 @@ namespace OpticalFlow
 
     void PreDownsample2PS(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
-        OutputColor0 = DownsamplePS(SampleCommon_RG16F_1a, TexCoord);
+        OutputColor0 = DownsamplePS(SampleCommon_RG16F_1, TexCoord);
     }
 
     void PreDownsample3PS(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
@@ -862,12 +846,9 @@ namespace OpticalFlow
         OutputColor0 = UpsamplePS(SampleCommon_RG16F_3, TexCoord);
     }
 
-    void PostUpsample1PS(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0, out float4 OutputColor1 : SV_Target1)
+    void PostUpsample1PS(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
         OutputColor0 = UpsamplePS(SampleCommon_RG16F_2, TexCoord);
-
-        // Copy current convolved result to use at next frame
-        OutputColor1 = tex2D(SampleCommon_RG16F_1a, TexCoord[1].xz).rg;
     }
 
     void VelocityShadingPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target)
@@ -904,6 +885,11 @@ namespace OpticalFlow
         }
     #endif
 
+    void CopyPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+    {
+        OutputColor0 = tex2D(SampleCommon_RG16F_1, TexCoord).rg;
+    }
+
     technique cOpticalFlow
     {
         // Normalize current frame
@@ -912,7 +898,7 @@ namespace OpticalFlow
         {
             VertexShader = MedianVS;
             PixelShader = NormalizePS;
-            RenderTarget0 = SharedResources::RG16F::RenderCommon1a;
+            RenderTarget0 = SharedResources::RG16F::RenderCommon1;
         }
 
         // Pre-process dual-filter blur
@@ -956,7 +942,7 @@ namespace OpticalFlow
         {
             VertexShader = Upsample1VS;
             PixelShader = PreUpsample1PS;
-            RenderTarget0 = SharedResources::RG16F::RenderCommon1a;
+            RenderTarget0 = SharedResources::RG16F::RenderCommon1;
         }
 
         // Pyramidal estimation
@@ -1063,10 +1049,7 @@ namespace OpticalFlow
         {
             VertexShader = Upsample1VS;
             PixelShader = PostUpsample1PS;
-            RenderTarget0 = SharedResources::RG16F::RenderCommon1b;
-
-            // Copy previous frame
-            RenderTarget1 = RenderCommon1d;
+            RenderTarget0 = RenderCommon1b;
         }
 
         // Render result
@@ -1096,5 +1079,13 @@ namespace OpticalFlow
                 PixelShader = VelocityShadingPS;
             }
         #endif
+
+        // Copy frame for next frame
+        pass
+        {
+            VertexShader = PostProcessVS;
+            PixelShader = CopyPS;
+            RenderTarget0 = RenderCommon1b;
+        }
     }
 }
