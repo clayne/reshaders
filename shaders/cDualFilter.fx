@@ -190,7 +190,7 @@ void UpsampleVS(in uint ID, inout float4 Position, inout float4 TexCoords[3], fl
             TexCoords[1] = VSTexCoord.xyyy + float4(0.0, 2.0, 0.0, -2.0) * PixelSize.xyyy;
             TexCoords[2] = VSTexCoord.xyyy + float4(2.0, 2.0, 0.0, -2.0) * PixelSize.xyyy;
             break;
-        case 2:
+        case 2: // Kawase
             TexCoords[0] = VSTexCoord.xyxy + float4(-1.0, -1.0, 1.0, 1.0) * PixelSize.xyxy;
             TexCoords[1] = VSTexCoord.xxxy + float4(1.0, 0.0, -1.0, 0.0) * PixelSize.xxxy;
             TexCoords[2] = VSTexCoord.xyyy + float4(0.0, 1.0, 0.0, -1.0) * PixelSize.xyyy;
