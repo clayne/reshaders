@@ -608,9 +608,8 @@ namespace OpticalFlow
             + Use symmetric Gauss-Seidel to solve linear equation at Page 8
     */
 
-    float4 Derivatives(in sampler2D Source, in float4 TexCoords[3])
+    void Gradients(in sampler2D Source, in float4 TexCoords[3], out float2 Ix, out float2 Iy)
     {
-        float4 OutputColor = 0.0;
         // Custom 5x5 bilinear derivatives, normalized to [-1, 1]
         // A0 B0 C0
         // A1    C1
@@ -629,15 +628,14 @@ namespace OpticalFlow
         // -1 -1  0  +1 +1
         // -1 -1  0  +1 +1
         // -1 -1  0  +1 +1
-        OutputColor.xy = (((C0 * 4.0) + (C1 * 2.0) + (C2 * 4.0)) - ((A0 * 4.0) + (A1 * 2.0) + (A2 * 4.0))) / 10.0;
+        Ix = (((C0 * 4.0) + (C1 * 2.0) + (C2 * 4.0)) - ((A0 * 4.0) + (A1 * 2.0) + (A2 * 4.0))) / 10.0;
 
         // +1 +1 +1 +1 +1
         // +1 +1 +1 +1 +1
         //  0  0  0  0  0
         // -1 -1 -1 -1 -1
         // -1 -1 -1 -1 -1
-        OutputColor.zw = (((A0 * 4.0) + (B0 * 2.0) + (C0 * 4.0)) - ((A2 * 4.0) + (B2 * 2.0) + (C2 * 4.0))) / 10.0;
-        return OutputColor;
+        Iy = (((A0 * 4.0) + (B0 * 2.0) + (C0 * 4.0)) - ((A2 * 4.0) + (B2 * 2.0) + (C2 * 4.0))) / 10.0;
     }
 
     static const int MaxLevel = 7;
@@ -647,9 +645,9 @@ namespace OpticalFlow
         float2 CurrentFrame = tex2D(SampleCommon_RG16F_1, TexCoord).xy;
         float2 PreviousFrame = tex2D(SampleCommon_RG16F_1b, TexCoord).xy;
 
-        // SpatialI = <Rx, Gx, Ry, Gy>
-        float4 SpatialI = Derivatives(SampleCommon_RG16F_1, PrewittCoords);
-        float2 TemporalI = CurrentFrame - PreviousFrame;
+        float2 Ix, Iy, It;
+        Gradients(SampleCommon_RG16F_1, PrewittCoords, Ix, Iy);
+        It = CurrentFrame - PreviousFrame;
 
         const float Alpha = max(ldexp(_Constraint * 1e-5, Level - MaxLevel), 1e-7);
 
@@ -677,14 +675,14 @@ namespace OpticalFlow
         // A11 = 1.0 / (Rx^2 + Gx^2 + a)
         // A22 = 1.0 / (Ry^2 + Gy^2 + a)
         // Aij = Rxy + Gxy
-        float A11 = 1.0 / (dot(SpatialI.xy, SpatialI.xy) + Alpha);
-        float A22 = 1.0 / (dot(SpatialI.zw, SpatialI.zw) + Alpha);
-        float Aij = dot(SpatialI.xy, SpatialI.zw);
+        float A11 = 1.0 / (dot(Ix, Ix) + Alpha);
+        float A22 = 1.0 / (dot(Iy, Iy) + Alpha);
+        float Aij = dot(Ix, Iy);
 
         // B1 = Rxt + Gxt
         // B2 = Ryt + Gyt
-        float B1 = dot(SpatialI.xy, TemporalI);
-        float B2 = dot(SpatialI.zw, TemporalI);
+        float B1 = dot(Ix, It);
+        float B2 = dot(Iy, It);
 
         // Symmetric Gauss-Seidel (forward sweep, from 1...N)
         DUV.x = A11 * ((Alpha * UV.x - B1) - (UV.y * Aij));
