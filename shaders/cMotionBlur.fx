@@ -147,8 +147,8 @@ namespace MotionBlur
         ui_label = "Flow Threshold";
         ui_tooltip = "Higher = Smoother flow";
         ui_min = 0.0;
-        ui_max = 1.0;
-    > = 0.5;
+        ui_max = 2.0;
+    > = 1.0;
 
     uniform float _MipBias <
         ui_type = "slider";
