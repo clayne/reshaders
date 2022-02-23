@@ -147,8 +147,8 @@ namespace MotionBlur
         ui_label = "Flow Threshold";
         ui_tooltip = "Higher = Smoother flow";
         ui_min = 0.0;
-        ui_max = 2.0;
-    > = 1.0;
+        ui_max = 1.0;
+    > = 0.5;
 
     uniform float _MipBias <
         ui_type = "slider";
@@ -538,7 +538,7 @@ namespace MotionBlur
 
     void OpticalFlow(in float2 TexCoord, in float2 UV, in float Level, out float2 DUV)
     {
-        const float Alpha = max(ldexp(_Constraint * 1e-4, Level - MaxLevel), 1e-7);
+        const float Alpha = max(ldexp(_Constraint * 1e-3, Level - MaxLevel), 1e-7);
         float2 SampleC = tex2D(SamplePOW2Common0a, TexCoord).rg;
         float2 SampleP = tex2D(SampleData3, TexCoord).rg;
         float2 It = SampleC - SampleP;
