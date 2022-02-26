@@ -738,7 +738,7 @@ namespace OpticalFlow
     void OpticalFlowTV(in sampler2D Source, in float4 TexCoords[5], in float Level, out float2 DUV)
     {
         // Calculate TV
-        const float E = 1e-2;
+        const float E = 1e-3;
         float4 GradUV = 0.0;
         float SqGradUV = 0.0;
         float Smoothness0 = 0.0;
