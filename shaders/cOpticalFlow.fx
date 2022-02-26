@@ -600,8 +600,7 @@ namespace OpticalFlow
         float4 Color;
         Color = tex2D(Source, TexCoord);
         Color = max(Color, exp2(-10.0));
-        Color = saturate(Color / dot(Color.rgb, 1.0));
-        return saturate(Color / max(max(Color.r, Color.g), Color.b));
+        return saturate(Color / dot(Color.rgb, 1.0));
     }
 
     float4 DownsamplePS(sampler2D Source, float4 TexCoord[4])
@@ -705,7 +704,8 @@ namespace OpticalFlow
     void OpticalFlowCoarse(in float2 TexCoord, in float Level, out float2 DUV)
     {
         DUV = 0.0;
-        const float Alpha = max(ldexp(_Constraint * 1e-3, Level - MaxLevel), 1e-7);
+        const float E = 1e-2;
+        const float Alpha = max(ldexp(_Constraint * 1e-4, Level - MaxLevel), 1e-7);
 
         float2 CurrentFrame = tex2D(SampleCommon_RG16F_1a, TexCoord).xy;
         float2 PreviousFrame = tex2D(SampleCommon_RG16F_1d, TexCoord).xy;
@@ -714,29 +714,34 @@ namespace OpticalFlow
         float4 IxyRG = tex2D(SampleCommon_RGBA16F_1a, TexCoord);
         float2 IzRG = CurrentFrame - PreviousFrame;
 
+        // Calculate constancy term
+        float C = 0.0;
+        C = dot(IzRG, 1.0);
+        C = rsqrt(C * C + (E * E));
+        
         // Ix2 = 1.0 / (Rx^2 + Gx^2 + a)
         // Iy2 = 1.0 / (Ry^2 + Gy^2 + a)
         // Ixy = Rxy + Gxy
-        float Ix2 = 1.0 / (dot(IxyRG.xy, IxyRG.xy) + Alpha);
-        float Iy2 = 1.0 / (dot(IxyRG.zw, IxyRG.zw) + Alpha);
+        float Ix2 = 1.0 / (C * dot(IxyRG.xy, IxyRG.xy) + Alpha);
+        float Iy2 = 1.0 / (C * dot(IxyRG.zw, IxyRG.zw) + Alpha);
         float Ixy = dot(IxyRG.xy, IxyRG.zw);
 
         // Ixt = Rxt + Gxt
         // Iyt = Ryt + Gyt
-        float Ixt = dot(IxyRG.xy, IzRG);
-        float Iyt = dot(IxyRG.zw, IzRG);
+        float Ixt = C * dot(IxyRG.xy, IzRG);
+        float Iyt = C * dot(IxyRG.zw, IzRG);
 
         // Symmetric Gauss-Seidel (forward sweep, from 1...N)
         // Symmetric Gauss-Seidel (backward sweep, from N...1)
-        DUV.x = Ix2 * (-(DUV.y * Ixy) - Ixt);
-        DUV.y = Iy2 * (-(DUV.x * Ixy) - Iyt);
-        DUV.x = Ix2 * (-(DUV.y * Ixy) - Ixt);
+        DUV.x = Ix2 * (-(C * Ixy * DUV.y) - Ixt);
+        DUV.y = Iy2 * (-(C * Ixy * DUV.x) - Iyt);
+        DUV.x = Ix2 * (-(C * Ixy * DUV.y) - Ixt);
     }
 
     void OpticalFlowTV(in sampler2D Source, in float4 TexCoords[5], in float Level, out float2 DUV)
     {
         // Calculate TV
-        const float E = 1e-3;
+        const float E = 1e-2;
         float4 GradUV = 0.0;
         float SqGradUV = 0.0;
         float Smoothness0 = 0.0;
@@ -806,7 +811,7 @@ namespace OpticalFlow
         float4 Gradients = 0.5 * (Smoothness0 + Smoothness1.xyzw);
 
         // Calculate optical flow
-        const float Alpha = max(ldexp(_Constraint * 1e-3, Level - MaxLevel), 1e-7);
+        const float Alpha = max(ldexp(_Constraint * 1e-4, Level - MaxLevel), 1e-7);
 
         float2 CurrentFrame = tex2D(SampleCommon_RG16F_1a, TexCoords[1].xz).xy;
         float2 PreviousFrame = tex2D(SampleCommon_RG16F_1d, TexCoords[1].xz).xy;
@@ -816,6 +821,7 @@ namespace OpticalFlow
         // ItRG = <Rt, Gt>
         float2 IzRG = CurrentFrame - PreviousFrame;
 
+        // Calculate constancy term
         float C = 0.0;
         C = dot(IxyRG.xyzw, C2.xxyy) + dot(IzRG, 1.0);
         C = rsqrt(C * C + (E * E));
@@ -1013,8 +1019,9 @@ namespace OpticalFlow
         if(_NormalizedShading)
         {
             float VelocityLength = saturate(rsqrt(dot(Velocity, Velocity)));
-            OutputColor0.rg = (Velocity * VelocityLength) * 0.5 + 0.5;
+            OutputColor0.rg = (Velocity / VelocityLength) * 0.5 + 0.5;
             OutputColor0.b = -dot(OutputColor0.rg, 1.0) * 0.5 + 1.0;
+            OutputColor0.rgb /= max(max(OutputColor0.x, OutputColor0.y), OutputColor0.z);
             OutputColor0.a = 1.0;
         }
         else

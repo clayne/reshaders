@@ -426,6 +426,7 @@ namespace HornSchunck
             float VelocityLength = saturate(rsqrt(dot(Velocity, Velocity)));
             OutputColor0.rg = (Velocity * VelocityLength) * 0.5 + 0.5;
             OutputColor0.b = -dot(OutputColor0.rg, 1.0) * 0.5 + 1.0;
+            OutputColor0.rgb /= max(max(OutputColor0.x, OutputColor0.y), OutputColor0.z);
             OutputColor0.a = 1.0;
         }
         else
