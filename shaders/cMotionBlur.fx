@@ -147,8 +147,8 @@ namespace MotionBlur
         ui_label = "Flow Threshold";
         ui_tooltip = "Higher = Smoother flow";
         ui_min = 0.0;
-        ui_max = 2.0;
-    > = 1.0;
+        ui_max = 4.0;
+    > = 2.0;
 
     uniform float _MipBias <
         ui_type = "slider";
@@ -314,7 +314,7 @@ namespace MotionBlur
 
     // Vertex shaders
 
-    void MedianOffsets(in float2 TexCoord, in float2 PixelSize, out float4 SampleOffsets[3])
+    void MedianOffsets(in float2 TexCoord, in float2 PixelSize, inout float4 SampleOffsets[3])
     {
         // Sample locations:
         // [0].xy [1].xy [2].xy
@@ -325,7 +325,7 @@ namespace MotionBlur
         SampleOffsets[2] = TexCoord.xyyy + (float4(1.0, 1.0, 0.0, -1.0) * PixelSize.xyyy);
     }
 
-    void DownsampleOffsets(in float2 TexCoord, in float2 PixelSize, out float4 SampleOffsets[4])
+    void DownsampleOffsets(in float2 TexCoord, in float2 PixelSize, inout float4 SampleOffsets[4])
     {
         // Sample locations:
         // [1].xy        [2].xy        [3].xy
@@ -339,7 +339,7 @@ namespace MotionBlur
         SampleOffsets[3] = TexCoord.xyyy + float4(2.0, 2.0, 0.0, -2.0) * PixelSize.xyyy;
     }
 
-    void UpsampleOffsets(in float2 TexCoord, in float2 PixelSize, out float4 SampleOffsets[3])
+    void UpsampleOffsets(in float2 TexCoord, in float2 PixelSize, inout float4 SampleOffsets[3])
     {
         // Sample locations:
         // [0].xy [1].xy [2].xy
@@ -350,60 +350,60 @@ namespace MotionBlur
         SampleOffsets[2] = TexCoord.xyyy + (float4(2.0, 2.0, 0.0, -2.0) * PixelSize.xyyy);
     }
 
-    void PostProcessVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float2 TexCoord : TEXCOORD0)
+    void PostProcessVS(in uint ID : SV_VertexID, inout float4 Position : SV_Position, inout float2 TexCoord : TEXCOORD0)
     {
         TexCoord.x = (ID == 2) ? 2.0 : 0.0;
         TexCoord.y = (ID == 1) ? 2.0 : 0.0;
         Position = TexCoord.xyxy * float4(2.0, -2.0, 0.0, 0.0) + float4(-1.0, 1.0, 0.0, 1.0);
     }
 
-    void MedianVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 Offsets[3] : TEXCOORD0)
+    void MedianVS(in uint ID : SV_VertexID, inout float4 Position : SV_Position, inout float4 Offsets[3] : TEXCOORD0)
     {
-        float2 TexCoord0;
-        PostProcessVS(ID, Position, TexCoord0);
-        MedianOffsets(TexCoord0, 1.0 / uint2(BUFFER_WIDTH >> 1, BUFFER_HEIGHT >> 1), Offsets);
+        float2 VSTexCoord;
+        PostProcessVS(ID, Position, VSTexCoord);
+        MedianOffsets(VSTexCoord, 1.0 / uint2(BUFFER_WIDTH >> 1, BUFFER_HEIGHT >> 1), Offsets);
     }
 
-    void DownsampleVS(in uint ID, in float2 PixelSize, out float4 Position, out float4 Offsets[4])
+    void DownsampleVS(in uint ID, in float2 PixelSize, inout float4 Position, inout float4 Offsets[4])
     {
-        float2 TexCoord0 = 0.0;
-        PostProcessVS(ID, Position, TexCoord0);
-        DownsampleOffsets(TexCoord0, PixelSize, Offsets);
+        float2 VSTexCoord = 0.0;
+        PostProcessVS(ID, Position, VSTexCoord);
+        DownsampleOffsets(VSTexCoord, PixelSize, Offsets);
     }
 
-    void UpsampleVS(in uint ID, in float2 PixelSize, out float4 Position, out float4 Offsets[3])
+    void UpsampleVS(in uint ID, in float2 PixelSize, inout float4 Position, inout float4 Offsets[3])
     {
-        float2 TexCoord0 = 0.0;
-        PostProcessVS(ID, Position, TexCoord0);
-        UpsampleOffsets(TexCoord0, PixelSize, Offsets);
+        float2 VSTexCoord = 0.0;
+        PostProcessVS(ID, Position, VSTexCoord);
+        UpsampleOffsets(VSTexCoord, PixelSize, Offsets);
     }
 
-    void Downsample1VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 DownsampleCoords[4] : TEXCOORD0)
+    void Downsample1VS(in uint ID : SV_VertexID, inout float4 Position : SV_Position, inout float4 DownsampleCoords[4] : TEXCOORD0)
     {
         DownsampleVS(ID, 1.0 / POW2SIZE_0, Position, DownsampleCoords);
     }
 
-    void Downsample2VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 DownsampleCoords[4] : TEXCOORD0)
+    void Downsample2VS(in uint ID : SV_VertexID, inout float4 Position : SV_Position, inout float4 DownsampleCoords[4] : TEXCOORD0)
     {
         DownsampleVS(ID, 1.0 / POW2SIZE_1, Position, DownsampleCoords);
     }
 
-    void Downsample3VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 DownsampleCoords[4] : TEXCOORD0)
+    void Downsample3VS(in uint ID : SV_VertexID, inout float4 Position : SV_Position, inout float4 DownsampleCoords[4] : TEXCOORD0)
     {
         DownsampleVS(ID, 1.0 / POW2SIZE_2, Position, DownsampleCoords);
     }
 
-    void Upsample2VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 UpsampleCoords[3] : TEXCOORD0)
+    void Upsample2VS(in uint ID : SV_VertexID, inout float4 Position : SV_Position, inout float4 UpsampleCoords[3] : TEXCOORD0)
     {
         UpsampleVS(ID, 1.0 / POW2SIZE_2, Position, UpsampleCoords);
     }
 
-    void Upsample1VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 UpsampleCoords[3] : TEXCOORD0)
+    void Upsample1VS(in uint ID : SV_VertexID, inout float4 Position : SV_Position, inout float4 UpsampleCoords[3] : TEXCOORD0)
     {
         UpsampleVS(ID, 1.0 / POW2SIZE_1, Position, UpsampleCoords);
     }
 
-    void Upsample0VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 UpsampleCoords[3] : TEXCOORD0)
+    void Upsample0VS(in uint ID : SV_VertexID, inout float4 Position : SV_Position, inout float4 UpsampleCoords[3] : TEXCOORD0)
     {
         UpsampleVS(ID, 1.0 / POW2SIZE_0, Position, UpsampleCoords);
     }
@@ -417,56 +417,114 @@ namespace MotionBlur
         TexCoords[1] = VSTexCoord.xxyy + (float4(-0.5, 0.5, -1.5, 1.5) * PixelSize.xxyy);
     }
 
-    void EstimateLevel6VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 UpsampleCoords[3] : TEXCOORD0)
+    void GradientsVS(in float2 TexCoord, in float2 PixelSize, inout float4 TexCoords[5])
     {
-        float2 TexCoord0;
-        PostProcessVS(ID, Position, TexCoord0);
-        UpsampleOffsets(TexCoord0, 1.0 / POW2SIZE_6, UpsampleCoords);
+        // Sample locations:
+        //               [4].xy
+        //        [0].xy [1].xy [2].xy
+        // [3].xz [0].xz [1].xz [2].xz [3].yz
+        //        [0].xw [1].xw [2].xw
+        //               [4].xz
+        TexCoords[0] = TexCoord.xyyy + (float4(-2.0, 2.0, 0.0, -2.0) * PixelSize.xyyy);
+        TexCoords[1] = TexCoord.xyyy + (float4(0.0, 2.0, 0.0, -2.0) * PixelSize.xyyy);
+        TexCoords[2] = TexCoord.xyyy + (float4(2.0, 2.0, 0.0, -2.0) * PixelSize.xyyy);
+        TexCoords[3].xyz = TexCoord.xxy + (float3(-4.0, 4.0, 0.0) * PixelSize.xxy);
+        TexCoords[4].xyz = TexCoord.xyy + (float3(0.0, 4.0, -4.0) * PixelSize.xyy);
     }
 
-    void EstimateLevel5VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 UpsampleCoords[3] : TEXCOORD0)
+    void EstimateVS(in uint ID, in float2 PixelSize, inout float4 Position, inout float4 TexCoords[5])
     {
-        float2 TexCoord0;
-        PostProcessVS(ID, Position, TexCoord0);
-        UpsampleOffsets(TexCoord0, 1.0 / POW2SIZE_5, UpsampleCoords);
+        float2 VSTexCoord = 0.0;
+        PostProcessVS(ID, Position, VSTexCoord);
+        GradientsVS(VSTexCoord, PixelSize, TexCoords);
     }
 
-    void EstimateLevel4VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 UpsampleCoords[3] : TEXCOORD0)
+    void EstimateLevel6VS(in uint ID : SV_VertexID, inout float4 Position : SV_Position, inout float4 TexCoords[5] : TEXCOORD0)
     {
-        float2 TexCoord0;
-        PostProcessVS(ID, Position, TexCoord0);
-        UpsampleOffsets(TexCoord0, 1.0 / POW2SIZE_4, UpsampleCoords);
+        float2 VSTexCoord = 0.0;
+        PostProcessVS(ID, Position, VSTexCoord);
+        GradientsVS(VSTexCoord, 1.0 / POW2SIZE_6, TexCoords);
     }
 
-    void EstimateLevel3VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 UpsampleCoords[3] : TEXCOORD0)
+    void EstimateLevel5VS(in uint ID : SV_VertexID, inout float4 Position : SV_Position, inout float4 TexCoords[5] : TEXCOORD0)
     {
-        float2 TexCoord0;
-        PostProcessVS(ID, Position, TexCoord0);
-        UpsampleOffsets(TexCoord0, 1.0 / POW2SIZE_3, UpsampleCoords);
+        float2 VSTexCoord = 0.0;
+        PostProcessVS(ID, Position, VSTexCoord);
+        GradientsVS(VSTexCoord, 1.0 / POW2SIZE_5, TexCoords);
     }
 
-    void EstimateLevel2VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 UpsampleCoords[3] : TEXCOORD0)
+    void EstimateLevel4VS(in uint ID : SV_VertexID, inout float4 Position : SV_Position, inout float4 TexCoords[5] : TEXCOORD0)
     {
-        float2 TexCoord0;
-        PostProcessVS(ID, Position, TexCoord0);
-        UpsampleOffsets(TexCoord0, 1.0 / POW2SIZE_2, UpsampleCoords);
+        float2 VSTexCoord = 0.0;
+        PostProcessVS(ID, Position, VSTexCoord);
+        GradientsVS(VSTexCoord, 1.0 / POW2SIZE_4, TexCoords);
     }
 
-    void EstimateLevel1VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 UpsampleCoords[3] : TEXCOORD0)
+    void EstimateLevel3VS(in uint ID : SV_VertexID, inout float4 Position : SV_Position, inout float4 TexCoords[5] : TEXCOORD0)
     {
-        float2 TexCoord0;
-        PostProcessVS(ID, Position, TexCoord0);
-        UpsampleOffsets(TexCoord0, 1.0 / POW2SIZE_1, UpsampleCoords);
+        float2 VSTexCoord = 0.0;
+        PostProcessVS(ID, Position, VSTexCoord);
+        GradientsVS(VSTexCoord, 1.0 / POW2SIZE_3, TexCoords);
     }
 
-    void EstimateLevel0VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 UpsampleCoords[3] : TEXCOORD0)
+    void EstimateLevel2VS(in uint ID : SV_VertexID, inout float4 Position : SV_Position, inout float4 TexCoords[5] : TEXCOORD0)
     {
-        float2 TexCoord0;
-        PostProcessVS(ID, Position, TexCoord0);
-        UpsampleOffsets(TexCoord0, 1.0 / POW2SIZE_0, UpsampleCoords);
+        float2 VSTexCoord = 0.0;
+        PostProcessVS(ID, Position, VSTexCoord);
+        GradientsVS(VSTexCoord, 1.0 / POW2SIZE_2, TexCoords);
+    }
+
+    void EstimateLevel1VS(in uint ID : SV_VertexID, inout float4 Position : SV_Position, inout float4 TexCoords[5] : TEXCOORD0)
+    {
+        float2 VSTexCoord = 0.0;
+        PostProcessVS(ID, Position, VSTexCoord);
+        GradientsVS(VSTexCoord, 1.0 / POW2SIZE_1, TexCoords);
+    }
+
+    void EstimateLevel0VS(in uint ID : SV_VertexID, inout float4 Position : SV_Position, inout float4 TexCoords[5] : TEXCOORD0)
+    {
+        float2 VSTexCoord = 0.0;
+        PostProcessVS(ID, Position, VSTexCoord);
+        GradientsVS(VSTexCoord, 1.0 / POW2SIZE_0, TexCoords);
     }
 
     // Pixel shaders
+
+    // Math functions: https://github.com/microsoft/DirectX-Graphics-Samples/blob/master/MiniEngine/Core/Shaders/DoFMedianFilterCS.hlsl
+
+    float4 Max3(float4 a, float4 b, float4 c)
+    {
+        return max(max(a, b), c);
+    }
+
+    float4 Min3(float4 a, float4 b, float4 c)
+    {
+        return min(min(a, b), c);
+    }
+
+    float4 Med3(float4 a, float4 b, float4 c)
+    {
+        return clamp(a, min(b, c), max(b, c));
+    }
+
+    float4 Med9(float4 x0, float4 x1, float4 x2,
+                float4 x3, float4 x4, float4 x5,
+                float4 x6, float4 x7, float4 x8)
+    {
+        float4 A = Max3(Min3(x0, x1, x2), Min3(x3, x4, x5), Min3(x6, x7, x8));
+        float4 B = Min3(Max3(x0, x1, x2), Max3(x3, x4, x5), Max3(x6, x7, x8));
+        float4 C = Med3(Med3(x0, x1, x2), Med3(x3, x4, x5), Med3(x6, x7, x8));
+        return Med3(A, B, C);
+    }
+
+    float4 Chroma(in sampler2D Source, in float2 TexCoord)
+    {
+        float4 Color;
+        Color = tex2D(Source, TexCoord);
+        Color = max(Color, exp2(-10.0));
+        Color = saturate(Color / dot(Color.rgb, 1.0));
+        return saturate(Color / max(max(Color.r, Color.g), Color.b));
+    }
 
     float4 Downsample(sampler2D Source, float4 TexCoord[4])
     {
@@ -535,90 +593,154 @@ namespace MotionBlur
 
     static const int MaxLevel = 7;
 
-    void OpticalFlow(in float2 TexCoord, in float2 UV, in float Level, out float2 DUV)
+    void OpticalFlowCoarse(in float2 TexCoord, in float Level, out float2 DUV)
     {
+    	DUV = 0.0;
         const float Alpha = max(ldexp(_Constraint * 1e-3, Level - MaxLevel), 1e-7);
-        float2 SampleC = tex2D(SamplePOW2Common0a, TexCoord).rg;
-        float2 SampleP = tex2D(SampleData3, TexCoord).rg;
-        float2 It = SampleC - SampleP;
-        float2 Ix = tex2D(SamplePOW2Common0b, TexCoord).rg;
-        float2 Iy = tex2D(SamplePOW2Common0c, TexCoord).rg;
 
-        /*
-            We solve for X[N] (UV)
-            Matrix => Horn–Schunck Matrix => Horn–Schunck Equation => Solving Equation
+        float2 CurrentFrame = tex2D(SamplePOW2Common0a, TexCoord).xy;
+        float2 PreviousFrame = tex2D(SampleData3, TexCoord).xy;
 
-            Matrix
-                [A11 A12] [X1] = [B1]
-                [A21 A22] [X2] = [B2]
+        // IxyRG = <Rx, Gx, Ry, Gy>
+        float4 IxyRG = 0.0;
+        IxyRG.xy = tex2D(SamplePOW2Common0b, TexCoord).rg;
+        IxyRG.zw = tex2D(SamplePOW2Common0c, TexCoord).rg;
 
-            Horn–Schunck Matrix
-                [(Ix^2 + a) (IxIy)] [U] = [aU - IxIt]
-                [(IxIy) (Iy^2 + a)] [V] = [aV - IyIt]
+        // IzRG = <Rz, Gz>
+        float2 IzRG = CurrentFrame - PreviousFrame;
 
-            Horn–Schunck Equation
-                (Ix^2 + a)U + IxIyV = aU - IxIt
-                IxIyU + (Iy^2 + a)V = aV - IyIt
+        // Ix2 = 1.0 / (Rx^2 + Gx^2 + a)
+        // Iy2 = 1.0 / (Ry^2 + Gy^2 + a)
+        // Ixy = Rxy + Gxy
+        float Ix2 = 1.0 / (dot(IxyRG.xy, IxyRG.xy) + Alpha);
+        float Iy2 = 1.0 / (dot(IxyRG.zw, IxyRG.zw) + Alpha);
+        float Ixy = dot(IxyRG.xy, IxyRG.zw);
 
-            Solving Equation
-                U = ((aU - IxIt) - IxIyV) / (Ix^2 + a)
-                V = ((aV - IxIt) - IxIyu) / (Iy^2 + a)
-        */
-
-        // A11 = 1.0 / (Rx^2 + Gx^2 + a)
-        // A22 = 1.0 / (Ry^2 + Gy^2 + a)
-        // Aij = Rxy + Gxy
-        float A11 = 1.0 / (dot(Ix, Ix) + Alpha);
-        float A22 = 1.0 / (dot(Iy, Iy) + Alpha);
-        float Aij = dot(Ix, Iy);
-
-        // B1 = Rxt + Gxt
-        // B2 = Ryt + Gyt
-        float B1 = dot(Ix, It);
-        float B2 = dot(Iy, It);
+        // Ixt = Rxt + Gxt
+        // Iyt = Ryt + Gyt
+        float Ixt = dot(IxyRG.xy, IzRG);
+        float Iyt = dot(IxyRG.zw, IzRG);
 
         // Symmetric Gauss-Seidel (forward sweep, from 1...N)
-        DUV.x = A11 * ((Alpha * UV.x - B1) - (UV.y * Aij));
-        DUV.y = A22 * ((Alpha * UV.y - B2) - (DUV.x * Aij));
-
-        // Symmetric Gauss-Seidel (backward sweep, from N...1)
-        DUV.y = A22 * ((Alpha * DUV.y - B2) - (DUV.x * Aij));
-        DUV.x = A11 * ((Alpha * DUV.x - B1) - (DUV.y * Aij));
+        DUV.x = Ix2 * (-(DUV.y * Ixy) - Ixt);
+        DUV.y = Iy2 * (-(DUV.x * Ixy) - Iyt);
     }
 
-    // Math functions: https://github.com/microsoft/DirectX-Graphics-Samples/blob/master/MiniEngine/Core/Shaders/DoFMedianFilterCS.hlsl
-
-    float4 Max3(float4 a, float4 b, float4 c)
+    void OpticalFlowTV(in sampler2D Source, in float4 TexCoords[5], in float Level, out float2 DUV)
     {
-        return max(max(a, b), c);
-    }
+        // Calculate TV
+        const float E = 1e-2;
+        float4 GradUV = 0.0;
+        float SqGradUV = 0.0;
+        float Smoothness0 = 0.0;
+        float4 Smoothness1 = 0.0;
 
-    float4 Min3(float4 a, float4 b, float4 c)
-    {
-        return min(min(a, b), c);
-    }
+        // TexCoord locations:
+        //               [4].xy
+        //        [0].xy [1].xy [2].xy
+        // [3].xz [0].xz [1].xz [2].xz [3].yz
+        //        [0].xw [1].xw [2].xw
+        //               [4].xz
+        // Sampler locations:
+        //       C0
+        //    B0 C1 D0
+        // A0 B1 C2 D1 E0 
+        //    B2 C3 D2
+        //       C4
 
-    float4 Med3(float4 a, float4 b, float4 c)
-    {
-        return clamp(a, min(b, c), max(b, c));
-    }
+        float2 A0 = tex2D(Source, TexCoords[3].xz).xy;
 
-    float4 Med9(float4 x0, float4 x1, float4 x2,
-                float4 x3, float4 x4, float4 x5,
-                float4 x6, float4 x7, float4 x8)
-    {
-        float4 A = Max3(Min3(x0, x1, x2), Min3(x3, x4, x5), Min3(x6, x7, x8));
-        float4 B = Min3(Max3(x0, x1, x2), Max3(x3, x4, x5), Max3(x6, x7, x8));
-        float4 C = Med3(Med3(x0, x1, x2), Med3(x3, x4, x5), Med3(x6, x7, x8));
-        return Med3(A, B, C);
-    }
+        float2 B0 = tex2D(Source, TexCoords[0].xy).xy;
+        float2 B1 = tex2D(Source, TexCoords[0].xz).xy;
+        float2 B2 = tex2D(Source, TexCoords[0].xw).xy;
 
-    float4 Chroma(in sampler2D Source, in float2 TexCoord)
-    {
-        float4 Color;
-        Color = tex2D(Source, TexCoord);
-        Color = max(Color, exp2(-10.0));
-        return saturate(Color / dot(Color.rgb, 1.0));
+        float2 C0 = tex2D(Source, TexCoords[4].xy).xy;
+        float2 C1 = tex2D(Source, TexCoords[1].xy).xy;
+        float2 C2 = tex2D(Source, TexCoords[1].xz).xy;
+        float2 C3 = tex2D(Source, TexCoords[1].xw).xy;
+        float2 C4 = tex2D(Source, TexCoords[4].xz).xy;
+
+        float2 D0 = tex2D(Source, TexCoords[2].xy).xy;
+        float2 D1 = tex2D(Source, TexCoords[2].xz).xy;
+        float2 D2 = tex2D(Source, TexCoords[2].xw).xy;
+
+        float2 E0 = tex2D(Source, TexCoords[3].yz).xy;
+
+        // Center gradient
+        GradUV.xy = D1 - B1; // <IxU, IxV>
+        GradUV.zw = C1 - C3; // <IyU, IyV>
+        SqGradUV = dot(GradUV.xzyw, GradUV.xzyw) * 0.25;
+        Smoothness0 = rsqrt(SqGradUV + (E * E));
+
+        // Right gradient
+        GradUV.xy = E0 - C2; // <IxU, IxV>
+        GradUV.zw = D0 - D2; // <IyU, IyV>
+        SqGradUV = dot(GradUV.xzyw, GradUV.xzyw) * 0.25;
+        Smoothness1[0] = rsqrt(SqGradUV + (E * E));
+
+        // Left gradient
+        GradUV.xy = C2 - A0; // <IxU, IxV>
+        GradUV.zw = B0 - B2; // <IyU, IyV>
+        SqGradUV = dot(GradUV.xzyw, GradUV.xzyw) * 0.25;
+        Smoothness1[1] = rsqrt(SqGradUV + (E * E));
+
+        // Top gradient
+        GradUV.xy = D0 - B0; // <IxU, IxV>
+        GradUV.zw = C0 - C2; // <IyU, IyV>
+        SqGradUV = dot(GradUV.xzyw, GradUV.xzyw) * 0.25;
+        Smoothness1[2] = rsqrt(SqGradUV + (E * E));
+
+        // Bottom gradient
+        GradUV.xy = D2 - B2; // <IxU, IxV>
+        GradUV.zw = C2 - C4; // <IyU, IyV>
+        SqGradUV = dot(GradUV.xzyw, GradUV.xzyw) * 0.25;
+        Smoothness1[3] = rsqrt(SqGradUV + (E * E));
+
+        float4 Gradients = 0.5 * (Smoothness0 + Smoothness1.xyzw);
+
+        // Calculate optical flow
+        const float Alpha = max(ldexp(_Constraint * 1e-3, Level - MaxLevel), 1e-7);
+
+        float2 CurrentFrame = tex2D(SamplePOW2Common0a, TexCoords[1].xz).xy;
+        float2 PreviousFrame = tex2D(SampleData3, TexCoords[1].xz).xy;
+
+        // IxyRG = <Rx, Gx, Ry, Gy>
+        // IxyRG = <Rx, Gx, Ry, Gy>
+        float4 IxyRG = 0.0;
+        IxyRG.xy = tex2D(SamplePOW2Common0b, TexCoords[1].xz).rg;
+        IxyRG.zw = tex2D(SamplePOW2Common0c, TexCoords[1].xz).rg;
+
+        // ItRG = <Rt, Gt>
+        float2 IzRG = CurrentFrame - PreviousFrame;
+        
+        float C = 0.0;
+        C = dot(IxyRG.xyzw, C2.xxyy) + dot(IzRG, 1.0);
+        C = rsqrt(C * C + (E * E));
+        
+        // Ix2 = 1.0 / (Rx^2 + Gx^2 + a)
+        // Iy2 = 1.0 / (Ry^2 + Gy^2 + a)
+        // Ixy = Rxy + Gxy
+        float3 I2 = 0.0;
+        I2.x = dot(IxyRG.xy, IxyRG.xy);
+        I2.y = dot(IxyRG.zw, IxyRG.zw);
+        I2.z = dot(IxyRG.xy, IxyRG.zw);
+        I2.xyz = C * I2.xyz;
+
+        // Ixyt[0] = Rxt + Gxt
+        // Ixyt[1] = Ryt + Gyt
+        float2 It = 0.0;
+        It.x = dot(IxyRG.xy, IzRG);
+        It.y = dot(IxyRG.zw, IzRG);
+        It.xy = C * It.xy;
+
+        float2 Aii = 0.0;
+        float2 Bi = 0.0;
+
+        Aii.x = 1.0 / (dot(Gradients, 1.0) * Alpha + I2.x);
+        Aii.y = 1.0 / (dot(Gradients, 1.0) * Alpha + I2.y);
+        Bi = Alpha * ((Gradients[0] * D1) + (Gradients[1] * B1) + (Gradients[2] * C1) + (Gradients[3] * C3));
+        DUV.x = Aii.x * (Bi.x - (I2.z * C2.y) - It.x);
+        DUV.y = Aii.y * (Bi.y - (I2.z * DUV.x) - It.y);
     }
 
     void NormalizePS(in float4 Position : SV_Position, in float4 TexCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
@@ -709,42 +831,43 @@ namespace MotionBlur
 
     void EstimateLevel7PS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
     {
-        OpticalFlow(TexCoord, 0.0, 7.0, OutputColor0);
+        OpticalFlowCoarse(TexCoord, 7.0, OutputColor0);
     }
 
-    void EstimateLevel6PS(in float4 Position : SV_Position, in float4 UpsampleCoords[3] : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
+    void EstimateLevel6PS(in float4 Position : SV_Position, in float4 TexCoords[5] : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
     {
-        OpticalFlow(UpsampleCoords[1].xz, Upsample(SamplePOW2Common7, UpsampleCoords).xy, 6.0, OutputColor0);
+        OpticalFlowTV(SamplePOW2Common7, TexCoords, 6.0, OutputColor0);
     }
 
-    void EstimateLevel5PS(in float4 Position : SV_Position, in float4 UpsampleCoords[3] : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
+    void EstimateLevel5PS(in float4 Position : SV_Position, in float4 TexCoords[5] : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
     {
-        OpticalFlow(UpsampleCoords[1].xz, Upsample(SamplePOW2Common6, UpsampleCoords).xy, 5.0, OutputColor0);
+        OpticalFlowTV(SamplePOW2Common6, TexCoords, 5.0, OutputColor0);
     }
 
-    void EstimateLevel4PS(in float4 Position : SV_Position, in float4 UpsampleCoords[3] : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
+    void EstimateLevel4PS(in float4 Position : SV_Position, in float4 TexCoords[5] : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
     {
-        OpticalFlow(UpsampleCoords[1].xz, Upsample(SamplePOW2Common5, UpsampleCoords).xy, 4.0, OutputColor0);
+        OpticalFlowTV(SamplePOW2Common5, TexCoords, 4.0, OutputColor0);
     }
 
-    void EstimateLevel3PS(in float4 Position : SV_Position, in float4 UpsampleCoords[3] : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
+    void EstimateLevel3PS(in float4 Position : SV_Position, in float4 TexCoords[5] : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
     {
-        OpticalFlow(UpsampleCoords[1].xz, Upsample(SamplePOW2Common4, UpsampleCoords).xy, 3.0, OutputColor0);
+        OpticalFlowTV(SamplePOW2Common4, TexCoords, 3.0, OutputColor0);
     }
 
-    void EstimateLevel2PS(in float4 Position : SV_Position, in float4 UpsampleCoords[3] : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
+    void EstimateLevel2PS(in float4 Position : SV_Position, in float4 TexCoords[5] : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
     {
-        OpticalFlow(UpsampleCoords[1].xz, Upsample(SamplePOW2Common3, UpsampleCoords).xy, 2.0, OutputColor0);
+        OpticalFlowTV(SamplePOW2Common3, TexCoords, 2.0, OutputColor0);
     }
 
-    void EstimateLevel1PS(in float4 Position : SV_Position, in float4 UpsampleCoords[3] : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
+    void EstimateLevel1PS(in float4 Position : SV_Position, in float4 TexCoords[5] : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
     {
-        OpticalFlow(UpsampleCoords[1].xz, Upsample(SamplePOW2Common2, UpsampleCoords).xy, 1.0, OutputColor0);
+        OpticalFlowTV(SamplePOW2Common2, TexCoords, 1.0, OutputColor0);
     }
 
-    void EstimateLevel0PS(in float4 Position : SV_Position, in float4 UpsampleCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+    void EstimateLevel0PS(in float4 Position : SV_Position, in float4 TexCoords[5] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
-        OpticalFlow(UpsampleCoords[1].xz, Upsample(SamplePOW2Common1, UpsampleCoords).xy, 0.0, OutputColor0.xy);
+        OpticalFlowTV(SamplePOW2Common1, TexCoords, 0.0, OutputColor0.xy);
+        OutputColor0.xy *= float2(1.0, -1.0);
         OutputColor0.ba = (0.0, _Blend);
     }
 
