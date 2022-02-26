@@ -595,7 +595,7 @@ namespace MotionBlur
 
     void OpticalFlowCoarse(in float2 TexCoord, in float Level, out float2 DUV)
     {
-    	DUV = 0.0;
+        DUV = 0.0;
         const float Alpha = max(ldexp(_Constraint * 1e-3, Level - MaxLevel), 1e-7);
 
         float2 CurrentFrame = tex2D(SamplePOW2Common0a, TexCoord).xy;
@@ -622,14 +622,16 @@ namespace MotionBlur
         float Iyt = dot(IxyRG.zw, IzRG);
 
         // Symmetric Gauss-Seidel (forward sweep, from 1...N)
+        // Symmetric Gauss-Seidel (backward sweep, from N...1)
         DUV.x = Ix2 * (-(DUV.y * Ixy) - Ixt);
         DUV.y = Iy2 * (-(DUV.x * Ixy) - Iyt);
+        DUV.x = Ix2 * (-(DUV.y * Ixy) - Ixt);
     }
 
     void OpticalFlowTV(in sampler2D Source, in float4 TexCoords[5], in float Level, out float2 DUV)
     {
         // Calculate TV
-        const float E = 1e-2;
+        const float E = 1e-3;
         float4 GradUV = 0.0;
         float SqGradUV = 0.0;
         float Smoothness0 = 0.0;
@@ -644,7 +646,7 @@ namespace MotionBlur
         // Sampler locations:
         //       C0
         //    B0 C1 D0
-        // A0 B1 C2 D1 E0 
+        // A0 B1 C2 D1 E0
         //    B2 C3 D2
         //       C4
 
@@ -712,11 +714,11 @@ namespace MotionBlur
 
         // ItRG = <Rt, Gt>
         float2 IzRG = CurrentFrame - PreviousFrame;
-        
+
         float C = 0.0;
         C = dot(IxyRG.xyzw, C2.xxyy) + dot(IzRG, 1.0);
         C = rsqrt(C * C + (E * E));
-        
+
         // Ix2 = 1.0 / (Rx^2 + Gx^2 + a)
         // Iy2 = 1.0 / (Ry^2 + Gy^2 + a)
         // Ixy = Rxy + Gxy
@@ -739,8 +741,12 @@ namespace MotionBlur
         Aii.x = 1.0 / (dot(Gradients, 1.0) * Alpha + I2.x);
         Aii.y = 1.0 / (dot(Gradients, 1.0) * Alpha + I2.y);
         Bi = Alpha * ((Gradients[0] * D1) + (Gradients[1] * B1) + (Gradients[2] * C1) + (Gradients[3] * C3));
+
+        // Symmetric Gauss-Seidel (forward sweep, from 1...N)
+        // Symmetric Gauss-Seidel (backward sweep, from N...1)
         DUV.x = Aii.x * (Bi.x - (I2.z * C2.y) - It.x);
         DUV.y = Aii.y * (Bi.y - (I2.z * DUV.x) - It.y);
+        DUV.x = Aii.x * (Bi.x - (I2.z * DUV.y) - It.x);
     }
 
     void NormalizePS(in float4 Position : SV_Position, in float4 TexCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
