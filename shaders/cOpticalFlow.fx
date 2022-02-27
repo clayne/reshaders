@@ -829,9 +829,38 @@ namespace OpticalFlow
         // ItRG = <Rt, Gt>
         float2 IzRG = CurrentFrame - PreviousFrame;
 
+        
+        //   1
+        // 1 2 1
+        //   1
+		float2 CenterUVAvg = 0.0;
+		CenterUVAvg += ((C1 + B1 + D1 + C3) * 1.0);
+		CenterUVAvg += (C2 * 2.0);
+		CenterUVAvg /= 5.0;
+
+        float2 RightUVAvg = 0.0;
+		RightUVAvg += ((D0 + C2 + E0 + D2) * 1.0);
+		RightUVAvg += (D1 * 2.0);
+		RightUVAvg /= 5.0;
+
+        float2 LeftUVAvg = 0.0;
+		LeftUVAvg += ((B0 + A0 + C2 + B2) * 1.0);
+		LeftUVAvg += (B1 * 2.0);
+		LeftUVAvg /= 5.0;
+
+        float2 TopUVAvg = 0.0;
+		TopUVAvg += ((C0 + B0 + D0 + C2) * 1.0);
+		TopUVAvg += (C1 * 2.0);
+		TopUVAvg /= 5.0;
+
+        float2 BottomUVAvg = 0.0;
+		BottomUVAvg += ((C2 + B2 + D2 + C4) * 1.0);
+		BottomUVAvg += (C3 * 2.0);
+		BottomUVAvg /= 5.0;
+
         // Calculate constancy term
         float C = 0.0;
-        C = dot(IxyRG.xyzw, C2.xxyy) + dot(IzRG, 1.0);
+        C = dot(IxyRG.xyzw, CenterUVAvg.xxyy) + dot(IzRG, 1.0);
         C = rsqrt(C * C + (E * E));
 
         // Ix2 = 1.0 / (Rx^2 + Gx^2 + a)
@@ -855,11 +884,11 @@ namespace OpticalFlow
 
         Aii.x = 1.0 / (dot(Gradients, 1.0) * Alpha + I2.x);
         Aii.y = 1.0 / (dot(Gradients, 1.0) * Alpha + I2.y);
-        Bi = Alpha * ((Gradients[0] * D1) + (Gradients[1] * B1) + (Gradients[2] * C1) + (Gradients[3] * C3));
+        Bi = Alpha * ((Gradients[0] * RightUVAvg) + (Gradients[1] * LeftUVAvg) + (Gradients[2] * TopUVAvg) + (Gradients[3] * BottomUVAvg));
 
         // Symmetric Gauss-Seidel (forward sweep, from 1...N)
         // Symmetric Gauss-Seidel (backward sweep, from N...1)
-        DUV.x = Aii.x * (Bi.x - (I2.z * C2.y) - It.x);
+        DUV.x = Aii.x * (Bi.x - (I2.z * CenterUVAvg.y) - It.x);
         DUV.y = Aii.y * (Bi.y - (I2.z * DUV.x) - It.y);
         DUV.x = Aii.x * (Bi.x - (I2.z * DUV.y) - It.x);
     }
