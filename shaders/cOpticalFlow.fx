@@ -593,6 +593,11 @@ namespace OpticalFlow
         return clamp(a, min(b, c), max(b, c));
     }
 
+    float2 Med3(float2 a, float2 b, float2 c)
+    {
+        return clamp(a, min(b, c), max(b, c));
+    }
+
     float4 Med9(float4 x0, float4 x1, float4 x2,
                 float4 x3, float4 x4, float4 x5,
                 float4 x6, float4 x7, float4 x8)
@@ -798,71 +803,46 @@ namespace OpticalFlow
 
         const float Alpha = max(ldexp(_Constraint * 1e-4, Level - MaxLevel), 1e-7);
 
-        // Center gradient
+        // Center smoothness gradient and median
         GradUV.xy = D1 - B1; // <IxU, IxV>
         GradUV.zw = C1 - C3; // <IyU, IyV>
         SqGradUV = dot(GradUV.xzyw, GradUV.xzyw) * 0.25;
         Smoothness0 = rsqrt(SqGradUV + (E * E));
+        float2 CenterUVMed = Med3(Med3(B1, C2, D1), C1, C3);
 
-        // Bottom average
-        float2 CenterUVAvg = 0.0;
-        CenterUVAvg += ((C1 + B1 + D1 + C3) * 1.0);
-        CenterUVAvg += (C2 * 2.0);
-        CenterUVAvg /= 5.0;
-
-        // Right gradient
+        // Right smoothness gradient and median
         GradUV.xy = E0 - C2; // <IxU, IxV>
         GradUV.zw = D0 - D2; // <IyU, IyV>
         SqGradUV = dot(GradUV.xzyw, GradUV.xzyw) * 0.25;
         Smoothness1[0] = rsqrt(SqGradUV + (E * E));
+        float2 RightUVMed = Med3(Med3(C2, D1, E0), D0, D2);
 
-        // Bottom average
-        float2 RightUVAvg = 0.0;
-        RightUVAvg += ((D0 + C2 + E0 + D2) * 1.0);
-        RightUVAvg += (D1 * 2.0);
-        RightUVAvg /= 5.0;
-
-        // Left gradient
+        // Left smoothness gradient and median
         GradUV.xy = C2 - A0; // <IxU, IxV>
         GradUV.zw = B0 - B2; // <IyU, IyV>
         SqGradUV = dot(GradUV.xzyw, GradUV.xzyw) * 0.25;
         Smoothness1[1] = rsqrt(SqGradUV + (E * E));
+        float2 LeftUVMed = Med3(Med3(A0, B1, C2), B0, B2);
 
-        // Bottom average
-        float2 LeftUVAvg = 0.0;
-        LeftUVAvg += ((B0 + A0 + C2 + B2) * 1.0);
-        LeftUVAvg += (B1 * 2.0);
-        LeftUVAvg /= 5.0;
-
-        // Top gradient
+        // Top smoothness gradient and median
         GradUV.xy = D0 - B0; // <IxU, IxV>
         GradUV.zw = C0 - C2; // <IyU, IyV>
         SqGradUV = dot(GradUV.xzyw, GradUV.xzyw) * 0.25;
         Smoothness1[2] = rsqrt(SqGradUV + (E * E));
+        float2 TopUVMed = Med3(Med3(B0, C1, D0), C0, C2);
 
-        // Bottom average
-        float2 TopUVAvg = 0.0;
-        TopUVAvg += ((C0 + B0 + D0 + C2) * 1.0);
-        TopUVAvg += (C1 * 2.0);
-        TopUVAvg /= 5.0;
-
-        // Bottom gradient
+        // Bottom smoothness gradient and median
         GradUV.xy = D2 - B2; // <IxU, IxV>
         GradUV.zw = C2 - C4; // <IyU, IyV>
         SqGradUV = dot(GradUV.xzyw, GradUV.xzyw) * 0.25;
         Smoothness1[3] = rsqrt(SqGradUV + (E * E));
-
-        // Bottom average
-        float2 BottomUVAvg = 0.0;
-        BottomUVAvg += ((C2 + B2 + D2 + C4) * 1.0);
-        BottomUVAvg += (C3 * 2.0);
-        BottomUVAvg /= 5.0;
+        float2 BottomUVMed = Med3(Med3(B2, C3, D2), C2, C4);
 
         float4 Gradients = 0.5 * (Smoothness0 + Smoothness1.xyzw);
 
         // Calculate constancy term
         float C = 0.0;
-        C = dot(IxyRG.xyzw, CenterUVAvg.xxyy) + dot(IzRG, 1.0);
+        C = dot(IxyRG.xyzw, CenterUVMed.xxyy) + dot(IzRG, 1.0);
         C = rsqrt(C * C + (E * E));
 
         // Ix2 = 1.0 / (Rx^2 + Gx^2 + a)
@@ -886,11 +866,11 @@ namespace OpticalFlow
 
         Aii.x = 1.0 / (dot(Gradients, 1.0) * Alpha + I2.x);
         Aii.y = 1.0 / (dot(Gradients, 1.0) * Alpha + I2.y);
-        Bi = Alpha * ((Gradients[0] * RightUVAvg) + (Gradients[1] * LeftUVAvg) + (Gradients[2] * TopUVAvg) + (Gradients[3] * BottomUVAvg));
+        Bi = Alpha * ((Gradients[0] * RightUVMed) + (Gradients[1] * LeftUVMed) + (Gradients[2] * TopUVMed) + (Gradients[3] * BottomUVMed));
 
         // Symmetric Gauss-Seidel (forward sweep, from 1...N)
         // Symmetric Gauss-Seidel (backward sweep, from N...1)
-        DUV.x = Aii.x * (Bi.x - (I2.z * CenterUVAvg.y) - It.x);
+        DUV.x = Aii.x * (Bi.x - (I2.z * CenterUVMed.y) - It.x);
         DUV.y = Aii.y * (Bi.y - (I2.z * DUV.x) - It.y);
         DUV.x = Aii.x * (Bi.x - (I2.z * DUV.y) - It.x);
     }
