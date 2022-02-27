@@ -27,6 +27,7 @@ cCheckerBoard       | Customizable 2-pattern checkerboard
 cColorBlendOp       | Blend to backbuffer without copying textures
 cColorNormalization | Various color normalization algoritms
 cDefault            | Initialize graphics pipeline (useful for comparing effects)
+cEdgeDetection      | Various edge detection shaders (4 bilinear, 2 discrete)
 cFilmGrain          | Film grain without copying texture
 cFrameBlending      | Frame blending using the previous result
 cFrameDifference    | Frame differencing
@@ -36,11 +37,11 @@ cInterpolation      | Optical flow frame blending
 cLetterBox          | LetterBox without copying textures
 cLuminance          | Various grayscale algoritms
 cMedian             | 3x3 median filter
-cMotionBlur         | Optical flow motion blur
-cOpticalFlow        | HLSL pyramidal Horn Schunck, with ability to display optical flow with lines or shading
+cMotionBlur         | Color motion blur
+cOpticalFlow        | HLSL implementation of pyramidal Horn Schunck
 cPingPong           | Gaussian blur approximation using ping-pong box blurs
-cSMAA               | Minimalist version of SMAA, medium setting
 cShard              | Simple unmask sharpening
+cSMAA               | Minimalist version of SMAA, medium setting
 cSrcDestBlend       | Backbuffer blending
 cThreshold          | Quadratic color thresholding
 cTile               | Buffer scaling using vertex shaders
