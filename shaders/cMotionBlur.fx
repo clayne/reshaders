@@ -686,41 +686,6 @@ namespace MotionBlur
 
         float2 E0 = tex2D(Source, TexCoords[3].yz).xy;
 
-        // Center gradient
-        GradUV.xy = D1 - B1; // <IxU, IxV>
-        GradUV.zw = C1 - C3; // <IyU, IyV>
-        SqGradUV = dot(GradUV.xzyw, GradUV.xzyw) * 0.25;
-        Smoothness0 = rsqrt(SqGradUV + (E * E));
-
-        // Right gradient
-        GradUV.xy = E0 - C2; // <IxU, IxV>
-        GradUV.zw = D0 - D2; // <IyU, IyV>
-        SqGradUV = dot(GradUV.xzyw, GradUV.xzyw) * 0.25;
-        Smoothness1[0] = rsqrt(SqGradUV + (E * E));
-
-        // Left gradient
-        GradUV.xy = C2 - A0; // <IxU, IxV>
-        GradUV.zw = B0 - B2; // <IyU, IyV>
-        SqGradUV = dot(GradUV.xzyw, GradUV.xzyw) * 0.25;
-        Smoothness1[1] = rsqrt(SqGradUV + (E * E));
-
-        // Top gradient
-        GradUV.xy = D0 - B0; // <IxU, IxV>
-        GradUV.zw = C0 - C2; // <IyU, IyV>
-        SqGradUV = dot(GradUV.xzyw, GradUV.xzyw) * 0.25;
-        Smoothness1[2] = rsqrt(SqGradUV + (E * E));
-
-        // Bottom gradient
-        GradUV.xy = D2 - B2; // <IxU, IxV>
-        GradUV.zw = C2 - C4; // <IyU, IyV>
-        SqGradUV = dot(GradUV.xzyw, GradUV.xzyw) * 0.25;
-        Smoothness1[3] = rsqrt(SqGradUV + (E * E));
-
-        float4 Gradients = 0.5 * (Smoothness0 + Smoothness1.xyzw);
-
-        // Calculate optical flow
-        const float Alpha = max(ldexp(_Constraint * 1e-4, Level - MaxLevel), 1e-7);
-
         float2 CurrentFrame = tex2D(SamplePOW2Common0a, TexCoords[1].xz).xy;
         float2 PreviousFrame = tex2D(SampleData3, TexCoords[1].xz).xy;
 
@@ -733,33 +698,71 @@ namespace MotionBlur
         // ItRG = <Rt, Gt>
         float2 IzRG = CurrentFrame - PreviousFrame;
 
-        //   1
-        // 1 2 1
-        //   1
+        // Calculate optical flow
+
+        const float Alpha = max(ldexp(_Constraint * 1e-4, Level - MaxLevel), 1e-7);
+
+        // Center gradient
+        GradUV.xy = D1 - B1; // <IxU, IxV>
+        GradUV.zw = C1 - C3; // <IyU, IyV>
+        SqGradUV = dot(GradUV.xzyw, GradUV.xzyw) * 0.25;
+        Smoothness0 = rsqrt(SqGradUV + (E * E));
+
+        // Bottom average
         float2 CenterUVAvg = 0.0;
         CenterUVAvg += ((C1 + B1 + D1 + C3) * 1.0);
         CenterUVAvg += (C2 * 2.0);
         CenterUVAvg /= 5.0;
 
+        // Right gradient
+        GradUV.xy = E0 - C2; // <IxU, IxV>
+        GradUV.zw = D0 - D2; // <IyU, IyV>
+        SqGradUV = dot(GradUV.xzyw, GradUV.xzyw) * 0.25;
+        Smoothness1[0] = rsqrt(SqGradUV + (E * E));
+
+        // Bottom average
         float2 RightUVAvg = 0.0;
         RightUVAvg += ((D0 + C2 + E0 + D2) * 1.0);
         RightUVAvg += (D1 * 2.0);
         RightUVAvg /= 5.0;
 
+        // Left gradient
+        GradUV.xy = C2 - A0; // <IxU, IxV>
+        GradUV.zw = B0 - B2; // <IyU, IyV>
+        SqGradUV = dot(GradUV.xzyw, GradUV.xzyw) * 0.25;
+        Smoothness1[1] = rsqrt(SqGradUV + (E * E));
+
+        // Bottom average
         float2 LeftUVAvg = 0.0;
         LeftUVAvg += ((B0 + A0 + C2 + B2) * 1.0);
         LeftUVAvg += (B1 * 2.0);
         LeftUVAvg /= 5.0;
 
+        // Top gradient
+        GradUV.xy = D0 - B0; // <IxU, IxV>
+        GradUV.zw = C0 - C2; // <IyU, IyV>
+        SqGradUV = dot(GradUV.xzyw, GradUV.xzyw) * 0.25;
+        Smoothness1[2] = rsqrt(SqGradUV + (E * E));
+
+        // Bottom average
         float2 TopUVAvg = 0.0;
         TopUVAvg += ((C0 + B0 + D0 + C2) * 1.0);
         TopUVAvg += (C1 * 2.0);
         TopUVAvg /= 5.0;
 
+        // Bottom gradient
+        GradUV.xy = D2 - B2; // <IxU, IxV>
+        GradUV.zw = C2 - C4; // <IyU, IyV>
+        SqGradUV = dot(GradUV.xzyw, GradUV.xzyw) * 0.25;
+        Smoothness1[3] = rsqrt(SqGradUV + (E * E));
+
+        // Bottom average
         float2 BottomUVAvg = 0.0;
         BottomUVAvg += ((C2 + B2 + D2 + C4) * 1.0);
         BottomUVAvg += (C3 * 2.0);
         BottomUVAvg /= 5.0;
+
+        float4 Gradients = 0.5 * (Smoothness0 + Smoothness1.xyzw);
 
         // Calculate constancy term
         float C = 0.0;
