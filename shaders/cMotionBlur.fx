@@ -136,22 +136,46 @@ namespace MotionBlur
 {
     uniform float _Scale <
         ui_type = "slider";
+        ui_category = "Main";
         ui_label = "Flow Scale";
         ui_tooltip = "Higher = More motion blur";
         ui_min = 0.0;
         ui_max = 1.0;
     > = 0.5;
 
+    uniform bool _FrameRateScaling <
+        ui_type = "radio";
+        ui_category = "Main";
+        ui_label = "Frame-Rate Scaling";
+        ui_tooltip = "Enables frame-rate scaling";
+    > = false;
+
+    uniform float _TargetFrameRate <
+        ui_type = "drag";
+        ui_category = "Main";
+        ui_label = "Target Frame-Rate";
+        ui_tooltip = "Targeted frame-rate";
+    > = 60.00;
+
     uniform float _Constraint <
         ui_type = "slider";
-        ui_label = "Flow Threshold";
-        ui_tooltip = "Higher = Smoother flow";
+        ui_category = "Optical flow";
+        ui_label = "Motion Threshold";
+        ui_min = 0.0;
+        ui_max = 4.0;
+    > = 2.0;
+
+    uniform float _Smoothness <
+        ui_type = "slider";
+        ui_category = "Optical flow";
+        ui_label = "Motion Smoothness";
         ui_min = 0.0;
         ui_max = 4.0;
     > = 2.0;
 
     uniform float _MipBias <
         ui_type = "slider";
+        ui_category = "Optical flow";
         ui_label = "Mipmap Bias";
         ui_tooltip = "Higher = Less spatial noise";
         ui_min = 0.0;
@@ -160,23 +184,12 @@ namespace MotionBlur
 
     uniform float _Blend <
         ui_type = "slider";
+        ui_category = "Optical flow";
         ui_label = "Temporal Blending";
         ui_tooltip = "Higher = Less temporal noise";
         ui_min = 0.0;
         ui_max = 0.5;
     > = 0.125;
-
-    uniform bool _FrameRateScaling <
-        ui_type = "radio";
-        ui_label = "Frame-Rate Scaling";
-        ui_tooltip = "Enables frame-rate scaling";
-    > = false;
-
-    uniform float _TargetFrameRate <
-        ui_type = "drag";
-        ui_label = "Target Frame-Rate";
-        ui_tooltip = "Targeted frame-rate";
-    > = 60.00;
 
     uniform float _FrameTime < source = "frametime"; >;
 
@@ -595,7 +608,7 @@ namespace MotionBlur
     void OpticalFlowCoarse(in float2 TexCoord, in float Level, out float2 DUV)
     {
         DUV = 0.0;
-        const float E = 1e-2;
+        const float E = _Smoothness * 1e-2;
         const float Alpha = max(ldexp(_Constraint * 1e-4, Level - MaxLevel), 1e-7);
 
         float2 CurrentFrame = tex2D(SamplePOW2Common0a, TexCoord).xy;
@@ -613,7 +626,7 @@ namespace MotionBlur
         float C = 0.0;
         C = dot(IzRG, 1.0);
         C = rsqrt(C * C + (E * E));
-        
+
         // Ix2 = 1.0 / (Rx^2 + Gx^2 + a)
         // Iy2 = 1.0 / (Ry^2 + Gy^2 + a)
         // Ixy = Rxy + Gxy
@@ -636,7 +649,7 @@ namespace MotionBlur
     void OpticalFlowTV(in sampler2D Source, in float4 TexCoords[5], in float Level, out float2 DUV)
     {
         // Calculate TV
-        const float E = 1e-2;
+        const float E = _Smoothness * 1e-2;
         float4 GradUV = 0.0;
         float SqGradUV = 0.0;
         float Smoothness0 = 0.0;

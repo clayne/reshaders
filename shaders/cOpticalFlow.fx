@@ -131,17 +131,25 @@ namespace OpticalFlow
     > = 0.8;
 
     uniform float _Constraint <
-        ui_type = "drag";
+        ui_type = "slider";
         ui_category = "Optical flow";
-        ui_label = "Constraint";
-        ui_tooltip = "Higher = Smoother flow";
+        ui_label = "Motion Threshold";
+        ui_min = 0.0;
+        ui_max = 2.0;
     > = 1.0;
+
+    uniform float _Smoothness <
+        ui_type = "slider";
+        ui_category = "Optical flow";
+        ui_label = "Motion Smoothness";
+        ui_min = 0.0;
+        ui_max = 4.0;
+    > = 2.0;
 
     uniform float _MipBias  <
         ui_type = "drag";
         ui_category = "Optical flow";
         ui_label = "Mipmap bias";
-        ui_tooltip = "Higher = Less spatial noise";
     > = 0.0;
 
     uniform bool _NormalizedShading <
@@ -704,7 +712,7 @@ namespace OpticalFlow
     void OpticalFlowCoarse(in float2 TexCoord, in float Level, out float2 DUV)
     {
         DUV = 0.0;
-        const float E = 1e-2;
+        const float E = _Smoothness * 1e-2;
         const float Alpha = max(ldexp(_Constraint * 1e-4, Level - MaxLevel), 1e-7);
 
         float2 CurrentFrame = tex2D(SampleCommon_RG16F_1a, TexCoord).xy;
@@ -741,7 +749,7 @@ namespace OpticalFlow
     void OpticalFlowTV(in sampler2D Source, in float4 TexCoords[5], in float Level, out float2 DUV)
     {
         // Calculate TV
-        const float E = 1e-2;
+        const float E = _Smoothness * 1e-2;
         float4 GradUV = 0.0;
         float SqGradUV = 0.0;
         float Smoothness0 = 0.0;
