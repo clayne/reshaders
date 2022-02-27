@@ -43,7 +43,7 @@ void PostProcessVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, 
 void VignettePS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
     const float AspectRatio = BUFFER_WIDTH / BUFFER_HEIGHT;
-    float2 Coord = (TexCoord - 0.5) * AspectRatio * 2.0;
+    float2 Coord = (TexCoord * 2.0 - 1.0) * AspectRatio;
     float Radius = length(Coord) * _Falloff;
     float Radius2_1 = mad(Radius, Radius, 1.0);
     OutputColor0 = rcp(Radius2_1 * Radius2_1);
