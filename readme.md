@@ -27,7 +27,8 @@ cCheckerBoard       | Customizable 2-pattern checkerboard
 cColorBlendOp       | Blend to backbuffer without copying textures
 cColorNormalization | Various color normalization algoritms
 cDefault            | Initialize graphics pipeline (useful for comparing effects)
-cEdgeDetection      | Various edge detection shaders (4 bilinear, 2 discrete)
+cDualFilter         | Pyramidal convolutions (box, Jorge Jimenez, and Kawase)
+cEdgeDetection      | Edge detection kernels (4 bilinear, 2 discrete)
 cFilmGrain          | Film grain without copying texture
 cFrameBlending      | Frame blending using the previous result
 cFrameDifference    | Frame differencing
