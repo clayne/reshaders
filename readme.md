@@ -40,12 +40,13 @@ cLuminance          | Various grayscale algoritms
 cMedian             | 3x3 median filter
 cMotionBlur         | Color motion blur
 cOpticalFlow        | HLSL implementation of pyramidal Horn Schunck
+cOverlay            | Simple backbuffer overlay
 cPingPong           | Gaussian blur approximation using ping-pong box blurs
+cScale              | Buffer scaling using vertex shaders
 cShard              | Simple unmask sharpening
 cSMAA               | Minimalist version of SMAA, medium setting
 cSrcDestBlend       | Backbuffer blending
 cThreshold          | Quadratic color thresholding
-cTile               | Buffer scaling using vertex shaders
 kContour            | Contour line effect
 kDatamosh           | Simulates video compression artifacts
 kMirror             | Mirroring and kaleidoscope effect
