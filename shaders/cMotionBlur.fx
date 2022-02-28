@@ -162,16 +162,16 @@ namespace MotionBlur
         ui_category = "Optical flow";
         ui_label = "Motion Threshold";
         ui_min = 0.0;
-        ui_max = 4.0;
-    > = 2.0;
+        ui_max = 2.0;
+    > = 1.0;
 
     uniform float _Smoothness <
         ui_type = "slider";
         ui_category = "Optical flow";
         ui_label = "Motion Smoothness";
         ui_min = 0.0;
-        ui_max = 8.0;
-    > = 4.0;
+        ui_max = 4.0;
+    > = 2.0;
 
     uniform float _MipBias <
         ui_type = "slider";
@@ -613,8 +613,8 @@ namespace MotionBlur
     void OpticalFlowCoarse(in float2 TexCoord, in float Level, out float2 DUV)
     {
         DUV = 0.0;
-        const float E = _Smoothness * 1e-2;
-        const float Alpha = max(ldexp(_Constraint * 1e-4, Level - MaxLevel), 1e-7);
+        const float E = _Smoothness * 1e-3;
+        const float Alpha = max(ldexp(_Constraint * 1e-3, Level - MaxLevel), 1e-7);
 
         float2 CurrentFrame = tex2D(SamplePOW2Common0a, TexCoord).xy;
         float2 PreviousFrame = tex2D(SampleData3, TexCoord).xy;
@@ -654,7 +654,7 @@ namespace MotionBlur
     void OpticalFlowTV(in sampler2D Source, in float4 TexCoords[5], in float Level, out float2 DUV)
     {
         // Calculate TV
-        const float E = _Smoothness * 1e-2;
+        const float E = _Smoothness * 1e-3;
         float4 GradUV = 0.0;
         float SqGradUV = 0.0;
         float Smoothness0 = 0.0;
@@ -706,7 +706,7 @@ namespace MotionBlur
 
         // Calculate optical flow
 
-        const float Alpha = max(ldexp(_Constraint * 1e-4, Level - MaxLevel), 1e-7);
+        const float Alpha = max(ldexp(_Constraint * 1e-3, Level - MaxLevel), 1e-7);
 
         // Center smoothness gradient and median
         GradUV.xy = D1 - B1; // <IxU, IxV>
