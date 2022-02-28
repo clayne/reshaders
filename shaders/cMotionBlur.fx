@@ -505,9 +505,19 @@ namespace MotionBlur
 
     // Math functions: https://github.com/microsoft/DirectX-Graphics-Samples/blob/master/MiniEngine/Core/Shaders/DoFMedianFilterCS.hlsl
 
+    float2 Max3(float2 a, float2 b, float2 c)
+    {
+        return max(max(a, b), c);
+    }
+
     float4 Max3(float4 a, float4 b, float4 c)
     {
         return max(max(a, b), c);
+    }
+
+    float2 Min3(float2 a, float2 b, float2 c)
+    {
+        return min(min(a, b), c);
     }
 
     float4 Min3(float4 a, float4 b, float4 c)
@@ -515,14 +525,24 @@ namespace MotionBlur
         return min(min(a, b), c);
     }
 
+    float2 Med3(float2 a, float2 b, float2 c)
+    {
+        return clamp(a, min(b, c), max(b, c));
+    }
+
     float4 Med3(float4 a, float4 b, float4 c)
     {
         return clamp(a, min(b, c), max(b, c));
     }
 
-    float2 Med3(float2 a, float2 b, float2 c)
+    float2 Med9(float2 x0, float2 x1, float2 x2,
+                float2 x3, float2 x4, float2 x5,
+                float2 x6, float2 x7, float2 x8)
     {
-        return clamp(a, min(b, c), max(b, c));
+        float2 A = Max3(Min3(x0, x1, x2), Min3(x3, x4, x5), Min3(x6, x7, x8));
+        float2 B = Min3(Max3(x0, x1, x2), Max3(x3, x4, x5), Max3(x6, x7, x8));
+        float2 C = Med3(Med3(x0, x1, x2), Med3(x3, x4, x5), Med3(x6, x7, x8));
+        return Med3(A, B, C);
     }
 
     float4 Med9(float4 x0, float4 x1, float4 x2,
@@ -709,11 +729,13 @@ namespace MotionBlur
         const float Alpha = max(ldexp(_Constraint * 1e-3, Level - MaxLevel), 1e-7);
 
         // Center smoothness gradient and median
-        GradUV.xy = D1 - B1; // <IxU, IxV>
-        GradUV.zw = C1 - C3; // <IyU, IyV>
-        SqGradUV = dot(GradUV.xzyw, GradUV.xzyw) * 0.25;
+        GradUV.xy = (D0 + D1 + D2) - (B0 + B1 + B2); // <IxU, IxV>
+        GradUV.zw = (B0 + C1 + D0) - (B2 + C3 + D2); // <IyU, IyV>
+        SqGradUV = dot(GradUV.xzyw / 3.0, GradUV.xzyw / 3.0) * 0.25;
         Smoothness0 = rsqrt(SqGradUV + (E * E));
-        float2 CenterUVMed = Med3(Med3(B1, C2, D1), C1, C3);
+        float2 CenterUVMed = Med9(B0, C1, D0,
+                                  B1, C2, D1,
+                                  B2, C3, D2);
 
         // Right smoothness gradient and median
         GradUV.xy = E0 - C2; // <IxU, IxV>
