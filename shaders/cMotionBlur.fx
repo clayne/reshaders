@@ -170,8 +170,8 @@ namespace MotionBlur
         ui_category = "Optical flow";
         ui_label = "Motion Smoothness";
         ui_min = 0.0;
-        ui_max = 4.0;
-    > = 2.0;
+        ui_max = 2.0;
+    > = 1.0;
 
     uniform float _MipBias <
         ui_type = "slider";

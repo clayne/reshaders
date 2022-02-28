@@ -1,6 +1,6 @@
 
 /*
-    Simple backbuffer overlay shader
+    Simple backbuffer overlay shader v0.1
 
     BSD 3-Clause License
 
@@ -54,6 +54,13 @@ uniform float2 _MaskScale <
     ui_min = 0.0;
 > = float2(0.0, 0.0);
 
+uniform float2 _MaskOffset <
+    ui_type = "drag";
+    ui_label = "Scale";
+    ui_category = "Mask";
+    ui_min = 0.0;
+> = float2(0.0, 0.0);
+
 texture2D RenderColor : COLOR;
 
 sampler2D SampleColor
@@ -89,8 +96,10 @@ void OverlayPS(in float4 Position : SV_Position, in float4 TexCoord : TEXCOORD0,
     float4 InputColor = tex2D(SampleColor, TexCoord.zw);
 
     // Output a rectangle
+    float2 MaskCoord = TexCoord.xy;
+    MaskCoord = MaskCoord * _MaskScale + MaskCoord;
     float2 Scale = -_MaskScale * 0.5 + 0.5;
-    float2 Shaper = step(Scale, TexCoord.xy) * step(Scale, 1.0 - TexCoord.xy);
+    float2 Shaper = step(Scale, MaskCoord.xy) * step(Scale, 1.0 - MaskCoord.xy);
     float Crop = Shaper.x * Shaper.y;
 
     OutputColor0.rgb = InputColor.rgb;
