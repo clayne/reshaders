@@ -135,8 +135,8 @@ namespace OpticalFlow
         ui_category = "Optical flow";
         ui_label = "Motion Threshold";
         ui_min = 0.0;
-        ui_max = 2.0;
-    > = 1.0;
+        ui_max = 1.0;
+    > = 0.5;
 
     uniform float _Smoothness <
         ui_type = "slider";

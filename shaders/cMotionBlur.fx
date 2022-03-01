@@ -140,8 +140,8 @@ namespace MotionBlur
         ui_label = "Flow Scale";
         ui_tooltip = "Higher = More motion blur";
         ui_min = 0.0;
-        ui_max = 1.5;
-    > = 0.75;
+        ui_max = 2.0;
+    > = 1.0;
 
     uniform bool _FrameRateScaling <
         ui_type = "radio";
@@ -162,8 +162,8 @@ namespace MotionBlur
         ui_category = "Optical flow";
         ui_label = "Motion Threshold";
         ui_min = 0.0;
-        ui_max = 1.0;
-    > = 0.5;
+        ui_max = 2.0;
+    > = 1.0;
 
     uniform float _Smoothness <
         ui_type = "slider";
