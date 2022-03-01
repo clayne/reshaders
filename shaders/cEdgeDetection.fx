@@ -208,7 +208,7 @@ void EdgeOperator(in sampler2D Source, in float4 TexCoords[3], inout float4 Ix, 
             // -2 -2 0 +2 +2
             // -1 -2 0 +2 +1
             //    -1 0 +1
-            Ix = (B2 + A2 + B0 + C1) - (B1 + A0 + A2 + C0);
+            Ix = (B2 + A1 + B0 + C1) - (B1 + A0 + A2 + C0);
 
             //    +1 +2 +1
             // +1 +2 +2 +2 +1

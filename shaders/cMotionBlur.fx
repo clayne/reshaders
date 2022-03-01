@@ -872,7 +872,7 @@ namespace MotionBlur
         // -2 -2 0 +2 +2
         // -1 -2 0 +2 +1
         //    -1 0 +1
-        OutputColor0 = ((B2 + A2 + B0 + C1) - (B1 + A0 + A2 + C0)) / 12.0;
+        OutputColor0 = ((B2 + A1 + B0 + C1) - (B1 + A0 + A2 + C0)) / 12.0;
 
         //    +1 +2 +1
         // +1 +2 +2 +2 +1
