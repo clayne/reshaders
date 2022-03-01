@@ -505,19 +505,9 @@ namespace MotionBlur
 
     // Math functions: https://github.com/microsoft/DirectX-Graphics-Samples/blob/master/MiniEngine/Core/Shaders/DoFMedianFilterCS.hlsl
 
-    float2 Max3(float2 a, float2 b, float2 c)
-    {
-        return max(max(a, b), c);
-    }
-
     float4 Max3(float4 a, float4 b, float4 c)
     {
         return max(max(a, b), c);
-    }
-
-    float2 Min3(float2 a, float2 b, float2 c)
-    {
-        return min(min(a, b), c);
     }
 
     float4 Min3(float4 a, float4 b, float4 c)
@@ -525,24 +515,9 @@ namespace MotionBlur
         return min(min(a, b), c);
     }
 
-    float2 Med3(float2 a, float2 b, float2 c)
-    {
-        return clamp(a, min(b, c), max(b, c));
-    }
-
     float4 Med3(float4 a, float4 b, float4 c)
     {
         return clamp(a, min(b, c), max(b, c));
-    }
-
-    float2 Med9(float2 x0, float2 x1, float2 x2,
-                float2 x3, float2 x4, float2 x5,
-                float2 x6, float2 x7, float2 x8)
-    {
-        float2 A = Max3(Min3(x0, x1, x2), Min3(x3, x4, x5), Min3(x6, x7, x8));
-        float2 B = Min3(Max3(x0, x1, x2), Max3(x3, x4, x5), Max3(x6, x7, x8));
-        float2 C = Med3(Med3(x0, x1, x2), Med3(x3, x4, x5), Med3(x6, x7, x8));
-        return Med3(A, B, C);
     }
 
     float4 Med9(float4 x0, float4 x1, float4 x2,
@@ -728,48 +703,67 @@ namespace MotionBlur
 
         const float Alpha = max(ldexp(_Constraint * 1e-3, Level - MaxLevel), 1e-7);
 
-        // Center smoothness gradient and median
+        // Center smoothness gradient and average
         GradUV.xy = (D0 + D1 + D2) - (B0 + B1 + B2); // <IxU, IxV>
         GradUV.zw = (B0 + C1 + D0) - (B2 + C3 + D2); // <IyU, IyV>
         SqGradUV = dot(GradUV.xzyw / 3.0, GradUV.xzyw / 3.0) * 0.25;
         Smoothness0 = rsqrt(SqGradUV + (E * E));
-        float2 CenterUVMed = Med9(B0, C1, D0,
-                                  B1, C2, D1,
-                                  B2, C3, D2);
 
-        // Right smoothness gradient and median
+        float2 CenterUVAvg = 0.0;
+        CenterUVAvg += ((B0 + D0 + B2 + D2) * 1.0);
+        CenterUVAvg += ((C1 + B1 + D1 + C3) * 2.0);
+        CenterUVAvg += ((C2) * 4.0);
+        CenterUVAvg /= 16.0;
+
+        // Right gradient and average
         GradUV.xy = E0 - C2; // <IxU, IxV>
         GradUV.zw = D0 - D2; // <IyU, IyV>
         SqGradUV = dot(GradUV.xzyw, GradUV.xzyw) * 0.25;
         Smoothness1[0] = rsqrt(SqGradUV + (E * E));
-        float2 RightUVMed = Med3(Med3(C2, D1, E0), D0, D2);
 
-        // Left smoothness gradient and median
+        float2 RightUVAvg = 0.0;
+        RightUVAvg += ((D0 + C2 + E0 + D2) * 1.0);
+        RightUVAvg += (D1 * 2.0);
+        RightUVAvg /= 6.0;
+
+        // Left gradient and average
         GradUV.xy = C2 - A0; // <IxU, IxV>
         GradUV.zw = B0 - B2; // <IyU, IyV>
         SqGradUV = dot(GradUV.xzyw, GradUV.xzyw) * 0.25;
         Smoothness1[1] = rsqrt(SqGradUV + (E * E));
-        float2 LeftUVMed = Med3(Med3(A0, B1, C2), B0, B2);
 
-        // Top smoothness gradient and median
+        float2 LeftUVAvg = 0.0;
+        LeftUVAvg += ((B0 + A0 + C2 + B2) * 1.0);
+        LeftUVAvg += (B1 * 2.0);
+        LeftUVAvg /= 6.0;
+
+        // Top gradient and average
         GradUV.xy = D0 - B0; // <IxU, IxV>
         GradUV.zw = C0 - C2; // <IyU, IyV>
         SqGradUV = dot(GradUV.xzyw, GradUV.xzyw) * 0.25;
         Smoothness1[2] = rsqrt(SqGradUV + (E * E));
-        float2 TopUVMed = Med3(Med3(B0, C1, D0), C0, C2);
 
-        // Bottom smoothness gradient and median
+        float2 TopUVAvg = 0.0;
+        TopUVAvg += ((C0 + B0 + D0 + C2) * 1.0);
+        TopUVAvg += (C1 * 2.0);
+        TopUVAvg /= 6.0;
+
+        // Bottom gradient and average
         GradUV.xy = D2 - B2; // <IxU, IxV>
         GradUV.zw = C2 - C4; // <IyU, IyV>
         SqGradUV = dot(GradUV.xzyw, GradUV.xzyw) * 0.25;
         Smoothness1[3] = rsqrt(SqGradUV + (E * E));
-        float2 BottomUVMed = Med3(Med3(B2, C3, D2), C2, C4);
+
+        float2 BottomUVAvg = 0.0;
+        BottomUVAvg += ((C2 + B2 + D2 + C4) * 1.0);
+        BottomUVAvg += (C3 * 2.0);
+        BottomUVAvg /= 6.0;
 
         float4 Gradients = 0.5 * (Smoothness0 + Smoothness1.xyzw);
 
         // Calculate constancy term
         float C = 0.0;
-        C = dot(IxyRG.xyzw, CenterUVMed.xxyy) + dot(IzRG, 1.0);
+        C = dot(IxyRG.xyzw, CenterUVAvg.xxyy) + dot(IzRG, 1.0);
         C = rsqrt(C * C + (E * E));
 
         // Ix2 = 1.0 / (Rx^2 + Gx^2 + a)
@@ -793,11 +787,11 @@ namespace MotionBlur
 
         Aii.x = 1.0 / (dot(Gradients, 1.0) * Alpha + I2.x);
         Aii.y = 1.0 / (dot(Gradients, 1.0) * Alpha + I2.y);
-        Bi = Alpha * ((Gradients[0] * RightUVMed) + (Gradients[1] * LeftUVMed) + (Gradients[2] * TopUVMed) + (Gradients[3] * BottomUVMed));
+        Bi = Alpha * ((Gradients[0] * RightUVAvg) + (Gradients[1] * LeftUVAvg) + (Gradients[2] * TopUVAvg) + (Gradients[3] * BottomUVAvg));
 
         // Symmetric Gauss-Seidel (forward sweep, from 1...N)
         // Symmetric Gauss-Seidel (backward sweep, from N...1)
-        DUV.x = Aii.x * (Bi.x - (I2.z * CenterUVMed.y) - It.x);
+        DUV.x = Aii.x * (Bi.x - (I2.z * CenterUVAvg.y) - It.x);
         DUV.y = Aii.y * (Bi.y - (I2.z * DUV.x) - It.y);
         DUV.x = Aii.x * (Bi.x - (I2.z * DUV.y) - It.x);
     }
