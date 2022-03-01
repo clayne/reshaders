@@ -696,6 +696,8 @@ namespace OpticalFlow
     */
 
     /*
+    	https://github.com/Dtananaev/cv_opticalFlow
+    	
         Copyright (c) 2014-2015, Denis Tananaev All rights reserved.
 
         Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
@@ -739,11 +741,9 @@ namespace OpticalFlow
         float Ixt = C * dot(IxyRG.xy, IzRG);
         float Iyt = C * dot(IxyRG.zw, IzRG);
 
-        // Symmetric Gauss-Seidel (forward sweep, from 1...N)
-        // Symmetric Gauss-Seidel (backward sweep, from N...1)
+        // Gauss-Seidel (forward sweep, from 1...N)
         DUV.x = Ix2 * (-(C * Ixy * DUV.y) - Ixt);
         DUV.y = Iy2 * (-(C * Ixy * DUV.x) - Iyt);
-        DUV.x = Ix2 * (-(C * Ixy * DUV.y) - Ixt);
     }
 
     void OpticalFlowTV(in sampler2D Source, in float4 TexCoords[5], in float Level, out float2 DUV)
@@ -878,17 +878,13 @@ namespace OpticalFlow
         It.xy = C * It.xy;
 
         float2 Aii = 0.0;
-        float2 Bi = 0.0;
-
         Aii.x = 1.0 / (dot(Gradients, 1.0) * Alpha + I2.x);
         Aii.y = 1.0 / (dot(Gradients, 1.0) * Alpha + I2.y);
-        Bi = Alpha * ((Gradients[0] * RightUVAvg) + (Gradients[1] * LeftUVAvg) + (Gradients[2] * TopUVAvg) + (Gradients[3] * BottomUVAvg));
+        float2 Bi = Alpha * ((Gradients[0] * RightUVAvg) + (Gradients[1] * LeftUVAvg) + (Gradients[2] * TopUVAvg) + (Gradients[3] * BottomUVAvg));
 
-        // Symmetric Gauss-Seidel (forward sweep, from 1...N)
-        // Symmetric Gauss-Seidel (backward sweep, from N...1)
+        // Gauss-Seidel (forward sweep, from 1...N)
         DUV.x = Aii.x * (Bi.x - (I2.z * CenterUVAvg.y) - It.x);
         DUV.y = Aii.y * (Bi.y - (I2.z * DUV.x) - It.y);
-        DUV.x = Aii.x * (Bi.x - (I2.z * DUV.y) - It.x);
     }
 
     void NormalizePS(in float4 Position : SV_Position, in float4 TexCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
@@ -1054,7 +1050,7 @@ namespace OpticalFlow
         if(_NormalizedShading)
         {
             float VelocityLength = saturate(rsqrt(dot(Velocity, Velocity)));
-            OutputColor0.rg = (Velocity / VelocityLength) * 0.5 + 0.5;
+            OutputColor0.rg = (Velocity * VelocityLength) * 0.5 + 0.5;
             OutputColor0.b = -dot(OutputColor0.rg, 1.0) * 0.5 + 1.0;
             OutputColor0.rgb /= max(max(OutputColor0.x, OutputColor0.y), OutputColor0.z);
             OutputColor0.a = 1.0;
