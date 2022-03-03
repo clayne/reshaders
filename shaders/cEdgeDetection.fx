@@ -35,7 +35,7 @@
 
 uniform int _Method <
     ui_type = "combo";
-    ui_items = " Fwidth\0 Bilinear 3x3 Laplacian\0 Bilinear 3x3 Sobel\0 Bilinear 5x5 Prewitt\0 Bilinear 5x5 Sobel\0 3x3 Prewitt\0 3x3 Scharr\0 None\0";
+    ui_items = " ddx(), ddy()\0 Bilinear 3x3 Laplacian\0 Bilinear 3x3 Sobel\0 Bilinear 5x5 Prewitt\0 Bilinear 5x5 Sobel\0 3x3 Prewitt\0 3x3 Scharr\0 None\0";
     ui_label = "Method";
     ui_tooltip = "Method Edge Detection";
 > = 0;
@@ -166,28 +166,28 @@ void EdgeOperator(in sampler2D Source, in float4 TexCoords[3], inout float4 Ix, 
             // A0 B0 C0
             // A1    C1
             // A2 B2 C2
-            A0 = tex2D(Source, TexCoords[0].xy); // <-1.5, +1.5>
-            A1 = tex2D(Source, TexCoords[0].xz); // <-1.5,  0.0>
-            A2 = tex2D(Source, TexCoords[0].xw); // <-1.5, -1.5>
-            B0 = tex2D(Source, TexCoords[1].xy); // < 0.0, +1.5>
-            B2 = tex2D(Source, TexCoords[1].xw); // < 0.0, -1.5>
-            C0 = tex2D(Source, TexCoords[2].xy); // <+1.5, +1.5>
-            C1 = tex2D(Source, TexCoords[2].xz); // <+1.5,  0.0>
-            C2 = tex2D(Source, TexCoords[2].xw); // <+1.5, -1.5>
+            A0 = tex2D(Source, TexCoords[0].xy) * 4.0; // <-1.5, +1.5>
+            A1 = tex2D(Source, TexCoords[0].xz) * 2.0; // <-1.5,  0.0>
+            A2 = tex2D(Source, TexCoords[0].xw) * 4.0; // <-1.5, -1.5>
+            B0 = tex2D(Source, TexCoords[1].xy) * 2.0; // < 0.0, +1.5>
+            B2 = tex2D(Source, TexCoords[1].xw) * 2.0; // < 0.0, -1.5>
+            C0 = tex2D(Source, TexCoords[2].xy) * 4.0; // <+1.5, +1.5>
+            C1 = tex2D(Source, TexCoords[2].xz) * 2.0; // <+1.5,  0.0>
+            C2 = tex2D(Source, TexCoords[2].xw) * 4.0; // <+1.5, -1.5>
 
             // -1 -1  0  +1 +1
             // -1 -1  0  +1 +1
             // -1 -1  0  +1 +1
             // -1 -1  0  +1 +1
             // -1 -1  0  +1 +1
-            Ix = (((C0 * 4.0) + (C1 * 2.0) + (C2 * 4.0)) - ((A0 * 4.0) + (A1 * 2.0) + (A2 * 4.0)));
+            Ix = (C0 + C1 + C2) - (A0 + A1 + A2);
 
             // +1 +1 +1 +1 +1
             // +1 +1 +1 +1 +1
             //  0  0  0  0  0
             // -1 -1 -1 -1 -1
             // -1 -1 -1 -1 -1
-            Iy = ((A0 * 4.0) + (B0 * 2.0) + (C0 * 4.0)) - ((A2 * 4.0) + (B2 * 2.0) + (C2 * 4.0));
+            Iy = (A0 + B0 + C0) - (A2 + B2 + C2);
             break;
         case 4: // Bilinear 5x5 Sobel by CeeJayDK
             //   B1 B2
