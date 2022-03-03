@@ -515,6 +515,11 @@ namespace MotionBlur
         return min(min(a, b), c);
     }
 
+    float2 Med3(float2 a, float2 b, float2 c)
+    {
+        return clamp(a, min(b, c), max(b, c));
+    }
+
     float4 Med3(float4 a, float4 b, float4 c)
     {
         return clamp(a, min(b, c), max(b, c));
@@ -715,67 +720,53 @@ namespace MotionBlur
 
         const float Alpha = max(ldexp(_Constraint * 1e-3, Level - MaxLevel), 1e-7);
 
+        //    M0
+        // M1 M2 M3 -> Med3(Med3(M1, M2, M3), M0, M4) -> M5
+        //    M4
+
+        float2 M[6];
+        M[0] = Med3(Med3(B0, C1, D0), C0, C2);
+        M[1] = Med3(Med3(A0, B1, C2), B0, B2);
+        M[2] = Med3(Med3(B1, C2, D1), C1, C3);
+        M[3] = Med3(Med3(C2, D1, E0), D0, D2);
+        M[4] = Med3(Med3(B2, C3, D2), C2, C4);
+        M[5] = Med3(Med3(M[1], M[2], M[3]), M[0], M[4]);
+
         // Center smoothness gradient and average
-        GradUV.xy = (D0 + D1 + D2) - (B0 + B1 + B2); // <IxU, IxV>
-        GradUV.zw = (B0 + C1 + D0) - (B2 + C3 + D2); // <IyU, IyV>
-        SqGradUV = dot(GradUV.xzyw / 3.0, GradUV.xzyw / 3.0) * 0.25;
+        GradUV.xy = (D0 + D1 + D2 + E0) - (B0 + B1 + B2 + A0); // <IxU, IxV>
+        GradUV.zw = (C0 + B0 + C1 + D0) - (B2 + C3 + D2 + C4); // <IyU, IyV>
+        SqGradUV = dot(GradUV.xzyw / 4.0, GradUV.xzyw / 4.0) * 0.25;
         Smoothness0 = rsqrt(SqGradUV + (E * E));
 
-        float2 CenterUVAvg = 0.0;
-        CenterUVAvg += ((B0 + D0 + B2 + D2) * 1.0);
-        CenterUVAvg += ((C1 + B1 + D1 + C3) * 2.0);
-        CenterUVAvg += ((C2) * 4.0);
-        CenterUVAvg /= 16.0;
-
-        // Right gradient and average
+        // Right gradient
         GradUV.xy = E0 - C2; // <IxU, IxV>
         GradUV.zw = D0 - D2; // <IyU, IyV>
         SqGradUV = dot(GradUV.xzyw, GradUV.xzyw) * 0.25;
         Smoothness1[0] = rsqrt(SqGradUV + (E * E));
 
-        float2 RightUVAvg = 0.0;
-        RightUVAvg += ((D0 + C2 + E0 + D2) * 1.0);
-        RightUVAvg += (D1 * 2.0);
-        RightUVAvg /= 6.0;
-
-        // Left gradient and average
+        // Left gradient
         GradUV.xy = C2 - A0; // <IxU, IxV>
         GradUV.zw = B0 - B2; // <IyU, IyV>
         SqGradUV = dot(GradUV.xzyw, GradUV.xzyw) * 0.25;
         Smoothness1[1] = rsqrt(SqGradUV + (E * E));
 
-        float2 LeftUVAvg = 0.0;
-        LeftUVAvg += ((B0 + A0 + C2 + B2) * 1.0);
-        LeftUVAvg += (B1 * 2.0);
-        LeftUVAvg /= 6.0;
-
-        // Top gradient and average
+        // Top gradient
         GradUV.xy = D0 - B0; // <IxU, IxV>
         GradUV.zw = C0 - C2; // <IyU, IyV>
         SqGradUV = dot(GradUV.xzyw, GradUV.xzyw) * 0.25;
         Smoothness1[2] = rsqrt(SqGradUV + (E * E));
 
-        float2 TopUVAvg = 0.0;
-        TopUVAvg += ((C0 + B0 + D0 + C2) * 1.0);
-        TopUVAvg += (C1 * 2.0);
-        TopUVAvg /= 6.0;
-
-        // Bottom gradient and average
+        // Bottom gradient
         GradUV.xy = D2 - B2; // <IxU, IxV>
         GradUV.zw = C2 - C4; // <IyU, IyV>
         SqGradUV = dot(GradUV.xzyw, GradUV.xzyw) * 0.25;
         Smoothness1[3] = rsqrt(SqGradUV + (E * E));
 
-        float2 BottomUVAvg = 0.0;
-        BottomUVAvg += ((C2 + B2 + D2 + C4) * 1.0);
-        BottomUVAvg += (C3 * 2.0);
-        BottomUVAvg /= 6.0;
-
         float4 Gradients = 0.5 * (Smoothness0 + Smoothness1.xyzw);
 
         // Calculate constancy term
         float C = 0.0;
-        C = dot(IxyRG.xyzw, CenterUVAvg.xxyy) + dot(IzRG, 1.0);
+        C = dot(IxyRG.xyzw, M[5].xxyy) + dot(IzRG, 1.0);
         C = rsqrt(C * C + (E * E));
 
         // Ix2 = 1.0 / (Rx^2 + Gx^2 + a)
@@ -797,10 +788,10 @@ namespace MotionBlur
         float2 Aii = 0.0;
         Aii.x = 1.0 / (dot(Gradients, 1.0) * Alpha + I2.x);
         Aii.y = 1.0 / (dot(Gradients, 1.0) * Alpha + I2.y);
-        float2 Bi = Alpha * ((Gradients[0] * RightUVAvg) + (Gradients[1] * LeftUVAvg) + (Gradients[2] * TopUVAvg) + (Gradients[3] * BottomUVAvg));
+        float2 Bi = Alpha * ((Gradients[0] * M[3]) + (Gradients[1] * M[1]) + (Gradients[2] * M[0]) + (Gradients[3] * M[4]));
 
         // Gauss-Seidel (forward sweep, from 1...N)
-        DUV.x = Aii.x * (Bi.x - (I2.z * CenterUVAvg.y) - It.x);
+        DUV.x = Aii.x * (Bi.x - (I2.z * M[5].y) - It.x);
         DUV.y = Aii.y * (Bi.y - (I2.z * DUV.x) - It.y);
     }
 
