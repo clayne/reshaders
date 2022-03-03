@@ -45,6 +45,10 @@ uniform float2 _Offset <
     ui_step = 0.001;
 > = float2(0.0, 0.0);
 
+#ifndef ENABLE_POINT_SAMPLING
+    #define ENABLE_POINT_SAMPLING 0
+#endif
+
 texture2D RenderColor : COLOR;
 
 sampler2D SampleColor
@@ -52,15 +56,21 @@ sampler2D SampleColor
     Texture = RenderColor;
     AddressU = MIRROR;
     AddressV = MIRROR;
-    MagFilter = LINEAR;
-    MinFilter = LINEAR;
-    MipFilter = LINEAR;
+    #if ENABLE_POINT_SAMPLING
+        MagFilter = POINT;
+        MinFilter = POINT;
+        MipFilter = POINT;
+    #else
+        MagFilter = LINEAR;
+        MinFilter = LINEAR;
+        MipFilter = LINEAR;
+    #endif
     #if BUFFER_COLOR_BIT_DEPTH == 8
         SRGBTexture = TRUE;
     #endif
 };
 
-void TileVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float2 TexCoord : TEXCOORD0)
+void ScaleVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float2 TexCoord : TEXCOORD0)
 {
     TexCoord.x = (ID == 2) ? 2.0 : 0.0;
     TexCoord.y = (ID == 1) ? 2.0 : 0.0;
@@ -74,17 +84,17 @@ void TileVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out flo
     TexCoord = TexCoord * 0.5 + 0.5;
 }
 
-void TilePS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+void ScalePS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
     OutputColor0 = tex2D(SampleColor, TexCoord);
 }
 
-technique cTiles
+technique cScale
 {
     pass
     {
-        VertexShader = TileVS;
-        PixelShader = TilePS;
+        VertexShader = ScaleVS;
+        PixelShader = ScalePS;
         #if BUFFER_COLOR_BIT_DEPTH == 8
             SRGBWriteEnable = TRUE;
         #endif

@@ -61,6 +61,10 @@ uniform float2 _MaskOffset <
     ui_min = 0.0;
 > = float2(0.0, 0.0);
 
+#ifndef ENABLE_POINT_SAMPLING
+    #define ENABLE_POINT_SAMPLING 0
+#endif
+
 texture2D RenderColor : COLOR;
 
 sampler2D SampleColor
@@ -68,9 +72,15 @@ sampler2D SampleColor
     Texture = RenderColor;
     AddressU = MIRROR;
     AddressV = MIRROR;
-    MagFilter = LINEAR;
-    MinFilter = LINEAR;
-    MipFilter = LINEAR;
+    #if ENABLE_POINT_SAMPLING
+        MagFilter = POINT;
+        MinFilter = POINT;
+        MipFilter = POINT;
+    #else
+        MagFilter = LINEAR;
+        MinFilter = LINEAR;
+        MipFilter = LINEAR;
+    #endif
     #if BUFFER_COLOR_BIT_DEPTH == 8
         SRGBTexture = TRUE;
     #endif
@@ -97,7 +107,6 @@ void OverlayPS(in float4 Position : SV_Position, in float4 TexCoord : TEXCOORD0,
 
     // Output a rectangle
     float2 MaskCoord = TexCoord.xy;
-    MaskCoord = MaskCoord * _MaskScale + MaskCoord;
     float2 Scale = -_MaskScale * 0.5 + 0.5;
     float2 Shaper = step(Scale, MaskCoord.xy) * step(Scale, 1.0 - MaskCoord.xy);
     float Crop = Shaper.x * Shaper.y;
