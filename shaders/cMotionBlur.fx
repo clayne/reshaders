@@ -515,11 +515,6 @@ namespace MotionBlur
         return min(min(a, b), c);
     }
 
-    float2 Med3(float2 a, float2 b, float2 c)
-    {
-        return clamp(a, min(b, c), max(b, c));
-    }
-
     float4 Med3(float4 a, float4 b, float4 c)
     {
         return clamp(a, min(b, c), max(b, c));
@@ -720,17 +715,17 @@ namespace MotionBlur
 
         const float Alpha = max(ldexp(_Constraint * 1e-3, Level - MaxLevel), 1e-7);
 
-        //    M0
-        // M1 M2 M3 -> Med3(Med3(M1, M2, M3), M0, M4) -> M5
-        //    M4
+        //    A0
+        // A1 A2 A3 -> A5
+        //    A4
 
-        float2 M[6];
-        M[0] = Med3(Med3(B0, C1, D0), C0, C2);
-        M[1] = Med3(Med3(A0, B1, C2), B0, B2);
-        M[2] = Med3(Med3(B1, C2, D1), C1, C3);
-        M[3] = Med3(Med3(C2, D1, E0), D0, D2);
-        M[4] = Med3(Med3(B2, C3, D2), C2, C4);
-        M[5] = Med3(Med3(M[1], M[2], M[3]), M[0], M[4]);
+        float2 Avg[6];
+        Avg[0] = (((C0 + B0 + D0 + C2) * 0.125) + (C1 * 0.5));
+        Avg[1] = (((B0 + A0 + C2 + B2) * 0.125) + (B1 * 0.5));
+        Avg[2] = (((C1 + B1 + D1 + C3) * 0.125) + (C2 * 0.5));
+        Avg[3] = (((D0 + C2 + E0 + D2) * 0.125) + (D1 * 0.5));
+        Avg[4] = (((C2 + B2 + D2 + C4) * 0.125) + (C3 * 0.5));
+        Avg[5] = (((Avg[0] + Avg[1] + Avg[3] + Avg[4]) * 0.125) + (Avg[2] * 0.5));
 
         // Center smoothness gradient and average
         GradUV.xy = (D0 + D1 + D2 + E0) - (B0 + B1 + B2 + A0); // <IxU, IxV>
@@ -766,7 +761,7 @@ namespace MotionBlur
 
         // Calculate constancy term
         float C = 0.0;
-        C = dot(IxyRG.xyzw, M[5].xxyy) + dot(IzRG, 1.0);
+        C = dot(IxyRG.xyzw, Avg[5].xxyy) + dot(IzRG, 1.0);
         C = rsqrt(C * C + (E * E));
 
         // Ix2 = 1.0 / (Rx^2 + Gx^2 + a)
@@ -785,13 +780,11 @@ namespace MotionBlur
         It.y = dot(IxyRG.zw, IzRG);
         It.xy = C * It.xy;
 
-        float2 Aii = 0.0;
-        Aii.x = 1.0 / (dot(Gradients, 1.0) * Alpha + I2.x);
-        Aii.y = 1.0 / (dot(Gradients, 1.0) * Alpha + I2.y);
-        float2 Bi = Alpha * ((Gradients[0] * M[3]) + (Gradients[1] * M[1]) + (Gradients[2] * M[0]) + (Gradients[3] * M[4]));
+        float2 Aii = 1.0 / (dot(Gradients, 1.0) * Alpha + I2.xy);
+        float2 Bi = Alpha * ((Gradients[0] * Avg[3]) + (Gradients[1] * Avg[1]) + (Gradients[2] * Avg[0]) + (Gradients[3] * Avg[4]));
 
         // Gauss-Seidel (forward sweep, from 1...N)
-        DUV.x = Aii.x * (Bi.x - (I2.z * M[5].y) - It.x);
+        DUV.x = Aii.x * (Bi.x - (I2.z * Avg[5].y) - It.x);
         DUV.y = Aii.y * (Bi.y - (I2.z * DUV.x) - It.y);
     }
 
