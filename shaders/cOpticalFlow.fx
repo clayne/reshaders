@@ -811,9 +811,9 @@ namespace OpticalFlow
         Avg[5] = (((Avg[0] + Avg[1] + Avg[3] + Avg[4]) * 0.125) + (Avg[2] * 0.5));
 
         // Center smoothness gradient and average
-        GradUV.xy = (D0 + D1 + D2 + E0) - (B0 + B1 + B2 + A0); // <IxU, IxV>
-        GradUV.zw = (C0 + B0 + C1 + D0) - (B2 + C3 + D2 + C4); // <IyU, IyV>
-        SqGradUV = dot(GradUV.xzyw / 4.0, GradUV.xzyw / 4.0) * 0.25;
+        GradUV.xy = (D0 + (D1 * 2.0) + D2 + E0) - (B0 + (B1 * 2.0) + B2 + A0); // <IxU, IxV>
+        GradUV.zw = (C0 + B0 + (C1 * 2.0) + D0) - (B2 + (C3 * 2.0) + D2 + C4); // <IyU, IyV>
+        SqGradUV = dot(GradUV.xzyw / 5.0, GradUV.xzyw / 5.0) * 0.25;
         Smoothness0 = rsqrt(SqGradUV + (E * E));
 
         // Right gradient
