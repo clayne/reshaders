@@ -36,8 +36,13 @@
 uniform int _Blend <
     ui_label = "Blend Mode";
     ui_type = "combo";
-    ui_items = " Add\0 Subtract\0 Multiply\0 Min\0 Max\0 Screen\0";
+    ui_items = " Add\0 Subtract\0 Multiply\0 Min\0 Max\0 Screen\0 Lerp\0";
 > = 0;
+
+uniform float _LerpWeight <
+    ui_label = "Lerp Weight";
+    ui_type = "slider";
+> = 0.5;
 
 texture2D RenderColor : COLOR;
 
@@ -48,20 +53,20 @@ sampler2D SampleColor
     MinFilter = LINEAR;
     MipFilter = LINEAR;
     #if BUFFER_COLOR_BIT_DEPTH == 8
-        SRGBTexture = TRUE;
+      SRGBTexture = TRUE;
     #endif
 };
 
-texture2D RenderFrame
+texture2D RenderCopy
 {
     Width = BUFFER_WIDTH;
     Height = BUFFER_HEIGHT;
     Format = RGBA8;
 };
 
-sampler2D SampleFrame
+sampler2D SampleCopy
 {
-    Texture = RenderFrame;
+    Texture = RenderCopy;
     MagFilter = LINEAR;
     MinFilter = LINEAR;
     MipFilter = LINEAR;
@@ -88,28 +93,31 @@ void BlitPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, ou
 
 void BlendPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    float4 Src = tex2D(SampleFrame, TexCoord);
+    float4 Src = tex2D(SampleCopy, TexCoord);
     float4 Dest = tex2D(SampleColor, TexCoord);
 
     switch(_Blend)
     {
-        case 0:
+        case 0: // Add
             OutputColor0 = Src + Dest;
             break;
-        case 1:
+        case 1: // Subtract
             OutputColor0 = Src - Dest;
             break;
-        case 2:
+        case 2: // Multiply
             OutputColor0 = Src * Dest;
             break;
-        case 3:
+        case 3: // Min
             OutputColor0 = min(Src, Dest);
             break;
-        case 4:
+        case 4: // Max
             OutputColor0 = max(Src, Dest);
             break;
-        case 5:
+        case 5: // Screen
             OutputColor0 = (Src + Dest) - (Src * Dest);
+            break;
+        case 6: // Lerp
+            OutputColor0 = lerp(Src, Dest, _LerpWeight);
             break;
         default:
             OutputColor0 = Dest;
@@ -123,9 +131,9 @@ technique cCopyBuffer
     {
         VertexShader = PostProcessVS;
         PixelShader = BlitPS;
-        RenderTarget0 = RenderFrame;
+        RenderTarget0 = RenderCopy;
         #if BUFFER_COLOR_BIT_DEPTH == 8
-            SRGBWriteEnable = TRUE;
+           SRGBWriteEnable = TRUE;
         #endif
     }
 }
@@ -137,7 +145,7 @@ technique cBlendBuffer
         VertexShader = PostProcessVS;
         PixelShader = BlendPS;
         #if BUFFER_COLOR_BIT_DEPTH == 8
-            SRGBWriteEnable = TRUE;
+           SRGBWriteEnable = TRUE;
         #endif
     }
 }
