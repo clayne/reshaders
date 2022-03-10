@@ -144,14 +144,14 @@ void PostProcessVS(in uint ID : SV_VertexID, inout float4 Position : SV_Position
     Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
 
-void DownsampleVS(in uint ID, inout float4 Position, inout float4 TexCoords[4], float2 PixelSize)
+void DownsampleVS(in uint ID, inout float4 Position, inout float4 TexCoords[4], float2 TexelSize)
 {
     float2 VSTexCoord;
     PostProcessVS(ID, Position, VSTexCoord);
     switch(_DownsampleMethod)
     {
         case 0: // Box
-            TexCoords[0] = VSTexCoord.xyxy + float4(-1.0, -1.0, 1.0, 1.0) * PixelSize.xyxy;
+            TexCoords[0] = VSTexCoord.xyxy + float4(-1.0, -1.0, 1.0, 1.0) * TexelSize.xyxy;
             break;
         case 1: // Jorge
             // Sample locations:
@@ -160,40 +160,40 @@ void DownsampleVS(in uint ID, inout float4 Position, inout float4 TexCoords[4], 
             // [1].xz        [2].xz        [3].xz
             //        [0].xy        [0].zy
             // [1].xw        [2].xw        [3].xw
-            TexCoords[0] = VSTexCoord.xyxy + float4(-1.0, -1.0, 1.0, 1.0) * PixelSize.xyxy;
-            TexCoords[1] = VSTexCoord.xyyy + float4(-2.0, 2.0, 0.0, -2.0) * PixelSize.xyyy;
-            TexCoords[2] = VSTexCoord.xyyy + float4(0.0, 2.0, 0.0, -2.0) * PixelSize.xyyy;
-            TexCoords[3] = VSTexCoord.xyyy + float4(2.0, 2.0, 0.0, -2.0) * PixelSize.xyyy;
+            TexCoords[0] = VSTexCoord.xyxy + float4(-1.0, -1.0, 1.0, 1.0) * TexelSize.xyxy;
+            TexCoords[1] = VSTexCoord.xyyy + float4(-2.0, 2.0, 0.0, -2.0) * TexelSize.xyyy;
+            TexCoords[2] = VSTexCoord.xyyy + float4(0.0, 2.0, 0.0, -2.0) * TexelSize.xyyy;
+            TexCoords[3] = VSTexCoord.xyyy + float4(2.0, 2.0, 0.0, -2.0) * TexelSize.xyyy;
             break;
         case 2: // Kawase
             TexCoords[0] = VSTexCoord.xyxy;
-            TexCoords[1] = VSTexCoord.xyxy + float4(-1.5, -1.5, 1.5, 1.5) * PixelSize.xyxy;
+            TexCoords[1] = VSTexCoord.xyxy + float4(-1.0, -1.0, 1.0, 1.0) * TexelSize.xyxy;
             break;
     }
 }
 
-void UpsampleVS(in uint ID, inout float4 Position, inout float4 TexCoords[3], float2 PixelSize)
+void UpsampleVS(in uint ID, inout float4 Position, inout float4 TexCoords[3], float2 TexelSize)
 {
     float2 VSTexCoord;
     PostProcessVS(ID, Position, VSTexCoord);
     switch(_UpsampleMethod)
     {
         case 0: // Box
-            TexCoords[0] = VSTexCoord.xyxy + float4(-1.0, -1.0, 1.0, 1.0) * PixelSize.xyxy;
+            TexCoords[0] = VSTexCoord.xyxy + float4(-1.0, -1.0, 1.0, 1.0) * TexelSize.xyxy;
             break;
         case 1: // Jorge
             // Sample locations:
             // [0].xy [1].xy [2].xy
             // [0].xz [1].xz [2].xz
             // [0].xw [1].xw [2].xw
-            TexCoords[0] = VSTexCoord.xyyy + float4(-2.0, 2.0, 0.0, -2.0) * PixelSize.xyyy;
-            TexCoords[1] = VSTexCoord.xyyy + float4(0.0, 2.0, 0.0, -2.0) * PixelSize.xyyy;
-            TexCoords[2] = VSTexCoord.xyyy + float4(2.0, 2.0, 0.0, -2.0) * PixelSize.xyyy;
+            TexCoords[0] = VSTexCoord.xyyy + float4(-1.0, 1.0, 0.0, -1.0) * TexelSize.xyyy;
+            TexCoords[1] = VSTexCoord.xyyy + float4(0.0, 1.0, 0.0, -1.0) * TexelSize.xyyy;
+            TexCoords[2] = VSTexCoord.xyyy + float4(1.0, 1.0, 0.0, -1.0) * TexelSize.xyyy;
             break;
         case 2: // Kawase
-            TexCoords[0] = VSTexCoord.xyxy + float4(-1.5, -1.5, 1.5, 1.5) * PixelSize.xyxy;
-            TexCoords[1] = VSTexCoord.xxxy + float4(3.0, 0.0, -3.0, 0.0) * PixelSize.xxxy;
-            TexCoords[2] = VSTexCoord.xyyy + float4(0.0, 3.0, 0.0, -3.0) * PixelSize.xyyy;
+            TexCoords[0] = VSTexCoord.xyxy + float4(-0.5, -0.5, 0.5, 0.5) * TexelSize.xyxy;
+            TexCoords[1] = VSTexCoord.xxxy + float4(1.0, 0.0, -1.0, 0.0) * TexelSize.xxxy;
+            TexCoords[2] = VSTexCoord.xyyy + float4(0.0, 1.0, 0.0, -1.0) * TexelSize.xyyy;
             break;
     }
 }
@@ -220,22 +220,22 @@ void Downsample4VS(in uint ID : SV_VertexID, inout float4 Position : SV_Position
 
 void Upsample3VS(in uint ID : SV_VertexID, inout float4 Position : SV_Position, inout float4 TexCoords[3] : TEXCOORD0)
 {
-    UpsampleVS(ID, Position, TexCoords, 1.0 / BUFFER_SIZE_3);
+    UpsampleVS(ID, Position, TexCoords, 1.0 / BUFFER_SIZE_4);
 }
 
 void Upsample2VS(in uint ID : SV_VertexID, inout float4 Position : SV_Position, inout float4 TexCoords[3] : TEXCOORD0)
 {
-    UpsampleVS(ID, Position, TexCoords, 1.0 / BUFFER_SIZE_2);
+    UpsampleVS(ID, Position, TexCoords, 1.0 / BUFFER_SIZE_3);
 }
 
 void Upsample1VS(in uint ID : SV_VertexID, inout float4 Position : SV_Position, inout float4 TexCoords[3] : TEXCOORD0)
 {
-    UpsampleVS(ID, Position, TexCoords, 1.0 / BUFFER_SIZE_1);
+    UpsampleVS(ID, Position, TexCoords, 1.0 / BUFFER_SIZE_2);
 }
 
 void Upsample0VS(in uint ID : SV_VertexID, inout float4 Position : SV_Position, inout float4 TexCoords[3] : TEXCOORD0)
 {
-    UpsampleVS(ID, Position, TexCoords, 1.0 / BUFFER_SIZE_0);
+    UpsampleVS(ID, Position, TexCoords, 1.0 / BUFFER_SIZE_1);
 }
 
 // Pixel Shaders
