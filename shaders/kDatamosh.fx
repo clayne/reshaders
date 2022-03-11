@@ -346,8 +346,8 @@ namespace OpticalFlow
     sampler2D SampleAccumulation
     {
         Texture = RenderAccumulation;
-        MagFilter = LINEAR;
-        MinFilter = LINEAR;
+        MagFilter = _FILTER;
+        MinFilter = _FILTER;
     };
 
     texture2D RenderFeedback
