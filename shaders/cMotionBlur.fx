@@ -859,19 +859,27 @@ namespace MotionBlur
         float2 C0 = tex2D(SamplePOW2Common0a, TexCoords[1].xz).xy * 4.0; // <-0.5, -1.5>
         float2 C1 = tex2D(SamplePOW2Common0a, TexCoords[1].yz).xy * 4.0; // <+0.5, -1.5>
 
+		float4 I = 0.0;
+		
         //    -1 0 +1
         // -1 -2 0 +2 +1
         // -2 -2 0 +2 +2
         // -1 -2 0 +2 +1
         //    -1 0 +1
-        OutputColor0 = ((B2 + A1 + B0 + C1) - (B1 + A0 + A2 + C0)) / 12.0;
+        I.xy = ((B2 + A1 + B0 + C1) - (B1 + A0 + A2 + C0)) / 12.0;
 
         //    +1 +2 +1
         // +1 +2 +2 +2 +1
         //  0  0  0  0  0
         // -1 -2 -2 -2 -1
         //    -1 -2 -1
-        OutputColor1 = ((A0 + B1 + B2 + A1) - (A2 + C0 + C1 + B0)) / 12.0;
+        I.zw = ((A0 + B1 + B2 + A1) - (A2 + C0 + C1 + B0)) / 12.0;
+        
+        I.xz *= rsqrt(dot(I.xz, I.xz) + 1.0);
+        I.yw *= rsqrt(dot(I.yw, I.yw) + 1.0);
+        
+        OutputColor0 = I.xy;
+        OutputColor1 = I.zw;
     }
 
     void EstimateLevel7PS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
