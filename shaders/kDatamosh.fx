@@ -146,9 +146,9 @@ namespace OpticalFlow
         ui_type = "slider";
         ui_label = "Contrast";
         ui_tooltip = "Contrast of stripe-shaped noise.";
-        ui_min = 0.5;
+        ui_min = 0.0;
         ui_max = 4.0;
-    > = 1.0;
+    > = 2.0;
 
     uniform float _Scale <
         ui_category = "Datamosh";
@@ -198,7 +198,7 @@ namespace OpticalFlow
         ui_label = "Blockiness";
         ui_tooltip = "How blocky the motion vectors should be.";
         ui_min = 0.0;
-    > = 4.5;
+    > = 3.5;
 
     #ifndef LINEAR_SAMPLING
         #define LINEAR_SAMPLING 0
