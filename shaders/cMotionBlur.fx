@@ -140,8 +140,8 @@ namespace MotionBlur
         ui_label = "Flow Scale";
         ui_tooltip = "Higher = More motion blur";
         ui_min = 0.0;
-        ui_max = 2.0;
-    > = 1.0;
+        ui_max = 1.0;
+    > = 0.5;
 
     uniform bool _FrameRateScaling <
         ui_type = "radio";
@@ -953,7 +953,7 @@ namespace MotionBlur
         const int Samples = 4;
         float Noise = frac(52.9829189 * frac(dot(Position.xy, float2(0.06711056, 0.00583715))));
         float FrameTimeRatio = _TargetFrameRate / (1e+3 / _FrameTime);
-        float2 Velocity = (tex2Dlod(SamplePOW2Common0c, float4(TexCoord, 0.0, _MipBias)).xy / POW2SIZE_0) * _Scale;
+        float2 Velocity = (tex2Dlod(SamplePOW2Common0c, float4(TexCoord, 0.0, _MipBias)).xy / POW2SIZE_1) * _Scale;
         Velocity /= (_FrameRateScaling) ? FrameTimeRatio : 1.0;
 
         for(int k = 0; k < Samples; ++k)
