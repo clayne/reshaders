@@ -1103,7 +1103,7 @@ namespace OpticalFlow
         OutputColor0 = tex2D(SampleColor, TexCoord);
     }
 
-    technique kDatamosh
+    technique KinoDatamosh
     {
         // Normalize current frame
 
