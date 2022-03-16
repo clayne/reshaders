@@ -35,6 +35,7 @@
 
 // Shared textures
 
+#define BUFFER_SIZE_0 uint2(BUFFER_WIDTH >> 0, BUFFER_HEIGHT >> 0)
 #define BUFFER_SIZE_1 uint2(BUFFER_WIDTH >> 1, BUFFER_HEIGHT >> 1)
 #define BUFFER_SIZE_2 uint2(BUFFER_WIDTH >> 2, BUFFER_HEIGHT >> 2)
 #define BUFFER_SIZE_3 uint2(BUFFER_WIDTH >> 3, BUFFER_HEIGHT >> 3)
@@ -383,29 +384,16 @@ namespace OpticalFlow
         SampleOffsets[2] = TexCoord.xyyy + (float4(1.0, 1.0, 0.0, -1.0) * PixelSize.xyyy);
     }
 
-    void DownsampleOffsets(in float2 TexCoord, in float2 PixelSize, inout float4 SampleOffsets[4])
-    {
-        // Sample locations:
-        // [1].xy        [2].xy        [3].xy
-        //        [0].xw        [0].zw
-        // [1].xz        [2].xz        [3].xz
-        //        [0].xy        [0].zy
-        // [1].xw        [2].xw        [3].xw
-        SampleOffsets[0] = TexCoord.xyxy + float4(-1.0, -1.0, 1.0, 1.0) * PixelSize.xyxy;
-        SampleOffsets[1] = TexCoord.xyyy + float4(-2.0, 2.0, 0.0, -2.0) * PixelSize.xyyy;
-        SampleOffsets[2] = TexCoord.xyyy + float4(0.0, 2.0, 0.0, -2.0) * PixelSize.xyyy;
-        SampleOffsets[3] = TexCoord.xyyy + float4(2.0, 2.0, 0.0, -2.0) * PixelSize.xyyy;
-    }
 
-    void UpsampleOffsets(in float2 TexCoord, in float2 PixelSize, inout float4 SampleOffsets[3])
+    void TentOffsets(in float2 TexCoord, in float2 TexelSize, inout float4 SampleOffsets[3])
     {
         // Sample locations:
         // [0].xy [1].xy [2].xy
         // [0].xz [1].xz [2].xz
         // [0].xw [1].xw [2].xw
-        SampleOffsets[0] = TexCoord.xyyy + (float4(-2.0, 2.0, 0.0, -2.0) * PixelSize.xyyy);
-        SampleOffsets[1] = TexCoord.xyyy + (float4(0.0, 2.0, 0.0, -2.0) * PixelSize.xyyy);
-        SampleOffsets[2] = TexCoord.xyyy + (float4(2.0, 2.0, 0.0, -2.0) * PixelSize.xyyy);
+        SampleOffsets[0] = TexCoord.xyyy + (float4(-1.0, 1.0, 0.0, -1.0) * TexelSize.xyyy);
+        SampleOffsets[1] = TexCoord.xyyy + (float4(0.0, 1.0, 0.0, -1.0) * TexelSize.xyyy);
+        SampleOffsets[2] = TexCoord.xyyy + (float4(1.0, 1.0, 0.0, -1.0) * TexelSize.xyyy);
     }
 
     void PostProcessVS(in uint ID : SV_VertexID, inout float4 Position : SV_Position, inout float2 TexCoord : TEXCOORD0)
@@ -422,48 +410,36 @@ namespace OpticalFlow
         MedianOffsets(TexCoord0, 1.0 / uint2(BUFFER_WIDTH >> 1, BUFFER_HEIGHT >> 1), Offsets);
     }
 
-    void DownsampleVS(in uint ID, in float2 PixelSize, inout float4 Position, inout float4 Offsets[4])
+    void TentFilterVS(in uint ID, in float2 TexelSize, inout float4 Position, inout float4 Offsets[3])
     {
         float2 TexCoord0 = 0.0;
         PostProcessVS(ID, Position, TexCoord0);
-        DownsampleOffsets(TexCoord0, PixelSize, Offsets);
+        TentOffsets(TexCoord0, TexelSize, Offsets);
     }
 
-    void UpsampleVS(in uint ID, in float2 PixelSize, inout float4 Position, inout float4 Offsets[3])
+    void TentFilter0VS(in uint ID : SV_VertexID, inout float4 Position : SV_Position, inout float4 TexCoord[3] : TEXCOORD0)
     {
-        float2 TexCoord0 = 0.0;
-        PostProcessVS(ID, Position, TexCoord0);
-        UpsampleOffsets(TexCoord0, PixelSize, Offsets);
+        TentFilterVS(ID, 1.0 / BUFFER_SIZE_0, Position, TexCoord);
     }
 
-    void Downsample2VS(in uint ID : SV_VertexID, inout float4 Position : SV_Position, inout float4 DownsampleCoords[4] : TEXCOORD0)
+    void TentFilter1VS(in uint ID : SV_VertexID, inout float4 Position : SV_Position, inout float4 TexCoord[3] : TEXCOORD0)
     {
-        DownsampleVS(ID, 1.0 / BUFFER_SIZE_1, Position, DownsampleCoords);
+        TentFilterVS(ID, 1.0 / BUFFER_SIZE_1, Position, TexCoord);
     }
 
-    void Downsample3VS(in uint ID : SV_VertexID, inout float4 Position : SV_Position, inout float4 DownsampleCoords[4] : TEXCOORD0)
+    void TentFilter2VS(in uint ID : SV_VertexID, inout float4 Position : SV_Position, inout float4 TexCoord[3] : TEXCOORD0)
     {
-        DownsampleVS(ID, 1.0 / BUFFER_SIZE_2, Position, DownsampleCoords);
+        TentFilterVS(ID, 1.0 / BUFFER_SIZE_2, Position, TexCoord);
     }
 
-    void Downsample4VS(in uint ID : SV_VertexID, inout float4 Position : SV_Position, inout float4 DownsampleCoords[4] : TEXCOORD0)
+    void TentFilter3VS(in uint ID : SV_VertexID, inout float4 Position : SV_Position, inout float4 TexCoord[3] : TEXCOORD0)
     {
-        DownsampleVS(ID, 1.0 / BUFFER_SIZE_3, Position, DownsampleCoords);
+        TentFilterVS(ID, 1.0 / BUFFER_SIZE_3, Position, TexCoord);
     }
 
-    void Upsample3VS(in uint ID : SV_VertexID, inout float4 Position : SV_Position, inout float4 TexCoord[3] : TEXCOORD0)
+    void TentFilter4VS(in uint ID : SV_VertexID, inout float4 Position : SV_Position, inout float4 TexCoord[3] : TEXCOORD0)
     {
-        UpsampleVS(ID, 1.0 / BUFFER_SIZE_3, Position, TexCoord);
-    }
-
-    void Upsample2VS(in uint ID : SV_VertexID, inout float4 Position : SV_Position, inout float4 TexCoord[3] : TEXCOORD0)
-    {
-        UpsampleVS(ID, 1.0 / BUFFER_SIZE_2, Position, TexCoord);
-    }
-
-    void Upsample1VS(in uint ID : SV_VertexID, inout float4 Position : SV_Position, inout float4 TexCoord[3] : TEXCOORD0)
-    {
-        UpsampleVS(ID, 1.0 / BUFFER_SIZE_1, Position, TexCoord);
+        TentFilterVS(ID, 1.0 / BUFFER_SIZE_4, Position, TexCoord);
     }
 
     void DerivativesVS(in uint ID : SV_VertexID, inout float4 Position : SV_Position, inout float4 TexCoords[2] : TEXCOORD0)
@@ -569,42 +545,7 @@ namespace OpticalFlow
         return saturate(Color / dot(Color.rgb, 1.0));
     }
 
-    float4 DownsamplePS(sampler2D Source, float4 TexCoord[4])
-    {
-        // A0    B0    C0
-        //    D0    D1
-        // A1    B1    C1
-        //    D2    D3
-        // A2    B2    C2
-
-        float4 D0 = tex2D(Source, TexCoord[0].xw);
-        float4 D1 = tex2D(Source, TexCoord[0].zw);
-        float4 D2 = tex2D(Source, TexCoord[0].xy);
-        float4 D3 = tex2D(Source, TexCoord[0].zy);
-
-        float4 A0 = tex2D(Source, TexCoord[1].xy);
-        float4 A1 = tex2D(Source, TexCoord[1].xz);
-        float4 A2 = tex2D(Source, TexCoord[1].xw);
-
-        float4 B0 = tex2D(Source, TexCoord[2].xy);
-        float4 B1 = tex2D(Source, TexCoord[2].xz);
-        float4 B2 = tex2D(Source, TexCoord[2].xw);
-
-        float4 C0 = tex2D(Source, TexCoord[3].xy);
-        float4 C1 = tex2D(Source, TexCoord[3].xz);
-        float4 C2 = tex2D(Source, TexCoord[3].xw);
-
-        float4 Output;
-        const float2 Weights = float2(0.5, 0.125) / 4.0;
-        Output += (D0 + D1 + D2 + D3) * Weights.x;
-        Output += (A0 + B0 + A1 + B1) * Weights.y;
-        Output += (B0 + C0 + B1 + C1) * Weights.y;
-        Output += (A1 + B1 + A2 + B2) * Weights.y;
-        Output += (B1 + C1 + B2 + C2) * Weights.y;
-        return Output;
-    }
-
-    float4 UpsamplePS(sampler2D Source, float4 Offsets[3])
+    float4 TentFilterPS(sampler2D Source, float4 Offsets[3])
     {
         // Sample locations:
         // A0 B0 C0
@@ -849,34 +790,34 @@ namespace OpticalFlow
                             A2, B2, C2);
     }
 
-    void PreDownsample2PS(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+    void PreDownsample2PS(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
-        OutputColor0 = DownsamplePS(SampleCommon_RG16F_1a, TexCoord);
+        OutputColor0 = TentFilterPS(SampleCommon_RG16F_1a, TexCoord);
     }
 
-    void PreDownsample3PS(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+    void PreDownsample3PS(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
-        OutputColor0 = DownsamplePS(SampleCommon_RG16F_2, TexCoord);
+        OutputColor0 = TentFilterPS(SampleCommon_RG16F_2, TexCoord);
     }
 
-    void PreDownsample4PS(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+    void PreDownsample4PS(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
-        OutputColor0 = DownsamplePS(SampleCommon_RG16F_3, TexCoord);
+        OutputColor0 = TentFilterPS(SampleCommon_RG16F_3, TexCoord);
     }
 
     void PreUpsample3PS(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
-        OutputColor0 = UpsamplePS(SampleCommon_RG16F_4, TexCoord);
+        OutputColor0 = TentFilterPS(SampleCommon_RG16F_4, TexCoord);
     }
 
     void PreUpsample2PS(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
-        OutputColor0 = UpsamplePS(SampleCommon_RG16F_3, TexCoord);
+        OutputColor0 = TentFilterPS(SampleCommon_RG16F_3, TexCoord);
     }
 
     void PreUpsample1PS(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
-        OutputColor0 = UpsamplePS(SampleCommon_RG16F_2, TexCoord);
+        OutputColor0 = TentFilterPS(SampleCommon_RG16F_2, TexCoord);
     }
 
     void DerivativesPS(in float4 Position : SV_Position, in float4 TexCoords[2] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
@@ -954,35 +895,37 @@ namespace OpticalFlow
         OutputColor0.ba = (0.0, _BlendFactor);
     }
 
-    void PostDownsample2PS(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+    void PostDownsample2PS(in float4 Position : SV_Position, in float4 TexCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
-        OutputColor0 = DownsamplePS(SampleVectors, TexCoord);
+        OutputColor0 = TentFilterPS(SampleVectors, TexCoords);
     }
 
-    void PostDownsample3PS(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+    void PostDownsample3PS(in float4 Position : SV_Position, in float4 TexCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
-        OutputColor0 = DownsamplePS(SampleCommon_RG16F_2, TexCoord);
+        OutputColor0 = TentFilterPS(SampleCommon_RG16F_2, TexCoords);
     }
 
-    void PostDownsample4PS(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+    void PostDownsample4PS(in float4 Position : SV_Position, in float4 TexCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
-        OutputColor0 = DownsamplePS(SampleCommon_RG16F_3, TexCoord);
+        OutputColor0 = TentFilterPS(SampleCommon_RG16F_3, TexCoords);
     }
 
-    void PostUpsample3PS(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+    void PostUpsample3PS(in float4 Position : SV_Position, in float4 TexCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
-        OutputColor0 = UpsamplePS(SampleCommon_RG16F_4, TexCoord);
+        OutputColor0 = TentFilterPS(SampleCommon_RG16F_4, TexCoords);
     }
 
-    void PostUpsample2PS(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+    void PostUpsample2PS(in float4 Position : SV_Position, in float4 TexCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
-        OutputColor0 = UpsamplePS(SampleCommon_RG16F_3, TexCoord);
+        OutputColor0 = TentFilterPS(SampleCommon_RG16F_3, TexCoords);
     }
 
-    void PostUpsample1PS(in float4 Position : SV_Position, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0, out float4 OutputColor1 : SV_Target1)
+    void PostUpsample1PS(in float4 Position : SV_Position, in float4 TexCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0, out float4 OutputColor1 : SV_Target1)
     {
-        OutputColor0 = UpsamplePS(SampleCommon_RG16F_2, TexCoord);
-        OutputColor1 = tex2D(SampleCommon_RG16F_1a, TexCoord[1].xz).rg;
+        OutputColor0 = TentFilterPS(SampleCommon_RG16F_2, TexCoords);
+
+        // Copy current convolved result to use at next frame
+        OutputColor1 = tex2D(SampleCommon_RG16F_1a, TexCoords[1].xz).rg;
     }
 
     /*
@@ -1118,42 +1061,42 @@ namespace OpticalFlow
 
         pass
         {
-            VertexShader = Downsample2VS;
+            VertexShader = TentFilter1VS;
             PixelShader = PreDownsample2PS;
             RenderTarget0 = SharedResources::RG16F::RenderCommon2;
         }
 
         pass
         {
-            VertexShader = Downsample3VS;
+            VertexShader = TentFilter2VS;
             PixelShader = PreDownsample3PS;
             RenderTarget0 = SharedResources::RG16F::RenderCommon3;
         }
 
         pass
         {
-            VertexShader = Downsample4VS;
+            VertexShader = TentFilter3VS;
             PixelShader = PreDownsample4PS;
             RenderTarget0 = SharedResources::RG16F::RenderCommon4;
         }
 
         pass
         {
-            VertexShader = Upsample3VS;
+            VertexShader = TentFilter4VS;
             PixelShader = PreUpsample3PS;
             RenderTarget0 = SharedResources::RG16F::RenderCommon3;
         }
 
         pass
         {
-            VertexShader = Upsample2VS;
+            VertexShader = TentFilter3VS;
             PixelShader = PreUpsample2PS;
             RenderTarget0 = SharedResources::RG16F::RenderCommon2;
         }
 
         pass
         {
-            VertexShader = Upsample1VS;
+            VertexShader = TentFilter2VS;
             PixelShader = PreUpsample1PS;
             RenderTarget0 = SharedResources::RG16F::RenderCommon1;
         }
@@ -1234,42 +1177,42 @@ namespace OpticalFlow
 
         pass
         {
-            VertexShader = Downsample2VS;
+            VertexShader = TentFilter1VS;
             PixelShader = PostDownsample2PS;
             RenderTarget0 = SharedResources::RG16F::RenderCommon2;
         }
 
         pass
         {
-            VertexShader = Downsample3VS;
+            VertexShader = TentFilter2VS;
             PixelShader = PostDownsample3PS;
             RenderTarget0 = SharedResources::RG16F::RenderCommon3;
         }
 
         pass
         {
-            VertexShader = Downsample4VS;
+            VertexShader = TentFilter3VS;
             PixelShader = PostDownsample4PS;
             RenderTarget0 = SharedResources::RG16F::RenderCommon4;
         }
 
         pass
         {
-            VertexShader = Upsample3VS;
+            VertexShader = TentFilter4VS;
             PixelShader = PostUpsample3PS;
             RenderTarget0 = SharedResources::RG16F::RenderCommon3;
         }
 
         pass
         {
-            VertexShader = Upsample2VS;
+            VertexShader = TentFilter3VS;
             PixelShader = PostUpsample2PS;
             RenderTarget0 = SharedResources::RG16F::RenderCommon2;
         }
 
         pass
         {
-            VertexShader = Upsample1VS;
+            VertexShader = TentFilter2VS;
             PixelShader = PostUpsample1PS;
             RenderTarget0 = SharedResources::RGBA16F::RenderCommon1;
 

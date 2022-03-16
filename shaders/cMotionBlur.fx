@@ -327,40 +327,26 @@ namespace MotionBlur
 
     // Vertex shaders
 
-    void MedianOffsets(in float2 TexCoord, in float2 PixelSize, inout float4 SampleOffsets[3])
+    void MedianOffsets(in float2 TexCoord, in float2 TexelSize, inout float4 SampleOffsets[3])
     {
         // Sample locations:
         // [0].xy [1].xy [2].xy
         // [0].xz [1].xz [2].xz
         // [0].xw [1].xw [2].xw
-        SampleOffsets[0] = TexCoord.xyyy + (float4(-1.0, 1.0, 0.0, -1.0) * PixelSize.xyyy);
-        SampleOffsets[1] = TexCoord.xyyy + (float4(0.0, 1.0, 0.0, -1.0) * PixelSize.xyyy);
-        SampleOffsets[2] = TexCoord.xyyy + (float4(1.0, 1.0, 0.0, -1.0) * PixelSize.xyyy);
+        SampleOffsets[0] = TexCoord.xyyy + (float4(-1.0, 1.0, 0.0, -1.0) * TexelSize.xyyy);
+        SampleOffsets[1] = TexCoord.xyyy + (float4(0.0, 1.0, 0.0, -1.0) * TexelSize.xyyy);
+        SampleOffsets[2] = TexCoord.xyyy + (float4(1.0, 1.0, 0.0, -1.0) * TexelSize.xyyy);
     }
 
-    void DownsampleOffsets(in float2 TexCoord, in float2 PixelSize, inout float4 SampleOffsets[4])
-    {
-        // Sample locations:
-        // [1].xy        [2].xy        [3].xy
-        //        [0].xw        [0].zw
-        // [1].xz        [2].xz        [3].xz
-        //        [0].xy        [0].zy
-        // [1].xw        [2].xw        [3].xw
-        SampleOffsets[0] = TexCoord.xyxy + float4(-1.0, -1.0, 1.0, 1.0) * PixelSize.xyxy;
-        SampleOffsets[1] = TexCoord.xyyy + float4(-2.0, 2.0, 0.0, -2.0) * PixelSize.xyyy;
-        SampleOffsets[2] = TexCoord.xyyy + float4(0.0, 2.0, 0.0, -2.0) * PixelSize.xyyy;
-        SampleOffsets[3] = TexCoord.xyyy + float4(2.0, 2.0, 0.0, -2.0) * PixelSize.xyyy;
-    }
-
-    void UpsampleOffsets(in float2 TexCoord, in float2 PixelSize, inout float4 SampleOffsets[3])
+    void TentOffsets(in float2 TexCoord, in float2 TexelSize, inout float4 SampleOffsets[3])
     {
         // Sample locations:
         // [0].xy [1].xy [2].xy
         // [0].xz [1].xz [2].xz
         // [0].xw [1].xw [2].xw
-        SampleOffsets[0] = TexCoord.xyyy + (float4(-2.0, 2.0, 0.0, -2.0) * PixelSize.xyyy);
-        SampleOffsets[1] = TexCoord.xyyy + (float4(0.0, 2.0, 0.0, -2.0) * PixelSize.xyyy);
-        SampleOffsets[2] = TexCoord.xyyy + (float4(2.0, 2.0, 0.0, -2.0) * PixelSize.xyyy);
+        SampleOffsets[0] = TexCoord.xyyy + (float4(-1.0, 1.0, 0.0, -1.0) * TexelSize.xyyy);
+        SampleOffsets[1] = TexCoord.xyyy + (float4(0.0, 1.0, 0.0, -1.0) * TexelSize.xyyy);
+        SampleOffsets[2] = TexCoord.xyyy + (float4(1.0, 1.0, 0.0, -1.0) * TexelSize.xyyy);
     }
 
     void PostProcessVS(in uint ID : SV_VertexID, inout float4 Position : SV_Position, inout float2 TexCoord : TEXCOORD0)
@@ -377,48 +363,31 @@ namespace MotionBlur
         MedianOffsets(VSTexCoord, 1.0 / uint2(BUFFER_WIDTH >> 1, BUFFER_HEIGHT >> 1), Offsets);
     }
 
-    void DownsampleVS(in uint ID, in float2 PixelSize, inout float4 Position, inout float4 Offsets[4])
+    void TentFilterVS(in uint ID, in float2 TexelSize, inout float4 Position, inout float4 Offsets[3])
     {
         float2 VSTexCoord = 0.0;
         PostProcessVS(ID, Position, VSTexCoord);
-        DownsampleOffsets(VSTexCoord, PixelSize, Offsets);
+        TentOffsets(VSTexCoord, TexelSize, Offsets);
     }
 
-    void UpsampleVS(in uint ID, in float2 PixelSize, inout float4 Position, inout float4 Offsets[3])
+    void TentFilter0VS(in uint ID : SV_VertexID, inout float4 Position : SV_Position, inout float4 TentCoords[3] : TEXCOORD0)
     {
-        float2 VSTexCoord = 0.0;
-        PostProcessVS(ID, Position, VSTexCoord);
-        UpsampleOffsets(VSTexCoord, PixelSize, Offsets);
+        TentFilterVS(ID, 1.0 / POW2SIZE_0, Position, TentCoords);
     }
 
-    void Downsample1VS(in uint ID : SV_VertexID, inout float4 Position : SV_Position, inout float4 DownsampleCoords[4] : TEXCOORD0)
+    void TentFilter1VS(in uint ID : SV_VertexID, inout float4 Position : SV_Position, inout float4 TentCoords[3] : TEXCOORD0)
     {
-        DownsampleVS(ID, 1.0 / POW2SIZE_0, Position, DownsampleCoords);
+        TentFilterVS(ID, 1.0 / POW2SIZE_1, Position, TentCoords);
     }
 
-    void Downsample2VS(in uint ID : SV_VertexID, inout float4 Position : SV_Position, inout float4 DownsampleCoords[4] : TEXCOORD0)
+    void TentFilter2VS(in uint ID : SV_VertexID, inout float4 Position : SV_Position, inout float4 TentCoords[3] : TEXCOORD0)
     {
-        DownsampleVS(ID, 1.0 / POW2SIZE_1, Position, DownsampleCoords);
+        TentFilterVS(ID, 1.0 / POW2SIZE_2, Position, TentCoords);
     }
 
-    void Downsample3VS(in uint ID : SV_VertexID, inout float4 Position : SV_Position, inout float4 DownsampleCoords[4] : TEXCOORD0)
+    void TentFilter3VS(in uint ID : SV_VertexID, inout float4 Position : SV_Position, inout float4 TentCoords[3] : TEXCOORD0)
     {
-        DownsampleVS(ID, 1.0 / POW2SIZE_2, Position, DownsampleCoords);
-    }
-
-    void Upsample2VS(in uint ID : SV_VertexID, inout float4 Position : SV_Position, inout float4 UpsampleCoords[3] : TEXCOORD0)
-    {
-        UpsampleVS(ID, 1.0 / POW2SIZE_2, Position, UpsampleCoords);
-    }
-
-    void Upsample1VS(in uint ID : SV_VertexID, inout float4 Position : SV_Position, inout float4 UpsampleCoords[3] : TEXCOORD0)
-    {
-        UpsampleVS(ID, 1.0 / POW2SIZE_1, Position, UpsampleCoords);
-    }
-
-    void Upsample0VS(in uint ID : SV_VertexID, inout float4 Position : SV_Position, inout float4 UpsampleCoords[3] : TEXCOORD0)
-    {
-        UpsampleVS(ID, 1.0 / POW2SIZE_0, Position, UpsampleCoords);
+        TentFilterVS(ID, 1.0 / POW2SIZE_3, Position, TentCoords);
     }
 
     void DerivativesVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoords[2] : TEXCOORD0)
@@ -538,42 +507,7 @@ namespace MotionBlur
         return saturate(Color / dot(Color.rgb, 1.0));
     }
 
-    float4 Downsample(sampler2D Source, float4 TexCoord[4])
-    {
-        // A0    B0    C0
-        //    D0    D1
-        // A1    B1    C1
-        //    D2    D3
-        // A2    B2    C2
-
-        float4 D0 = tex2D(Source, TexCoord[0].xw);
-        float4 D1 = tex2D(Source, TexCoord[0].zw);
-        float4 D2 = tex2D(Source, TexCoord[0].xy);
-        float4 D3 = tex2D(Source, TexCoord[0].zy);
-
-        float4 A0 = tex2D(Source, TexCoord[1].xy);
-        float4 A1 = tex2D(Source, TexCoord[1].xz);
-        float4 A2 = tex2D(Source, TexCoord[1].xw);
-
-        float4 B0 = tex2D(Source, TexCoord[2].xy);
-        float4 B1 = tex2D(Source, TexCoord[2].xz);
-        float4 B2 = tex2D(Source, TexCoord[2].xw);
-
-        float4 C0 = tex2D(Source, TexCoord[3].xy);
-        float4 C1 = tex2D(Source, TexCoord[3].xz);
-        float4 C2 = tex2D(Source, TexCoord[3].xw);
-
-        float4 Output;
-        const float2 Weights = float2(0.5, 0.125) / 4.0;
-        Output += (D0 + D1 + D2 + D3) * Weights.x;
-        Output += (A0 + B0 + A1 + B1) * Weights.y;
-        Output += (B0 + C0 + B1 + C1) * Weights.y;
-        Output += (A1 + B1 + A2 + B2) * Weights.y;
-        Output += (B1 + C1 + B2 + C2) * Weights.y;
-        return Output;
-    }
-
-    float4 Upsample(sampler2D Source, float4 Offsets[3])
+    float4 TentFilter(sampler2D Source, float4 Offsets[3])
     {
         // Sample locations:
         // A0 B0 C0
@@ -813,34 +747,34 @@ namespace MotionBlur
         OutputColor0 = tex2D(SampleCommon1a, TexCoord).rg;
     }
 
-    void PreDownsample1PS(in float4 Position : SV_Position, in float4 DownsampleCoords[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+    void PreDownsample1PS(in float4 Position : SV_Position, in float4 TentCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
-        OutputColor0 = Downsample(SamplePOW2Common0a, DownsampleCoords);
+        OutputColor0 = TentFilter(SamplePOW2Common0a, TentCoords);
     }
 
-    void PreDownsample2PS(in float4 Position : SV_Position, in float4 DownsampleCoords[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+    void PreDownsample2PS(in float4 Position : SV_Position, in float4 TentCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
-        OutputColor0 = Downsample(SamplePOW2Common1, DownsampleCoords);
+        OutputColor0 = TentFilter(SamplePOW2Common1, TentCoords);
     }
 
-    void PreDownsample3PS(in float4 Position : SV_Position, in float4 DownsampleCoords[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+    void PreDownsample3PS(in float4 Position : SV_Position, in float4 TentCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
-        OutputColor0 = Downsample(SamplePOW2Common2, DownsampleCoords);
+        OutputColor0 = TentFilter(SamplePOW2Common2, TentCoords);
     }
 
-    void PreUpsample2PS(in float4 Position : SV_Position, in float4 UpsampleCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+    void PreUpsample2PS(in float4 Position : SV_Position, in float4 TentCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
-        OutputColor0 = Upsample(SamplePOW2Common3, UpsampleCoords);
+        OutputColor0 = TentFilter(SamplePOW2Common3, TentCoords);
     }
 
-    void PreUpsample1PS(in float4 Position : SV_Position, in float4 UpsampleCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+    void PreUpsample1PS(in float4 Position : SV_Position, in float4 TentCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
-        OutputColor0 = Upsample(SamplePOW2Common2, UpsampleCoords);
+        OutputColor0 = TentFilter(SamplePOW2Common2, TentCoords);
     }
 
-    void PreUpsample0PS(in float4 Position : SV_Position, in float4 UpsampleCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+    void PreUpsample0PS(in float4 Position : SV_Position, in float4 TentCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
-        OutputColor0 = Upsample(SamplePOW2Common1, UpsampleCoords);
+        OutputColor0 = TentFilter(SamplePOW2Common1, TentCoords);
     }
 
     void DerivativesPS(in float4 Position : SV_Position, in float4 TexCoords[2] : TEXCOORD0, out float2 OutputColor0 : SV_Target0, out float2 OutputColor1 : SV_Target1)
@@ -859,8 +793,8 @@ namespace MotionBlur
         float2 C0 = tex2D(SamplePOW2Common0a, TexCoords[1].xz).xy * 4.0; // <-0.5, -1.5>
         float2 C1 = tex2D(SamplePOW2Common0a, TexCoords[1].yz).xy * 4.0; // <+0.5, -1.5>
 
-		float4 I = 0.0;
-		
+        float4 I = 0.0;
+
         //    -1 0 +1
         // -1 -2 0 +2 +1
         // -2 -2 0 +2 +2
@@ -874,10 +808,10 @@ namespace MotionBlur
         // -1 -2 -2 -2 -1
         //    -1 -2 -1
         I.zw = ((A0 + B1 + B2 + A1) - (A2 + C0 + C1 + B0)) / 12.0;
-        
+
         I.xz *= rsqrt(dot(I.xz, I.xz) + 1.0);
         I.yw *= rsqrt(dot(I.yw, I.yw) + 1.0);
-        
+
         OutputColor0 = I.xy;
         OutputColor1 = I.zw;
     }
@@ -924,35 +858,35 @@ namespace MotionBlur
         OutputColor0.ba = (0.0, _Blend);
     }
 
-    void PostDownsample1PS(in float4 Position : SV_Position, in float4 DownsampleCoords[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+    void PostDownsample1PS(in float4 Position : SV_Position, in float4 TentCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
-        OutputColor0 = Downsample(SamplePOW2Common0, DownsampleCoords);
+        OutputColor0 = TentFilter(SamplePOW2Common0, TentCoords);
     }
 
-    void PostDownsample2PS(in float4 Position : SV_Position, in float4 DownsampleCoords[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+    void PostDownsample2PS(in float4 Position : SV_Position, in float4 TentCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
-        OutputColor0 = Downsample(SamplePOW2Common1, DownsampleCoords);
+        OutputColor0 = TentFilter(SamplePOW2Common1, TentCoords);
     }
 
-    void PostDownsample3PS(in float4 Position : SV_Position, in float4 DownsampleCoords[4] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+    void PostDownsample3PS(in float4 Position : SV_Position, in float4 TentCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
-        OutputColor0 = Downsample(SamplePOW2Common2, DownsampleCoords);
+        OutputColor0 = TentFilter(SamplePOW2Common2, TentCoords);
     }
 
-    void PostUpsample2PS(in float4 Position : SV_Position, in float4 UpsampleCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+    void PostUpsample2PS(in float4 Position : SV_Position, in float4 TentCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
-        OutputColor0 = Upsample(SamplePOW2Common3, UpsampleCoords);
+        OutputColor0 = TentFilter(SamplePOW2Common3, TentCoords);
     }
 
-    void PostUpsample1PS(in float4 Position : SV_Position, in float4 UpsampleCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+    void PostUpsample1PS(in float4 Position : SV_Position, in float4 TentCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
-        OutputColor0 = Upsample(SamplePOW2Common2, UpsampleCoords);
+        OutputColor0 = TentFilter(SamplePOW2Common2, TentCoords);
     }
 
-    void PostUpsample0PS(in float4 Position : SV_Position, in float4 UpsampleCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0, out float2 OutputColor1 : SV_Target1)
+    void PostUpsample0PS(in float4 Position : SV_Position, in float4 TentCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_Target0, out float2 OutputColor1 : SV_Target1)
     {
-        OutputColor0 = Upsample(SamplePOW2Common1, UpsampleCoords);
-        OutputColor1 = tex2D(SamplePOW2Common0a, UpsampleCoords[1].xz).rg;
+        OutputColor0 = TentFilter(SamplePOW2Common1, TentCoords);
+        OutputColor1 = tex2D(SamplePOW2Common0a, TentCoords[1].xz).rg;
     }
 
     void MotionBlurPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target)
@@ -996,42 +930,42 @@ namespace MotionBlur
 
         pass
         {
-            VertexShader = Downsample1VS;
+            VertexShader = TentFilter0VS;
             PixelShader = PreDownsample1PS;
             RenderTarget0 = SharedResources::RG16F::POW2::RenderCommon1;
         }
 
         pass
         {
-            VertexShader = Downsample2VS;
+            VertexShader = TentFilter1VS;
             PixelShader = PreDownsample2PS;
             RenderTarget0 = SharedResources::RG16F::POW2::RenderCommon2;
         }
 
         pass
         {
-            VertexShader = Downsample3VS;
+            VertexShader = TentFilter2VS;
             PixelShader = PreDownsample3PS;
             RenderTarget0 = SharedResources::RG16F::POW2::RenderCommon3;
         }
 
         pass
         {
-            VertexShader = Upsample2VS;
+            VertexShader = TentFilter3VS;
             PixelShader = PreUpsample2PS;
             RenderTarget0 = SharedResources::RG16F::POW2::RenderCommon2;
         }
 
         pass
         {
-            VertexShader = Upsample1VS;
+            VertexShader = TentFilter2VS;
             PixelShader = PreUpsample1PS;
             RenderTarget0 = SharedResources::RG16F::POW2::RenderCommon1;
         }
 
         pass
         {
-            VertexShader = Upsample0VS;
+            VertexShader = TentFilter1VS;
             PixelShader = PreUpsample0PS;
             RenderTarget0 = SharedResources::RG16F::POW2::RenderCommon0a;
         }
@@ -1113,42 +1047,42 @@ namespace MotionBlur
 
         pass
         {
-            VertexShader = Downsample1VS;
+            VertexShader = TentFilter0VS;
             PixelShader = PostDownsample1PS;
             RenderTarget0 = SharedResources::RG16F::POW2::RenderCommon1;
         }
 
         pass
         {
-            VertexShader = Downsample2VS;
+            VertexShader = TentFilter1VS;
             PixelShader = PostDownsample2PS;
             RenderTarget0 = SharedResources::RG16F::POW2::RenderCommon2;
         }
 
         pass
         {
-            VertexShader = Downsample3VS;
+            VertexShader = TentFilter2VS;
             PixelShader = PostDownsample3PS;
             RenderTarget0 = SharedResources::RG16F::POW2::RenderCommon3;
         }
 
         pass
         {
-            VertexShader = Upsample2VS;
+            VertexShader = TentFilter3VS;
             PixelShader = PostUpsample2PS;
             RenderTarget0 = SharedResources::RG16F::POW2::RenderCommon2;
         }
 
         pass
         {
-            VertexShader = Upsample1VS;
+            VertexShader = TentFilter2VS;
             PixelShader = PostUpsample1PS;
             RenderTarget0 = SharedResources::RG16F::POW2::RenderCommon1;
         }
 
         pass
         {
-            VertexShader = Upsample0VS;
+            VertexShader = TentFilter1VS;
             PixelShader = PostUpsample0PS;
             RenderTarget0 = SharedResources::RG16F::POW2::RenderCommon0c;
 
