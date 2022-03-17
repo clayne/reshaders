@@ -38,7 +38,7 @@ uniform float _Radius <
     ui_label = "Convolution radius";
     ui_type = "drag";
     ui_min = 0.0;
-> = 64.0;
+> = 32.0;
 
 uniform int _Samples <
     ui_label = "Convolution sample count";
