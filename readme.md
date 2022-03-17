@@ -39,6 +39,7 @@ cLetterBox          | LetterBox without copying textures
 cLuminance          | Various grayscale algoritms
 cMedian             | 3x3 median filter
 cMotionBlur         | Color motion blur
+cNoiseConvolution   | Convolution using rotated gradient noise sampling
 cOpticalFlow        | HLSL implementation of pyramidal Horn Schunck
 cOverlay            | Simple backbuffer overlay
 cPingPong           | Gaussian blur approximation using ping-pong box blurs
