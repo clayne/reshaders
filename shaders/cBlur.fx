@@ -1,6 +1,6 @@
 
 /*
-    Convolution with Vogel Spirals
+    Convolution with Vogel spirals and mipmaps
 
     BSD 3-Clause License
 
@@ -59,7 +59,7 @@ uniform float _Radius <
     ui_min = 0.0;
 > = 64.0;
 
-uniform int Samples <
+uniform int _Samples <
     ui_label = "Convolution sample count";
     ui_type = "drag";
     ui_min = 0;
@@ -143,7 +143,7 @@ void BlitPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, ou
 
 void VogelConvolutionPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
 {
-    VogelBlur(SampleCommon_RGBA8_1, TexCoord, uint2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2), _Radius, Samples, _Offset, OutputColor0);
+    VogelBlur(SampleCommon_RGBA8_1, TexCoord, uint2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2), _Radius, _Samples, _Offset, OutputColor0);
 }
 
 technique cBlur
