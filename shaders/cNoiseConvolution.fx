@@ -106,8 +106,8 @@ void NoiseConvolutionPS(in float4 Position : SV_Position, in float2 TexCoord : T
 
     for(int i = 0; i < _Samples; i++)
     {
-        float2 SampleOffset = mul(VogelSample(i, _Samples), RotationMatrix);
-        OutputColor0 += tex2D(SampleColor, TexCoord.xy + (SampleOffset * _Radius) * PixelSize);
+        float2 SampleOffset = mul(VogelSample(i, _Samples) * _Radius, RotationMatrix);
+        OutputColor0 += tex2D(SampleColor, TexCoord.xy + (SampleOffset * PixelSize));
     }
 
     OutputColor0 = OutputColor0 / _Samples;

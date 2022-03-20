@@ -136,16 +136,16 @@ namespace OpticalFlow
         ui_category = "Optical flow";
         ui_label = "Motion Threshold";
         ui_min = 0.0;
-        ui_max = 1.0;
-    > = 0.5;
+        ui_max = 2.0;
+    > = 1.0;
 
     uniform float _Smoothness <
         ui_type = "slider";
         ui_category = "Optical flow";
         ui_label = "Motion Smoothness";
         ui_min = 0.0;
-        ui_max = 1.0;
-    > = 0.5;
+        ui_max = 2.0;
+    > = 1.0;
 
     uniform float _MipBias  <
         ui_type = "drag";
@@ -654,8 +654,8 @@ namespace OpticalFlow
     void OpticalFlowCoarse(in float2 TexCoord, in float Level, out float2 DUV)
     {
         DUV = 0.0;
-        const float E = _Smoothness * 1e-3;
-        const float Alpha = max(ldexp(_Constraint * 1e-3, Level - MaxLevel), 1e-7);
+        const float E = _Smoothness * 1e-4;
+        const float Alpha = max(ldexp(_Constraint * 1e-4, Level - MaxLevel), 1e-7);
 
         float2 CurrentFrame = tex2D(SampleCommon_RG16F_1a, TexCoord).xy;
         float2 PreviousFrame = tex2D(SampleCommon_RG16F_1d, TexCoord).xy;
@@ -689,7 +689,9 @@ namespace OpticalFlow
     void OpticalFlowTV(in sampler2D Source, in float4 TexCoords[5], in float Level, out float2 DUV)
     {
         // Calculate TV
-        const float E = _Smoothness * 1e-3;
+        const float E = _Smoothness * 1e-4;
+        const float Alpha = max(ldexp(_Constraint * 1e-4, Level - MaxLevel), 1e-7);
+        
         float4 GradUV = 0.0;
         float SqGradUV = 0.0;
         float Smoothness0 = 0.0;
@@ -727,8 +729,6 @@ namespace OpticalFlow
         float2 E0 = tex2D(Source, TexCoords[3].yz).xy;
 
         // Calculate optical flow
-
-        const float Alpha = max(ldexp(_Constraint * 1e-3, Level - MaxLevel), 1e-7);
 
         float2 CurrentFrame = tex2D(SampleCommon_RG16F_1a, TexCoords[1].xz).xy;
         float2 PreviousFrame = tex2D(SampleCommon_RG16F_1d, TexCoords[1].xz).xy;
@@ -1070,6 +1070,55 @@ namespace OpticalFlow
         }
 
         // Pyramidal estimation
+
+        pass
+        {
+            VertexShader = EstimateLevel2VS;
+            PixelShader = EstimateLevel2PS;
+            RenderTarget0 = SharedResources::RG16F::RenderCommon2;
+        }
+
+        pass
+        {
+            VertexShader = EstimateLevel3VS;
+            PixelShader = EstimateLevel3PS;
+            RenderTarget0 = SharedResources::RG16F::RenderCommon3;
+        }
+
+        pass
+        {
+            VertexShader = EstimateLevel4VS;
+            PixelShader = EstimateLevel4PS;
+            RenderTarget0 = SharedResources::RG16F::RenderCommon4;
+        }
+
+        pass
+        {
+            VertexShader = EstimateLevel5VS;
+            PixelShader = EstimateLevel5PS;
+            RenderTarget0 = SharedResources::RG16F::RenderCommon5;
+        }
+
+        pass
+        {
+            VertexShader = EstimateLevel6VS;
+            PixelShader = EstimateLevel6PS;
+            RenderTarget0 = SharedResources::RG16F::RenderCommon6;
+        }
+
+        pass
+        {
+            VertexShader = EstimateLevel7VS;
+            PixelShader = EstimateLevel7PS;
+            RenderTarget0 = SharedResources::RG16F::RenderCommon7;
+        }
+
+        pass
+        {
+            VertexShader = PostProcessVS;
+            PixelShader = EstimateLevel8PS;
+            RenderTarget0 = SharedResources::RG16F::RenderCommon8;
+        }
 
         pass
         {
