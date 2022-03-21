@@ -198,6 +198,8 @@ namespace MotionBlur
     sampler2D SampleColor
     {
         Texture = RenderColor;
+        AddressU = MIRROR;
+        AddressV = MIRROR;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
@@ -209,6 +211,8 @@ namespace MotionBlur
     sampler2D SampleCommon1a
     {
         Texture = SharedResources::RG16F::RenderCommon1a;
+        AddressU = MIRROR;
+        AddressV = MIRROR;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
@@ -217,6 +221,8 @@ namespace MotionBlur
     sampler2D SamplePOW2Common0a
     {
         Texture = SharedResources::RG16F::POW2::RenderCommon0a;
+        AddressU = MIRROR;
+        AddressV = MIRROR;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
@@ -225,6 +231,8 @@ namespace MotionBlur
     sampler2D SamplePOW2Common0b
     {
         Texture = SharedResources::RG16F::POW2::RenderCommon0b;
+        AddressU = MIRROR;
+        AddressV = MIRROR;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
@@ -233,6 +241,8 @@ namespace MotionBlur
     sampler2D SamplePOW2Common0c
     {
         Texture = SharedResources::RG16F::POW2::RenderCommon0c;
+        AddressU = MIRROR;
+        AddressV = MIRROR;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
@@ -249,6 +259,8 @@ namespace MotionBlur
     sampler2D SampleData3
     {
         Texture = RenderData3;
+        AddressU = MIRROR;
+        AddressV = MIRROR;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
@@ -257,6 +269,8 @@ namespace MotionBlur
     sampler2D SamplePOW2Common7
     {
         Texture = SharedResources::RG16F::POW2::RenderCommon7;
+        AddressU = MIRROR;
+        AddressV = MIRROR;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
@@ -265,6 +279,8 @@ namespace MotionBlur
     sampler2D SamplePOW2Common6
     {
         Texture = SharedResources::RG16F::POW2::RenderCommon6;
+        AddressU = MIRROR;
+        AddressV = MIRROR;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
@@ -273,6 +289,8 @@ namespace MotionBlur
     sampler2D SamplePOW2Common5
     {
         Texture = SharedResources::RG16F::POW2::RenderCommon5;
+        AddressU = MIRROR;
+        AddressV = MIRROR;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
@@ -281,6 +299,8 @@ namespace MotionBlur
     sampler2D SamplePOW2Common4
     {
         Texture = SharedResources::RG16F::POW2::RenderCommon4;
+        AddressU = MIRROR;
+        AddressV = MIRROR;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
@@ -289,6 +309,8 @@ namespace MotionBlur
     sampler2D SamplePOW2Common3
     {
         Texture = SharedResources::RG16F::POW2::RenderCommon3;
+        AddressU = MIRROR;
+        AddressV = MIRROR;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
@@ -297,6 +319,8 @@ namespace MotionBlur
     sampler2D SamplePOW2Common2
     {
         Texture = SharedResources::RG16F::POW2::RenderCommon2;
+        AddressU = MIRROR;
+        AddressV = MIRROR;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
@@ -305,6 +329,8 @@ namespace MotionBlur
     sampler2D SamplePOW2Common1
     {
         Texture = SharedResources::RG16F::POW2::RenderCommon1;
+        AddressU = MIRROR;
+        AddressV = MIRROR;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
@@ -320,6 +346,8 @@ namespace MotionBlur
     sampler2D SamplePOW2Common0
     {
         Texture = RenderCommon0;
+        AddressU = MIRROR;
+        AddressV = MIRROR;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
@@ -397,77 +425,6 @@ namespace MotionBlur
         const float2 PixelSize = 1.0 / POW2SIZE_0;
         TexCoords[0] = VSTexCoord.xxyy + (float4(-1.5, 1.5, -0.5, 0.5) * PixelSize.xxyy);
         TexCoords[1] = VSTexCoord.xxyy + (float4(-0.5, 0.5, -1.5, 1.5) * PixelSize.xxyy);
-    }
-
-    void GradientsVS(in float2 TexCoord, in float2 PixelSize, inout float4 TexCoords[5])
-    {
-        // Sample locations:
-        //               [4].xy
-        //        [0].xy [1].xy [2].xy
-        // [3].xz [0].xz [1].xz [2].xz [3].yz
-        //        [0].xw [1].xw [2].xw
-        //               [4].xz
-        TexCoords[0] = TexCoord.xyyy + (float4(-2.0, 2.0, 0.0, -2.0) * PixelSize.xyyy);
-        TexCoords[1] = TexCoord.xyyy + (float4(0.0, 2.0, 0.0, -2.0) * PixelSize.xyyy);
-        TexCoords[2] = TexCoord.xyyy + (float4(2.0, 2.0, 0.0, -2.0) * PixelSize.xyyy);
-        TexCoords[3].xyz = TexCoord.xxy + (float3(-4.0, 4.0, 0.0) * PixelSize.xxy);
-        TexCoords[4].xyz = TexCoord.xyy + (float3(0.0, 4.0, -4.0) * PixelSize.xyy);
-    }
-
-    void EstimateVS(in uint ID, in float2 PixelSize, inout float4 Position, inout float4 TexCoords[5])
-    {
-        float2 VSTexCoord = 0.0;
-        PostProcessVS(ID, Position, VSTexCoord);
-        GradientsVS(VSTexCoord, PixelSize, TexCoords);
-    }
-
-    void EstimateLevel6VS(in uint ID : SV_VertexID, inout float4 Position : SV_Position, inout float4 TexCoords[5] : TEXCOORD0)
-    {
-        float2 VSTexCoord = 0.0;
-        PostProcessVS(ID, Position, VSTexCoord);
-        GradientsVS(VSTexCoord, 1.0 / POW2SIZE_6, TexCoords);
-    }
-
-    void EstimateLevel5VS(in uint ID : SV_VertexID, inout float4 Position : SV_Position, inout float4 TexCoords[5] : TEXCOORD0)
-    {
-        float2 VSTexCoord = 0.0;
-        PostProcessVS(ID, Position, VSTexCoord);
-        GradientsVS(VSTexCoord, 1.0 / POW2SIZE_5, TexCoords);
-    }
-
-    void EstimateLevel4VS(in uint ID : SV_VertexID, inout float4 Position : SV_Position, inout float4 TexCoords[5] : TEXCOORD0)
-    {
-        float2 VSTexCoord = 0.0;
-        PostProcessVS(ID, Position, VSTexCoord);
-        GradientsVS(VSTexCoord, 1.0 / POW2SIZE_4, TexCoords);
-    }
-
-    void EstimateLevel3VS(in uint ID : SV_VertexID, inout float4 Position : SV_Position, inout float4 TexCoords[5] : TEXCOORD0)
-    {
-        float2 VSTexCoord = 0.0;
-        PostProcessVS(ID, Position, VSTexCoord);
-        GradientsVS(VSTexCoord, 1.0 / POW2SIZE_3, TexCoords);
-    }
-
-    void EstimateLevel2VS(in uint ID : SV_VertexID, inout float4 Position : SV_Position, inout float4 TexCoords[5] : TEXCOORD0)
-    {
-        float2 VSTexCoord = 0.0;
-        PostProcessVS(ID, Position, VSTexCoord);
-        GradientsVS(VSTexCoord, 1.0 / POW2SIZE_2, TexCoords);
-    }
-
-    void EstimateLevel1VS(in uint ID : SV_VertexID, inout float4 Position : SV_Position, inout float4 TexCoords[5] : TEXCOORD0)
-    {
-        float2 VSTexCoord = 0.0;
-        PostProcessVS(ID, Position, VSTexCoord);
-        GradientsVS(VSTexCoord, 1.0 / POW2SIZE_1, TexCoords);
-    }
-
-    void EstimateLevel0VS(in uint ID : SV_VertexID, inout float4 Position : SV_Position, inout float4 TexCoords[5] : TEXCOORD0)
-    {
-        float2 VSTexCoord = 0.0;
-        PostProcessVS(ID, Position, VSTexCoord);
-        GradientsVS(VSTexCoord, 1.0 / POW2SIZE_0, TexCoords);
     }
 
     // Pixel shaders
@@ -592,110 +549,39 @@ namespace MotionBlur
         DUV.y = Iy2 * (-(C * Ixy * DUV.x) - Iyt);
     }
 
-    void OpticalFlowTV(in sampler2D Source, in float4 TexCoords[5], in float Level, out float2 DUV)
+    void OpticalFlowTV(in sampler2D Source, in float2 TexCoord, in float Level, out float2 DUV)
     {
         // Calculate TV
         const float E = _Smoothness * 1e-3;
+        const float Alpha = max(ldexp(_Constraint * 1e-3, Level - MaxLevel), 1e-7);
+
         float4 GradUV = 0.0;
         float SqGradUV = 0.0;
-        float Smoothness0 = 0.0;
-        float4 Smoothness1 = 0.0;
 
-        // TexCoord locations:
-        //               [4].xy
-        //        [0].xy [1].xy [2].xy
-        // [3].xz [0].xz [1].xz [2].xz [3].yz
-        //        [0].xw [1].xw [2].xw
-        //               [4].xz
-        //
-        // Sampler locations:
-        //       C0
-        //    B0 C1 D0
-        // A0 B1 C2 D1 E0
-        //    B2 C3 D2
-        //       C4
-
-        float2 A0 = tex2D(Source, TexCoords[3].xz).xy;
-
-        float2 B0 = tex2D(Source, TexCoords[0].xy).xy;
-        float2 B1 = tex2D(Source, TexCoords[0].xz).xy;
-        float2 B2 = tex2D(Source, TexCoords[0].xw).xy;
-
-        float2 C0 = tex2D(Source, TexCoords[4].xy).xy;
-        float2 C1 = tex2D(Source, TexCoords[1].xy).xy;
-        float2 C2 = tex2D(Source, TexCoords[1].xz).xy;
-        float2 C3 = tex2D(Source, TexCoords[1].xw).xy;
-        float2 C4 = tex2D(Source, TexCoords[4].xz).xy;
-
-        float2 D0 = tex2D(Source, TexCoords[2].xy).xy;
-        float2 D1 = tex2D(Source, TexCoords[2].xz).xy;
-        float2 D2 = tex2D(Source, TexCoords[2].xw).xy;
-
-        float2 E0 = tex2D(Source, TexCoords[3].yz).xy;
-
-        float2 CurrentFrame = tex2D(SamplePOW2Common0a, TexCoords[1].xz).xy;
-        float2 PreviousFrame = tex2D(SampleData3, TexCoords[1].xz).xy;
+        float2 UV = tex2D(Source, TexCoord).xy;
+        float2 CurrentFrame = tex2D(SamplePOW2Common0a, TexCoord).xy;
+        float2 PreviousFrame = tex2D(SampleData3, TexCoord).xy;
 
         // IxyRG = <Rx, Gx, Ry, Gy>
         // IxyRG = <Rx, Gx, Ry, Gy>
         float4 IxyRG = 0.0;
-        IxyRG.xy = tex2D(SamplePOW2Common0b, TexCoords[1].xz).rg;
-        IxyRG.zw = tex2D(SamplePOW2Common0c, TexCoords[1].xz).rg;
+        IxyRG.xy = tex2D(SamplePOW2Common0b, TexCoord).rg;
+        IxyRG.zw = tex2D(SamplePOW2Common0c, TexCoord).rg;
 
         // ItRG = <Rt, Gt>
         float2 IzRG = CurrentFrame - PreviousFrame;
 
         // Calculate optical flow
 
-        const float Alpha = max(ldexp(_Constraint * 1e-3, Level - MaxLevel), 1e-7);
-
-        //    A0
-        // A1 A2 A3 -> A5
-        //    A4
-
-        float2 Avg[6];
-        Avg[0] = (((C0 + B0 + D0 + C2) * 0.125) + (C1 * 0.5));
-        Avg[1] = (((B0 + A0 + C2 + B2) * 0.125) + (B1 * 0.5));
-        Avg[2] = (((C1 + B1 + D1 + C3) * 0.125) + (C2 * 0.5));
-        Avg[3] = (((D0 + C2 + E0 + D2) * 0.125) + (D1 * 0.5));
-        Avg[4] = (((C2 + B2 + D2 + C4) * 0.125) + (C3 * 0.5));
-        Avg[5] = (((Avg[0] + Avg[1] + Avg[3] + Avg[4]) * 0.125) + (Avg[2] * 0.5));
-
         // Center smoothness gradient and average
-        GradUV.xy = (D0 + (D1 * 2.0) + D2 + E0) - (B0 + (B1 * 2.0) + B2 + A0); // <IxU, IxV>
-        GradUV.zw = (C0 + B0 + (C1 * 2.0) + D0) - (B2 + (C3 * 2.0) + D2 + C4); // <IyU, IyV>
-        SqGradUV = dot(GradUV.xzyw / 5.0, GradUV.xzyw / 5.0) * 0.25;
-        Smoothness0 = rsqrt(SqGradUV + (E * E));
-
-        // Right gradient
-        GradUV.xy = E0 - C2; // <IxU, IxV>
-        GradUV.zw = D0 - D2; // <IyU, IyV>
+        GradUV.xy = ddx(UV); // <IxU, IxV>
+        GradUV.zw = ddy(UV); // <IyU, IyV>
         SqGradUV = dot(GradUV.xzyw, GradUV.xzyw) * 0.25;
-        Smoothness1[0] = rsqrt(SqGradUV + (E * E));
-
-        // Left gradient
-        GradUV.xy = C2 - A0; // <IxU, IxV>
-        GradUV.zw = B0 - B2; // <IyU, IyV>
-        SqGradUV = dot(GradUV.xzyw, GradUV.xzyw) * 0.25;
-        Smoothness1[1] = rsqrt(SqGradUV + (E * E));
-
-        // Top gradient
-        GradUV.xy = D0 - B0; // <IxU, IxV>
-        GradUV.zw = C0 - C2; // <IyU, IyV>
-        SqGradUV = dot(GradUV.xzyw, GradUV.xzyw) * 0.25;
-        Smoothness1[2] = rsqrt(SqGradUV + (E * E));
-
-        // Bottom gradient
-        GradUV.xy = D2 - B2; // <IxU, IxV>
-        GradUV.zw = C2 - C4; // <IyU, IyV>
-        SqGradUV = dot(GradUV.xzyw, GradUV.xzyw) * 0.25;
-        Smoothness1[3] = rsqrt(SqGradUV + (E * E));
-
-        float4 Gradients = 0.5 * (Smoothness0 + Smoothness1.xyzw);
+        float Gradient = rsqrt(SqGradUV + (E * E));
 
         // Calculate constancy term
         float C = 0.0;
-        C = dot(IxyRG.xyzw, Avg[5].xxyy) + dot(IzRG, 1.0);
+        C = dot(IxyRG.xyzw, UV.xxyy) + dot(IzRG, 1.0);
         C = rsqrt(C * C + (E * E));
 
         // Ix2 = 1.0 / (Rx^2 + Gx^2 + a)
@@ -714,11 +600,11 @@ namespace MotionBlur
         It.y = dot(IxyRG.zw, IzRG);
         It.xy = C * It.xy;
 
-        float2 Aii = 1.0 / (dot(Gradients, 1.0) * Alpha + I2.xy);
-        float2 Bi = Alpha * ((Gradients[0] * Avg[3]) + (Gradients[1] * Avg[1]) + (Gradients[2] * Avg[0]) + (Gradients[3] * Avg[4]));
+        float2 Aii = 1.0 / (Gradient * Alpha + I2.xy);
+        float2 Bi = Alpha * (Gradient * UV);
 
         // Gauss-Seidel (forward sweep, from 1...N)
-        DUV.x = Aii.x * (Bi.x - (I2.z * Avg[5].y) - It.x);
+        DUV.x = Aii.x * (Bi.x - (I2.z * UV.y) - It.x);
         DUV.y = Aii.y * (Bi.y - (I2.z * DUV.x) - It.y);
     }
 
@@ -821,39 +707,39 @@ namespace MotionBlur
         OpticalFlowCoarse(TexCoord, 7.0, OutputColor0);
     }
 
-    void EstimateLevel6PS(in float4 Position : SV_Position, in float4 TexCoords[5] : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
+    void EstimateLevel6PS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
     {
-        OpticalFlowTV(SamplePOW2Common7, TexCoords, 6.0, OutputColor0);
+        OpticalFlowTV(SamplePOW2Common7, TexCoord, 6.0, OutputColor0);
     }
 
-    void EstimateLevel5PS(in float4 Position : SV_Position, in float4 TexCoords[5] : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
+    void EstimateLevel5PS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
     {
-        OpticalFlowTV(SamplePOW2Common6, TexCoords, 5.0, OutputColor0);
+        OpticalFlowTV(SamplePOW2Common6, TexCoord, 5.0, OutputColor0);
     }
 
-    void EstimateLevel4PS(in float4 Position : SV_Position, in float4 TexCoords[5] : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
+    void EstimateLevel4PS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
     {
-        OpticalFlowTV(SamplePOW2Common5, TexCoords, 4.0, OutputColor0);
+        OpticalFlowTV(SamplePOW2Common5, TexCoord, 4.0, OutputColor0);
     }
 
-    void EstimateLevel3PS(in float4 Position : SV_Position, in float4 TexCoords[5] : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
+    void EstimateLevel3PS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
     {
-        OpticalFlowTV(SamplePOW2Common4, TexCoords, 3.0, OutputColor0);
+        OpticalFlowTV(SamplePOW2Common4, TexCoord, 3.0, OutputColor0);
     }
 
-    void EstimateLevel2PS(in float4 Position : SV_Position, in float4 TexCoords[5] : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
+    void EstimateLevel2PS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
     {
-        OpticalFlowTV(SamplePOW2Common3, TexCoords, 2.0, OutputColor0);
+        OpticalFlowTV(SamplePOW2Common3, TexCoord, 2.0, OutputColor0);
     }
 
-    void EstimateLevel1PS(in float4 Position : SV_Position, in float4 TexCoords[5] : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
+    void EstimateLevel1PS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
     {
-        OpticalFlowTV(SamplePOW2Common2, TexCoords, 1.0, OutputColor0);
+        OpticalFlowTV(SamplePOW2Common2, TexCoord, 1.0, OutputColor0);
     }
 
-    void EstimateLevel0PS(in float4 Position : SV_Position, in float4 TexCoords[5] : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+    void EstimateLevel0PS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
-        OpticalFlowTV(SamplePOW2Common1, TexCoords, 0.0, OutputColor0.xy);
+        OpticalFlowTV(SamplePOW2Common1, TexCoord, 0.0, OutputColor0.xy);
         OutputColor0.xy *= float2(1.0, -1.0);
         OutputColor0.ba = (0.0, _Blend);
     }
@@ -991,49 +877,49 @@ namespace MotionBlur
 
         pass
         {
-            VertexShader = EstimateLevel6VS;
+            VertexShader = PostProcessVS;
             PixelShader = EstimateLevel6PS;
             RenderTarget0 = SharedResources::RG16F::POW2::RenderCommon6;
         }
 
         pass
         {
-            VertexShader = EstimateLevel5VS;
+            VertexShader = PostProcessVS;
             PixelShader = EstimateLevel5PS;
             RenderTarget0 = SharedResources::RG16F::POW2::RenderCommon5;
         }
 
         pass
         {
-            VertexShader = EstimateLevel4VS;
+            VertexShader = PostProcessVS;
             PixelShader = EstimateLevel4PS;
             RenderTarget0 = SharedResources::RG16F::POW2::RenderCommon4;
         }
 
         pass
         {
-            VertexShader = EstimateLevel3VS;
+            VertexShader = PostProcessVS;
             PixelShader = EstimateLevel3PS;
             RenderTarget0 = SharedResources::RG16F::POW2::RenderCommon3;
         }
 
         pass
         {
-            VertexShader = EstimateLevel2VS;
+            VertexShader = PostProcessVS;
             PixelShader = EstimateLevel2PS;
             RenderTarget0 = SharedResources::RG16F::POW2::RenderCommon2;
         }
 
         pass
         {
-            VertexShader = EstimateLevel1VS;
+            VertexShader = PostProcessVS;
             PixelShader = EstimateLevel1PS;
             RenderTarget0 = SharedResources::RG16F::POW2::RenderCommon1;
         }
 
         pass
         {
-            VertexShader = EstimateLevel0VS;
+            VertexShader = PostProcessVS;
             PixelShader = EstimateLevel0PS;
             RenderTarget0 = RenderCommon0;
             ClearRenderTargets = FALSE;
