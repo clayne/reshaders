@@ -1,6 +1,6 @@
 
 /*
-    Simple temporal difference shader
+    Simple motion masking shader
 
     BSD 3-Clause License
 
@@ -35,16 +35,30 @@
 
 namespace FrameDifference
 {
-    uniform float _Blend <
+    uniform float _BlendFactor <
         ui_type = "slider";
-        ui_label = "Blending";
+        ui_label = "Temporal blending factor";
         ui_min = 0.0;
         ui_max = 1.0;
     > = 0.5;
 
-    uniform float _Weight <
+    uniform float _MinThreshold <
         ui_type = "slider";
-        ui_label = "Weight";
+        ui_label = "Min threshold";
+        ui_min = 0.0;
+        ui_max = 1.0;
+    > = 0.0;
+
+    uniform float _MaxThreshold <
+        ui_type = "slider";
+        ui_label = "Max threshold";
+        ui_min = 0.0;
+        ui_max = 1.0;
+    > = 0.5;
+
+    uniform float _DifferenceWeight <
+        ui_type = "slider";
+        ui_label = "Difference Weight";
         ui_min = 0.0;
         ui_max = 2.0;
     > = 1.0;
@@ -86,7 +100,7 @@ namespace FrameDifference
     {
         Width = BUFFER_WIDTH;
         Height = BUFFER_HEIGHT;
-        Format = RGBA8;
+        Format = R8;
     };
 
     sampler2D SampleDifference
@@ -131,20 +145,35 @@ namespace FrameDifference
 
     void DifferencePS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
     {
+        float Difference = 0.0;
+
         if(_NormalizeInput)
         {
-            float3 Current = tex2D(SampleCurrent, TexCoord).rgb;
-            float3 Previous = tex2D(SamplePrevious, TexCoord).rgb;
-            OutputColor0.rgb = dot(Current - Previous, 1.0) * _Weight;
+            float2 Current = tex2D(SampleCurrent, TexCoord).rg;
+            float2 Previous = tex2D(SamplePrevious, TexCoord).rg;
+            Difference = abs(dot(Current - Previous, 1.0)) * _DifferenceWeight;
         }
         else
         {
             float Current = tex2D(SampleCurrent, TexCoord).r;
             float Previous = tex2D(SamplePrevious, TexCoord).r;
-            OutputColor0.rgb = abs(Current - Previous) * _Weight;
+            Difference = abs(Current - Previous) * _DifferenceWeight;
         }
 
-        OutputColor0.a = _Blend;
+        if (Difference <= _MinThreshold)
+        {
+            OutputColor0 = 0.0;
+        }
+        else if (Difference > _MaxThreshold)
+        {
+            OutputColor0 = 1.0;
+        }
+        else
+        {
+            OutputColor0 = Difference;
+        }
+
+        OutputColor0.a = _BlendFactor;
     }
 
     void OutputPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
