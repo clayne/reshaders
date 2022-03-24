@@ -1,6 +1,6 @@
 
 /*
-    Various Dual-Filter Convolutions
+    Various Pyramid Convolutions
 
     BSD 3-Clause License
 
@@ -83,7 +83,7 @@ sampler2D SampleColor
     MinFilter = LINEAR;
     MipFilter = LINEAR;
     #if BUFFER_COLOR_BIT_DEPTH == 8
-        SRGBTexture = TRUE;
+       SRGBTexture = TRUE;
     #endif
 };
 
@@ -123,15 +123,15 @@ sampler2D SampleCommon4
 
 uniform int _DownsampleMethod <
     ui_type = "combo";
-    ui_items = " Box\0 Jorge\0 Kawase\0 None\0";
-    ui_label = "Method";
+    ui_items = " 2x2 Box\0 3x3 Tent\0 Jorge\0 Kawase\0";
+    ui_label = "Downsample kernel";
     ui_tooltip = "Downsampling Method";
 > = 0;
 
 uniform int _UpsampleMethod <
     ui_type = "combo";
-    ui_items = " Box\0 Jorge\0 Kawase\0 None\0";
-    ui_label = "Method";
+    ui_items = " 2x2 Box\0 3x3 Tent\0 Kawase\0";
+    ui_label = "Upsample kernel";
     ui_tooltip = "Upsampling Method";
 > = 0;
 
@@ -150,22 +150,21 @@ void DownsampleVS(in uint ID, inout float4 Position, inout float4 TexCoords[4], 
     PostProcessVS(ID, Position, VSTexCoord);
     switch(_DownsampleMethod)
     {
-        case 0: // Box
+        case 0: // 4x4 Box
             TexCoords[0] = VSTexCoord.xyxy + float4(-1.0, -1.0, 1.0, 1.0) * TexelSize.xyxy;
             break;
-        case 1: // Jorge
-            // Sample locations:
-            // [1].xy        [2].xy        [3].xy
-            //        [0].xw        [0].zw
-            // [1].xz        [2].xz        [3].xz
-            //        [0].xy        [0].zy
-            // [1].xw        [2].xw        [3].xw
+        case 1: // 6x6 Tent
+            TexCoords[0] = VSTexCoord.xyyy + float4(-2.0, 2.0, 0.0, -2.0) * TexelSize.xyyy;
+            TexCoords[1] = VSTexCoord.xyyy + float4(0.0, 2.0, 0.0, -2.0) * TexelSize.xyyy;
+            TexCoords[2] = VSTexCoord.xyyy + float4(2.0, 2.0, 0.0, -2.0) * TexelSize.xyyy;
+            break;
+        case 2: // Jorge
             TexCoords[0] = VSTexCoord.xyxy + float4(-1.0, -1.0, 1.0, 1.0) * TexelSize.xyxy;
             TexCoords[1] = VSTexCoord.xyyy + float4(-2.0, 2.0, 0.0, -2.0) * TexelSize.xyyy;
             TexCoords[2] = VSTexCoord.xyyy + float4(0.0, 2.0, 0.0, -2.0) * TexelSize.xyyy;
             TexCoords[3] = VSTexCoord.xyyy + float4(2.0, 2.0, 0.0, -2.0) * TexelSize.xyyy;
             break;
-        case 2: // Kawase
+        case 3: // Kawase
             TexCoords[0] = VSTexCoord.xyxy;
             TexCoords[1] = VSTexCoord.xyxy + float4(-1.0, -1.0, 1.0, 1.0) * TexelSize.xyxy;
             break;
@@ -178,14 +177,10 @@ void UpsampleVS(in uint ID, inout float4 Position, inout float4 TexCoords[3], fl
     PostProcessVS(ID, Position, VSTexCoord);
     switch(_UpsampleMethod)
     {
-        case 0: // Box
-            TexCoords[0] = VSTexCoord.xyxy + float4(-1.0, -1.0, 1.0, 1.0) * TexelSize.xyxy;
+        case 0: // 4x4 Box
+            TexCoords[0] = VSTexCoord.xyxy + float4(-0.5, -0.5, 0.5, 0.5) * TexelSize.xyxy;
             break;
-        case 1: // Jorge
-            // Sample locations:
-            // [0].xy [1].xy [2].xy
-            // [0].xz [1].xz [2].xz
-            // [0].xw [1].xw [2].xw
+        case 1: // 6x6 Tent
             TexCoords[0] = VSTexCoord.xyyy + float4(-1.0, 1.0, 0.0, -1.0) * TexelSize.xyyy;
             TexCoords[1] = VSTexCoord.xyyy + float4(0.0, 1.0, 0.0, -1.0) * TexelSize.xyyy;
             TexCoords[2] = VSTexCoord.xyyy + float4(1.0, 1.0, 0.0, -1.0) * TexelSize.xyyy;
@@ -248,38 +243,65 @@ void DownsamplePS(in sampler2D Source, in float4 TexCoords[4], out float4 Output
 {
     OutputColor = 0.0;
 
+    float4 A0, A1, A2, A3,
+           B0, B1, B2, B3,
+           C0, C1, C2, C3,
+           D0, D1, D2, D3;
+
     switch(_DownsampleMethod)
     {
-        case 0: // Box
+        case 0: // 2x2 Box
             OutputColor += tex2D(Source, TexCoords[0].xw);
             OutputColor += tex2D(Source, TexCoords[0].zw);
             OutputColor += tex2D(Source, TexCoords[0].xy);
             OutputColor += tex2D(Source, TexCoords[0].zy);
             OutputColor = OutputColor / 4.0;
             break;
-        case 1: // Jorge
+        case 1: // 3x3 Tent
+            // Sampler locations
+            // A0 B0 C0
+            // A1 B1 C1
+            // A2 B2 C2
+            A0 = tex2D(Source, TexCoords[0].xy);
+            A1 = tex2D(Source, TexCoords[0].xz);
+            A2 = tex2D(Source, TexCoords[0].xw);
+
+            B0 = tex2D(Source, TexCoords[1].xy);
+            B1 = tex2D(Source, TexCoords[1].xz);
+            B2 = tex2D(Source, TexCoords[1].xw);
+
+            C0 = tex2D(Source, TexCoords[2].xy);
+            C1 = tex2D(Source, TexCoords[2].xz);
+            C2 = tex2D(Source, TexCoords[2].xw);
+
+            OutputColor += ((A0 + C0 + A2 + C2) * 1.0);
+            OutputColor += ((B0 + A1 + C1 + B2) * 2.0);
+            OutputColor += (B1 * 4.0);
+            OutputColor = OutputColor / 16.0;
+            break;
+        case 2: // Jorge
             // Sampler locations
             // A0    B0    C0
             //    D0    D1
             // A1    B1    C1
             //    D2    D3
             // A2    B2    C2
-            float4 D0 = tex2D(Source, TexCoords[0].xw);
-            float4 D1 = tex2D(Source, TexCoords[0].zw);
-            float4 D2 = tex2D(Source, TexCoords[0].xy);
-            float4 D3 = tex2D(Source, TexCoords[0].zy);
+            D0 = tex2D(Source, TexCoords[0].xw);
+            D1 = tex2D(Source, TexCoords[0].zw);
+            D2 = tex2D(Source, TexCoords[0].xy);
+            D3 = tex2D(Source, TexCoords[0].zy);
 
-            float4 A0 = tex2D(Source, TexCoords[1].xy);
-            float4 A1 = tex2D(Source, TexCoords[1].xz);
-            float4 A2 = tex2D(Source, TexCoords[1].xw);
+            A0 = tex2D(Source, TexCoords[1].xy);
+            A1 = tex2D(Source, TexCoords[1].xz);
+            A2 = tex2D(Source, TexCoords[1].xw);
 
-            float4 B0 = tex2D(Source, TexCoords[2].xy);
-            float4 B1 = tex2D(Source, TexCoords[2].xz);
-            float4 B2 = tex2D(Source, TexCoords[2].xw);
+            B0 = tex2D(Source, TexCoords[2].xy);
+            B1 = tex2D(Source, TexCoords[2].xz);
+            B2 = tex2D(Source, TexCoords[2].xw);
 
-            float4 C0 = tex2D(Source, TexCoords[3].xy);
-            float4 C1 = tex2D(Source, TexCoords[3].xz);
-            float4 C2 = tex2D(Source, TexCoords[3].xw);
+            C0 = tex2D(Source, TexCoords[3].xy);
+            C1 = tex2D(Source, TexCoords[3].xz);
+            C2 = tex2D(Source, TexCoords[3].xw);
 
             const float2 Weights = float2(0.5, 0.125) / 4.0;
             OutputColor += (D0 + D1 + D2 + D3) * Weights.x;
@@ -288,7 +310,7 @@ void DownsamplePS(in sampler2D Source, in float4 TexCoords[4], out float4 Output
             OutputColor += (A1 + B1 + A2 + B2) * Weights.y;
             OutputColor += (B1 + C1 + B2 + C2) * Weights.y;
             break;
-        case 2: // Kawase
+        case 3: // Kawase
             OutputColor += tex2D(Source, TexCoords[0].xy) * 4.0;
             OutputColor += tex2D(Source, TexCoords[1].xw);
             OutputColor += tex2D(Source, TexCoords[1].zw);
@@ -307,14 +329,14 @@ void UpsamplePS(in sampler2D Source, in float4 TexCoords[3], out float4 OutputCo
 
     switch(_UpsampleMethod)
     {
-        case 0: // Box
+        case 0: // 2x2 Box
             OutputColor += tex2D(Source, TexCoords[0].xw);
             OutputColor += tex2D(Source, TexCoords[0].zw);
             OutputColor += tex2D(Source, TexCoords[0].xy);
             OutputColor += tex2D(Source, TexCoords[0].zy);
             OutputColor = OutputColor / 4.0;
             break;
-        case 1: // Jorge
+        case 1: // 3x3 Tent
             // Sample locations:
             // A0 B0 C0
             // A1 B1 C1

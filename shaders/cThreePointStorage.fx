@@ -89,7 +89,7 @@ namespace ThreePointStorage
 
     sampler2D Sample_Frame_1
     {
-        Texture = Render_Frame1;
+        Texture = Render_Frame_1;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
