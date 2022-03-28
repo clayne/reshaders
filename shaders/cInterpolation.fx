@@ -194,7 +194,7 @@ namespace Interpolation
         ui_label = "Blending";
         ui_min = 0.0;
         ui_max = 1.0;
-    > = 0.1;
+    > = 0.0;
 
     uniform float _Constraint <
         ui_type = "slider";
@@ -695,7 +695,7 @@ namespace Interpolation
         float2 OpticalFlowField = 0.0;
         OpticalFlowTV(SharedResources::Sample_Common_2, TexCoords, 0.0, OpticalFlowField);
 
-        Color = float4(OpticalFlowField, 0.0, 0.25);
+        Color = float4(OpticalFlowField, 0.0, _Blend);
     }
 
     void Postfilter_Downsample_2_PS(in float4 Position : SV_Position, in float4 TexCoords[3] : TEXCOORD0, out float4 Color : SV_Target0)
