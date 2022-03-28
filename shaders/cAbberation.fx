@@ -1,6 +1,6 @@
 
 /*
-    Simple color shifting effect
+    Simple color shifting shader
 
     BSD 3-Clause License
 
