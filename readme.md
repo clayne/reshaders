@@ -45,6 +45,7 @@ cOverlay            | Simple backbuffer overlay
 cPingPong           | Gaussian blur approximation using ping-pong box blurs
 cScale              | Buffer scaling using vertex shaders
 cShard              | Simple unmask sharpening
+cSimplexNoise       | Simple noise and noise warp shader
 cSMAA               | Minimalist version of SMAA, medium setting
 cSrcDestBlend       | Backbuffer blending
 cThreshold          | Quadratic color thresholding
