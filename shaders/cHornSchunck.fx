@@ -338,13 +338,9 @@ namespace HornSchunck
         float B1 = dot(SpatialI.xy, TemporalI);
         float B2 = dot(SpatialI.zw, TemporalI);
 
-        // Symmetric Gauss-Seidel (forward sweep, from 1...N)
+        // Gauss-Seidel (forward sweep, from 1...N)
         DUV.x = A11 * ((Alpha * UV.x - B1) - (UV.y * Aij));
         DUV.y = A22 * ((Alpha * UV.y - B2) - (DUV.x * Aij));
-
-        // Symmetric Gauss-Seidel (backward sweep, from N...1)
-        DUV.y = A22 * ((Alpha * DUV.y - B2) - (DUV.x * Aij));
-        DUV.x = A11 * ((Alpha * DUV.x - B1) - (DUV.y * Aij));
     }
 
     void NormalizePS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_Target0)
