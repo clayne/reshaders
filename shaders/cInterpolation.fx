@@ -207,7 +207,8 @@ namespace Interpolation
     uniform float _MipBias  <
         ui_type = "drag";
         ui_category = "Optical flow";
-        ui_label = "Mipmap bias";
+        ui_label = "Optical flow mipmap bias";
+        ui_min = 0.0;
     > = 0.0;
 
     // Consideration: Use A8 channel for difference requirement (normalize BW image)
@@ -486,7 +487,7 @@ namespace Interpolation
     }
 
     #define MaxLevel 7
-    #define E _Smoothness * 1e-4
+    #define E 1e-4
 
     void CoarseOpticalFlowTV(in float2 TexCoord, in float Level, in float2 UV, out float2 DUV)
     {
@@ -529,8 +530,8 @@ namespace Interpolation
                         out float2 Avg)
     {
         float4 GradUV = 0.0;
-        GradUV.xy = (SampleNW + SampleNE) - (SampleSW + SampleSE); // <IxU, IxV>
-        GradUV.zw = (SampleNW + SampleSW) - (SampleNE + SampleSE); // <IyU, IyV>
+        GradUV.xy = (SampleNW + SampleSW) - (SampleNE + SampleSE); // <IxU, IxV>
+        GradUV.zw = (SampleNW + SampleNE) - (SampleSW + SampleSE); // <IyU, IyV>
         GradUV = GradUV * 0.5;
         Grad = rsqrt((dot(GradUV.xzyw, GradUV.xzyw) * 0.25) + (E * E));
         Avg = (SampleNW + SampleNE + SampleSW + SampleSE) * 0.25;
@@ -728,12 +729,12 @@ namespace Interpolation
     void Interpolate_PS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 Color : SV_Target0)
     {
         float2 TexelSize = 1.0 / BUFFER_SIZE_1;
-        float2 MotionVectors = tex2D(SharedResources::Sample_Common_1a, TexCoord).xy * TexelSize.xy;
+        float2 MotionVectors = tex2Dlod(SharedResources::Sample_Common_1a, float4(TexCoord, 0.0, _MipBias)).xy * TexelSize.xy;
         float4 Frame1 = tex2D(Sample_Frame_1, TexCoord);
         float4 Frame3 = tex2D(Sample_Frame_3, TexCoord);
         float4 Frame1_Warped = tex2D(Sample_Frame_1, TexCoord + MotionVectors);
         float4 Frame3_Warped = tex2D(Sample_Frame_3, TexCoord - MotionVectors);
-        Color = Med3(Frame1, lerp(Frame1_Warped, Frame3_Warped, 0.125), Frame3);
+        Color = Med3(Frame1, lerp(Frame1_Warped, Frame3_Warped, 0.25), Frame3);
         Color.a = 1.0;
     }
 

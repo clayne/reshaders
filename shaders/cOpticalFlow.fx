@@ -684,8 +684,8 @@ namespace OpticalFlow
                         out float2 Avg)
     {
         float4 GradUV = 0.0;
-        GradUV.xy = (SampleNW + SampleNE) - (SampleSW + SampleSE); // <IxU, IxV>
-        GradUV.zw = (SampleNW + SampleSW) - (SampleNE + SampleSE); // <IyU, IyV>
+        GradUV.xy = (SampleNW + SampleSW) - (SampleNE + SampleSE); // <IxU, IxV>
+        GradUV.zw = (SampleNW + SampleNE) - (SampleSW + SampleSE); // <IyU, IyV>
         GradUV = GradUV * 0.5;
         Grad = rsqrt((dot(GradUV.xzyw, GradUV.xzyw) * 0.25) + (E * E));
         Avg = (SampleNW + SampleNE + SampleSW + SampleSE) * 0.25;
