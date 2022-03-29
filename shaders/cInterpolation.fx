@@ -204,14 +204,6 @@ namespace Interpolation
         ui_max = 2.0;
     > = 1.0;
 
-    uniform float _Smoothness <
-        ui_type = "slider";
-        ui_category = "Optical flow";
-        ui_label = "Motion Smoothness";
-        ui_min = 0.0;
-        ui_max = 2.0;
-    > = 1.0;
-
     uniform float _MipBias  <
         ui_type = "drag";
         ui_category = "Optical flow";
@@ -407,7 +399,7 @@ namespace Interpolation
     void Normalize_Frames_PS(in float4 Position : SV_Position, float2 TexCoord : TEXCOORD, out float4 Color : SV_Target0)
     {
         float4 Frame1 = tex2D(Sample_Frame_1, TexCoord);
-        float4 Frame3 = tex2D(Sample_Frame_2, TexCoord);
+        float4 Frame3 = tex2D(Sample_Frame_3, TexCoord);
         Color.xy = Frame1.xy / dot(Frame1.xyz, 1.0);
         Color.zw = Frame3.xy / dot(Frame3.xyz, 1.0);
     }
@@ -494,7 +486,7 @@ namespace Interpolation
     }
 
     #define MaxLevel 7
-    #define E _Smoothness * 2e-2
+    #define E _Smoothness * 1e-4
 
     void CoarseOpticalFlowTV(in float2 TexCoord, in float Level, in float2 UV, out float2 DUV)
     {
@@ -741,7 +733,7 @@ namespace Interpolation
         float4 Frame3 = tex2D(Sample_Frame_3, TexCoord);
         float4 Frame1_Warped = tex2D(Sample_Frame_1, TexCoord + MotionVectors);
         float4 Frame3_Warped = tex2D(Sample_Frame_3, TexCoord - MotionVectors);
-        Color = Med3(Frame1, lerp(Frame3_Warped, Frame3_Warped, 0.5), Frame3);
+        Color = Med3(Frame1, lerp(Frame1_Warped, Frame3_Warped, 0.125), Frame3);
         Color.a = 1.0;
     }
 
