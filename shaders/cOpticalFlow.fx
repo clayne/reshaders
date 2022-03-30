@@ -781,7 +781,7 @@ namespace OpticalFlow
 
         // Calculate constancy term
         float C = 0.0;
-        C = dot(TD, 1.0);
+        C = dot(SD, CenterAvg.xyxy) + dot(TD, 1.0);
         C = rsqrt(C * C + (E * E));
 
         float2 Aii = 0.0;
