@@ -67,7 +67,7 @@ namespace SharedResources
     {
         Width = BUFFER_SIZE_2.x;
         Height = BUFFER_SIZE_2.y;
-        Format = RGBA16F;
+        Format = RG16F;
     };
 
     sampler2D Sample_Common_2
@@ -82,7 +82,7 @@ namespace SharedResources
     {
         Width = BUFFER_SIZE_3.x;
         Height = BUFFER_SIZE_3.y;
-        Format = RGBA16F;
+        Format = RG16F;
     };
 
     sampler2D Sample_Common_3
@@ -97,7 +97,7 @@ namespace SharedResources
     {
         Width = BUFFER_SIZE_4.x;
         Height = BUFFER_SIZE_4.y;
-        Format = RGBA16F;
+        Format = RG16F;
     };
 
     sampler2D Sample_Common_4
@@ -112,7 +112,7 @@ namespace SharedResources
     {
         Width = BUFFER_SIZE_5.x;
         Height = BUFFER_SIZE_5.y;
-        Format = RGBA16F;
+        Format = RG16F;
     };
 
     sampler2D Sample_Common_5
@@ -127,7 +127,7 @@ namespace SharedResources
     {
         Width = BUFFER_SIZE_6.x;
         Height = BUFFER_SIZE_6.y;
-        Format = RGBA16F;
+        Format = RG16F;
     };
 
     sampler2D Sample_Common_6
@@ -142,7 +142,7 @@ namespace SharedResources
     {
         Width = BUFFER_SIZE_7.x;
         Height = BUFFER_SIZE_7.y;
-        Format = RGBA16F;
+        Format = RG16F;
     };
 
     sampler2D Sample_Common_7
@@ -157,7 +157,7 @@ namespace SharedResources
     {
         Width = BUFFER_SIZE_8.x;
         Height = BUFFER_SIZE_8.y;
-        Format = RGBA16F;
+        Format = RG16F;
     };
 
     sampler2D Sample_Common_8
@@ -200,7 +200,7 @@ namespace Interpolation
 
     texture2D Render_Color : COLOR;
 
-    sampler2D Sample_Color 
+    sampler2D Sample_Color
     {
         Texture = Render_Color;
         MagFilter = LINEAR;
@@ -527,15 +527,15 @@ namespace Interpolation
     #define MaxLevel 7
     #define E 1e-4
 
-    void CoarseOpticalFlowTV(in float2 TexCoord, in float Level, in float2 UV, out float4 MotionVectors)
+    void CoarseOpticalFlowTV(in float2 TexCoord, in float Level, in float2 UV, out float2 OpticalFlow)
     {
-        MotionVectors = 0.0;
+        float4 MotionVectors = 0.0;
         const float Alpha = max(ldexp(_Constraint * 1e-4, Level - MaxLevel), 1e-7);
 
         float2 Frame_1 = tex2D(Sample_Normalized_Frame_1, TexCoord).xy;
         float2 Frame_2 = tex2D(Sample_Normalized_Frame_2, TexCoord).xy;
-		float2 Frame_3 = tex2D(Sample_Normalized_Frame_3, TexCoord).xy;
-		
+        float2 Frame_3 = tex2D(Sample_Normalized_Frame_3, TexCoord).xy;
+
         // <Rx, Gx, Ry, Gy>
         float4 SD = tex2D(SharedResources::Sample_Common_1, TexCoord);
 
@@ -549,33 +549,40 @@ namespace Interpolation
         float Aij = 0.0;
         float2 Bi = 0.0;
 
-		// Calculate backward motion vectors
-        // Gauss-Seidel (forward sweep, from 1...N)
-        
+        // Calculate backward motion vectors
+
         C = dot(TD_Backward, 1.0);
         C = rsqrt(C * C + (E * E));
+
         Aii.x = 1.0 / (C * dot(SD.xy, SD.xy) + Alpha);
         Aii.y = 1.0 / (C * dot(SD.zw, SD.zw) + Alpha);
+
         Aij = C * dot(SD.xy, SD.zw);
+
         Bi.x = C * dot(SD.xy, TD_Backward);
         Bi.y = C * dot(SD.zw, TD_Backward);
-        
+
         MotionVectors.x = Aii.x * ((Alpha * UV.x) - (Aij * UV.y) - Bi.x);
         MotionVectors.y = Aii.y * ((Alpha * UV.y) - (Aij * MotionVectors.x) - Bi.y);
-        
-		// Calculate forward motion vectors
-        // Gauss-Seidel (forward sweep, from 1...N)
-        
+
+        // Calculate forward motion vectors
+
         C = dot(TD_Forward, 1.0);
         C = rsqrt(C * C + (E * E));
+
         Aii.x = 1.0 / (C * dot(SD.xy, SD.xy) + Alpha);
         Aii.y = 1.0 / (C * dot(SD.zw, SD.zw) + Alpha);
+
         Aij = C * dot(SD.xy, SD.zw);
+
         Bi.x = C * dot(SD.xy, TD_Forward);
         Bi.y = C * dot(SD.zw, TD_Forward);
-        
+
         MotionVectors.z = Aii.x * ((Alpha * UV.x) - (Aij * UV.y) - Bi.x);
         MotionVectors.w = Aii.y * ((Alpha * UV.y) - (Aij * MotionVectors.z) - Bi.y);
+
+        // Average vector result
+        OpticalFlow = lerp(MotionVectors.xy, MotionVectors.zw, 0.5);
     }
 
     void ProcessGradAvg(in float2 SampleNW,
@@ -646,17 +653,17 @@ namespace Interpolation
         UVAvg = (AreaGrad[0] * AreaAvg[0]) + (AreaGrad[1] * AreaAvg[1]) + (AreaGrad[2] * AreaAvg[2]) + (AreaGrad[3] * AreaAvg[3]);
     }
 
-    void OpticalFlowTV(in sampler2D SourceUV, in float4 TexCoords[3], in float Level, out float4 MotionVectors)
+    void OpticalFlowTV(in sampler2D SourceUV, in float4 TexCoords[3], in float Level, out float2 OpticalFlow)
     {
-        MotionVectors = 0.0;
+        float4 MotionVectors = 0.0;
         const float Alpha = max(ldexp(_Constraint * 1e-4, Level - MaxLevel), 1e-7);
 
         // Load textures
-        
+
         float2 Frame_1 = tex2D(Sample_Normalized_Frame_1, TexCoords[1].xz).xy;
         float2 Frame_2 = tex2D(Sample_Normalized_Frame_2, TexCoords[1].xz).xy;
-		float2 Frame_3 = tex2D(Sample_Normalized_Frame_3, TexCoords[1].xz).xy;
-		
+        float2 Frame_3 = tex2D(Sample_Normalized_Frame_3, TexCoords[1].xz).xy;
+
         // <Rx, Gx, Ry, Gy>
         float4 SD = tex2D(SharedResources::Sample_Common_1, TexCoords[1].xz);
 
@@ -666,41 +673,27 @@ namespace Interpolation
 
         // Optical flow calculation
 
-        float4 SampleUV[9];
-        float2 SampleBackwardUV[9];
-        float2 SampleForwardUV[9];
-        
-        float4 UVGradBackward = 0.0;
-        float2 CenterAvgBackward = 0.0;
-        float2 UVAvgBackward = 0.0;
-        
-        float4 UVGradForward = 0.0;
-        float2 CenterAvgForward = 0.0;
-        float2 UVAvgForward = 0.0;
+        float2 SampleUV[9];
+        float4 UVGrad = 0.0;
+        float2 CenterAvg = 0.0;
+        float2 UVAvg = 0.0;
 
         // SampleUV[i]
         // 0 3 6
         // 1 4 7
         // 2 5 8
-        SampleUV[0] = tex2D(SourceUV, TexCoords[0].xy);
-        SampleUV[1] = tex2D(SourceUV, TexCoords[0].xz);
-        SampleUV[2] = tex2D(SourceUV, TexCoords[0].xw);
-        SampleUV[3] = tex2D(SourceUV, TexCoords[1].xy);
-        SampleUV[4] = tex2D(SourceUV, TexCoords[1].xz);
-        SampleUV[5] = tex2D(SourceUV, TexCoords[1].xw);
-        SampleUV[6] = tex2D(SourceUV, TexCoords[2].xy);
-        SampleUV[7] = tex2D(SourceUV, TexCoords[2].xz);
-        SampleUV[8] = tex2D(SourceUV, TexCoords[2].xw);
-        
-        for(int i = 0; i < 9; i++)
-        {
-        	SampleBackwardUV[i] = SampleUV[i].xy;
-        	SampleForwardUV[i] = SampleUV[i].zw;
-        }
+        SampleUV[0] = tex2D(SourceUV, TexCoords[0].xy).xy;
+        SampleUV[1] = tex2D(SourceUV, TexCoords[0].xz).xy;
+        SampleUV[2] = tex2D(SourceUV, TexCoords[0].xw).xy;
+        SampleUV[3] = tex2D(SourceUV, TexCoords[1].xy).xy;
+        SampleUV[4] = tex2D(SourceUV, TexCoords[1].xz).xy;
+        SampleUV[5] = tex2D(SourceUV, TexCoords[1].xw).xy;
+        SampleUV[6] = tex2D(SourceUV, TexCoords[2].xy).xy;
+        SampleUV[7] = tex2D(SourceUV, TexCoords[2].xz).xy;
+        SampleUV[8] = tex2D(SourceUV, TexCoords[2].xw).xy;
 
-        ProcessArea(SampleBackwardUV, UVGradBackward, CenterAvgBackward, UVAvgBackward);
-        ProcessArea(SampleForwardUV, UVGradForward, CenterAvgForward, UVAvgForward);
-        
+        ProcessArea(SampleUV, UVGrad, CenterAvg, UVAvg);
+
         float C = 0.0;
         float2 Aii = 0.0;
         float Aij = 0.0;
@@ -708,71 +701,76 @@ namespace Interpolation
 
         // Calculate backward motion vectors
 
-        C = dot(SD.xyzw, CenterAvgBackward.xyxy) + dot(TD_Backward, 1.0);
+        C = dot(SD.xyzw, CenterAvg.xyxy) + dot(TD_Backward, 1.0);
         C = rsqrt(C * C + (E * E));
 
-        Aii.x = 1.0 / (dot(UVGradBackward, 1.0) * Alpha + (C * dot(SD.xy, SD.xy)));
-        Aii.y = 1.0 / (dot(UVGradBackward, 1.0) * Alpha + (C * dot(SD.zw, SD.zw)));
-        Aij = dot(SD.xy, SD.zw);
+        Aii.x = 1.0 / (dot(UVGrad, 1.0) * Alpha + (C * dot(SD.xy, SD.xy)));
+        Aii.y = 1.0 / (dot(UVGrad, 1.0) * Alpha + (C * dot(SD.zw, SD.zw)));
+
+        Aij = C * dot(SD.xy, SD.zw);
 
         Bi.x = C * dot(SD.xy, TD_Backward);
         Bi.y = C * dot(SD.zw, TD_Backward);
 
-        MotionVectors.x = Aii.x * ((Alpha * UVAvgBackward.x) - (C * Aij * CenterAvgBackward.y) - Bi.x);
-        MotionVectors.y = Aii.y * ((Alpha * UVAvgBackward.y) - (C * Aij * MotionVectors.x) - Bi.y);
-        
+        MotionVectors.x = Aii.x * ((Alpha * UVAvg.x) - (Aij * CenterAvg.y) - Bi.x);
+        MotionVectors.y = Aii.y * ((Alpha * UVAvg.y) - (Aij * MotionVectors.x) - Bi.y);
+
         // Calculate forward motion vectors
 
-        C = dot(SD.xyzw, CenterAvgForward.xyxy) + dot(TD_Forward, 1.0);
+        C = dot(SD.xyzw, CenterAvg.xyxy) + dot(TD_Forward, 1.0);
         C = rsqrt(C * C + (E * E));
 
-        Aii.x = 1.0 / (dot(UVGradForward, 1.0) * Alpha + (C * dot(SD.xy, SD.xy)));
-        Aii.y = 1.0 / (dot(UVGradForward, 1.0) * Alpha + (C * dot(SD.zw, SD.zw)));
-        Aij = dot(SD.xy, SD.zw);
+        Aii.x = 1.0 / (dot(UVGrad, 1.0) * Alpha + (C * dot(SD.xy, SD.xy)));
+        Aii.y = 1.0 / (dot(UVGrad, 1.0) * Alpha + (C * dot(SD.zw, SD.zw)));
+
+        Aij = C * dot(SD.xy, SD.zw);
 
         Bi.x = C * dot(SD.xy, TD_Forward);
         Bi.y = C * dot(SD.zw, TD_Forward);
 
-        MotionVectors.z = Aii.x * ((Alpha * UVAvgForward.x) - (C * Aij * CenterAvgForward.y) - Bi.x);
-        MotionVectors.w = Aii.y * ((Alpha * UVAvgForward.y) - (C * Aij * MotionVectors.z) - Bi.y);
+        MotionVectors.z = Aii.x * ((Alpha * UVAvg.x) - (Aij * CenterAvg.y) - Bi.x);
+        MotionVectors.w = Aii.y * ((Alpha * UVAvg.y) - (Aij * MotionVectors.z) - Bi.y);
+
+        // Average vector result
+        OpticalFlow = lerp(MotionVectors.xy, MotionVectors.zw, 0.5);
     }
 
-    void Level_8_PS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 Color : SV_Target0)
+    void Level_8_PS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 Color : SV_Target0)
     {
         CoarseOpticalFlowTV(TexCoord, 7.0, 0.0, Color);
     }
 
-    void Level_7_PS(in float4 Position : SV_Position, in float4 TexCoords[3] : TEXCOORD0, out float4 Color : SV_Target0)
+    void Level_7_PS(in float4 Position : SV_Position, in float4 TexCoords[3] : TEXCOORD0, out float2 Color : SV_Target0)
     {
         OpticalFlowTV(SharedResources::Sample_Common_8, TexCoords, 6.0, Color);
     }
 
-    void Level_6_PS(in float4 Position : SV_Position, in float4 TexCoords[3] : TEXCOORD0, out float4 Color : SV_Target0)
+    void Level_6_PS(in float4 Position : SV_Position, in float4 TexCoords[3] : TEXCOORD0, out float2 Color : SV_Target0)
     {
         OpticalFlowTV(SharedResources::Sample_Common_7, TexCoords, 5.0, Color);
     }
 
-    void Level_5_PS(in float4 Position : SV_Position, in float4 TexCoords[3] : TEXCOORD0, out float4 Color : SV_Target0)
+    void Level_5_PS(in float4 Position : SV_Position, in float4 TexCoords[3] : TEXCOORD0, out float2 Color : SV_Target0)
     {
         OpticalFlowTV(SharedResources::Sample_Common_6, TexCoords, 4.0, Color);
     }
 
-    void Level_4_PS(in float4 Position : SV_Position, in float4 TexCoords[3] : TEXCOORD0, out float4 Color : SV_Target0)
+    void Level_4_PS(in float4 Position : SV_Position, in float4 TexCoords[3] : TEXCOORD0, out float2 Color : SV_Target0)
     {
         OpticalFlowTV(SharedResources::Sample_Common_5, TexCoords, 3.0, Color);
     }
 
-    void Level_3_PS(in float4 Position : SV_Position, in float4 TexCoords[3] : TEXCOORD0, out float4 Color : SV_Target0)
+    void Level_3_PS(in float4 Position : SV_Position, in float4 TexCoords[3] : TEXCOORD0, out float2 Color : SV_Target0)
     {
         OpticalFlowTV(SharedResources::Sample_Common_4, TexCoords, 2.0, Color);
     }
 
-    void Level_2_PS(in float4 Position : SV_Position, in float4 TexCoords[3] : TEXCOORD0, out float4 Color : SV_Target0)
+    void Level_2_PS(in float4 Position : SV_Position, in float4 TexCoords[3] : TEXCOORD0, out float2 Color : SV_Target0)
     {
         OpticalFlowTV(SharedResources::Sample_Common_3, TexCoords, 1.0, Color);
     }
 
-    void Level_1_PS(in float4 Position : SV_Position, in float4 TexCoords[3] : TEXCOORD0, out float4 Color : SV_Target0)
+    void Level_1_PS(in float4 Position : SV_Position, in float4 TexCoords[3] : TEXCOORD0, out float2 Color : SV_Target0)
     {
         OpticalFlowTV(SharedResources::Sample_Common_2, TexCoords, 0.0, Color);
     }
@@ -815,12 +813,15 @@ namespace Interpolation
     void Interpolate_PS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 Color : SV_Target0)
     {
         float2 TexelSize = 1.0 / BUFFER_SIZE_1;
-        float4 MotionVectors = tex2Dlod(SharedResources::Sample_Common_1, float4(TexCoord, 0.0, _MipBias)) * TexelSize.xyxy;
-        float4 Frame1 = tex2D(Sample_Frame_1, TexCoord);
+        float2 MotionVectors = tex2Dlod(SharedResources::Sample_Common_1, float4(TexCoord, 0.0, _MipBias)).xy * TexelSize.xy;
+
         float4 Frame3 = tex2D(Sample_Frame_3, TexCoord);
-        float4 Frame1_Warped = tex2D(Sample_Frame_1, TexCoord + MotionVectors.xy);
-        float4 Frame3_Warped = tex2D(Sample_Frame_3, TexCoord - MotionVectors.zw);
-        Color = Med3(Frame1, lerp(Frame1_Warped, Frame3_Warped, 0.125), Frame3);
+        float4 Frame3_Warped = tex2D(Sample_Frame_3, TexCoord + MotionVectors);
+
+        float4 Frame1 = tex2D(Sample_Frame_1, TexCoord);
+        float4 Frame1_Warped = tex2D(Sample_Frame_1, TexCoord - MotionVectors);
+
+        Color = Med3(Frame1_Warped, lerp(Frame1, Frame3, 0.125), Frame3_Warped);
         Color.a = 1.0;
     }
 
