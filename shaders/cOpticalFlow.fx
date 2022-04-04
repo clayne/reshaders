@@ -683,11 +683,12 @@ namespace OpticalFlow
                         out float Grad,
                         out float2 Avg)
     {
+        // NW NE
+        // SW SE
         float4 GradUV = 0.0;
         GradUV.xy = (SampleNW + SampleSW) - (SampleNE + SampleSE); // <IxU, IxV>
         GradUV.zw = (SampleNW + SampleNE) - (SampleSW + SampleSE); // <IyU, IyV>
-        GradUV = GradUV * 0.5;
-        Grad = rsqrt((dot(GradUV.xzyw, GradUV.xzyw) * 0.25) + (E * E));
+        Grad = rsqrt((dot(GradUV.xzyw * 0.5, GradUV.xzyw * 0.5) * 0.25) + (E * E));
         Avg = (SampleNW + SampleNE + SampleSW + SampleSE) * 0.25;
     }
 
@@ -708,7 +709,7 @@ namespace OpticalFlow
         // 2 5 8
         GradUV.xy = (SampleUV[0] + (SampleUV[1] * 2.0) + SampleUV[2]) - (SampleUV[6] + (SampleUV[7] * 2.0) + SampleUV[8]); // <IxU, IxV>
         GradUV.zw = (SampleUV[0] + (SampleUV[3] * 2.0) + SampleUV[6]) - (SampleUV[2] + (SampleUV[5] * 2.0) + SampleUV[8]); // <IxU, IxV>
-        SqGradUV = dot(GradUV.xzyw / 4.0, GradUV.xzyw / 4.0) * 0.25;
+        SqGradUV = dot(GradUV.xzyw * 0.25, GradUV.xzyw * 0.25) * 0.25;
         CenterGrad = rsqrt(SqGradUV + (E * E));
 
         CenterAvg += ((SampleUV[0] + SampleUV[6] + SampleUV[2] + SampleUV[8]) * 1.0);

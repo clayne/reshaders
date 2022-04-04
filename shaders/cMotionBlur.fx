@@ -573,6 +573,8 @@ namespace MotionBlur
                         out float Grad,
                         out float2 Avg)
     {
+        // NW NE
+        // SW SE
         float4 GradUV = 0.0;
         GradUV.xy = (SampleNW + SampleSW) - (SampleNE + SampleSE); // <IxU, IxV>
         GradUV.zw = (SampleNW + SampleNE) - (SampleSW + SampleSE); // <IyU, IyV>
