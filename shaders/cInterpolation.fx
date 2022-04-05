@@ -1,6 +1,6 @@
 
 /*
-    Display motion estimation shader
+    Three-point estimation shader
 
     BSD 3-Clause License
 
@@ -67,7 +67,7 @@ namespace SharedResources
     {
         Width = BUFFER_SIZE_2.x;
         Height = BUFFER_SIZE_2.y;
-        Format = RGBA16F;
+        Format = RG16F;
     };
 
     sampler2D Sample_Common_2
@@ -82,7 +82,7 @@ namespace SharedResources
     {
         Width = BUFFER_SIZE_3.x;
         Height = BUFFER_SIZE_3.y;
-        Format = RGBA16F;
+        Format = RG16F;
     };
 
     sampler2D Sample_Common_3
@@ -97,7 +97,7 @@ namespace SharedResources
     {
         Width = BUFFER_SIZE_4.x;
         Height = BUFFER_SIZE_4.y;
-        Format = RGBA16F;
+        Format = RG16F;
     };
 
     sampler2D Sample_Common_4
@@ -173,6 +173,14 @@ namespace Interpolation
 {
     // Shader properties
 
+    uniform float _Blend <
+        ui_type = "slider";
+        ui_category = "Optical flow";
+        ui_label = "Blending";
+        ui_min = 0.0;
+        ui_max = 1.0;
+    > = 0.0;
+
     uniform float _Constraint <
         ui_type = "slider";
         ui_category = "Optical flow";
@@ -200,7 +208,22 @@ namespace Interpolation
         MipFilter = LINEAR;
     };
 
-    // Two-point backbuffer storage for interpolation
+    // Three-point backbuffer storage for interpolation
+
+    texture2D Render_Frame_3
+    {
+        Width = BUFFER_WIDTH;
+        Height = BUFFER_HEIGHT;
+        Format = RGBA8;
+    };
+
+    sampler2D Sample_Frame_3
+    {
+        Texture = Render_Frame_3;
+        MagFilter = LINEAR;
+        MinFilter = LINEAR;
+        MipFilter = LINEAR;
+    };
 
     texture2D Render_Frame_2
     {
@@ -234,12 +257,43 @@ namespace Interpolation
 
     // Normalized, prefiltered frames for processing
 
+    texture2D Render_Normalized_Frame_3
+    {
+        Width = BUFFER_SIZE_1.x;
+        Height = BUFFER_SIZE_1.y;
+        Format = RG16F;
+        MipLevels = 9;
+    };
+
+    sampler2D Sample_Normalized_Frame_3
+    {
+        Texture = Render_Normalized_Frame_3;
+        MagFilter = LINEAR;
+        MinFilter = LINEAR;
+        MipFilter = LINEAR;
+    };
+
+    texture2D Render_Normalized_Frame_2
+    {
+        Width = BUFFER_SIZE_1.x;
+        Height = BUFFER_SIZE_1.y;
+        Format = RG16F;
+    };
+
+    sampler2D Sample_Normalized_Frame_2
+    {
+        Texture = Render_Normalized_Frame_2;
+        MagFilter = LINEAR;
+        MinFilter = LINEAR;
+        MipFilter = LINEAR;
+    };
+
     texture2D Render_Normalized_Frame
     {
         Width = BUFFER_SIZE_1.x;
         Height = BUFFER_SIZE_1.y;
-        Format = RGBA16F;
-        MipLevels = 8;
+        Format = RG16F;
+        MipLevels = 9;
     };
 
     sampler2D Sample_Normalized_Frame
@@ -249,6 +303,24 @@ namespace Interpolation
         MinFilter = LINEAR;
         MipFilter = LINEAR;
     };
+
+    // Optical flow shader that can optionally blend within itself
+
+    texture2D Render_Interpolated_Frame
+    {
+        Width = BUFFER_WIDTH;
+        Height = BUFFER_HEIGHT;
+        Format = RGBA8;
+    };
+
+    sampler2D Sample_Interpolated_Frame
+    {
+        Texture = Render_Interpolated_Frame;
+        MagFilter = LINEAR;
+        MinFilter = LINEAR;
+        MipFilter = LINEAR;
+    };
+
 
     // Vertex Shaders
 
@@ -328,10 +400,16 @@ namespace Interpolation
         [Frame_1] [Frame_2] [Frame_3]
 
         Scenario: Three Frames
-        Frame 0: [Frame_1 (new back buffer data)] [Frame_2 (no data yet)]
-        Frame 1: [Frame_1 (new back buffer data)] [Frame_2 (sample Frame_1 data)]]
+        Frame 0: [Frame_1 (new back buffer data)] [Frame_2 (no data yet)] [Frame_3 (no data yet)]
+        Frame 1: [Frame_1 (new back buffer data)] [Frame_2 (sample Frame_1 data)] [Frame_3 (no data yet)]
+        Frame 2: [Frame_1 (new back buffer data)] [Frame_2 (sample Frame_1 data)] [Frame_3 (sample Frame_2 data)]
         ... and so forth
     */
+
+    void Store_Frame_3_PS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD, out float4 Color : SV_Target0)
+    {
+        Color = tex2D(Sample_Frame_2, TexCoord);
+    }
 
     void Store_Frame_2_PS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD, out float4 Color : SV_Target0)
     {
@@ -348,12 +426,20 @@ namespace Interpolation
         2. Filter incoming frame
     */
 
-    void Normalize_Frame_PS(in float4 Position : SV_Position, float2 TexCoord : TEXCOORD, out float4 Color : SV_Target0)
+    void Store_Normalized_Frame_3_PS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD, out float4 Color : SV_Target0)
     {
-        float4 Frame1 = tex2D(Sample_Frame_1, TexCoord);
-        float4 Frame2 = tex2D(Sample_Frame_2, TexCoord);
-        Color.xy = Frame1.xy / dot(Frame1.rgb, 1.0);
-        Color.zw = Frame2.xy / dot(Frame2.rgb, 1.0);
+        Color = tex2D(Sample_Normalized_Frame_2, TexCoord);
+    }
+
+    void Store_Normalized_Frame_2_PS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD, out float4 Color : SV_Target0)
+    {
+        Color = tex2D(Sample_Normalized_Frame, TexCoord);
+    }
+
+    void Normalize_Frame_PS(in float4 Position : SV_Position, float2 TexCoord : TEXCOORD, out float3 Color : SV_Target0)
+    {
+        Color = tex2D(Sample_Frame_1, TexCoord).rgb;
+        Color = saturate(Color.xy / dot(Color.rgb, 1.0));
     }
 
     float4 Filter_3x3(in sampler2D Source, in float4 TexCoords[3])
@@ -411,14 +497,14 @@ namespace Interpolation
         // A0     A1
         // A2     B0
         //   C0 C1
-        float2 A0 = tex2D(Sample_Normalized_Frame, TexCoords[0].xw).xy * 4.0; // <-1.5, +0.5>
-        float2 A1 = tex2D(Sample_Normalized_Frame, TexCoords[0].yw).xy * 4.0; // <+1.5, +0.5>
-        float2 A2 = tex2D(Sample_Normalized_Frame, TexCoords[0].xz).xy * 4.0; // <-1.5, -0.5>
-        float2 B0 = tex2D(Sample_Normalized_Frame, TexCoords[0].yz).xy * 4.0; // <+1.5, -0.5>
-        float2 B1 = tex2D(Sample_Normalized_Frame, TexCoords[1].xw).xy * 4.0; // <-0.5, +1.5>
-        float2 B2 = tex2D(Sample_Normalized_Frame, TexCoords[1].yw).xy * 4.0; // <+0.5, +1.5>
-        float2 C0 = tex2D(Sample_Normalized_Frame, TexCoords[1].xz).xy * 4.0; // <-0.5, -1.5>
-        float2 C1 = tex2D(Sample_Normalized_Frame, TexCoords[1].yz).xy * 4.0; // <+0.5, -1.5>
+        float2 A0 = tex2D(Sample_Normalized_Frame_2, TexCoords[0].xw).xy * 4.0; // <-1.5, +0.5>
+        float2 A1 = tex2D(Sample_Normalized_Frame_2, TexCoords[0].yw).xy * 4.0; // <+1.5, +0.5>
+        float2 A2 = tex2D(Sample_Normalized_Frame_2, TexCoords[0].xz).xy * 4.0; // <-1.5, -0.5>
+        float2 B0 = tex2D(Sample_Normalized_Frame_2, TexCoords[0].yz).xy * 4.0; // <+1.5, -0.5>
+        float2 B1 = tex2D(Sample_Normalized_Frame_2, TexCoords[1].xw).xy * 4.0; // <-0.5, +1.5>
+        float2 B2 = tex2D(Sample_Normalized_Frame_2, TexCoords[1].yw).xy * 4.0; // <+0.5, +1.5>
+        float2 C0 = tex2D(Sample_Normalized_Frame_2, TexCoords[1].xz).xy * 4.0; // <-0.5, -1.5>
+        float2 C1 = tex2D(Sample_Normalized_Frame_2, TexCoords[1].yz).xy * 4.0; // <+0.5, -1.5>
 
         //    -1 0 +1
         // -1 -2 0 +2 +1
@@ -445,13 +531,14 @@ namespace Interpolation
         OpticalFlow = 0.0;
         const float Alpha = max(ldexp(_Constraint * 1e-4, Level - MaxLevel), 1e-7);
 
-        float4 Frames = tex2D(Sample_Normalized_Frame, TexCoord);
+        float2 Frame_1 = tex2D(Sample_Normalized_Frame, TexCoord).xy;
+        float2 Frame_3 = tex2D(Sample_Normalized_Frame_3, TexCoord).xy;
 
         // <Rx, Gx, Ry, Gy>
         float4 SD = tex2D(SharedResources::Sample_Common_1, TexCoord);
 
         // <Rz, Gz>
-        float2 TD = Frames.xy - Frames.zw;
+        float2 TD = Frame_3 - Frame_1;
 
         // Calculate constancy term
         float C = 0.0;
@@ -553,13 +640,14 @@ namespace Interpolation
 
         // Load textures
 
-        float4 Frames = tex2D(Sample_Normalized_Frame, TexCoords[1].xz);
+        float2 Frame_1 = tex2D(Sample_Normalized_Frame, TexCoords[1].xz).xy;
+        float2 Frame_3 = tex2D(Sample_Normalized_Frame_3, TexCoords[1].xz).xy;
 
         // <Rx, Gx, Ry, Gy>
         float4 SD = tex2D(SharedResources::Sample_Common_1, TexCoords[1].xz);
 
         // <Rz, Gz>
-        float2 TD = Frames.xy - Frames.zw;
+        float2 TD = Frame_3 - Frame_1;
 
         // Optical flow calculation
 
@@ -693,9 +781,9 @@ namespace Interpolation
         float2 TexelSize = 1.0 / BUFFER_SIZE_1;
         float2 MotionVectors = tex2Dlod(SharedResources::Sample_Common_1, float4(TexCoord, 0.0, _MipBias)).xy * TexelSize.xy;
 
-        float4 StaticLeft = tex2D(Sample_Frame_2, TexCoord);
+        float4 StaticLeft = tex2D(Sample_Frame_3, TexCoord);
         float4 StaticRight = tex2D(Sample_Frame_1, TexCoord);
-        float4 DynamicLeft = tex2D(Sample_Frame_2, TexCoord + MotionVectors);
+        float4 DynamicLeft = tex2D(Sample_Frame_3, TexCoord + MotionVectors);
         float4 DynamicRight = tex2D(Sample_Frame_1, TexCoord - MotionVectors);
 
         float4 StaticAverage = lerp(StaticLeft, StaticRight, 0.5);
@@ -720,6 +808,13 @@ namespace Interpolation
     {
         // Store frames
 
+        pass Store_Frame_3
+        {
+            VertexShader = PostProcessVS;
+            PixelShader = Store_Frame_3_PS;
+            RenderTarget = Render_Frame_3;
+        }
+
         pass Store_Frame_2
         {
             VertexShader = PostProcessVS;
@@ -735,6 +830,20 @@ namespace Interpolation
         }
 
         // Store previous frames, normalize current
+
+        pass Store_Frame_3
+        {
+            VertexShader = PostProcessVS;
+            PixelShader = Store_Normalized_Frame_3_PS;
+            RenderTarget = Render_Normalized_Frame_3;
+        }
+
+        pass Store_Frame_2
+        {
+            VertexShader = PostProcessVS;
+            PixelShader = Store_Normalized_Frame_2_PS;
+            RenderTarget = Render_Normalized_Frame_2;
+        }
 
         pass Normalize_Frame_1
         {
