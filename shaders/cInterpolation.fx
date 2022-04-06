@@ -33,15 +33,11 @@
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#define BUFFER_SIZE_0 uint2(BUFFER_WIDTH >> 0, BUFFER_HEIGHT >> 0)
-#define BUFFER_SIZE_1 uint2(BUFFER_WIDTH >> 1, BUFFER_HEIGHT >> 1)
-#define BUFFER_SIZE_2 uint2(BUFFER_WIDTH >> 2, BUFFER_HEIGHT >> 2)
-#define BUFFER_SIZE_3 uint2(BUFFER_WIDTH >> 3, BUFFER_HEIGHT >> 3)
-#define BUFFER_SIZE_4 uint2(BUFFER_WIDTH >> 4, BUFFER_HEIGHT >> 4)
-#define BUFFER_SIZE_5 uint2(BUFFER_WIDTH >> 5, BUFFER_HEIGHT >> 5)
-#define BUFFER_SIZE_6 uint2(BUFFER_WIDTH >> 6, BUFFER_HEIGHT >> 6)
-#define BUFFER_SIZE_7 uint2(BUFFER_WIDTH >> 7, BUFFER_HEIGHT >> 7)
-#define BUFFER_SIZE_8 uint2(BUFFER_WIDTH >> 8, BUFFER_HEIGHT >> 8)
+#define SIZE int2(BUFFER_WIDTH >> 2, BUFFER_HEIGHT >> 2)
+#define BUFFER_SIZE_1 int2(SIZE >> 0)
+#define BUFFER_SIZE_2 int2(SIZE >> 2)
+#define BUFFER_SIZE_3 int2(SIZE >> 4)
+#define BUFFER_SIZE_4 int2(SIZE >> 6)
 
 namespace SharedResources
 {
@@ -107,79 +103,11 @@ namespace SharedResources
         MinFilter = LINEAR;
         MipFilter = LINEAR;
     };
-
-    texture2D Render_Common_5
-    {
-        Width = BUFFER_SIZE_5.x;
-        Height = BUFFER_SIZE_5.y;
-        Format = RG16F;
-    };
-
-    sampler2D Sample_Common_5
-    {
-        Texture = Render_Common_5;
-        MagFilter = LINEAR;
-        MinFilter = LINEAR;
-        MipFilter = LINEAR;
-    };
-
-    texture2D Render_Common_6
-    {
-        Width = BUFFER_SIZE_6.x;
-        Height = BUFFER_SIZE_6.y;
-        Format = RG16F;
-    };
-
-    sampler2D Sample_Common_6
-    {
-        Texture = Render_Common_6;
-        MagFilter = LINEAR;
-        MinFilter = LINEAR;
-        MipFilter = LINEAR;
-    };
-
-    texture2D Render_Common_7
-    {
-        Width = BUFFER_SIZE_7.x;
-        Height = BUFFER_SIZE_7.y;
-        Format = RG16F;
-    };
-
-    sampler2D Sample_Common_7
-    {
-        Texture = Render_Common_7;
-        MagFilter = LINEAR;
-        MinFilter = LINEAR;
-        MipFilter = LINEAR;
-    };
-
-    texture2D Render_Common_8
-    {
-        Width = BUFFER_SIZE_8.x;
-        Height = BUFFER_SIZE_8.y;
-        Format = RG16F;
-    };
-
-    sampler2D Sample_Common_8
-    {
-        Texture = Render_Common_8;
-        MagFilter = LINEAR;
-        MinFilter = LINEAR;
-        MipFilter = LINEAR;
-    };
 }
 
-namespace Interpolation
+namespace cInterpolation
 {
     // Shader properties
-
-    uniform float _Blend <
-        ui_type = "slider";
-        ui_category = "Optical flow";
-        ui_label = "Blending";
-        ui_min = 0.0;
-        ui_max = 1.0;
-    > = 0.0;
 
     uniform float _Constraint <
         ui_type = "slider";
@@ -215,6 +143,7 @@ namespace Interpolation
         Width = BUFFER_WIDTH;
         Height = BUFFER_HEIGHT;
         Format = RGBA8;
+        MipLevels = 4;
     };
 
     sampler2D Sample_Frame_3
@@ -245,6 +174,7 @@ namespace Interpolation
         Width = BUFFER_WIDTH;
         Height = BUFFER_HEIGHT;
         Format = RGBA8;
+        MipLevels = 4;
     };
 
     sampler2D Sample_Frame_1
@@ -257,43 +187,12 @@ namespace Interpolation
 
     // Normalized, prefiltered frames for processing
 
-    texture2D Render_Normalized_Frame_3
-    {
-        Width = BUFFER_SIZE_1.x;
-        Height = BUFFER_SIZE_1.y;
-        Format = RG16F;
-        MipLevels = 9;
-    };
-
-    sampler2D Sample_Normalized_Frame_3
-    {
-        Texture = Render_Normalized_Frame_3;
-        MagFilter = LINEAR;
-        MinFilter = LINEAR;
-        MipFilter = LINEAR;
-    };
-
-    texture2D Render_Normalized_Frame_2
-    {
-        Width = BUFFER_SIZE_1.x;
-        Height = BUFFER_SIZE_1.y;
-        Format = RG16F;
-    };
-
-    sampler2D Sample_Normalized_Frame_2
-    {
-        Texture = Render_Normalized_Frame_2;
-        MagFilter = LINEAR;
-        MinFilter = LINEAR;
-        MipFilter = LINEAR;
-    };
-
     texture2D Render_Normalized_Frame
     {
         Width = BUFFER_SIZE_1.x;
         Height = BUFFER_SIZE_1.y;
-        Format = RG16F;
-        MipLevels = 9;
+        Format = RGBA16F;
+        MipLevels = 8;
     };
 
     sampler2D Sample_Normalized_Frame
@@ -321,14 +220,51 @@ namespace Interpolation
         MipFilter = LINEAR;
     };
 
-
     // Vertex Shaders
 
-    void PostProcessVS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float2 TexCoord : TEXCOORD0)
+    void PostProcessVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float2 TexCoord : TEXCOORD0)
     {
         TexCoord.x = (ID == 2) ? 2.0 : 0.0;
         TexCoord.y = (ID == 1) ? 2.0 : 0.0;
         Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    }
+
+    static const float2 BlurOffsets[8] =
+    {
+        float2(0.0, 0.0),
+        float2(0.0, 1.4850045),
+        float2(0.0, 3.4650571),
+        float2(0.0, 5.445221),
+        float2(0.0, 7.4255576),
+        float2(0.0, 9.406127),
+        float2(0.0, 11.386987),
+        float2(0.0, 13.368189)
+    };
+
+    void Blur_0_VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoords[8] : TEXCOORD0)
+    {
+        float2 VSTexCoord = 0.0;
+        PostProcessVS(ID, Position, VSTexCoord);
+        TexCoords[0] = VSTexCoord.xyxy;
+
+        for(int i = 1; i < 8; i++)
+        {
+            TexCoords[i].xy = VSTexCoord.xy - (BlurOffsets[i].yx / BUFFER_SIZE_1);
+            TexCoords[i].zw = VSTexCoord.xy + (BlurOffsets[i].yx / BUFFER_SIZE_1);
+        }
+    }
+
+    void Blur_1_VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoords[8] : TEXCOORD0)
+    {
+        float2 VSTexCoord = 0.0;
+        PostProcessVS(ID, Position, VSTexCoord);
+        TexCoords[0] = VSTexCoord.xyxy;
+
+        for(int i = 1; i < 8; i++)
+        {
+            TexCoords[i].xy = VSTexCoord.xy - (BlurOffsets[i].xy / BUFFER_SIZE_1);
+            TexCoords[i].zw = VSTexCoord.xy + (BlurOffsets[i].xy / BUFFER_SIZE_1);
+        }
     }
 
     void Sample_3x3_VS(in uint ID : SV_VertexID, in float2 TexelSize, out float4 Position : SV_Position, out float4 TexCoords[3] : TEXCOORD0)
@@ -362,26 +298,6 @@ namespace Interpolation
     void Sample_3x3_4_VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoords[3] : TEXCOORD0)
     {
         Sample_3x3_VS(ID, BUFFER_SIZE_4, Position, TexCoords);
-    }
-
-    void Sample_3x3_5_VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoords[3] : TEXCOORD0)
-    {
-        Sample_3x3_VS(ID, BUFFER_SIZE_5, Position, TexCoords);
-    }
-
-    void Sample_3x3_6_VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoords[3] : TEXCOORD0)
-    {
-        Sample_3x3_VS(ID, BUFFER_SIZE_6, Position, TexCoords);
-    }
-
-    void Sample_3x3_7_VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoords[3] : TEXCOORD0)
-    {
-        Sample_3x3_VS(ID, BUFFER_SIZE_7, Position, TexCoords);
-    }
-
-    void Sample_3x3_8_VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoords[3] : TEXCOORD0)
-    {
-        Sample_3x3_VS(ID, BUFFER_SIZE_8, Position, TexCoords);
     }
 
     void Derivatives_VS(in uint ID : SV_VertexID, inout float4 Position : SV_Position, inout float4 TexCoords[2] : TEXCOORD0)
@@ -426,68 +342,49 @@ namespace Interpolation
         2. Filter incoming frame
     */
 
-    void Store_Normalized_Frame_3_PS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD, out float4 Color : SV_Target0)
+    void Normalize_Frame_PS(in float4 Position : SV_Position, float2 TexCoord : TEXCOORD, out float4 Color : SV_Target0)
     {
-        Color = tex2D(Sample_Normalized_Frame_2, TexCoord);
+        float4 Frame1 = tex2D(Sample_Frame_1, TexCoord);
+        float4 Frame3 = tex2D(Sample_Frame_3, TexCoord);
+        Color.xy = saturate(Frame1.xy / dot(Frame1.rgb, 1.0));
+        Color.zw = saturate(Frame3.xy / dot(Frame3.rgb, 1.0));
     }
 
-    void Store_Normalized_Frame_2_PS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD, out float4 Color : SV_Target0)
+    static const float BlurWeights[8] =
     {
-        Color = tex2D(Sample_Normalized_Frame, TexCoord);
+        0.079788454,
+        0.15186256,
+        0.12458323,
+        0.08723135,
+        0.05212966,
+        0.026588224,
+        0.011573823,
+        0.0042996835
+    };
+
+    void GaussianBlur(in sampler2D Source, in float4 TexCoords[8], out float4 Color)
+    {
+        float TotalWeights = BlurWeights[0];
+        Color = (tex2D(Source, TexCoords[0].xy) * BlurWeights[0]);
+
+        for(int i = 1; i < 8; i++)
+        {
+            Color += (tex2D(Source, TexCoords[i].xy) * BlurWeights[i]);
+            Color += (tex2D(Source, TexCoords[i].zw) * BlurWeights[i]);
+            TotalWeights += (BlurWeights[i] * 2.0);
+        }
+
+        Color = Color / TotalWeights;
     }
 
-    void Normalize_Frame_PS(in float4 Position : SV_Position, float2 TexCoord : TEXCOORD, out float3 Color : SV_Target0)
+    void Pre_Blur_0_PS(in float4 Position : SV_Position, in float4 TexCoords[8] : TEXCOORD0, out float4 Color : SV_Target0)
     {
-        Color = tex2D(Sample_Frame_1, TexCoord).rgb;
-        Color = saturate(Color.xy / dot(Color.rgb, 1.0));
+        GaussianBlur(Sample_Normalized_Frame, TexCoords, Color);
     }
 
-    float4 Filter_3x3(in sampler2D Source, in float4 TexCoords[3])
+    void Pre_Blur_1_PS(in float4 Position : SV_Position, in float4 TexCoords[8] : TEXCOORD0, out float4 Color : SV_Target0)
     {
-        // Sample locations:
-        // A0 B0 C0
-        // A1 B1 C1
-        // A2 B2 C2
-        float4 A0 = tex2D(Source, TexCoords[0].xy);
-        float4 A1 = tex2D(Source, TexCoords[0].xz);
-        float4 A2 = tex2D(Source, TexCoords[0].xw);
-        float4 B0 = tex2D(Source, TexCoords[1].xy);
-        float4 B1 = tex2D(Source, TexCoords[1].xz);
-        float4 B2 = tex2D(Source, TexCoords[1].xw);
-        float4 C0 = tex2D(Source, TexCoords[2].xy);
-        float4 C1 = tex2D(Source, TexCoords[2].xz);
-        float4 C2 = tex2D(Source, TexCoords[2].xw);
-        return (((A0 + C0 + A2 + C2) * 1.0) + ((B0 + A1 + C1 + B2) * 2.0) + (B1 * 4.0)) / 16.0;
-    }
-
-    void Prefilter_Downsample_2_PS(in float4 Position : SV_Position, in float4 TexCoords[3] : TEXCOORD0, out float4 Color : SV_Target0)
-    {
-        Color = Filter_3x3(Sample_Normalized_Frame, TexCoords);
-    }
-
-    void Prefilter_Downsample_3_PS(in float4 Position : SV_Position, in float4 TexCoords[3] : TEXCOORD0, out float4 Color : SV_Target0)
-    {
-        Color = Filter_3x3(SharedResources::Sample_Common_2, TexCoords);
-    }
-
-    void Prefilter_Downsample_4_PS(in float4 Position : SV_Position, in float4 TexCoords[3] : TEXCOORD0, out float4 Color : SV_Target0)
-    {
-        Color = Filter_3x3(SharedResources::Sample_Common_3, TexCoords);
-    }
-
-    void Prefilter_Upsample_3_PS(in float4 Position : SV_Position, in float4 TexCoords[3] : TEXCOORD0, out float4 Color : SV_Target0)
-    {
-        Color = Filter_3x3(SharedResources::Sample_Common_4, TexCoords);
-    }
-
-    void Prefilter_Upsample_2_PS(in float4 Position : SV_Position, in float4 TexCoords[3] : TEXCOORD0, out float4 Color : SV_Target0)
-    {
-        Color = Filter_3x3(SharedResources::Sample_Common_3, TexCoords);
-    }
-
-    void Prefilter_Upsample_1_PS(in float4 Position : SV_Position, in float4 TexCoords[3] : TEXCOORD0, out float4 Color : SV_Target0)
-    {
-        Color = Filter_3x3(SharedResources::Sample_Common_2, TexCoords);
+        GaussianBlur(SharedResources::Sample_Common_1, TexCoords, Color);
     }
 
     void Derivatives_PS(in float4 Position : SV_Position, in float4 TexCoords[2] : TEXCOORD0, out float4 Color : SV_Target0)
@@ -497,14 +394,14 @@ namespace Interpolation
         // A0     A1
         // A2     B0
         //   C0 C1
-        float2 A0 = tex2D(Sample_Normalized_Frame_2, TexCoords[0].xw).xy * 4.0; // <-1.5, +0.5>
-        float2 A1 = tex2D(Sample_Normalized_Frame_2, TexCoords[0].yw).xy * 4.0; // <+1.5, +0.5>
-        float2 A2 = tex2D(Sample_Normalized_Frame_2, TexCoords[0].xz).xy * 4.0; // <-1.5, -0.5>
-        float2 B0 = tex2D(Sample_Normalized_Frame_2, TexCoords[0].yz).xy * 4.0; // <+1.5, -0.5>
-        float2 B1 = tex2D(Sample_Normalized_Frame_2, TexCoords[1].xw).xy * 4.0; // <-0.5, +1.5>
-        float2 B2 = tex2D(Sample_Normalized_Frame_2, TexCoords[1].yw).xy * 4.0; // <+0.5, +1.5>
-        float2 C0 = tex2D(Sample_Normalized_Frame_2, TexCoords[1].xz).xy * 4.0; // <-0.5, -1.5>
-        float2 C1 = tex2D(Sample_Normalized_Frame_2, TexCoords[1].yz).xy * 4.0; // <+0.5, -1.5>
+        float2 A0 = tex2D(Sample_Normalized_Frame, TexCoords[0].xw).xy * 4.0; // <-1.5, +0.5>
+        float2 A1 = tex2D(Sample_Normalized_Frame, TexCoords[0].yw).xy * 4.0; // <+1.5, +0.5>
+        float2 A2 = tex2D(Sample_Normalized_Frame, TexCoords[0].xz).xy * 4.0; // <-1.5, -0.5>
+        float2 B0 = tex2D(Sample_Normalized_Frame, TexCoords[0].yz).xy * 4.0; // <+1.5, -0.5>
+        float2 B1 = tex2D(Sample_Normalized_Frame, TexCoords[1].xw).xy * 4.0; // <-0.5, +1.5>
+        float2 B2 = tex2D(Sample_Normalized_Frame, TexCoords[1].yw).xy * 4.0; // <+0.5, +1.5>
+        float2 C0 = tex2D(Sample_Normalized_Frame, TexCoords[1].xz).xy * 4.0; // <-0.5, -1.5>
+        float2 C1 = tex2D(Sample_Normalized_Frame, TexCoords[1].yz).xy * 4.0; // <+0.5, -1.5>
 
         //    -1 0 +1
         // -1 -2 0 +2 +1
@@ -524,21 +421,20 @@ namespace Interpolation
     }
 
     #define MaxLevel 7
-    #define E 1e-4
+    #define E 1e-2
 
     void CoarseOpticalFlowTV(in float2 TexCoord, in float Level, in float2 UV, out float2 OpticalFlow)
     {
         OpticalFlow = 0.0;
-        const float Alpha = max(ldexp(_Constraint * 1e-4, Level - MaxLevel), 1e-7);
+        const float Alpha = max(ldexp(_Constraint * 1e-5, Level - MaxLevel), 1e-7);
 
-        float2 Frame_1 = tex2D(Sample_Normalized_Frame, TexCoord).xy;
-        float2 Frame_3 = tex2D(Sample_Normalized_Frame_3, TexCoord).xy;
+        float4 Frames = tex2Dlod(Sample_Normalized_Frame, float4(TexCoord, 0.0, Level));
 
         // <Rx, Gx, Ry, Gy>
-        float4 SD = tex2D(SharedResources::Sample_Common_1, TexCoord);
+        float4 SD = tex2Dlod(SharedResources::Sample_Common_1, float4(TexCoord, 0.0, Level));
 
         // <Rz, Gz>
-        float2 TD = Frame_3 - Frame_1;
+        float2 TD = Frames.xy - Frames.zw;
 
         // Calculate constancy term
         float C = 0.0;
@@ -636,18 +532,17 @@ namespace Interpolation
     void OpticalFlowTV(in sampler2D SourceUV, in float4 TexCoords[3], in float Level, out float2 OpticalFlow)
     {
         OpticalFlow = 0.0;
-        const float Alpha = max(ldexp(_Constraint * 1e-4, Level - MaxLevel), 1e-7);
+        const float Alpha = max(ldexp(_Constraint * 1e-5, Level - MaxLevel), 1e-7);
 
         // Load textures
 
-        float2 Frame_1 = tex2D(Sample_Normalized_Frame, TexCoords[1].xz).xy;
-        float2 Frame_3 = tex2D(Sample_Normalized_Frame_3, TexCoords[1].xz).xy;
+        float4 Frames = tex2Dlod(Sample_Normalized_Frame, float4(TexCoords[1].xz, 0.0, Level));
 
         // <Rx, Gx, Ry, Gy>
-        float4 SD = tex2D(SharedResources::Sample_Common_1, TexCoords[1].xz);
+        float4 SD = tex2Dlod(SharedResources::Sample_Common_1, float4(TexCoords[1].xz, 0.0, Level));
 
         // <Rz, Gz>
-        float2 TD = Frame_3 - Frame_1;
+        float2 TD = Frames.xy - Frames.zw;
 
         // Optical flow calculation
 
@@ -694,74 +589,37 @@ namespace Interpolation
         OpticalFlow.y = Aii.y * ((Alpha * UVAvg.y) - (Aij * OpticalFlow.x) - Bi.y);
     }
 
-    void Level_8_PS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 Color : SV_Target0)
+    void Level_4_PS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 Color : SV_Target0)
     {
-        CoarseOpticalFlowTV(TexCoord, 7.0, 0.0, Color);
-    }
-
-    void Level_7_PS(in float4 Position : SV_Position, in float4 TexCoords[3] : TEXCOORD0, out float2 Color : SV_Target0)
-    {
-        OpticalFlowTV(SharedResources::Sample_Common_8, TexCoords, 6.0, Color);
-    }
-
-    void Level_6_PS(in float4 Position : SV_Position, in float4 TexCoords[3] : TEXCOORD0, out float2 Color : SV_Target0)
-    {
-        OpticalFlowTV(SharedResources::Sample_Common_7, TexCoords, 5.0, Color);
-    }
-
-    void Level_5_PS(in float4 Position : SV_Position, in float4 TexCoords[3] : TEXCOORD0, out float2 Color : SV_Target0)
-    {
-        OpticalFlowTV(SharedResources::Sample_Common_6, TexCoords, 4.0, Color);
-    }
-
-    void Level_4_PS(in float4 Position : SV_Position, in float4 TexCoords[3] : TEXCOORD0, out float2 Color : SV_Target0)
-    {
-        OpticalFlowTV(SharedResources::Sample_Common_5, TexCoords, 3.0, Color);
+        CoarseOpticalFlowTV(TexCoord, 6.5, 0.0, Color);
     }
 
     void Level_3_PS(in float4 Position : SV_Position, in float4 TexCoords[3] : TEXCOORD0, out float2 Color : SV_Target0)
     {
-        OpticalFlowTV(SharedResources::Sample_Common_4, TexCoords, 2.0, Color);
+        OpticalFlowTV(SharedResources::Sample_Common_4, TexCoords, 4.5, Color);
     }
 
     void Level_2_PS(in float4 Position : SV_Position, in float4 TexCoords[3] : TEXCOORD0, out float2 Color : SV_Target0)
     {
-        OpticalFlowTV(SharedResources::Sample_Common_3, TexCoords, 1.0, Color);
+        OpticalFlowTV(SharedResources::Sample_Common_3, TexCoords, 2.5, Color);
     }
 
-    void Level_1_PS(in float4 Position : SV_Position, in float4 TexCoords[3] : TEXCOORD0, out float2 Color : SV_Target0)
+    void Level_1_PS(in float4 Position : SV_Position, in float4 TexCoords[3] : TEXCOORD0, out float4 Color : SV_Target0)
     {
-        OpticalFlowTV(SharedResources::Sample_Common_2, TexCoords, 0.0, Color);
+        OpticalFlowTV(SharedResources::Sample_Common_2, TexCoords, 0.5, Color.rg);
+        Color.ba = float2(0.0, 1.0);
     }
 
-    void Postfilter_Downsample_2_PS(in float4 Position : SV_Position, in float4 TexCoords[3] : TEXCOORD0, out float4 Color : SV_Target0)
+    void Post_Blur_0_PS(in float4 Position : SV_Position, in float4 TexCoords[8] : TEXCOORD0, out float4 Color : SV_Target0)
     {
-        Color = Filter_3x3(SharedResources::Sample_Common_1, TexCoords);
+        GaussianBlur(SharedResources::Sample_Common_1, TexCoords, Color);
+        Color.a = 1.0;
     }
 
-    void Postfilter_Downsample_3_PS(in float4 Position : SV_Position, in float4 TexCoords[3] : TEXCOORD0, out float4 Color : SV_Target0)
+    void Post_Blur_1_PS(in float4 Position : SV_Position, in float4 TexCoords[8] : TEXCOORD0, out float4 Color : SV_Target0)
     {
-        Color = Filter_3x3(SharedResources::Sample_Common_2, TexCoords);
-    }
-
-    void Postfilter_Downsample_4_PS(in float4 Position : SV_Position, in float4 TexCoords[3] : TEXCOORD0, out float4 Color : SV_Target0)
-    {
-        Color = Filter_3x3(SharedResources::Sample_Common_3, TexCoords);
-    }
-
-    void Postfilter_Upsample_3_PS(in float4 Position : SV_Position, in float4 TexCoords[3] : TEXCOORD0, out float4 Color : SV_Target0)
-    {
-        Color = Filter_3x3(SharedResources::Sample_Common_4, TexCoords);
-    }
-
-    void Postfilter_Upsample_2_PS(in float4 Position : SV_Position, in float4 TexCoords[3] : TEXCOORD0, out float4 Color : SV_Target0)
-    {
-        Color = Filter_3x3(SharedResources::Sample_Common_3, TexCoords);
-    }
-
-    void Postfilter_Upsample_1_PS(in float4 Position : SV_Position, in float4 TexCoords[3] : TEXCOORD0, out float4 Color : SV_Target0)
-    {
-        Color = Filter_3x3(SharedResources::Sample_Common_2, TexCoords);
+        GaussianBlur(Sample_Normalized_Frame, TexCoords, Color);
+        Color.a = 1.0;
     }
 
     /*
@@ -796,6 +654,7 @@ namespace Interpolation
         float4 CascadedMedian = Median(StaticMedian, MotionFilter, DynamicMedian);
 
         Color = lerp(CascadedMedian, DynamicAverage, 0.5);
+        Color.a = 1.0;
     }
 
     /*
@@ -831,68 +690,26 @@ namespace Interpolation
 
         // Store previous frames, normalize current
 
-        pass Store_Frame_3
-        {
-            VertexShader = PostProcessVS;
-            PixelShader = Store_Normalized_Frame_3_PS;
-            RenderTarget = Render_Normalized_Frame_3;
-        }
-
-        pass Store_Frame_2
-        {
-            VertexShader = PostProcessVS;
-            PixelShader = Store_Normalized_Frame_2_PS;
-            RenderTarget = Render_Normalized_Frame_2;
-        }
-
-        pass Normalize_Frame_1
+        pass Normalize_Frame
         {
             VertexShader = PostProcessVS;
             PixelShader = Normalize_Frame_PS;
             RenderTarget0 = Render_Normalized_Frame;
         }
 
-        // Pyramid Prefilter
+        // Gaussian blur
 
-        pass Downsample_2
+        pass Blur0
         {
-            VertexShader = Sample_3x3_1_VS;
-            PixelShader = Prefilter_Downsample_2_PS;
-            RenderTarget0 = SharedResources::Render_Common_2;
+            VertexShader = Blur_0_VS;
+            PixelShader = Pre_Blur_0_PS;
+            RenderTarget0 = SharedResources::Render_Common_1;
         }
 
-        pass Downsample_3
+        pass Blur1
         {
-            VertexShader = Sample_3x3_2_VS;
-            PixelShader = Prefilter_Downsample_3_PS;
-            RenderTarget0 = SharedResources::Render_Common_3;
-        }
-
-        pass Downsample_4
-        {
-            VertexShader = Sample_3x3_3_VS;
-            PixelShader = Prefilter_Downsample_4_PS;
-            RenderTarget0 = SharedResources::Render_Common_4;
-        }
-
-        pass Upsample_3
-        {
-            VertexShader = Sample_3x3_4_VS;
-            PixelShader = Prefilter_Upsample_3_PS;
-            RenderTarget0 = SharedResources::Render_Common_3;
-        }
-
-        pass Upsample_2
-        {
-            VertexShader = Sample_3x3_3_VS;
-            PixelShader = Prefilter_Upsample_2_PS;
-            RenderTarget0 = SharedResources::Render_Common_2;
-        }
-
-        pass Upsample_1
-        {
-            VertexShader = Sample_3x3_2_VS;
-            PixelShader = Prefilter_Upsample_1_PS;
+            VertexShader = Blur_1_VS;
+            PixelShader = Pre_Blur_1_PS;
             RenderTarget0 = Render_Normalized_Frame;
         }
 
@@ -905,39 +722,11 @@ namespace Interpolation
             RenderTarget0 = SharedResources::Render_Common_1;
         }
 
-        // Optical Flow
+        // Trilinear Optical Flow, calculate 2 levels at a time
 
         pass
         {
             VertexShader = PostProcessVS;
-            PixelShader = Level_8_PS;
-            RenderTarget0 = SharedResources::Render_Common_8;
-        }
-
-        pass
-        {
-            VertexShader = Sample_3x3_8_VS;
-            PixelShader = Level_7_PS;
-            RenderTarget0 = SharedResources::Render_Common_7;
-        }
-
-        pass
-        {
-            VertexShader = Sample_3x3_7_VS;
-            PixelShader = Level_6_PS;
-            RenderTarget0 = SharedResources::Render_Common_6;
-        }
-
-        pass
-        {
-            VertexShader = Sample_3x3_6_VS;
-            PixelShader = Level_5_PS;
-            RenderTarget0 = SharedResources::Render_Common_5;
-        }
-
-        pass
-        {
-            VertexShader = Sample_3x3_5_VS;
             PixelShader = Level_4_PS;
             RenderTarget0 = SharedResources::Render_Common_4;
         }
@@ -963,47 +752,19 @@ namespace Interpolation
             RenderTarget0 = SharedResources::Render_Common_1;
         }
 
-        // Pyramid Postfilter
+        // Gaussian blur
 
-        pass Downsample_2
+        pass Blur0
         {
-            VertexShader = Sample_3x3_1_VS;
-            PixelShader = Postfilter_Downsample_2_PS;
-            RenderTarget0 = SharedResources::Render_Common_2;
+            VertexShader = Blur_0_VS;
+            PixelShader = Post_Blur_0_PS;
+            RenderTarget0 = Render_Normalized_Frame;
         }
 
-        pass Downsample_3
+        pass Blur1
         {
-            VertexShader = Sample_3x3_2_VS;
-            PixelShader = Postfilter_Downsample_3_PS;
-            RenderTarget0 = SharedResources::Render_Common_3;
-        }
-
-        pass Downsample_4
-        {
-            VertexShader = Sample_3x3_3_VS;
-            PixelShader = Postfilter_Downsample_4_PS;
-            RenderTarget0 = SharedResources::Render_Common_4;
-        }
-
-        pass Upsample_3
-        {
-            VertexShader = Sample_3x3_4_VS;
-            PixelShader = Postfilter_Upsample_3_PS;
-            RenderTarget0 = SharedResources::Render_Common_3;
-        }
-
-        pass Upsample_2
-        {
-            VertexShader = Sample_3x3_3_VS;
-            PixelShader = Postfilter_Upsample_2_PS;
-            RenderTarget0 = SharedResources::Render_Common_2;
-        }
-
-        pass Upsample_1
-        {
-            VertexShader = Sample_3x3_2_VS;
-            PixelShader = Postfilter_Upsample_1_PS;
+            VertexShader = Blur_1_VS;
+            PixelShader = Post_Blur_1_PS;
             RenderTarget0 = SharedResources::Render_Common_1;
         }
 
@@ -1013,6 +774,7 @@ namespace Interpolation
         {
             VertexShader = PostProcessVS;
             PixelShader = Interpolate_PS;
+            RenderTarget0 = Render_Interpolated_Frame;
         }
     }
 }
