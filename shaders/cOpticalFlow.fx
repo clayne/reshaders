@@ -54,6 +54,8 @@ namespace Shared_Resources_OpticalFlow
     sampler2D Sample_Common_0
     {
         Texture = Render_Common_0;
+        AddressU = MIRROR;
+        AddressV = MIRROR;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
@@ -72,6 +74,8 @@ namespace Shared_Resources_OpticalFlow
     sampler2D Sample_Common_1_A
     {
         Texture = Render_Common_1_A;
+        AddressU = MIRROR;
+        AddressV = MIRROR;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
@@ -88,6 +92,8 @@ namespace Shared_Resources_OpticalFlow
     sampler2D Sample_Common_1_B
     {
         Texture = Render_Common_1_B;
+        AddressU = MIRROR;
+        AddressV = MIRROR;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
@@ -103,6 +109,8 @@ namespace Shared_Resources_OpticalFlow
     sampler2D Sample_Common_2
     {
         Texture = Render_Common_2;
+        AddressU = MIRROR;
+        AddressV = MIRROR;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
@@ -118,6 +126,8 @@ namespace Shared_Resources_OpticalFlow
     sampler2D Sample_Common_3
     {
         Texture = Render_Common_3;
+        AddressU = MIRROR;
+        AddressV = MIRROR;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
@@ -133,6 +143,8 @@ namespace Shared_Resources_OpticalFlow
     sampler2D Sample_Common_4
     {
         Texture = Render_Common_4;
+        AddressU = MIRROR;
+        AddressV = MIRROR;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
@@ -237,6 +249,8 @@ namespace OpticalFlow
     sampler2D Sample_Color
     {
         Texture = Render_Color;
+        AddressU = MIRROR;
+        AddressV = MIRROR;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
@@ -253,6 +267,8 @@ namespace OpticalFlow
     sampler2D Sample_Common_1_P
     {
         Texture = Render_Common_1_P;
+        AddressU = MIRROR;
+        AddressV = MIRROR;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
@@ -268,6 +284,8 @@ namespace OpticalFlow
     sampler2D Sample_Optical_Flow
     {
         Texture = Render_Optical_Flow;
+        AddressU = MIRROR;
+        AddressV = MIRROR;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
@@ -447,7 +465,7 @@ namespace OpticalFlow
 
     void Normalize_Frame_PS(in float4 Position : SV_Position, float2 TexCoord : TEXCOORD, out float2 Color : SV_Target0)
     {
-        float4 Frame = tex2D(Sample_Color, TexCoord);
+        float4 Frame = max(tex2D(Sample_Color, TexCoord), exp2(-10.0));
         Color.xy = saturate(Frame.xy / dot(Frame.rgb, 1.0));
     }
 
@@ -527,12 +545,12 @@ namespace OpticalFlow
     }
 
     #define MaxLevel 7
-    #define E 1e-2
+    #define E 1e-4
 
     void CoarseOpticalFlowTV(in float2 TexCoord, in float Level, in float2 UV, out float2 OpticalFlow)
     {
         OpticalFlow = 0.0;
-        const float Alpha = max(ldexp(_Constraint * 1e-5, Level - MaxLevel), 1e-7);
+        const float Alpha = max(ldexp(_Constraint * 1e-4, Level - MaxLevel), 1e-7);
 
         // Load textures
         float2 Current = tex2Dlod(Shared_Resources_OpticalFlow::Sample_Common_1_A, float4(TexCoord, 0.0, Level)).xy;
@@ -640,7 +658,7 @@ namespace OpticalFlow
     void OpticalFlowTV(in sampler2D SourceUV, in float4 TexCoords[3], in float Level, out float2 OpticalFlow)
     {
         OpticalFlow = 0.0;
-        const float Alpha = max(ldexp(_Constraint * 1e-5, Level - MaxLevel), 1e-7);
+        const float Alpha = max(ldexp(_Constraint * 1e-4, Level - MaxLevel), 1e-7);
 
         // Load textures
         float2 Current = tex2Dlod(Shared_Resources_OpticalFlow::Sample_Common_1_A, float4(TexCoords[1].xz, 0.0, Level)).xy;

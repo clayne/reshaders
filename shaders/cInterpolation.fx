@@ -54,6 +54,8 @@ namespace SharedResources
     sampler2D Sample_Common_1
     {
         Texture = Render_Common_1;
+        AddressU = MIRROR;
+        AddressV = MIRROR;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
@@ -69,6 +71,8 @@ namespace SharedResources
     sampler2D Sample_Common_2
     {
         Texture = Render_Common_2;
+        AddressU = MIRROR;
+        AddressV = MIRROR;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
@@ -84,6 +88,8 @@ namespace SharedResources
     sampler2D Sample_Common_3
     {
         Texture = Render_Common_3;
+        AddressU = MIRROR;
+        AddressV = MIRROR;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
@@ -99,6 +105,8 @@ namespace SharedResources
     sampler2D Sample_Common_4
     {
         Texture = Render_Common_4;
+        AddressU = MIRROR;
+        AddressV = MIRROR;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
@@ -149,6 +157,8 @@ namespace cInterpolation
     sampler2D Sample_Frame_3
     {
         Texture = Render_Frame_3;
+        AddressU = MIRROR;
+        AddressV = MIRROR;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
@@ -164,6 +174,8 @@ namespace cInterpolation
     sampler2D Sample_Frame_2
     {
         Texture = Render_Frame_2;
+        AddressU = MIRROR;
+        AddressV = MIRROR;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
@@ -180,6 +192,8 @@ namespace cInterpolation
     sampler2D Sample_Frame_1
     {
         Texture = Render_Frame_1;
+        AddressU = MIRROR;
+        AddressV = MIRROR;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
@@ -198,6 +212,8 @@ namespace cInterpolation
     sampler2D Sample_Normalized_Frame
     {
         Texture = Render_Normalized_Frame;
+        AddressU = MIRROR;
+        AddressV = MIRROR;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
@@ -215,6 +231,8 @@ namespace cInterpolation
     sampler2D Sample_Interpolated_Frame
     {
         Texture = Render_Interpolated_Frame;
+        AddressU = MIRROR;
+        AddressV = MIRROR;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
@@ -421,12 +439,12 @@ namespace cInterpolation
     }
 
     #define MaxLevel 7
-    #define E 1e-2
+    #define E 1e-4
 
     void CoarseOpticalFlowTV(in float2 TexCoord, in float Level, in float2 UV, out float2 OpticalFlow)
     {
         OpticalFlow = 0.0;
-        const float Alpha = max(ldexp(_Constraint * 1e-5, Level - MaxLevel), 1e-7);
+        const float Alpha = max(ldexp(_Constraint * 1e-4, Level - MaxLevel), 1e-7);
 
         float4 Frames = tex2Dlod(Sample_Normalized_Frame, float4(TexCoord, 0.0, Level));
 
@@ -532,7 +550,7 @@ namespace cInterpolation
     void OpticalFlowTV(in sampler2D SourceUV, in float4 TexCoords[3], in float Level, out float2 OpticalFlow)
     {
         OpticalFlow = 0.0;
-        const float Alpha = max(ldexp(_Constraint * 1e-5, Level - MaxLevel), 1e-7);
+        const float Alpha = max(ldexp(_Constraint * 1e-4, Level - MaxLevel), 1e-7);
 
         // Load textures
 
