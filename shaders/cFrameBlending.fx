@@ -66,9 +66,6 @@ sampler2D Sample_Copy
     MagFilter = LINEAR;
     MinFilter = LINEAR;
     MipFilter = LINEAR;
-    #if BUFFER_COLOR_BIT_DEPTH == 8
-        SRGBTexture = TRUE;
-    #endif
 };
 
 // Vertex shaders
@@ -115,8 +112,5 @@ technique cFrameBlending
     {
         VertexShader = Basic_VS;
         PixelShader = Display_PS;
-        #if BUFFER_COLOR_BIT_DEPTH == 8
-            SRGBWriteEnable = TRUE;
-        #endif
     }
 }

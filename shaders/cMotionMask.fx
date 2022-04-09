@@ -33,7 +33,7 @@
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-namespace FrameDifference
+namespace Motion_Mask
 {
     uniform float _Blend_Factor <
         ui_type = "slider";
@@ -42,28 +42,28 @@ namespace FrameDifference
         ui_max = 1.0;
     > = 0.5;
 
-    uniform float _MinThreshold <
+    uniform float _Min_Threshold <
         ui_type = "slider";
         ui_label = "Min threshold";
         ui_min = 0.0;
         ui_max = 1.0;
     > = 0.0;
 
-    uniform float _MaxThreshold <
+    uniform float _Max_Threshold <
         ui_type = "slider";
         ui_label = "Max threshold";
         ui_min = 0.0;
         ui_max = 1.0;
     > = 0.5;
 
-    uniform float _DifferenceWeight <
+    uniform float _Difference_Weight <
         ui_type = "slider";
         ui_label = "Difference Weight";
         ui_min = 0.0;
         ui_max = 2.0;
     > = 1.0;
 
-    uniform bool _NormalizeInput <
+    uniform bool _Normalize_Input <
         ui_type = "radio";
         ui_label = "Normalize Input";
     > = false;
@@ -81,46 +81,46 @@ namespace FrameDifference
         #endif
     };
 
-    texture2D RenderCurrent
+    texture2D Render_Current
     {
         Width = BUFFER_WIDTH;
         Height = BUFFER_HEIGHT;
         Format = RG8;
     };
 
-    sampler2D SampleCurrent
+    sampler2D Sample_Current
     {
-        Texture = RenderCurrent;
+        Texture = Render_Current;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
     };
 
-    texture2D RenderDifference
+    texture2D Render_Difference
     {
         Width = BUFFER_WIDTH;
         Height = BUFFER_HEIGHT;
         Format = R8;
     };
 
-    sampler2D SampleDifference
+    sampler2D Sample_Difference
     {
-        Texture = RenderDifference;
+        Texture = Render_Difference;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
     };
 
-    texture2D RenderPrevious
+    texture2D Render_Previous
     {
         Width = BUFFER_WIDTH;
         Height = BUFFER_HEIGHT;
         Format = RG8;
     };
 
-    sampler2D SamplePrevious
+    sampler2D Sample_Previous
     {
-        Texture = RenderPrevious;
+        Texture = Render_Previous;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
@@ -137,34 +137,34 @@ namespace FrameDifference
 
     // Pixel shaders
 
-    void BlitPS0(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+    void Blit_0_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
     {
         float3 Color = max(tex2D(Sample_Color, Coord).rgb, exp2(-10.0));
-        Output_Color_0 = (_NormalizeInput) ? saturate(Color.xy / dot(Color, 1.0)) : max(max(Color.r, Color.g), Color.b);
+        Output_Color_0 = (_Normalize_Input) ? saturate(Color.xy / dot(Color, 1.0)) : max(max(Color.r, Color.g), Color.b);
     }
 
-    void DifferencePS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+    void Difference_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
     {
         float Difference = 0.0;
 
-        if(_NormalizeInput)
+        if(_Normalize_Input)
         {
-            float2 Current = tex2D(SampleCurrent, Coord).rg;
-            float2 Previous = tex2D(SamplePrevious, Coord).rg;
-            Difference = abs(dot(Current - Previous, 1.0)) * _DifferenceWeight;
+            float2 Current = tex2D(Sample_Current, Coord).rg;
+            float2 Previous = tex2D(Sample_Previous, Coord).rg;
+            Difference = abs(dot(Current - Previous, 1.0)) * _Difference_Weight;
         }
         else
         {
-            float Current = tex2D(SampleCurrent, Coord).r;
-            float Previous = tex2D(SamplePrevious, Coord).r;
-            Difference = abs(Current - Previous) * _DifferenceWeight;
+            float Current = tex2D(Sample_Current, Coord).r;
+            float Previous = tex2D(Sample_Previous, Coord).r;
+            Difference = abs(Current - Previous) * _Difference_Weight;
         }
 
-        if (Difference <= _MinThreshold)
+        if (Difference <= _Min_Threshold)
         {
             Output_Color_0 = 0.0;
         }
-        else if (Difference > _MaxThreshold)
+        else if (Difference > _Max_Threshold)
         {
             Output_Color_0 = 1.0;
         }
@@ -176,30 +176,30 @@ namespace FrameDifference
         Output_Color_0.a = _Blend_Factor;
     }
 
-    void OutputPS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+    void Output_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
     {
-        Output_Color_0 = tex2D(SampleDifference, Coord).r;
+        Output_Color_0 = tex2D(Sample_Difference, Coord).r;
     }
 
-    void BlitPS1(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+    void Blit_1_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
     {
-        Output_Color_0 = tex2D(SampleCurrent, Coord);
+        Output_Color_0 = tex2D(Sample_Current, Coord);
     }
 
-    technique cFrameDifference
+    technique cMotionMask
     {
         pass
         {
             VertexShader = Basic_VS;
-            PixelShader = BlitPS0;
-            RenderTarget0 = RenderCurrent;
+            PixelShader = Blit_0_PS;
+            RenderTarget0 = Render_Current;
         }
 
         pass
         {
             VertexShader = Basic_VS;
-            PixelShader = DifferencePS;
-            RenderTarget0 = RenderDifference;
+            PixelShader = Difference_PS;
+            RenderTarget0 = Render_Difference;
             ClearRenderTargets = FALSE;
             BlendEnable = TRUE;
             BlendOp = ADD;
@@ -210,7 +210,7 @@ namespace FrameDifference
         pass
         {
             VertexShader = Basic_VS;
-            PixelShader = OutputPS;
+            PixelShader = Output_PS;
             #if BUFFER_COLOR_BIT_DEPTH == 8
                 SRGBWriteEnable = TRUE;
             #endif
@@ -219,8 +219,8 @@ namespace FrameDifference
         pass
         {
             VertexShader = Basic_VS;
-            PixelShader = BlitPS1;
-            RenderTarget0 = RenderPrevious;
+            PixelShader = Blit_1_PS;
+            RenderTarget0 = Render_Previous;
         }
     }
 }

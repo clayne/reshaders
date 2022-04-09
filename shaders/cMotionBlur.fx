@@ -466,12 +466,12 @@ namespace Motion_Blur
         Optical_Flow.y = Aii.y * ((Alpha * UV.y) - (Aij * Optical_Flow.x) - Bi.y);
     }
 
-    void ProcessGradAvg(in float2 Sample_NW,
-                        in float2 Sample_NE,
-                        in float2 Sample_SW,
-                        in float2 Sample_SE,
-                        out float Gradient,
-                        out float2 Average)
+    void Gradient_Average(in float2 Sample_NW,
+                          in float2 Sample_NE,
+                          in float2 Sample_SW,
+                          in float2 Sample_SE,
+                          out float Gradient,
+                          out float2 Average)
     {
         // NW NE
         // SW SE
@@ -483,10 +483,10 @@ namespace Motion_Blur
         Average = (Sample_NW + Sample_NE + Sample_SW + Sample_SE) * 0.25;
     }
 
-    void ProcessArea(in float2 Sample_UV[9],
-                     inout float4 UV_Gradient,
-                     inout float2 Center_Average,
-                     inout float2 UV_Average)
+    void Process_Area(in float2 Sample_UV[9],
+                      inout float4 UV_Gradient,
+                      inout float2 Center_Average,
+                      inout float2 UV_Average)
     {
         float Center_Gradient = 0.0;
         float4 Area_Gradient = 0.0;
@@ -512,25 +512,25 @@ namespace Motion_Blur
         // 0 3 .
         // 1 4 .
         // . . .
-        ProcessGradAvg(Sample_UV[0], Sample_UV[3], Sample_UV[1], Sample_UV[4], Area_Gradient[0], Area_Average[0]);
+        Gradient_Average(Sample_UV[0], Sample_UV[3], Sample_UV[1], Sample_UV[4], Area_Gradient[0], Area_Average[0]);
 
         // North-east gradient and average
         // . 3 6
         // . 4 7
         // . . .
-        ProcessGradAvg(Sample_UV[3], Sample_UV[6], Sample_UV[4], Sample_UV[7], Area_Gradient[1], Area_Average[1]);
+        Gradient_Average(Sample_UV[3], Sample_UV[6], Sample_UV[4], Sample_UV[7], Area_Gradient[1], Area_Average[1]);
 
         // South-west gradient and average
         // . . .
         // 1 4 .
         // 2 5 .
-        ProcessGradAvg(Sample_UV[1], Sample_UV[4], Sample_UV[2], Sample_UV[5], Area_Gradient[2], Area_Average[2]);
+        Gradient_Average(Sample_UV[1], Sample_UV[4], Sample_UV[2], Sample_UV[5], Area_Gradient[2], Area_Average[2]);
 
         // South-east and average
         // . . .
         // . 4 7
         // . 5 8
-        ProcessGradAvg(Sample_UV[4], Sample_UV[7], Sample_UV[5], Sample_UV[8], Area_Gradient[3], Area_Average[3]);
+        Gradient_Average(Sample_UV[4], Sample_UV[7], Sample_UV[5], Sample_UV[8], Area_Gradient[3], Area_Average[3]);
 
         UV_Gradient = 0.5 * (Center_Gradient + Area_Gradient);
         UV_Average = (Area_Gradient[0] * Area_Average[0]) + (Area_Gradient[1] * Area_Average[1]) + (Area_Gradient[2] * Area_Average[2]) + (Area_Gradient[3] * Area_Average[3]);
@@ -572,7 +572,7 @@ namespace Motion_Blur
         Sample_UV[7] = tex2D(SourceUV, Coords[2].xz).xy;
         Sample_UV[8] = tex2D(SourceUV, Coords[2].xw).xy;
 
-        ProcessArea(Sample_UV, UV_Gradient, Center_Average, UV_Average);
+        Process_Area(Sample_UV, UV_Gradient, Center_Average, UV_Average);
 
         float C = 0.0;
         float2 Aii = 0.0;
@@ -656,7 +656,7 @@ namespace Motion_Blur
     }
 
 
-    technique cMotion_Blur
+    technique cMotionBlur
     {
         // Normalize current frame
 
