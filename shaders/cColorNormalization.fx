@@ -40,11 +40,11 @@ uniform int _Select <
     ui_tooltip = "Select Chromaticity";
 > = 0;
 
-texture2D RenderColor : COLOR;
+texture2D Render_Color : COLOR;
 
-sampler2D SampleColor
+sampler2D Sample_Color
 {
-    Texture = RenderColor;
+    Texture = Render_Color;
     MagFilter = LINEAR;
     MinFilter = LINEAR;
     MipFilter = LINEAR;
@@ -55,49 +55,49 @@ sampler2D SampleColor
 
 // Vertex shaders
 
-void PostProcessVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float2 TexCoord : TEXCOORD0)
+void Basic_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float2 Coord : TEXCOORD0)
 {
-    TexCoord.x = (ID == 2) ? 2.0 : 0.0;
-    TexCoord.y = (ID == 1) ? 2.0 : 0.0;
-    Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    Coord.x = (ID == 2) ? 2.0 : 0.0;
+    Coord.y = (ID == 1) ? 2.0 : 0.0;
+    Position = float4(Coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
 
 // Pixel shaders
 
-void NormalizationPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float3 OutputColor0 : SV_Target0)
+void Normalization_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float3 Output_Color_0 : SV_TARGET0)
 {
-    OutputColor0 = 0.0;
+    Output_Color_0 = 0.0;
     const float Minima = exp2(-10.0);
-    float3 Color = max(tex2D(SampleColor, TexCoord).rgb, Minima);
+    float3 Color = max(tex2D(Sample_Color, Coord).rgb, Minima);
     switch(_Select)
     {
         case 0: // Length (RG)
-            OutputColor0.rg = saturate(normalize(Color).rg);
+            Output_Color_0.rg = saturate(normalize(Color).rg);
             break;
         case 1: // Length (RGB)
-            OutputColor0 = saturate(normalize(Color));
+            Output_Color_0 = saturate(normalize(Color));
             break;
         case 2: // Average (RG)
-            OutputColor0.rg = saturate(Color.rg / dot(Color, 1.0 / 3.0));
+            Output_Color_0.rg = saturate(Color.rg / dot(Color, 1.0 / 3.0));
             break;
         case 3: // Average (RGB)
-            OutputColor0 = saturate(Color / dot(Color, 1.0 / 3.0));
+            Output_Color_0 = saturate(Color / dot(Color, 1.0 / 3.0));
             break;
         case 4: // Sum (RG)
-            OutputColor0.rg = saturate(Color.rg /  dot(Color, 1.0));
+            Output_Color_0.rg = saturate(Color.rg /  dot(Color, 1.0));
             break;
         case 5: // Sum (RGB)
-            OutputColor0 = saturate(Color / dot(Color, 1.0));
+            Output_Color_0 = saturate(Color / dot(Color, 1.0));
             break;
         case 6: // Max (RG)
-            OutputColor0.rg = saturate(Color.rg / max(max(Color.r, Color.g), Color.b));
+            Output_Color_0.rg = saturate(Color.rg / max(max(Color.r, Color.g), Color.b));
             break;
         case 7: // Max (RGB)
-            OutputColor0 = saturate(Color / max(max(Color.r, Color.g), Color.b));
+            Output_Color_0 = saturate(Color / max(max(Color.r, Color.g), Color.b));
             break;
         default:
             // No Chromaticity
-            OutputColor0 = Color;
+            Output_Color_0 = Color;
             break;
     }
 }
@@ -106,8 +106,8 @@ technique cNormalizedColor
 {
     pass
     {
-        VertexShader = PostProcessVS;
-        PixelShader = NormalizationPS;
+        VertexShader = Basic_VS;
+        PixelShader = Normalization_PS;
         #if BUFFER_COLOR_BIT_DEPTH == 8
             SRGBWriteEnable = TRUE;
         #endif

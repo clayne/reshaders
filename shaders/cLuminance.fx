@@ -40,11 +40,11 @@ uniform int _Select <
     ui_tooltip = "Select Luminance";
 > = 0;
 
-texture2D RenderColor : COLOR;
+texture2D Render_Color : COLOR;
 
-sampler2D SampleColor
+sampler2D Sample_Color
 {
-    Texture = RenderColor;
+    Texture = Render_Color;
     MagFilter = LINEAR;
     MinFilter = LINEAR;
     MipFilter = LINEAR;
@@ -55,50 +55,50 @@ sampler2D SampleColor
 
 // Vertex shaders
 
-void PostProcessVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float2 TexCoord : TEXCOORD0)
+void Basic_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float2 Coord : TEXCOORD0)
 {
-    TexCoord.x = (ID == 2) ? 2.0 : 0.0;
-    TexCoord.y = (ID == 1) ? 2.0 : 0.0;
-    Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    Coord.x = (ID == 2) ? 2.0 : 0.0;
+    Coord.y = (ID == 1) ? 2.0 : 0.0;
+    Position = float4(Coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
 
 // Pixel shaders
 
-void LuminancePS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+void Luminance_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
 {
-    float4 Color = tex2D(SampleColor, TexCoord);
+    float4 Color = tex2D(Sample_Color, Coord);
     switch(_Select)
     {
         case 0:
             // Average
-            OutputColor0 = dot(Color.rgb, 1.0 / 3.0);
+            Output_Color_0 = dot(Color.rgb, 1.0 / 3.0);
             break;
         case 1:
             // Sum
-            OutputColor0 = dot(Color.rgb, 1.0);
+            Output_Color_0 = dot(Color.rgb, 1.0);
             break;
         case 2:
             // Min
-            OutputColor0 = min(Color.r, min(Color.g, Color.b));
+            Output_Color_0 = min(Color.r, min(Color.g, Color.b));
             break;
         case 3:
             // Median
-            OutputColor0 = max(min(Color.r, Color.g), min(max(Color.r, Color.g), Color.b));
+            Output_Color_0 = max(min(Color.r, Color.g), min(max(Color.r, Color.g), Color.b));
             break;
         case 4:
             // Max
-            OutputColor0 = max(Color.r, max(Color.g, Color.b));
+            Output_Color_0 = max(Color.r, max(Color.g, Color.b));
             break;
         case 5:
             // Length
-            OutputColor0 = length(Color.rgb);
+            Output_Color_0 = length(Color.rgb);
             break;
         case 6:
             // Clamped Length
-            OutputColor0 = length(Color.rgb) * rsqrt(3.0);
+            Output_Color_0 = length(Color.rgb) * rsqrt(3.0);
             break;
         default:
-            OutputColor0 = Color;
+            Output_Color_0 = Color;
             break;
     }
 }
@@ -107,8 +107,8 @@ technique cLuminance
 {
     pass
     {
-        VertexShader = PostProcessVS;
-        PixelShader = LuminancePS;
+        VertexShader = Basic_VS;
+        PixelShader = Luminance_PS;
         #if BUFFER_COLOR_BIT_DEPTH == 8
             SRGBWriteEnable = TRUE;
         #endif

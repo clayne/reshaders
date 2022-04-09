@@ -49,11 +49,11 @@ uniform float2 _Offset <
     #define ENABLE_POINT_SAMPLING 0
 #endif
 
-texture2D RenderColor : COLOR;
+texture2D Render_Color : COLOR;
 
-sampler2D SampleColor
+sampler2D Sample_Color
 {
-    Texture = RenderColor;
+    Texture = Render_Color;
     AddressU = MIRROR;
     AddressV = MIRROR;
     #if ENABLE_POINT_SAMPLING
@@ -70,31 +70,31 @@ sampler2D SampleColor
     #endif
 };
 
-void ScaleVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float2 TexCoord : TEXCOORD0)
+void Scale_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float2 Coord : TEXCOORD0)
 {
-    TexCoord.x = (ID == 2) ? 2.0 : 0.0;
-    TexCoord.y = (ID == 1) ? 2.0 : 0.0;
-    Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    Coord.x = (ID == 2) ? 2.0 : 0.0;
+    Coord.y = (ID == 1) ? 2.0 : 0.0;
+    Position = float4(Coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 
     // Scale texture coordinates from [0, 1] to [-1, 1] range
-    TexCoord = TexCoord * 2.0 - 1.0;
+    Coord = Coord * 2.0 - 1.0;
     // Scale and offset in [-1, 1] range
-    TexCoord = TexCoord * _Scale + _Offset;
+    Coord = Coord * _Scale + _Offset;
     // Scale texture coordinates from [-1, 1] to [0, 1] range
-    TexCoord = TexCoord * 0.5 + 0.5;
+    Coord = Coord * 0.5 + 0.5;
 }
 
-void ScalePS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+void Scale_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
 {
-    OutputColor0 = tex2D(SampleColor, TexCoord);
+    Output_Color_0 = tex2D(Sample_Color, Coord);
 }
 
 technique cScale
 {
     pass
     {
-        VertexShader = ScaleVS;
-        PixelShader = ScalePS;
+        VertexShader = Scale_VS;
+        PixelShader = Scale_PS;
         #if BUFFER_COLOR_BIT_DEPTH == 8
             SRGBWriteEnable = TRUE;
         #endif

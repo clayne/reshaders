@@ -42,11 +42,11 @@ uniform int _Radius <
     #define ENABLE_PINGPONG 1
 #endif
 
-texture2D RenderColor : COLOR;
+texture2D Render_Color : COLOR;
 
-sampler2D SampleColor
+sampler2D Sample_Color
 {
-    Texture = RenderColor;
+    Texture = Render_Color;
     MagFilter = LINEAR;
     MinFilter = LINEAR;
     MipFilter = LINEAR;
@@ -55,16 +55,16 @@ sampler2D SampleColor
     #endif
 };
 
-texture2D RenderBufferA
+texture2D Render_Buffer_A
 {
     Width = BUFFER_WIDTH / 2;
     Height = BUFFER_HEIGHT / 2;
     Format = RGBA8;
 };
 
-sampler2D SampleBufferA
+sampler2D Sample_Buffer_A
 {
-    Texture = RenderBufferA;
+    Texture = Render_Buffer_A;
     MagFilter = LINEAR;
     MinFilter = LINEAR;
     MipFilter = LINEAR;
@@ -73,16 +73,16 @@ sampler2D SampleBufferA
     #endif
 };
 
-texture2D RenderBufferB
+texture2D Render_Buffer_B
 {
     Width = BUFFER_WIDTH / 2;
     Height = BUFFER_HEIGHT / 2;
     Format = RGBA8;
 };
 
-sampler2D SampleBufferB
+sampler2D Sample_Buffer_B
 {
-    Texture = RenderBufferB;
+    Texture = Render_Buffer_B;
     MagFilter = LINEAR;
     MinFilter = LINEAR;
     MipFilter = LINEAR;
@@ -93,11 +93,11 @@ sampler2D SampleBufferB
 
 // Vertex shaders
 
-void PostProcessVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float2 TexCoord : TEXCOORD0)
+void Basic_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float2 Coord : TEXCOORD0)
 {
-    TexCoord.x = (ID == 2) ? 2.0 : 0.0;
-    TexCoord.y = (ID == 1) ? 2.0 : 0.0;
-    Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    Coord.x = (ID == 2) ? 2.0 : 0.0;
+    Coord.y = (ID == 1) ? 2.0 : 0.0;
+    Position = float4(Coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
 
 // Pixel Shaders
@@ -115,11 +115,11 @@ void PostProcessVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, 
             3. The way the player hits the ball (PixelShader)
 
     This shader's technique is an example of the 2 steps above
-        Pregame: Set up 2 players (RenderBufferA and RenderBufferB)
-        PingPong1: RenderBufferA hits (HorizontalBlurPS0) to RenderBufferB
-        PingPong2: RenderBufferB hits (VerticalBlurPS0) to RenderBufferA
-        PingPong3: RenderBufferA hits (HorizontalBlurPS1) to RenderBufferB
-        PingPong4: RenderBufferB hits (VerticalBlurPS1) to RenderBufferA
+        Pregame: Set up 2 players (Render_Buffer_A and Render_Buffer_B)
+        PingPong1: Render_Buffer_A hits (Horizontal_Blur_0_PS) to Render_Buffer_B
+        PingPong2: Render_Buffer_B hits (Vertical_Blur_0_PS) to Render_Buffer_A
+        PingPong3: Render_Buffer_A hits (Horizontal_Blur_1_PS) to Render_Buffer_B
+        PingPong4: Render_Buffer_B hits (Vertical_Blur_1_PS) to Render_Buffer_A
 
     "Why two textures? Can't we just read and write to one texture"?
         Unfortunately we cannot sample from and to memory at the same time
@@ -131,57 +131,57 @@ void PostProcessVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, 
         components that do not need pingponging (see my motion shaders as an example of this)
 */
 
-float4 GaussianBlur(sampler2D Source, float2 TexCoord, const float2 Direction)
+float4 Gaussian_Blur(sampler2D Source, float2 Coord, const float2 Direction)
 {
-    float4 Output;
-    const float2 PixelSize = (2.0 / float2(BUFFER_WIDTH, BUFFER_HEIGHT)) * Direction;
+    float4 Output = 0.0;
+    const float2 Pixel_Size = (2.0 / float2(BUFFER_WIDTH, BUFFER_HEIGHT)) * Direction;
     const float Weight = 1.0 / _Radius;
 
     for(float Index = -_Radius + 0.5; Index <= _Radius; Index += 2.0)
     {
-        Output += tex2Dlod(Source, float4(TexCoord + Index * PixelSize, 0.0, 0.0)) * Weight;
+        Output += tex2Dlod(Source, float4(Coord + Index * Pixel_Size, 0.0, 0.0)) * Weight;
     }
 
     return Output;
 }
 
-void BlitPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+void Blit_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
 {
-    OutputColor0 = tex2D(SampleColor, TexCoord);
+    Output_Color_0 = tex2D(Sample_Color, Coord);
 }
 
-void HorizontalBlurPS0(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+void Horizontal_Blur_0_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
 {
-    OutputColor0 = GaussianBlur(SampleBufferA, TexCoord, float2(1.0, 0.0));
+    Output_Color_0 = Gaussian_Blur(Sample_Buffer_A, Coord, float2(1.0, 0.0));
 }
 
-void VerticalBlurPS0(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+void Vertical_Blur_0_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
 {
-    OutputColor0 = GaussianBlur(SampleBufferB, TexCoord, float2(0.0, 1.0));
+    Output_Color_0 = Gaussian_Blur(Sample_Buffer_B, Coord, float2(0.0, 1.0));
 }
 
-void HorizontalBlurPS1(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+void Horizontal_Blur_1_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
 {
-    OutputColor0 = GaussianBlur(SampleBufferA, TexCoord, float2(1.0, 0.0));
+    Output_Color_0 = Gaussian_Blur(Sample_Buffer_A, Coord, float2(1.0, 0.0));
 }
 
-void VerticalBlurPS1(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+void Vertical_Blur_1_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
 {
-    OutputColor0 = GaussianBlur(SampleBufferB, TexCoord, float2(0.0, 1.0));
+    Output_Color_0 = Gaussian_Blur(Sample_Buffer_B, Coord, float2(0.0, 1.0));
 }
 
-void OutputPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+void OutputPS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
 {
-    OutputColor0 = tex2D(SampleBufferA, TexCoord);
+    Output_Color_0 = tex2D(Sample_Buffer_A, Coord);
 }
 
 technique cPingPong
 {
     pass
     {
-        VertexShader = PostProcessVS;
-        PixelShader = BlitPS;
-        RenderTarget0 = RenderBufferA;
+        VertexShader = Basic_VS;
+        PixelShader = Blit_PS;
+        RenderTarget0 = Render_Buffer_A;
         #if BUFFER_COLOR_BIT_DEPTH == 8
             SRGBWriteEnable = TRUE;
         #endif
@@ -189,9 +189,9 @@ technique cPingPong
 
     pass PingPong1
     {
-        VertexShader = PostProcessVS;
-        PixelShader = HorizontalBlurPS0;
-        RenderTarget0 = RenderBufferB;
+        VertexShader = Basic_VS;
+        PixelShader = Horizontal_Blur_0_PS;
+        RenderTarget0 = Render_Buffer_B;
         #if BUFFER_COLOR_BIT_DEPTH == 8
             SRGBWriteEnable = TRUE;
         #endif
@@ -199,9 +199,9 @@ technique cPingPong
 
     pass PingPong2
     {
-        VertexShader = PostProcessVS;
-        PixelShader = VerticalBlurPS0;
-        RenderTarget0 = RenderBufferA;
+        VertexShader = Basic_VS;
+        PixelShader = Vertical_Blur_0_PS;
+        RenderTarget0 = Render_Buffer_A;
         #if BUFFER_COLOR_BIT_DEPTH == 8
             SRGBWriteEnable = TRUE;
         #endif
@@ -210,9 +210,9 @@ technique cPingPong
     #if ENABLE_PINGPONG
         pass PingPong3
         {
-            VertexShader = PostProcessVS;
-            PixelShader = HorizontalBlurPS1;
-            RenderTarget0 = RenderBufferB;
+            VertexShader = Basic_VS;
+            PixelShader = Horizontal_Blur_1_PS;
+            RenderTarget0 = Render_Buffer_B;
             #if BUFFER_COLOR_BIT_DEPTH == 8
                 SRGBWriteEnable = TRUE;
             #endif
@@ -220,9 +220,9 @@ technique cPingPong
 
         pass PingPong4
         {
-            VertexShader = PostProcessVS;
-            PixelShader = VerticalBlurPS1;
-            RenderTarget0 = RenderBufferA;
+            VertexShader = Basic_VS;
+            PixelShader = Vertical_Blur_1_PS;
+            RenderTarget0 = Render_Buffer_A;
             #if BUFFER_COLOR_BIT_DEPTH == 8
                 SRGBWriteEnable = TRUE;
             #endif
@@ -231,7 +231,7 @@ technique cPingPong
 
     pass
     {
-        VertexShader = PostProcessVS;
+        VertexShader = Basic_VS;
         PixelShader = OutputPS;
         #if BUFFER_COLOR_BIT_DEPTH == 8
             SRGBWriteEnable = TRUE;

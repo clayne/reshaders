@@ -107,12 +107,12 @@ sampler2D searchSampler
 
 struct v2f_1
 {
-    float4 vpos   : SV_Position;
+    float4 vpos   : SV_POSITION;
     float2 uv0    : TEXCOORD0;
     float4 uv1[3] : TEXCOORD1;
 };
 
-v2f_1 SMAAEdgeDetectionWrapVS(in uint id : SV_VertexID)
+v2f_1 SMAAEdgeDetectionWrapVS(in uint id : SV_VERTEXID)
 {
     v2f_1 o;
 
@@ -186,12 +186,12 @@ float2 SMAAEdgeDetectionWrapPS(v2f_1 input) : SV_Target
 
 struct v2f_2
 {
-    float4 vpos   : SV_Position;
+    float4 vpos   : SV_POSITION;
     float4 uv0    : TEXCOORD0;
     float4 uv1[3] : TEXCOORD1;
 };
 
-v2f_2 SMAABlendingWeightCalculationWrapVS(in uint id : SV_VertexID)
+v2f_2 SMAABlendingWeightCalculationWrapVS(in uint id : SV_VERTEXID)
 {
     v2f_2 o;
     float2 coord;
@@ -297,12 +297,12 @@ float4 SMAABlendingWeightCalculationWrapPS(v2f_2 input) : SV_Target
 
 struct v2f_3
 {
-    float4 vpos : SV_Position;
+    float4 vpos : SV_POSITION;
     float2 uv0  : TEXCOORD0;
     float4 uv1  : TEXCOORD1;
 };
 
-v2f_3 SMAANeighborhoodBlendingWrapVS(in uint id : SV_VertexID)
+v2f_3 SMAANeighborhoodBlendingWrapVS(in uint id : SV_VERTEXID)
 {
     v2f_3 o;
     float2 coord;

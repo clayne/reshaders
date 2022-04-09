@@ -32,7 +32,6 @@ cEdgeDetection      | Edge detection kernels (4 bilinear, 2 discrete)
 cFilmGrain          | Film grain without copying texture
 cFrameBlending      | Frame blending using the previous result
 cGaussianBlur       | HLSL implementation of RasterGrid's linear Gaussian blur
-cHornSchunck        | HLSL implementation of pyramidal Horn Schunck without filtering
 cInterpolation      | Optical flow frame blending
 cLetterBox          | LetterBox without copying textures
 cLuminance          | Various grayscale algoritms
@@ -40,7 +39,7 @@ cMedian             | 3x3 median filter
 cMotionBlur         | Color motion blur
 cMotionMask         | Frame masking based on temporal derivative
 cNoiseConvolution   | Convolution using rotated gradient noise sampling
-cOpticalFlow        | HLSL implementation of pyramidal Horn Schunck
+cOpticalFlow        | HLSL implementation of pyramidal Horn Schunck with visualization
 cOverlay            | Simple backbuffer overlay
 cPingPong           | Gaussian blur approximation using ping-pong box blurs
 cScale              | Buffer scaling using vertex shaders
@@ -58,12 +57,11 @@ kVignette           | Natural vignetting effect
 
 Practice | Variable
 -------- | --------
-Prefix `_` | Global variables
-Respectively suffix `VS` and `PS` | `PixelShader and VertexShader`
-**ALLCAPS** | Semantics and state parameters
-**Pascal_Case** | System-Value Semantics (`SV_Position`)
-**PascalCase** | Namespaces, structs, methods, global objects, and local variables
+**ALLCAPS** | System-Value semantics, state parameters
+**Snake_Case** | Namespaces, structs, methods, texture objects, and local variables
+**_Snake_Case** | Uniform variables
 **SNAKE_CASE** | Macros and preprocessor defines
+Suffix `VS` and `PS` | `PixelShader` and `VertexShader`
 
 ## Acknowledgements
 

@@ -46,11 +46,11 @@ uniform int _Samples <
     ui_min = 0;
 > = 8;
 
-texture2D RenderColor : COLOR;
+texture2D Render_Color : COLOR;
 
-sampler2D SampleColor
+sampler2D Sample_Color
 {
-    Texture = RenderColor;
+    Texture = Render_Color;
     MagFilter = LINEAR;
     MinFilter = LINEAR;
     MipFilter = LINEAR;
@@ -61,11 +61,11 @@ sampler2D SampleColor
 
 // Vertex shaders
 
-void PostProcessVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float2 TexCoord : TEXCOORD0)
+void Basic_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float2 Coord : TEXCOORD0)
 {
-    TexCoord.x = (ID == 2) ? 2.0 : 0.0;
-    TexCoord.y = (ID == 1) ? 2.0 : 0.0;
-    Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    Coord.x = (ID == 2) ? 2.0 : 0.0;
+    Coord.y = (ID == 1) ? 2.0 : 0.0;
+    Position = float4(Coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
 
 // Pixel Shaders
@@ -74,7 +74,7 @@ void PostProcessVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, 
 
 static const float Pi = 3.1415926535897932384626433832795;
 
-float2 VogelSample(int Index, int SamplesCount)
+float2 Vogel_Sample(int Index, int SamplesCount)
 {
     const float GoldenAngle = Pi * (3.0 - sqrt(5.0));
     float Radius = sqrt(float(Index) + 0.5) * rsqrt(float(SamplesCount));
@@ -91,11 +91,11 @@ float GradientNoise(float2 Position)
     return frac(Numbers.z * frac(dot(Position.xy, Numbers.xy)));
 }
 
-void NoiseConvolutionPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+void NoiseConvolutionPS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
 {
-    OutputColor0 = 0.0;
+    Output_Color_0 = 0.0;
 
-    const float2 PixelSize = 1.0 / uint2(BUFFER_WIDTH, BUFFER_HEIGHT);
+    const float2 Pixel_Size = 1.0 / int2(BUFFER_WIDTH, BUFFER_HEIGHT);
     float Noise = 2.0 * Pi * GradientNoise(Position.xy);
 
     float2 Rotation = 0.0;
@@ -106,18 +106,18 @@ void NoiseConvolutionPS(in float4 Position : SV_Position, in float2 TexCoord : T
 
     for(int i = 0; i < _Samples; i++)
     {
-        float2 SampleOffset = mul(VogelSample(i, _Samples) * _Radius, RotationMatrix);
-        OutputColor0 += tex2Dlod(SampleColor, float4(TexCoord.xy + (SampleOffset * PixelSize), 0.0, 0.0));
+        float2 SampleOffset = mul(Vogel_Sample(i, _Samples) * _Radius, RotationMatrix);
+        Output_Color_0 += tex2Dlod(Sample_Color, float4(Coord.xy + (SampleOffset * Pixel_Size), 0.0, 0.0));
     }
 
-    OutputColor0 = OutputColor0 / _Samples;
+    Output_Color_0 = Output_Color_0 / _Samples;
 }
 
 technique cNoiseConvolution
 {
     pass
     {
-        VertexShader = PostProcessVS;
+        VertexShader = Basic_VS;
         PixelShader = NoiseConvolutionPS;
         #if BUFFER_COLOR_BIT_DEPTH == 8
             SRGBWriteEnable = TRUE;

@@ -39,25 +39,25 @@ uniform float _Threshold <
     ui_min = 0.0; ui_max = 1.0;
 > = 0.05f;
 
-uniform float _InvRange <
+uniform float _Inverse_Range <
     ui_label = "Inverse Range";
     ui_type = "slider";
     ui_min = 0.0; ui_max = 1.0;
 > = 0.05f;
 
-uniform float _ColorSensitivity <
+uniform float _Color_Sensitivity <
     ui_label = "Color Sensitivity";
     ui_type = "slider";
     ui_min = 0.0; ui_max = 1.0;
 > = 0.0f;
 
-uniform float4 _FrontColor <
+uniform float4 _Front_Color <
     ui_label = "Front Color";
     ui_type = "color";
     ui_min = 0.0; ui_max = 1.0;
 > = float4(1.0, 1.0, 1.0, 1.0);
 
-uniform float4 _BackColor <
+uniform float4 _Back_Color <
     ui_label = "Back Color";
     ui_type = "color";
     ui_min = 0.0; ui_max = 1.0;
@@ -70,22 +70,22 @@ uniform int _Select <
     ui_tooltip = "Select Edge Detection";
 > = 0;
 
-uniform bool _NormalizeOutput <
+uniform bool _Normalize_Output <
     ui_label = "Normalize Output";
     ui_type = "radio";
 > = true;
 
-uniform float _NormalWeight <
+uniform float _Normalize_Weight <
     ui_label = "Normal Weight";
     ui_type = "drag";
     ui_min = 0.0;
 > = 0.1;
 
-texture2D RenderColor : COLOR;
+texture2D Render_Color : COLOR;
 
-sampler2D SampleColor
+sampler2D Sample_Color
 {
-    Texture = RenderColor;
+    Texture = Render_Color;
     MagFilter = LINEAR;
     MinFilter = LINEAR;
     MipFilter = LINEAR;
@@ -96,158 +96,158 @@ sampler2D SampleColor
 
 // Vertex shaders
 
-void PostProcessVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float2 TexCoord : TEXCOORD0)
+void Basic_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float2 Coord : TEXCOORD0)
 {
-    TexCoord.x = (ID == 2) ? 2.0 : 0.0;
-    TexCoord.y = (ID == 1) ? 2.0 : 0.0;
-    Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    Coord.x = (ID == 2) ? 2.0 : 0.0;
+    Coord.y = (ID == 1) ? 2.0 : 0.0;
+    Position = float4(Coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
 
-void ContourVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoord[4] : TEXCOORD0)
+void Contour_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 Coord[4] : TEXCOORD0)
 {
-    float2 TexCoord0;
-    PostProcessVS(ID, Position, TexCoord0);
-    const float2 PixelSize = 1.0 / float2(BUFFER_WIDTH, BUFFER_HEIGHT);
-    TexCoord[0] = TexCoord0.xyyy + float4(-PixelSize.x, +PixelSize.y, 0.0, -PixelSize.y);
-    TexCoord[1] = TexCoord0.xyyy + float4(0.0, +PixelSize.y, 0.0, -PixelSize.y);
-    TexCoord[2] = TexCoord0.xyyy + float4(+PixelSize.x, +PixelSize.y, 0.0, -PixelSize.y);
-    TexCoord[3] = TexCoord0.xyxy + float4(PixelSize, -PixelSize) * 0.5;
+    float2 VS_Coord = 0.0;
+    Basic_VS(ID, Position, VS_Coord);
+    const float2 Pixel_Size = 1.0 / float2(BUFFER_WIDTH, BUFFER_HEIGHT);
+    Coord[0] = VS_Coord.xyyy + float4(-Pixel_Size.x, Pixel_Size.y, 0.0, -Pixel_Size.y);
+    Coord[1] = VS_Coord.xyyy + float4(0.0, Pixel_Size.y, 0.0, -Pixel_Size.y);
+    Coord[2] = VS_Coord.xyyy + float4(Pixel_Size.x, Pixel_Size.y, 0.0, -Pixel_Size.y);
+    Coord[3] = VS_Coord.xyxy + float4(Pixel_Size, -Pixel_Size) * 0.5;
 }
 
-float3 NormalizeOutput(float3 Input)
+float3 Normalize_Output(float3 Input)
 {
-    return (_NormalizeOutput) ? Input * rsqrt(dot(Input, Input) + _NormalWeight) : Input;
+    return (_Normalize_Output) ? Input * rsqrt(dot(Input, Input) + _Normalize_Weight) : Input;
 }
 
 float Magnitude(float3 X, float3 Y)
 {
-    X = NormalizeOutput(X);
-    Y = NormalizeOutput(Y);
+    X = Normalize_Output(X);
+    Y = Normalize_Output(Y);
     return sqrt(dot(X, X) + dot(Y, Y));
 }
 
 // Pixel shaders
 // Contour pass: https://github.com/keijiro/KinoContour [MIT]
 
-void ContourPS(in float4 Position : SV_Position, in float4 TexCoord[4] : TEXCOORD0, out float3 OutputColor0 : SV_Target0)
+void Contour_PS(in float4 Position : SV_POSITION, in float4 Coord[4] : TEXCOORD0, out float3 Output_Color_0 : SV_TARGET0)
 {
     /*
-        A0 B0 C0
-        A1 B1 C1
-        A2 B2 C2
+        A_0 B_0 C_0
+        A_1 B_1 C_1
+        A_2 B_2 C_2
     */
 
-    float3 A0 = tex2D(SampleColor, TexCoord[0].xy).rgb;
-    float3 A1 = tex2D(SampleColor, TexCoord[0].xz).rgb;
-    float3 A2 = tex2D(SampleColor, TexCoord[0].xw).rgb;
+    float3 A_0 = tex2D(Sample_Color, Coord[0].xy).rgb;
+    float3 A_1 = tex2D(Sample_Color, Coord[0].xz).rgb;
+    float3 A_2 = tex2D(Sample_Color, Coord[0].xw).rgb;
 
-    float3 B0 = tex2D(SampleColor, TexCoord[1].xy).rgb;
-    float3 B1 = tex2D(SampleColor, TexCoord[1].xz).rgb;
-    float3 B2 = tex2D(SampleColor, TexCoord[1].xw).rgb;
+    float3 B_0 = tex2D(Sample_Color, Coord[1].xy).rgb;
+    float3 B_1 = tex2D(Sample_Color, Coord[1].xz).rgb;
+    float3 B_2 = tex2D(Sample_Color, Coord[1].xw).rgb;
 
-    float3 C0 = tex2D(SampleColor, TexCoord[2].xy).rgb;
-    float3 C1 = tex2D(SampleColor, TexCoord[2].xz).rgb;
-    float3 C2 = tex2D(SampleColor, TexCoord[2].xw).rgb;
+    float3 C_0 = tex2D(Sample_Color, Coord[2].xy).rgb;
+    float3 C_1 = tex2D(Sample_Color, Coord[2].xz).rgb;
+    float3 C_2 = tex2D(Sample_Color, Coord[2].xw).rgb;
 
-    float3 BilinearSample0, BilinearSample1, BilinearSample2, BilinearSample3;
+    float3 Bilinear_Sample_0, Bilinear_Sample_1, Bilinear_Sample_2, Bilinear_Sample_3;
 
     float3 Ix, Iy, Edge;
 
     switch(_Select)
     {
         case 0: // fwidth()
-            Ix = NormalizeOutput(ddx(B1));
-            Iy = NormalizeOutput(ddy(B1));
+            Ix = Normalize_Output(ddx(B_1));
+            Iy = Normalize_Output(ddy(B_1));
             Edge = Magnitude(Ix, Iy);
             break;
         case 1: // Laplacian
-            BilinearSample0 = tex2D(SampleColor, TexCoord[3].zy).rgb; // (-x, +y)
-            BilinearSample1 = tex2D(SampleColor, TexCoord[3].xy).rgb; // (+x, +y)
-            BilinearSample2 = tex2D(SampleColor, TexCoord[3].zw).rgb; // (-x, -y)
-            BilinearSample3 = tex2D(SampleColor, TexCoord[3].xw).rgb; // (+x, -y)
-            Edge = (BilinearSample0 + BilinearSample1 + BilinearSample2 + BilinearSample3) - (B1 * 4.0);
-            Edge = NormalizeOutput(Edge);
+            Bilinear_Sample_0 = tex2D(Sample_Color, Coord[3].zy).rgb; // (-x, +y)
+            Bilinear_Sample_1 = tex2D(Sample_Color, Coord[3].xy).rgb; // (+x, +y)
+            Bilinear_Sample_2 = tex2D(Sample_Color, Coord[3].zw).rgb; // (-x, -y)
+            Bilinear_Sample_3 = tex2D(Sample_Color, Coord[3].xw).rgb; // (+x, -y)
+            Edge = (Bilinear_Sample_0 + Bilinear_Sample_1 + Bilinear_Sample_2 + Bilinear_Sample_3) - (B_1 * 4.0);
+            Edge = Normalize_Output(Edge);
             Edge = length(Edge) / sqrt(3.0);
             break;
         case 2: // Sobel
-            Ix = (-A0 + ((-A1 * 2.0) + -A2)) + (C0 + (C1 * 2.0) + C2);
-            Iy = (-A0 + ((-B0 * 2.0) + -C0)) + (A2 + (B2 * 2.0) + C2);
+            Ix = (-A_0 + ((-A_1 * 2.0) + -A_2)) + (C_0 + (C_1 * 2.0) + C_2);
+            Iy = (-A_0 + ((-B_0 * 2.0) + -C_0)) + (A_2 + (B_2 * 2.0) + C_2);
             Edge = Magnitude(Ix, Iy);
             break;
         case 3: // Prewitt
-            Ix = (-A0 - A1 - A2) + (C0 + C1 + C2);
-            Iy = (-A0 - B0 - C0) + (A2 + B2 + C2);
+            Ix = (-A_0 - A_1 - A_2) + (C_0 + C_1 + C_2);
+            Iy = (-A_0 - B_0 - C_0) + (A_2 + B_2 + C_2);
             Edge = Magnitude(Ix, Iy);
             break;
         case 4: // Robert's Cross
-            Ix = C0 - B1;
-            Iy = B0 - C1;
+            Ix = C_0 - B_1;
+            Iy = B_0 - C_1;
             Edge = Magnitude(Ix, Iy);
             break;
         case 5: // Scharr
-            Ix += A0 * -3.0;
-            Ix += A1 * -10.0;
-            Ix += A2 * -3.0;
-            Ix += C0 * 3.0;
-            Ix += C1 * 10.0;
-            Ix += C2 * 3.0;
+            Ix += A_0 * -3.0;
+            Ix += A_1 * -10.0;
+            Ix += A_2 * -3.0;
+            Ix += C_0 * 3.0;
+            Ix += C_1 * 10.0;
+            Ix += C_2 * 3.0;
 
-            Iy += A0 * 3.0;
-            Iy += B0 * 10.0;
-            Iy += C0 * 3.0;
-            Iy += A2 * -3.0;
-            Iy += B2 * -10.0;
-            Iy += C2 * -3.0;
+            Iy += A_0 * 3.0;
+            Iy += B_0 * 10.0;
+            Iy += C_0 * 3.0;
+            Iy += A_2 * -3.0;
+            Iy += B_2 * -10.0;
+            Iy += C_2 * -3.0;
             Edge = Magnitude(Ix, Iy);
             break;
         case 6: // Kayyali
-            float3 Cross = (A0 * 6.0) + (C0 * -6.0) + (A2 * -6.0) + (C2 * 6.0);
+            float3 Cross = (A_0 * 6.0) + (C_0 * -6.0) + (A_2 * -6.0) + (C_2 * 6.0);
             Edge = Magnitude(Cross, -Cross);
             break;
         case 7: // Kroon
-            Ix += A0 * -17.0;
-            Ix += A1 * -61.0;
-            Ix += A2 * -17.0;
-            Ix += C0 * 17.0;
-            Ix += C1 * 61.0;
-            Ix += C2 * 17.0;
+            Ix += A_0 * -17.0;
+            Ix += A_1 * -61.0;
+            Ix += A_2 * -17.0;
+            Ix += C_0 * 17.0;
+            Ix += C_1 * 61.0;
+            Ix += C_2 * 17.0;
 
-            Iy += A0 * 17.0;
-            Iy += B0 * 61.0;
-            Iy += C0 * 17.0;
-            Iy += A2 * -17.0;
-            Iy += B2 * -61.0;
-            Iy += C2 * -17.0;
+            Iy += A_0 * 17.0;
+            Iy += B_0 * 61.0;
+            Iy += C_0 * 17.0;
+            Iy += A_2 * -17.0;
+            Iy += B_2 * -61.0;
+            Iy += C_2 * -17.0;
             Edge = Magnitude(Ix, Iy);
             break;
         case 8: // Bilinear Sobel
-            BilinearSample0 = tex2D(SampleColor, TexCoord[3].zy).rgb; // (-x, +y)
-            BilinearSample1 = tex2D(SampleColor, TexCoord[3].xy).rgb; // (+x, +y)
-            BilinearSample2 = tex2D(SampleColor, TexCoord[3].zw).rgb; // (-x, -y)
-            BilinearSample3 = tex2D(SampleColor, TexCoord[3].xw).rgb; // (+x, -y)
-            Ix = ((-BilinearSample2 + -BilinearSample0) + (BilinearSample3 + BilinearSample1)) * 4.0;
-            Iy = ((BilinearSample2 + BilinearSample3) + (-BilinearSample0 + -BilinearSample1)) * 4.0;
+            Bilinear_Sample_0 = tex2D(Sample_Color, Coord[3].zy).rgb; // (-x, +y)
+            Bilinear_Sample_1 = tex2D(Sample_Color, Coord[3].xy).rgb; // (+x, +y)
+            Bilinear_Sample_2 = tex2D(Sample_Color, Coord[3].zw).rgb; // (-x, -y)
+            Bilinear_Sample_3 = tex2D(Sample_Color, Coord[3].xw).rgb; // (+x, -y)
+            Ix = ((-Bilinear_Sample_2 + -Bilinear_Sample_0) + (Bilinear_Sample_3 + Bilinear_Sample_1)) * 4.0;
+            Iy = ((Bilinear_Sample_2 + Bilinear_Sample_3) + (-Bilinear_Sample_0 + -Bilinear_Sample_1)) * 4.0;
             Edge = Magnitude(Ix, Iy);
             break;
         default:
-            Edge = tex2D(SampleColor, TexCoord[1].xz).rgb;
+            Edge = tex2D(Sample_Color, Coord[1].xz).rgb;
             break;
     }
 
     // Thresholding
-    Edge = Edge * _ColorSensitivity;
-    Edge = saturate((Edge - _Threshold) * _InvRange);
-    float3 Base = tex2D(SampleColor, TexCoord[1].xz).rgb;
-    float3 ColorBackground = lerp(Base, _BackColor.rgb, _BackColor.a);
-    OutputColor0 = lerp(ColorBackground, _FrontColor.rgb, Edge * _FrontColor.a);
+    Edge = Edge * _Color_Sensitivity;
+    Edge = saturate((Edge - _Threshold) * _Inverse_Range);
+    float3 Base = tex2D(Sample_Color, Coord[1].xz).rgb;
+    float3 Color_Background = lerp(Base, _Back_Color.rgb, _Back_Color.a);
+    Output_Color_0 = lerp(Color_Background, _Front_Color.rgb, Edge * _Front_Color.a);
 }
 
 technique KinoContour
 {
     pass
     {
-        VertexShader = ContourVS;
-        PixelShader = ContourPS;
+        VertexShader = Contour_VS;
+        PixelShader = Contour_PS;
         #if BUFFER_COLOR_BIT_DEPTH == 8
             SRGBWriteEnable = TRUE;
         #endif

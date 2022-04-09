@@ -33,7 +33,7 @@
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-uniform float _TimeRate <
+uniform float _Time_Rate <
     ui_label = "Smoothing";
     ui_type = "drag";
     ui_tooltip = "Exposure time smoothing";
@@ -41,18 +41,18 @@ uniform float _TimeRate <
     ui_max = 1.0;
 > = 0.95;
 
-uniform float _ManualBias <
+uniform float _Manual_Bias <
     ui_label = "Exposure";
     ui_type = "drag";
     ui_tooltip = "Optional manual bias ";
     ui_min = 0.0;
 > = 2.0;
 
-texture2D RenderColor : COLOR;
+texture2D Render_Color : COLOR;
 
-sampler2D SampleColor
+sampler2D Sample_Color
 {
-    Texture = RenderColor;
+    Texture = Render_Color;
     MagFilter = LINEAR;
     MinFilter = LINEAR;
     MipFilter = LINEAR;
@@ -61,7 +61,7 @@ sampler2D SampleColor
     #endif
 };
 
-texture2D RenderLumaLOD
+texture2D Render_Luma_LOD
 {
     Width = 256;
     Height = 256;
@@ -69,9 +69,9 @@ texture2D RenderLumaLOD
     Format = R16F;
 };
 
-sampler2D SampleLumaLOD
+sampler2D Sample_Luma_LOD
 {
-    Texture = RenderLumaLOD;
+    Texture = Render_Luma_LOD;
     MagFilter = LINEAR;
     MinFilter = LINEAR;
     MipFilter = LINEAR;
@@ -79,44 +79,44 @@ sampler2D SampleLumaLOD
 
 // Vertex shaders
 
-void PostProcessVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float2 TexCoord : TEXCOORD0)
+void Basic_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float2 Coord : TEXCOORD0)
 {
-    TexCoord.x = (ID == 2) ? 2.0 : 0.0;
-    TexCoord.y = (ID == 1) ? 2.0 : 0.0;
-    Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    Coord.x = (ID == 2) ? 2.0 : 0.0;
+    Coord.y = (ID == 1) ? 2.0 : 0.0;
+    Position = float4(Coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
 
 // Pixel shaders
 
-void BlitPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+void Blit_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
 {
-    float4 Color = tex2D(SampleColor, TexCoord);
+    float4 Color = tex2D(Sample_Color, Coord);
 
-    // OutputColor.rgb = Output the highest brightness out of red/green/blue component
-    // OutputColor.a = Output the weight for temporal blending
-    OutputColor0 = float4(max(Color.r, max(Color.g, Color.b)).rrr, _TimeRate);
+    // Output_Color_0.rgb = Output the highest brightness out of red/green/blue component
+    // Output_Color_0.a = Output the weight for temporal blending
+    Output_Color_0 = float4(max(Color.r, max(Color.g, Color.b)).rrr, _Time_Rate);
 }
 
-void ExposurePS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+void Exposure_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
 {
     // Average Luma = Average value (1x1) for all of the pixels
-    float AverageLuma = tex2Dlod(SampleLumaLOD, float4(TexCoord, 0.0, 8.0)).r;
-    float4 Color = tex2D(SampleColor, TexCoord);
+    float Average_Luma = tex2Dlod(Sample_Luma_LOD, float4(Coord, 0.0, 8.0)).r;
+    float4 Color = tex2D(Sample_Color, Coord);
 
-    // KeyValue is an exposure compensation curve
+    // Key_Value is an exposure compensation curve
     // Source: https://knarkowicz.wordpress.com/2016/01/09/automatic-exposure/
-    float KeyValue = 1.03 - (2.0 / (log10(AverageLuma + 1.0) + 2.0));
-    float ExposureValue = log2(KeyValue / AverageLuma) + _ManualBias;
-    OutputColor0 = Color * exp2(ExposureValue);
+    float Key_Value = 1.03 - (2.0 / (log10(Average_Luma + 1.0) + 2.0));
+    float Exposure_Value = log2(Key_Value / Average_Luma) + _Manual_Bias;
+    Output_Color_0 = Color * exp2(Exposure_Value);
 }
 
 technique cAutoExposure
 {
     pass
     {
-        VertexShader = PostProcessVS;
-        PixelShader = BlitPS;
-        RenderTarget = RenderLumaLOD;
+        VertexShader = Basic_VS;
+        PixelShader = Blit_PS;
+        RenderTarget = Render_Luma_LOD;
         ClearRenderTargets = FALSE;
         BlendEnable = TRUE;
         BlendOp = ADD;
@@ -126,8 +126,8 @@ technique cAutoExposure
 
     pass
     {
-        VertexShader = PostProcessVS;
-        PixelShader = ExposurePS;
+        VertexShader = Basic_VS;
+        PixelShader = Exposure_PS;
         #if BUFFER_COLOR_BIT_DEPTH == 8
             SRGBWriteEnable = TRUE;
         #endif

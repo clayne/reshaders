@@ -33,23 +33,23 @@
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-uniform float2 _ShiftRed <
+uniform float2 _Shift_Red <
     ui_type = "drag";
 > = -1.0;
 
-uniform float2 _ShiftGreen <
+uniform float2 _Shift_Green <
     ui_type = "drag";
 > = 0.0;
 
-uniform float2 _ShiftBlue <
+uniform float2 _Shift_Blue <
     ui_type = "drag";
 > = 1.0;
 
-texture2D RenderColor : COLOR;
+texture2D Render_Color : COLOR;
 
-sampler2D SampleColor
+sampler2D Sample_Color
 {
-    Texture = RenderColor;
+    Texture = Render_Color;
     MagFilter = LINEAR;
     MinFilter = LINEAR;
     MipFilter = LINEAR;
@@ -60,34 +60,34 @@ sampler2D SampleColor
 
 // Vertex shaders
 
-void PostProcessVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float2 TexCoord : TEXCOORD0)
+void Basic_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float2 Coord : TEXCOORD0)
 {
-    TexCoord.x = (ID == 2) ? 2.0 : 0.0;
-    TexCoord.y = (ID == 1) ? 2.0 : 0.0;
-    Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    Coord.x = (ID == 2) ? 2.0 : 0.0;
+    Coord.y = (ID == 1) ? 2.0 : 0.0;
+    Position = float4(Coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
 
 // Pixel shaders
 
-void AbberationPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+void Abberation_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
 {
-    const float2 PixelSize = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
+    const float2 Pixel_Size = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
     // Shift red channel
-    OutputColor0.r = tex2D(SampleColor, TexCoord + _ShiftRed * PixelSize).r;
+    Output_Color_0.r = tex2D(Sample_Color, Coord + _Shift_Red * Pixel_Size).r;
     // Keep green channel to the center
-    OutputColor0.g = tex2D(SampleColor, TexCoord + _ShiftGreen * PixelSize).g;
+    Output_Color_0.g = tex2D(Sample_Color, Coord + _Shift_Green * Pixel_Size).g;
     // Shift blue channel
-    OutputColor0.b = tex2D(SampleColor, TexCoord + _ShiftBlue * PixelSize).b;
+    Output_Color_0.b = tex2D(Sample_Color, Coord + _Shift_Blue * Pixel_Size).b;
     // Write alpha value
-    OutputColor0.a = 1.0;
+    Output_Color_0.a = 1.0;
 }
 
 technique cAbberation
 {
     pass
     {
-        VertexShader = PostProcessVS;
-        PixelShader = AbberationPS;
+        VertexShader = Basic_VS;
+        PixelShader = Abberation_PS;
         #if BUFFER_COLOR_BIT_DEPTH == 8
             SRGBWriteEnable = TRUE;
         #endif

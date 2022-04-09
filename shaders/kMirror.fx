@@ -37,11 +37,11 @@ uniform float _Roll <
 uniform bool _Symmetry <
 > = true;
 
-texture2D RenderColor : COLOR;
+texture2D Render_Color : COLOR;
 
-sampler2D SampleColor
+sampler2D Sample_Color
 {
-    Texture = RenderColor;
+    Texture = Render_Color;
     MagFilter = LINEAR;
     MinFilter = LINEAR;
     MipFilter = LINEAR;
@@ -52,19 +52,19 @@ sampler2D SampleColor
 
 // Vertex shaders
 
-void PostProcessVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float2 TexCoord : TEXCOORD0)
+void Basic_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float2 Coord : TEXCOORD0)
 {
-    TexCoord.x = (ID == 2) ? 2.0 : 0.0;
-    TexCoord.y = (ID == 1) ? 2.0 : 0.0;
-    Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    Coord.x = (ID == 2) ? 2.0 : 0.0;
+    Coord.y = (ID == 1) ? 2.0 : 0.0;
+    Position = float4(Coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
 
 /* [ Pixel Shaders ] */
 
-void MirrorPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+void Mirror_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
 {
     // Convert to polar coordinates
-    float2 Polar = TexCoord * 2.0 - 1.0;
+    float2 Polar = Coord * 2.0 - 1.0;
     float Phi = atan2(Polar.y, Polar.x);
     float Radius = length(Polar);
 
@@ -75,20 +75,20 @@ void MirrorPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, 
     Phi += _Roll - _Offset;
 
     // Convert back to the texture coordinate.
-    float2 PhiSinCos; sincos(Phi, PhiSinCos.x, PhiSinCos.y);
-    TexCoord = (PhiSinCos.yx * Radius) * 0.5 + 0.5;
+    float2 Phi_Sin_Cos; sincos(Phi, Phi_Sin_Cos.x, Phi_Sin_Cos.y);
+    Coord = (Phi_Sin_Cos.yx * Radius) * 0.5 + 0.5;
 
     // Reflection at the border of the screen.
-    TexCoord = max(min(TexCoord, 2.0 - TexCoord), -TexCoord);
-    OutputColor0 = tex2D(SampleColor, TexCoord);
+    Coord = max(min(Coord, 2.0 - Coord), -Coord);
+    Output_Color_0 = tex2D(Sample_Color, Coord);
 }
 
 technique KinoMirror
 {
     pass
     {
-        VertexShader = PostProcessVS;
-        PixelShader = MirrorPS;
+        VertexShader = Basic_VS;
+        PixelShader = Mirror_PS;
         #if BUFFER_COLOR_BIT_DEPTH == 8
             SRGBWriteEnable = TRUE;
         #endif

@@ -39,16 +39,16 @@ uniform int _Blend <
     ui_items = " Add\0 Subtract\0 Multiply\0 Min\0 Max\0 Screen\0 Lerp\0";
 > = 0;
 
-uniform float _LerpWeight <
+uniform float _Lerp_Weight <
     ui_label = "Lerp Weight";
     ui_type = "slider";
 > = 0.5;
 
-texture2D RenderColor : COLOR;
+texture2D Render_Color : COLOR;
 
-sampler2D SampleColor
+sampler2D Sample_Color
 {
-    Texture = RenderColor;
+    Texture = Render_Color;
     MagFilter = LINEAR;
     MinFilter = LINEAR;
     MipFilter = LINEAR;
@@ -57,16 +57,16 @@ sampler2D SampleColor
     #endif
 };
 
-texture2D RenderCopy
+texture2D Render_Copy
 {
     Width = BUFFER_WIDTH;
     Height = BUFFER_HEIGHT;
     Format = RGBA8;
 };
 
-sampler2D SampleCopy
+sampler2D Sample_Copy
 {
-    Texture = RenderCopy;
+    Texture = Render_Copy;
     MagFilter = LINEAR;
     MinFilter = LINEAR;
     MipFilter = LINEAR;
@@ -77,50 +77,50 @@ sampler2D SampleCopy
 
 // Vertex shaders
 
-void PostProcessVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float2 TexCoord : TEXCOORD0)
+void Basic_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float2 Coord : TEXCOORD0)
 {
-    TexCoord.x = (ID == 2) ? 2.0 : 0.0;
-    TexCoord.y = (ID == 1) ? 2.0 : 0.0;
-    Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    Coord.x = (ID == 2) ? 2.0 : 0.0;
+    Coord.y = (ID == 1) ? 2.0 : 0.0;
+    Position = float4(Coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
 
 // Pixel shaders
 
-void BlitPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+void Blit_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
 {
-    OutputColor0 = tex2D(SampleColor, TexCoord);
+    Output_Color_0 = tex2D(Sample_Color, Coord);
 }
 
-void BlendPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+void Blend_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
 {
-    float4 Src = tex2D(SampleCopy, TexCoord);
-    float4 Dest = tex2D(SampleColor, TexCoord);
+    float4 Src = tex2D(Sample_Copy, Coord);
+    float4 Dest = tex2D(Sample_Color, Coord);
 
     switch(_Blend)
     {
         case 0: // Add
-            OutputColor0 = Src + Dest;
+            Output_Color_0 = Src + Dest;
             break;
         case 1: // Subtract
-            OutputColor0 = Src - Dest;
+            Output_Color_0 = Src - Dest;
             break;
         case 2: // Multiply
-            OutputColor0 = Src * Dest;
+            Output_Color_0 = Src * Dest;
             break;
         case 3: // Min
-            OutputColor0 = min(Src, Dest);
+            Output_Color_0 = min(Src, Dest);
             break;
         case 4: // Max
-            OutputColor0 = max(Src, Dest);
+            Output_Color_0 = max(Src, Dest);
             break;
         case 5: // Screen
-            OutputColor0 = (Src + Dest) - (Src * Dest);
+            Output_Color_0 = (Src + Dest) - (Src * Dest);
             break;
         case 6: // Lerp
-            OutputColor0 = lerp(Src, Dest, _LerpWeight);
+            Output_Color_0 = lerp(Src, Dest, _Lerp_Weight);
             break;
         default:
-            OutputColor0 = Dest;
+            Output_Color_0 = Dest;
             break;
     }
 }
@@ -129,9 +129,9 @@ technique cCopyBuffer
 {
     pass
     {
-        VertexShader = PostProcessVS;
-        PixelShader = BlitPS;
-        RenderTarget0 = RenderCopy;
+        VertexShader = Basic_VS;
+        PixelShader = Blit_PS;
+        RenderTarget0 = Render_Copy;
         #if BUFFER_COLOR_BIT_DEPTH == 8
            SRGBWriteEnable = TRUE;
         #endif
@@ -142,8 +142,8 @@ technique cBlendBuffer
 {
     pass
     {
-        VertexShader = PostProcessVS;
-        PixelShader = BlendPS;
+        VertexShader = Basic_VS;
+        PixelShader = Blend_PS;
         #if BUFFER_COLOR_BIT_DEPTH == 8
            SRGBWriteEnable = TRUE;
         #endif

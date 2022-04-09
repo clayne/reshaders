@@ -58,17 +58,17 @@
 namespace ReShade
 {
     #if defined(__RESHADE_FXC__)
-        float GetAspectRatio() { return BUFFER_WIDTH * BUFFER_RCP_HEIGHT; }
+        float GetAspect_Ratio() { return BUFFER_WIDTH * BUFFER_RCP_HEIGHT; }
         float2 GetPixelSize() { return float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT); }
-        float2 GetScreenSize() { return float2(BUFFER_WIDTH, BUFFER_HEIGHT); }
-        #define AspectRatio GetAspectRatio()
-        #define PixelSize GetPixelSize()
-        #define ScreenSize GetScreenSize()
+        float2 GetScreen_Size() { return float2(BUFFER_WIDTH, BUFFER_HEIGHT); }
+        #define Aspect_Ratio GetAspect_Ratio()
+        #define Pixel_Size GetPixelSize()
+        #define Screen_Size GetScreen_Size()
     #else
         // These are deprecated and will be removed eventually.
-        static const float AspectRatio = BUFFER_WIDTH * BUFFER_RCP_HEIGHT;
-        static const float2 PixelSize = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
-        static const float2 ScreenSize = float2(BUFFER_WIDTH, BUFFER_HEIGHT);
+        static const float Aspect_Ratio = BUFFER_WIDTH * BUFFER_RCP_HEIGHT;
+        static const float2 Pixel_Size = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
+        static const float2 Screen_Size = float2(BUFFER_WIDTH, BUFFER_HEIGHT);
     #endif
 
     // Global textures and samplers
@@ -118,7 +118,7 @@ namespace ReShade
 }
 
 // Vertex shader generating a triangle covering the entire screen
-void PostProcessVS(in uint id : SV_VertexID, out float4 position : SV_Position, out float2 texcoord : TEXCOORD0)
+void Basic_VS(in uint id : SV_VERTEXID, out float4 position : SV_POSITION, out float2 texcoord : TEXCOORD0)
 {
     texcoord.x = (id == 2) ? 2.0 : 0.0;
     texcoord.y = (id == 1) ? 2.0 : 0.0;

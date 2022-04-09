@@ -151,7 +151,7 @@ namespace Shared_Resources_OpticalFlow
     };
 }
 
-namespace OpticalFlow
+namespace Optical_Flow
 {
     // Shader properties
 
@@ -163,14 +163,14 @@ namespace OpticalFlow
         ui_max = 2.0;
     > = 1.0;
 
-    uniform float _MipBias <
+    uniform float _Mip_Bias <
         ui_type = "drag";
         ui_category = "Optical flow";
         ui_label = "Optical flow mipmap bias";
         ui_min = 0.0;
     > = 0.0;
 
-    uniform float _BlendFactor <
+    uniform float _Blend_Factor <
         ui_type = "slider";
         ui_category = "Optical flow";
         ui_label = "Temporal Blending Factor";
@@ -178,13 +178,13 @@ namespace OpticalFlow
         ui_Max = 0.9;
     > = 0.1;
 
-    uniform bool _NormalizedShading <
+    uniform bool _Normalized_Shading <
         ui_type = "radio";
         ui_category = "Velocity shading";
         ui_label = "Normalize velocity shading";
     > = true;
 
-    uniform float3 _BaseColorShift <
+    uniform float3 _Backgound_Color_Shift <
         ui_type = "color";
         ui_category = "Velocity streaming";
         ui_label = "Background color shift";
@@ -192,13 +192,13 @@ namespace OpticalFlow
         ui_max = 1.0;
     > = 0.0;
 
-    uniform float3 _LineColorShift <
+    uniform float3 _Line_Color_Shift <
         ui_type = "color";
         ui_category = "Velocity streaming";
         ui_label = "Line color shifting";
     > = 1.0;
 
-    uniform float _LineOpacity <
+    uniform float _Line_Opacity <
         ui_type = "slider";
         ui_category = "Velocity streaming";
         ui_label = "Line opacity";
@@ -206,20 +206,20 @@ namespace OpticalFlow
         ui_max = 1.0;
     > = 1.0;
 
-    uniform bool _BackgroundColor <
+    uniform bool _Background_Color <
         ui_type = "radio";
         ui_category = "Velocity streaming";
         ui_label = "Plain base color";
     > = false;
 
-    uniform bool _NormalDirection <
+    uniform bool _Normal_Direction <
         ui_type = "radio";
         ui_category = "Velocity streaming";
         ui_label = "Normalize direction";
         ui_tooltip = "Normalize direction";
     > = false;
 
-    uniform bool _ScaleLineVelocity <
+    uniform bool _Scale_Line_Velocity <
         ui_type = "radio";
         ui_category = "Velocity streaming";
         ui_label = "Scale velocity color";
@@ -294,16 +294,16 @@ namespace OpticalFlow
     // Optical flow visualization
 
     #if RENDER_VELOCITY_STREAMS
-        texture2D RenderLines
+        texture2D Render_Lines
         {
             Width = BUFFER_WIDTH;
             Height = BUFFER_HEIGHT;
             Format = RGBA8;
         };
 
-        sampler2D SampleLines
+        sampler2D Sample_Lines
         {
-            Texture = RenderLines;
+            Texture = Render_Lines;
             AddressU = MIRROR;
             AddressV = MIRROR;
             MagFilter = LINEAR;
@@ -312,7 +312,7 @@ namespace OpticalFlow
         };
     #endif
 
-    sampler2D SampleColorGamma
+    sampler2D Sample_Color_Gamma
     {
         Texture = Render_Color;
         AddressU = MIRROR;
@@ -324,14 +324,14 @@ namespace OpticalFlow
 
     // Vertex Shaders
 
-    void PostProcessVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float2 TexCoord : TEXCOORD0)
+    void Basic_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float2 Coord : TEXCOORD0)
     {
-        TexCoord.x = (ID == 2) ? 2.0 : 0.0;
-        TexCoord.y = (ID == 1) ? 2.0 : 0.0;
-        Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+        Coord.x = (ID == 2) ? 2.0 : 0.0;
+        Coord.y = (ID == 1) ? 2.0 : 0.0;
+        Position = float4(Coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
     }
 
-    static const float2 BlurOffsets[8] =
+    static const float2 Blur_Offsets[8] =
     {
         float2(0.0, 0.0),
         float2(0.0, 1.4850045),
@@ -343,81 +343,81 @@ namespace OpticalFlow
         float2(0.0, 13.368189)
     };
 
-    void Blur_0_VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoords[8] : TEXCOORD0)
+    void Blur_0_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 Coords[8] : TEXCOORD0)
     {
-        float2 VSTexCoord = 0.0;
-        PostProcessVS(ID, Position, VSTexCoord);
-        TexCoords[0] = VSTexCoord.xyxy;
+        float2 VS_Coord = 0.0;
+        Basic_VS(ID, Position, VS_Coord);
+        Coords[0] = VS_Coord.xyxy;
 
         for(int i = 1; i < 8; i++)
         {
-            TexCoords[i].xy = VSTexCoord.xy - (BlurOffsets[i].yx / BUFFER_SIZE_1);
-            TexCoords[i].zw = VSTexCoord.xy + (BlurOffsets[i].yx / BUFFER_SIZE_1);
+            Coords[i].xy = VS_Coord.xy - (Blur_Offsets[i].yx / BUFFER_SIZE_1);
+            Coords[i].zw = VS_Coord.xy + (Blur_Offsets[i].yx / BUFFER_SIZE_1);
         }
     }
 
-    void Blur_1_VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoords[8] : TEXCOORD0)
+    void Blur_1_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 Coords[8] : TEXCOORD0)
     {
-        float2 VSTexCoord = 0.0;
-        PostProcessVS(ID, Position, VSTexCoord);
-        TexCoords[0] = VSTexCoord.xyxy;
+        float2 VS_Coord = 0.0;
+        Basic_VS(ID, Position, VS_Coord);
+        Coords[0] = VS_Coord.xyxy;
 
         for(int i = 1; i < 8; i++)
         {
-            TexCoords[i].xy = VSTexCoord.xy - (BlurOffsets[i].xy / BUFFER_SIZE_1);
-            TexCoords[i].zw = VSTexCoord.xy + (BlurOffsets[i].xy / BUFFER_SIZE_1);
+            Coords[i].xy = VS_Coord.xy - (Blur_Offsets[i].xy / BUFFER_SIZE_1);
+            Coords[i].zw = VS_Coord.xy + (Blur_Offsets[i].xy / BUFFER_SIZE_1);
         }
     }
 
-    void Sample_3x3_VS(in uint ID : SV_VertexID, in float2 TexelSize, out float4 Position : SV_Position, out float4 TexCoords[3] : TEXCOORD0)
+    void Sample_3x3_VS(in uint ID : SV_VERTEXID, in float2 Texel_Size, out float4 Position : SV_POSITION, out float4 Coords[3] : TEXCOORD0)
     {
         float2 VS_TexCoord = 0.0;
-        PostProcessVS(ID, Position, VS_TexCoord);
+        Basic_VS(ID, Position, VS_TexCoord);
         // Sample locations:
         // [0].xy [1].xy [2].xy
         // [0].xz [1].xz [2].xz
         // [0].xw [1].xw [2].xw
-        TexCoords[0] = VS_TexCoord.xyyy + (float4(-1.0, 1.0, 0.0, -1.0) / TexelSize.xyyy);
-        TexCoords[1] = VS_TexCoord.xyyy + (float4(0.0, 1.0, 0.0, -1.0) / TexelSize.xyyy);
-        TexCoords[2] = VS_TexCoord.xyyy + (float4(1.0, 1.0, 0.0, -1.0) / TexelSize.xyyy);
+        Coords[0] = VS_TexCoord.xyyy + (float4(-1.0, 1.0, 0.0, -1.0) / Texel_Size.xyyy);
+        Coords[1] = VS_TexCoord.xyyy + (float4(0.0, 1.0, 0.0, -1.0) / Texel_Size.xyyy);
+        Coords[2] = VS_TexCoord.xyyy + (float4(1.0, 1.0, 0.0, -1.0) / Texel_Size.xyyy);
     }
 
-    void Sample_3x3_1_VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoords[3] : TEXCOORD0)
+    void Sample_3x3_1_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 Coords[3] : TEXCOORD0)
     {
-        Sample_3x3_VS(ID, BUFFER_SIZE_1, Position, TexCoords);
+        Sample_3x3_VS(ID, BUFFER_SIZE_1, Position, Coords);
     }
 
-    void Sample_3x3_2_VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoords[3] : TEXCOORD0)
+    void Sample_3x3_2_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 Coords[3] : TEXCOORD0)
     {
-        Sample_3x3_VS(ID, BUFFER_SIZE_2, Position, TexCoords);
+        Sample_3x3_VS(ID, BUFFER_SIZE_2, Position, Coords);
     }
 
-    void Sample_3x3_3_VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoords[3] : TEXCOORD0)
+    void Sample_3x3_3_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 Coords[3] : TEXCOORD0)
     {
-        Sample_3x3_VS(ID, BUFFER_SIZE_3, Position, TexCoords);
+        Sample_3x3_VS(ID, BUFFER_SIZE_3, Position, Coords);
     }
 
-    void Sample_3x3_4_VS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoords[3] : TEXCOORD0)
+    void Sample_3x3_4_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 Coords[3] : TEXCOORD0)
     {
-        Sample_3x3_VS(ID, BUFFER_SIZE_4, Position, TexCoords);
+        Sample_3x3_VS(ID, BUFFER_SIZE_4, Position, Coords);
     }
 
-    void Derivatives_VS(in uint ID : SV_VertexID, inout float4 Position : SV_Position, inout float4 TexCoords[2] : TEXCOORD0)
+    void Derivatives_VS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float4 Coords[2] : TEXCOORD0)
     {
-        float2 VSTexCoord = 0.0;
-        PostProcessVS(ID, Position, VSTexCoord);
-        TexCoords[0] = VSTexCoord.xxyy + (float4(-1.5, 1.5, -0.5, 0.5) / BUFFER_SIZE_1.xxyy);
-        TexCoords[1] = VSTexCoord.xxyy + (float4(-0.5, 0.5, -1.5, 1.5) / BUFFER_SIZE_1.xxyy);
+        float2 VS_Coord = 0.0;
+        Basic_VS(ID, Position, VS_Coord);
+        Coords[0] = VS_Coord.xxyy + (float4(-1.5, 1.5, -0.5, 0.5) / BUFFER_SIZE_1.xxyy);
+        Coords[1] = VS_Coord.xxyy + (float4(-0.5, 0.5, -1.5, 1.5) / BUFFER_SIZE_1.xxyy);
     }
 
-    void VelocityStreamsVS(in uint ID : SV_VertexID, inout float4 Position : SV_Position, inout float2 Velocity : TEXCOORD0)
+    void Velocity_Streams_VS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 Velocity : TEXCOORD0)
     {
-        int LineID = ID / 2; // Line Index
-        int VertexID = ID % 2; // Vertex Index within the line (0 = start, 1 = end)
+        int Line_ID = ID / 2; // Line Index
+        int Vertex_ID = ID % 2; // Vertex Index within the line (0 = start, 1 = end)
 
         // Get Row (x) and Column (y) position
-        int Row = LineID / LINES_X;
-        int Column = LineID - LINES_X * Row;
+        int Row = Line_ID / LINES_X;
+        int Column = Line_ID - LINES_X * Row;
 
         // Compute origin (line-start)
         const float2 Spacing = float2(SPACE_X, SPACE_Y);
@@ -425,11 +425,11 @@ namespace OpticalFlow
         float2 Origin = Offset + float2(Column, Row) * Spacing;
 
         // Get velocity from texture at origin location
-        const float2 PixelSize = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
-        float2 VelocityCoord;
-        VelocityCoord.xy = Origin.xy * PixelSize.xy;
-        VelocityCoord.y = 1.0 - VelocityCoord.y;
-        Velocity = tex2Dlod(Shared_Resources_OpticalFlow::Sample_Common_1_B, float4(VelocityCoord, 0.0, _MipBias)).xy;
+        const float2 Pixel_Size = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
+        float2 Velocity_Coord = 0.0;
+        Velocity_Coord.xy = Origin.xy * Pixel_Size.xy;
+        Velocity_Coord.y = 1.0 - Velocity_Coord.y;
+        Velocity = tex2Dlod(Shared_Resources_OpticalFlow::Sample_Common_1_B, float4(Velocity_Coord, 0.0, _Mip_Bias)).xy;
 
         // Scale velocity
         float2 Direction = Velocity * VELOCITY_SCALE;
@@ -440,41 +440,41 @@ namespace OpticalFlow
         // Color for fragmentshader
         Velocity = Direction * 0.2;
 
-        // Compute current vertex position (based on VertexID)
-        float2 VertexPosition = 0.0;
+        // Compute current vertex position (based on Vertex_ID)
+        float2 Vertex_Position = 0.0;
 
-        if(_NormalDirection)
+        if(_Normal_Direction)
         {
             // Lines: Normal to velocity direction
             Direction *= 0.5;
-            float2 DirectionNormal = float2(Direction.y, -Direction.x);
-            VertexPosition = Origin + Direction - DirectionNormal + DirectionNormal * VertexID * 2;
+            float2 Direction_Normal = float2(Direction.y, -Direction.x);
+            Vertex_Position = Origin + Direction - Direction_Normal + Direction_Normal * Vertex_ID * 2;
         }
         else
         {
             // Lines: Velocity direction
-            VertexPosition = Origin + Direction * VertexID;
+            Vertex_Position = Origin + Direction * Vertex_ID;
         }
 
         // Finish vertex position
-        float2 VertexPositionNormal = (VertexPosition + 0.5) * PixelSize; // [0, 1]
-        Position = float4(VertexPositionNormal * 2.0 - 1.0, 0.0, 1.0); // ndc: [-1, +1]
+        float2 Vertex_Position_Normal = (Vertex_Position + 0.5) * Pixel_Size; // [0, 1]
+        Position = float4(Vertex_Position_Normal * 2.0 - 1.0, 0.0, 1.0); // ndc: [-1, +1]
     }
 
     // Pixel Shaders
 
-    void Normalize_Frame_PS(in float4 Position : SV_Position, float2 TexCoord : TEXCOORD, out float2 Color : SV_Target0)
+    void Normalize_Frame_PS(in float4 Position : SV_POSITION, float2 Coord : TEXCOORD, out float2 Color : SV_TARGET0)
     {
-        float4 Frame = max(tex2D(Sample_Color, TexCoord), exp2(-10.0));
+        float4 Frame = max(tex2D(Sample_Color, Coord), exp2(-10.0));
         Color.xy = saturate(Frame.xy / dot(Frame.rgb, 1.0));
     }
 
-    void Blit_Frame_PS(in float4 Position : SV_Position, float2 TexCoord : TEXCOORD, out float4 Color : SV_Target0)
+    void Blit_Frame_PS(in float4 Position : SV_POSITION, float2 Coord : TEXCOORD, out float4 Output_Color_0 : SV_TARGET0)
     {
-        Color = tex2D(Shared_Resources_OpticalFlow::Sample_Common_0, TexCoord);
+        Output_Color_0 = tex2D(Shared_Resources_OpticalFlow::Sample_Common_0, Coord);
     }
 
-    static const float BlurWeights[8] =
+    static const float Blur_Weights[8] =
     {
         0.079788454,
         0.15186256,
@@ -486,81 +486,81 @@ namespace OpticalFlow
         0.0042996835
     };
 
-    void GaussianBlur(in sampler2D Source, in float4 TexCoords[8], out float4 Color)
+    void Gaussian_Blur(in sampler2D Source, in float4 Coords[8], out float4 Output_Color_0)
     {
-        float TotalWeights = BlurWeights[0];
-        Color = (tex2D(Source, TexCoords[0].xy) * BlurWeights[0]);
+        float Total_Weights = Blur_Weights[0];
+        Output_Color_0 = (tex2D(Source, Coords[0].xy) * Blur_Weights[0]);
 
         for(int i = 1; i < 8; i++)
         {
-            Color += (tex2D(Source, TexCoords[i].xy) * BlurWeights[i]);
-            Color += (tex2D(Source, TexCoords[i].zw) * BlurWeights[i]);
-            TotalWeights += (BlurWeights[i] * 2.0);
+            Output_Color_0 += (tex2D(Source, Coords[i].xy) * Blur_Weights[i]);
+            Output_Color_0 += (tex2D(Source, Coords[i].zw) * Blur_Weights[i]);
+            Total_Weights += (Blur_Weights[i] * 2.0);
         }
 
-        Color = Color / TotalWeights;
+        Output_Color_0 = Output_Color_0 / Total_Weights;
     }
 
-    void Pre_Blur_0_PS(in float4 Position : SV_Position, in float4 TexCoords[8] : TEXCOORD0, out float4 Color : SV_Target0)
+    void Pre_Blur_0_PS(in float4 Position : SV_POSITION, in float4 Coords[8] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
     {
-        GaussianBlur(Shared_Resources_OpticalFlow::Sample_Common_1_A, TexCoords, Color);
+        Gaussian_Blur(Shared_Resources_OpticalFlow::Sample_Common_1_A, Coords, Output_Color_0);
     }
 
-    void Pre_Blur_1_PS(in float4 Position : SV_Position, in float4 TexCoords[8] : TEXCOORD0, out float4 Color : SV_Target0)
+    void Pre_Blur_1_PS(in float4 Position : SV_POSITION, in float4 Coords[8] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
     {
-        GaussianBlur(Shared_Resources_OpticalFlow::Sample_Common_1_B, TexCoords, Color);
+        Gaussian_Blur(Shared_Resources_OpticalFlow::Sample_Common_1_B, Coords, Output_Color_0);
     }
 
-    void Derivatives_PS(in float4 Position : SV_Position, in float4 TexCoords[2] : TEXCOORD0, out float4 Color : SV_Target0)
+    void Derivatives_PS(in float4 Position : SV_POSITION, in float4 Coords[2] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
     {
         // Bilinear 5x5 Sobel by CeeJayDK
-        //   B1 B2
-        // A0     A1
-        // A2     B0
-        //   C0 C1
-        float2 A0 = tex2D(Shared_Resources_OpticalFlow::Sample_Common_1_A, TexCoords[0].xw).xy * 4.0; // <-1.5, +0.5>
-        float2 A1 = tex2D(Shared_Resources_OpticalFlow::Sample_Common_1_A, TexCoords[0].yw).xy * 4.0; // <+1.5, +0.5>
-        float2 A2 = tex2D(Shared_Resources_OpticalFlow::Sample_Common_1_A, TexCoords[0].xz).xy * 4.0; // <-1.5, -0.5>
-        float2 B0 = tex2D(Shared_Resources_OpticalFlow::Sample_Common_1_A, TexCoords[0].yz).xy * 4.0; // <+1.5, -0.5>
-        float2 B1 = tex2D(Shared_Resources_OpticalFlow::Sample_Common_1_A, TexCoords[1].xw).xy * 4.0; // <-0.5, +1.5>
-        float2 B2 = tex2D(Shared_Resources_OpticalFlow::Sample_Common_1_A, TexCoords[1].yw).xy * 4.0; // <+0.5, +1.5>
-        float2 C0 = tex2D(Shared_Resources_OpticalFlow::Sample_Common_1_A, TexCoords[1].xz).xy * 4.0; // <-0.5, -1.5>
-        float2 C1 = tex2D(Shared_Resources_OpticalFlow::Sample_Common_1_A, TexCoords[1].yz).xy * 4.0; // <+0.5, -1.5>
+        //   B_1 B_2
+        // A_0     A_1
+        // A_2     B_0
+        //   C_0 C_1
+        float2 A_0 = tex2D(Shared_Resources_OpticalFlow::Sample_Common_1_A, Coords[0].xw).xy * 4.0; // <-1.5, +0.5>
+        float2 A_1 = tex2D(Shared_Resources_OpticalFlow::Sample_Common_1_A, Coords[0].yw).xy * 4.0; // <+1.5, +0.5>
+        float2 A_2 = tex2D(Shared_Resources_OpticalFlow::Sample_Common_1_A, Coords[0].xz).xy * 4.0; // <-1.5, -0.5>
+        float2 B_0 = tex2D(Shared_Resources_OpticalFlow::Sample_Common_1_A, Coords[0].yz).xy * 4.0; // <+1.5, -0.5>
+        float2 B_1 = tex2D(Shared_Resources_OpticalFlow::Sample_Common_1_A, Coords[1].xw).xy * 4.0; // <-0.5, +1.5>
+        float2 B_2 = tex2D(Shared_Resources_OpticalFlow::Sample_Common_1_A, Coords[1].yw).xy * 4.0; // <+0.5, +1.5>
+        float2 C_0 = tex2D(Shared_Resources_OpticalFlow::Sample_Common_1_A, Coords[1].xz).xy * 4.0; // <-0.5, -1.5>
+        float2 C_1 = tex2D(Shared_Resources_OpticalFlow::Sample_Common_1_A, Coords[1].yz).xy * 4.0; // <+0.5, -1.5>
 
         //    -1 0 +1
         // -1 -2 0 +2 +1
         // -2 -2 0 +2 +2
         // -1 -2 0 +2 +1
         //    -1 0 +1
-        Color.xy = ((B2 + A1 + B0 + C1) - (B1 + A0 + A2 + C0)) / 12.0;
+        Output_Color_0.xy = ((B_2 + A_1 + B_0 + C_1) - (B_1 + A_0 + A_2 + C_0)) / 12.0;
 
         //    +1 +2 +1
         // +1 +2 +2 +2 +1
         //  0  0  0  0  0
         // -1 -2 -2 -2 -1
         //    -1 -2 -1
-        Color.zw = ((A0 + B1 + B2 + A1) - (A2 + C0 + C1 + B0)) / 12.0;
-        Color.xz *= rsqrt(dot(Color.xz, Color.xz) + 1.0);
-        Color.yw *= rsqrt(dot(Color.yw, Color.yw) + 1.0);
+        Output_Color_0.zw = ((A_0 + B_1 + B_2 + A_1) - (A_2 + C_0 + C_1 + B_0)) / 12.0;
+        Output_Color_0.xz *= rsqrt(dot(Output_Color_0.xz, Output_Color_0.xz) + 1.0);
+        Output_Color_0.yw *= rsqrt(dot(Output_Color_0.yw, Output_Color_0.yw) + 1.0);
     }
 
-    #define MaxLevel 7
+    #define Max_Level 7
     #define E 1e-4
 
-    void CoarseOpticalFlowTV(in float2 TexCoord, in float Level, in float2 UV, out float2 OpticalFlow)
+    void Coarse_Optical_Flow_TV(in float2 Coord, in float Level, in float2 UV, out float2 Optical_Flow)
     {
-        OpticalFlow = 0.0;
-        const float Alpha = max(ldexp(_Constraint * 1e-4, Level - MaxLevel), 1e-7);
+        Optical_Flow = 0.0;
+        const float Alpha = max(ldexp(_Constraint * 1e-4, Level - Max_Level), 1e-7);
 
         // Load textures
-        float2 Current = tex2Dlod(Shared_Resources_OpticalFlow::Sample_Common_1_A, float4(TexCoord, 0.0, Level)).xy;
-        float2 Previous = tex2Dlod(Sample_Common_1_P, float4(TexCoord, 0.0, Level)).xy;
+        float2 Current = tex2Dlod(Shared_Resources_OpticalFlow::Sample_Common_1_A, float4(Coord, 0.0, Level)).xy;
+        float2 Previous = tex2Dlod(Sample_Common_1_P, float4(Coord, 0.0, Level)).xy;
 
         // <Rx, Gx, Ry, Gy>
-        float4 SD = tex2Dlod(Shared_Resources_OpticalFlow::Sample_Common_1_B, float4(TexCoord, 0.0, Level));
+        float4 S_D = tex2Dlod(Shared_Resources_OpticalFlow::Sample_Common_1_B, float4(Coord, 0.0, Level));
 
         // <Rz, Gz>
-        float2 TD = Current - Previous;
+        float2 T_D = Current - Previous;
 
         // Calculate constancy term
         float C = 0.0;
@@ -570,128 +570,128 @@ namespace OpticalFlow
 
         // Calculate forward motion vectors
 
-        C = dot(TD, 1.0);
+        C = dot(T_D, 1.0);
         C = rsqrt(C * C + (E * E));
 
-        Aii.x = 1.0 / (C * dot(SD.xy, SD.xy) + Alpha);
-        Aii.y = 1.0 / (C * dot(SD.zw, SD.zw) + Alpha);
+        Aii.x = 1.0 / (C * dot(S_D.xy, S_D.xy) + Alpha);
+        Aii.y = 1.0 / (C * dot(S_D.zw, S_D.zw) + Alpha);
 
-        Aij = C * dot(SD.xy, SD.zw);
+        Aij = C * dot(S_D.xy, S_D.zw);
 
-        Bi.x = C * dot(SD.xy, TD);
-        Bi.y = C * dot(SD.zw, TD);
+        Bi.x = C * dot(S_D.xy, T_D);
+        Bi.y = C * dot(S_D.zw, T_D);
 
-        OpticalFlow.x = Aii.x * ((Alpha * UV.x) - (Aij * UV.y) - Bi.x);
-        OpticalFlow.y = Aii.y * ((Alpha * UV.y) - (Aij * OpticalFlow.x) - Bi.y);
+        Optical_Flow.x = Aii.x * ((Alpha * UV.x) - (Aij * UV.y) - Bi.x);
+        Optical_Flow.y = Aii.y * ((Alpha * UV.y) - (Aij * Optical_Flow.x) - Bi.y);
     }
 
-    void ProcessGradAvg(in float2 SampleNW,
-                        in float2 SampleNE,
-                        in float2 SampleSW,
-                        in float2 SampleSE,
-                        out float Grad,
-                        out float2 Avg)
+    void ProcessGradAvg(in float2 Sample_NW,
+                        in float2 Sample_NE,
+                        in float2 Sample_SW,
+                        in float2 Sample_SE,
+                        out float Gradient,
+                        out float2 Average)
     {
         // NW NE
         // SW SE
-        float4 GradUV = 0.0;
-        GradUV.xy = (SampleNW + SampleSW) - (SampleNE + SampleSE); // <IxU, IxV>
-        GradUV.zw = (SampleNW + SampleNE) - (SampleSW + SampleSE); // <IyU, IyV>
-        GradUV = GradUV * 0.5;
-        Grad = rsqrt((dot(GradUV.xzyw, GradUV.xzyw) * 0.25) + (E * E));
-        Avg = (SampleNW + SampleNE + SampleSW + SampleSE) * 0.25;
+        float4 Sq_Gradient_UV = 0.0;
+        Sq_Gradient_UV.xy = (Sample_NW + Sample_SW) - (Sample_NE + Sample_SE); // <IxU, IxV>
+        Sq_Gradient_UV.zw = (Sample_NW + Sample_NE) - (Sample_SW + Sample_SE); // <IyU, IyV>
+        Sq_Gradient_UV = Sq_Gradient_UV * 0.5;
+        Gradient = rsqrt((dot(Sq_Gradient_UV.xzyw, Sq_Gradient_UV.xzyw) * 0.25) + (E * E));
+        Average = (Sample_NW + Sample_NE + Sample_SW + Sample_SE) * 0.25;
     }
 
-    void ProcessArea(in float2 SampleUV[9],
-                     inout float4 UVGrad,
-                     inout float2 CenterAvg,
-                     inout float2 UVAvg)
+    void ProcessArea(in float2 Sample_UV[9],
+                     inout float4 UV_Gradient,
+                     inout float2 Center_Average,
+                     inout float2 UV_Average)
     {
-        float CenterGrad = 0.0;
-        float4 AreaGrad = 0.0;
-        float2 AreaAvg[4];
-        float4 GradUV = 0.0;
-        float SqGradUV = 0.0;
+        float Center_Gradient = 0.0;
+        float4 Area_Gradient = 0.0;
+        float2 Area_Average[4];
+        float4 Gradient_UV = 0.0;
+        float Sq_Gradient_UV = 0.0;
 
         // Center smoothness gradient and average
         // 0 3 6
         // 1 4 7
         // 2 5 8
-        GradUV.xy = (SampleUV[0] + (SampleUV[1] * 2.0) + SampleUV[2]) - (SampleUV[6] + (SampleUV[7] * 2.0) + SampleUV[8]); // <IxU, IxV>
-        GradUV.zw = (SampleUV[0] + (SampleUV[3] * 2.0) + SampleUV[6]) - (SampleUV[2] + (SampleUV[5] * 2.0) + SampleUV[8]); // <IxU, IxV>
-        SqGradUV = dot(GradUV.xzyw / 4.0, GradUV.xzyw / 4.0) * 0.25;
-        CenterGrad = rsqrt(SqGradUV + (E * E));
+        Gradient_UV.xy = (Sample_UV[0] + (Sample_UV[1] * 2.0) + Sample_UV[2]) - (Sample_UV[6] + (Sample_UV[7] * 2.0) + Sample_UV[8]); // <IxU, IxV>
+        Gradient_UV.zw = (Sample_UV[0] + (Sample_UV[3] * 2.0) + Sample_UV[6]) - (Sample_UV[2] + (Sample_UV[5] * 2.0) + Sample_UV[8]); // <IxU, IxV>
+        Sq_Gradient_UV = dot(Gradient_UV.xzyw / 4.0, Gradient_UV.xzyw / 4.0) * 0.25;
+        Center_Gradient = rsqrt(Sq_Gradient_UV + (E * E));
 
-        CenterAvg += ((SampleUV[0] + SampleUV[6] + SampleUV[2] + SampleUV[8]) * 1.0);
-        CenterAvg += ((SampleUV[3] + SampleUV[1] + SampleUV[7] + SampleUV[5]) * 2.0);
-        CenterAvg += (SampleUV[4] * 4.0);
-        CenterAvg = CenterAvg / 16.0;
+        Center_Average += ((Sample_UV[0] + Sample_UV[6] + Sample_UV[2] + Sample_UV[8]) * 1.0);
+        Center_Average += ((Sample_UV[3] + Sample_UV[1] + Sample_UV[7] + Sample_UV[5]) * 2.0);
+        Center_Average += (Sample_UV[4] * 4.0);
+        Center_Average = Center_Average / 16.0;
 
         // North-west gradient and average
         // 0 3 .
         // 1 4 .
         // . . .
-        ProcessGradAvg(SampleUV[0], SampleUV[3], SampleUV[1], SampleUV[4], AreaGrad[0], AreaAvg[0]);
+        ProcessGradAvg(Sample_UV[0], Sample_UV[3], Sample_UV[1], Sample_UV[4], Area_Gradient[0], Area_Average[0]);
 
         // North-east gradient and average
         // . 3 6
         // . 4 7
         // . . .
-        ProcessGradAvg(SampleUV[3], SampleUV[6], SampleUV[4], SampleUV[7], AreaGrad[1], AreaAvg[1]);
+        ProcessGradAvg(Sample_UV[3], Sample_UV[6], Sample_UV[4], Sample_UV[7], Area_Gradient[1], Area_Average[1]);
 
         // South-west gradient and average
         // . . .
         // 1 4 .
         // 2 5 .
-        ProcessGradAvg(SampleUV[1], SampleUV[4], SampleUV[2], SampleUV[5], AreaGrad[2], AreaAvg[2]);
+        ProcessGradAvg(Sample_UV[1], Sample_UV[4], Sample_UV[2], Sample_UV[5], Area_Gradient[2], Area_Average[2]);
 
         // South-east and average
         // . . .
         // . 4 7
         // . 5 8
-        ProcessGradAvg(SampleUV[4], SampleUV[7], SampleUV[5], SampleUV[8], AreaGrad[3], AreaAvg[3]);
+        ProcessGradAvg(Sample_UV[4], Sample_UV[7], Sample_UV[5], Sample_UV[8], Area_Gradient[3], Area_Average[3]);
 
-        UVGrad = 0.5 * (CenterGrad + AreaGrad);
-        UVAvg = (AreaGrad[0] * AreaAvg[0]) + (AreaGrad[1] * AreaAvg[1]) + (AreaGrad[2] * AreaAvg[2]) + (AreaGrad[3] * AreaAvg[3]);
+        UV_Gradient = 0.5 * (Center_Gradient + Area_Gradient);
+        UV_Average = (Area_Gradient[0] * Area_Average[0]) + (Area_Gradient[1] * Area_Average[1]) + (Area_Gradient[2] * Area_Average[2]) + (Area_Gradient[3] * Area_Average[3]);
     }
 
-    void OpticalFlowTV(in sampler2D SourceUV, in float4 TexCoords[3], in float Level, out float2 OpticalFlow)
+    void Optical_Flow_TV(in sampler2D SourceUV, in float4 Coords[3], in float Level, out float2 Optical_Flow)
     {
-        OpticalFlow = 0.0;
-        const float Alpha = max(ldexp(_Constraint * 1e-4, Level - MaxLevel), 1e-7);
+        Optical_Flow = 0.0;
+        const float Alpha = max(ldexp(_Constraint * 1e-4, Level - Max_Level), 1e-7);
 
         // Load textures
-        float2 Current = tex2Dlod(Shared_Resources_OpticalFlow::Sample_Common_1_A, float4(TexCoords[1].xz, 0.0, Level)).xy;
-        float2 Previous = tex2Dlod(Sample_Common_1_P, float4(TexCoords[1].xz, 0.0, Level)).xy;
+        float2 Current = tex2Dlod(Shared_Resources_OpticalFlow::Sample_Common_1_A, float4(Coords[1].xz, 0.0, Level)).xy;
+        float2 Previous = tex2Dlod(Sample_Common_1_P, float4(Coords[1].xz, 0.0, Level)).xy;
 
         // <Rx, Gx, Ry, Gy>
-        float4 SD = tex2Dlod(Shared_Resources_OpticalFlow::Sample_Common_1_B, float4(TexCoords[1].xz, 0.0, Level));
+        float4 S_D = tex2Dlod(Shared_Resources_OpticalFlow::Sample_Common_1_B, float4(Coords[1].xz, 0.0, Level));
 
         // <Rz, Gz>
-        float2 TD = Current - Previous;
+        float2 T_D = Current - Previous;
 
         // Optical flow calculation
 
-        float2 SampleUV[9];
-        float4 UVGrad = 0.0;
-        float2 CenterAvg = 0.0;
-        float2 UVAvg = 0.0;
+        float2 Sample_UV[9];
+        float4 UV_Gradient = 0.0;
+        float2 Center_Average = 0.0;
+        float2 UV_Average = 0.0;
 
-        // SampleUV[i]
+        // Sample_UV[i]
         // 0 3 6
         // 1 4 7
         // 2 5 8
-        SampleUV[0] = tex2D(SourceUV, TexCoords[0].xy).xy;
-        SampleUV[1] = tex2D(SourceUV, TexCoords[0].xz).xy;
-        SampleUV[2] = tex2D(SourceUV, TexCoords[0].xw).xy;
-        SampleUV[3] = tex2D(SourceUV, TexCoords[1].xy).xy;
-        SampleUV[4] = tex2D(SourceUV, TexCoords[1].xz).xy;
-        SampleUV[5] = tex2D(SourceUV, TexCoords[1].xw).xy;
-        SampleUV[6] = tex2D(SourceUV, TexCoords[2].xy).xy;
-        SampleUV[7] = tex2D(SourceUV, TexCoords[2].xz).xy;
-        SampleUV[8] = tex2D(SourceUV, TexCoords[2].xw).xy;
+        Sample_UV[0] = tex2D(SourceUV, Coords[0].xy).xy;
+        Sample_UV[1] = tex2D(SourceUV, Coords[0].xz).xy;
+        Sample_UV[2] = tex2D(SourceUV, Coords[0].xw).xy;
+        Sample_UV[3] = tex2D(SourceUV, Coords[1].xy).xy;
+        Sample_UV[4] = tex2D(SourceUV, Coords[1].xz).xy;
+        Sample_UV[5] = tex2D(SourceUV, Coords[1].xw).xy;
+        Sample_UV[6] = tex2D(SourceUV, Coords[2].xy).xy;
+        Sample_UV[7] = tex2D(SourceUV, Coords[2].xz).xy;
+        Sample_UV[8] = tex2D(SourceUV, Coords[2].xw).xy;
 
-        ProcessArea(SampleUV, UVGrad, CenterAvg, UVAvg);
+        ProcessArea(Sample_UV, UV_Gradient, Center_Average, UV_Average);
 
         float C = 0.0;
         float2 Aii = 0.0;
@@ -700,92 +700,92 @@ namespace OpticalFlow
 
         // Calculate forward motion vectors
 
-        C = dot(SD.xyzw, CenterAvg.xyxy) + dot(TD, 1.0);
+        C = dot(S_D.xyzw, Center_Average.xyxy) + dot(T_D, 1.0);
         C = rsqrt(C * C + (E * E));
 
-        Aii.x = 1.0 / (dot(UVGrad, 1.0) * Alpha + (C * dot(SD.xy, SD.xy)));
-        Aii.y = 1.0 / (dot(UVGrad, 1.0) * Alpha + (C * dot(SD.zw, SD.zw)));
+        Aii.x = 1.0 / (dot(UV_Gradient, 1.0) * Alpha + (C * dot(S_D.xy, S_D.xy)));
+        Aii.y = 1.0 / (dot(UV_Gradient, 1.0) * Alpha + (C * dot(S_D.zw, S_D.zw)));
 
-        Aij = C * dot(SD.xy, SD.zw);
+        Aij = C * dot(S_D.xy, S_D.zw);
 
-        Bi.x = C * dot(SD.xy, TD);
-        Bi.y = C * dot(SD.zw, TD);
+        Bi.x = C * dot(S_D.xy, T_D);
+        Bi.y = C * dot(S_D.zw, T_D);
 
-        OpticalFlow.x = Aii.x * ((Alpha * UVAvg.x) - (Aij * CenterAvg.y) - Bi.x);
-        OpticalFlow.y = Aii.y * ((Alpha * UVAvg.y) - (Aij * OpticalFlow.x) - Bi.y);
+        Optical_Flow.x = Aii.x * ((Alpha * UV_Average.x) - (Aij * Center_Average.y) - Bi.x);
+        Optical_Flow.y = Aii.y * ((Alpha * UV_Average.y) - (Aij * Optical_Flow.x) - Bi.y);
     }
 
-    void Level_4_PS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float2 Color : SV_Target0)
+    void Level_4_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float2 Color : SV_TARGET0)
     {
-        CoarseOpticalFlowTV(TexCoord, 6.5, 0.0, Color);
+        Coarse_Optical_Flow_TV(Coord, 6.5, 0.0, Color);
     }
 
-    void Level_3_PS(in float4 Position : SV_Position, in float4 TexCoords[3] : TEXCOORD0, out float2 Color : SV_Target0)
+    void Level_3_PS(in float4 Position : SV_POSITION, in float4 Coords[3] : TEXCOORD0, out float2 Color : SV_TARGET0)
     {
-        OpticalFlowTV(Shared_Resources_OpticalFlow::Sample_Common_4, TexCoords, 4.5, Color);
+        Optical_Flow_TV(Shared_Resources_OpticalFlow::Sample_Common_4, Coords, 4.5, Color);
     }
 
-    void Level_2_PS(in float4 Position : SV_Position, in float4 TexCoords[3] : TEXCOORD0, out float2 Color : SV_Target0)
+    void Level_2_PS(in float4 Position : SV_POSITION, in float4 Coords[3] : TEXCOORD0, out float2 Color : SV_TARGET0)
     {
-        OpticalFlowTV(Shared_Resources_OpticalFlow::Sample_Common_3, TexCoords, 2.5, Color);
+        Optical_Flow_TV(Shared_Resources_OpticalFlow::Sample_Common_3, Coords, 2.5, Color);
     }
 
-    void Level_1_PS(in float4 Position : SV_Position, in float4 TexCoords[3] : TEXCOORD0, out float4 Color : SV_Target0)
+    void Level_1_PS(in float4 Position : SV_POSITION, in float4 Coords[3] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
     {
-        OpticalFlowTV(Shared_Resources_OpticalFlow::Sample_Common_2, TexCoords, 0.5, Color.rg);
-        Color.ba = float2(0.0, _BlendFactor);
+        Optical_Flow_TV(Shared_Resources_OpticalFlow::Sample_Common_2, Coords, 0.5, Output_Color_0.rg);
+        Output_Color_0.ba = float2(0.0, _Blend_Factor);
     }
 
-    void Blit_Previous_PS(in float4 Position : SV_Position, float2 TexCoord : TEXCOORD, out float4 Color : SV_Target0)
+    void Blit_Previous_PS(in float4 Position : SV_POSITION, float2 Coord : TEXCOORD, out float4 Output_Color_0 : SV_TARGET0)
     {
-        Color = tex2D(Shared_Resources_OpticalFlow::Sample_Common_1_A, TexCoord);
+        Output_Color_0 - tex2D(Shared_Resources_OpticalFlow::Sample_Common_1_A, Coord);
     }
 
-    void Post_Blur_0_PS(in float4 Position : SV_Position, in float4 TexCoords[8] : TEXCOORD0, out float4 Color : SV_Target0)
+    void Post_Blur_0_PS(in float4 Position : SV_POSITION, in float4 Coords[8] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
     {
-        GaussianBlur(Sample_Optical_Flow, TexCoords, Color);
-        Color.a = 1.0;
+        Gaussian_Blur(Sample_Optical_Flow, Coords, Output_Color_0);
+        Output_Color_0.a = 1.0;
     }
 
-    void Post_Blur_1_PS(in float4 Position : SV_Position, in float4 TexCoords[8] : TEXCOORD0, out float4 Color : SV_Target0)
+    void Post_Blur_1_PS(in float4 Position : SV_POSITION, in float4 Coords[8] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
     {
-        GaussianBlur(Shared_Resources_OpticalFlow::Sample_Common_1_A, TexCoords, Color);
-        Color.a = 1.0;
+        Gaussian_Blur(Shared_Resources_OpticalFlow::Sample_Common_1_A, Coords, Output_Color_0);
+        Output_Color_0.a = 1.0;
     }
 
-    void VelocityShadingPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target)
+    void Velocity_Shading_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_Target)
     {
-        float2 Velocity = tex2Dlod(Shared_Resources_OpticalFlow::Sample_Common_1_B, float4(TexCoord, 0.0, _MipBias)).xy;
+        float2 Velocity = tex2Dlod(Shared_Resources_OpticalFlow::Sample_Common_1_B, float4(Coord, 0.0, _Mip_Bias)).xy;
 
-        if(_NormalizedShading)
+        if(_Normalized_Shading)
         {
-            float VelocityLength = saturate(rsqrt(dot(Velocity, Velocity)));
-            OutputColor0.rg = (Velocity * VelocityLength) * 0.5 + 0.5;
-            OutputColor0.b = -dot(OutputColor0.rg, 1.0) * 0.5 + 1.0;
-            OutputColor0.rgb /= max(max(OutputColor0.x, OutputColor0.y), OutputColor0.z);
-            OutputColor0.a = 1.0;
+            float Velocity_Length = saturate(rsqrt(dot(Velocity, Velocity)));
+            Output_Color_0.rg = (Velocity * Velocity_Length) * 0.5 + 0.5;
+            Output_Color_0.b = -dot(Output_Color_0.rg, 1.0) * 0.5 + 1.0;
+            Output_Color_0.rgb /= max(max(Output_Color_0.x, Output_Color_0.y), Output_Color_0.z);
+            Output_Color_0.a = 1.0;
         }
         else
         {
-            OutputColor0 = float4(Velocity, 0.0, 1.0);
+            Output_Color_0 = float4(Velocity, 0.0, 1.0);
         }
     }
 
     #if RENDER_VELOCITY_STREAMS
-        void VelocityStreamsPS(in float4 Position : SV_Position, in float2 Velocity : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+        void Velocity_Streams_PS(in float4 Position : SV_POSITION, in float2 Velocity : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
         {
-            OutputColor0.rg = (_ScaleLineVelocity) ? (Velocity.xy / (length(Velocity) * VELOCITY_SCALE * 0.05)) : normalize(Velocity.xy);
-            OutputColor0.rg = OutputColor0.xy * 0.5 + 0.5;
-            OutputColor0.b = -dot(OutputColor0.rg, 1.0) * 0.5 + 1.0;
-            OutputColor0.rgb /= max(max(OutputColor0.x, OutputColor0.y), OutputColor0.z);
-            OutputColor0.a = 1.0;
+            Output_Color_0.rg = (_Scale_Line_Velocity) ? (Velocity.xy / (length(Velocity) * VELOCITY_SCALE * 0.05)) : normalize(Velocity.xy);
+            Output_Color_0.rg = Output_Color_0.xy * 0.5 + 0.5;
+            Output_Color_0.b = -dot(Output_Color_0.rg, 1.0) * 0.5 + 1.0;
+            Output_Color_0.rgb /= max(max(Output_Color_0.x, Output_Color_0.y), Output_Color_0.z);
+            Output_Color_0.a = 1.0;
         }
 
-        void VelocityStreamsDisplayPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float3 OutputColor0 : SV_Target0)
+        void Velocity_Streams_Display_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float3 Output_Color_0 : SV_TARGET0)
         {
-            float4 Lines = tex2D(SampleLines, TexCoord);
-            float3 MainColor = (_BackgroundColor) ? _BaseColorShift : tex2D(SampleColorGamma, TexCoord).rgb * _BaseColorShift;
-            OutputColor0 = lerp(MainColor, Lines.rgb * _LineColorShift, Lines.aaa * _LineOpacity);
+            float4 Lines = tex2D(Sample_Lines, Coord);
+            float3 Main_Color = (_Background_Color) ? _Backgound_Color_Shift : tex2D(Sample_Color_Gamma, Coord).rgb * _Backgound_Color_Shift;
+            Output_Color_0 = lerp(Main_Color, Lines.rgb * _Line_Color_Shift, Lines.aaa * _Line_Opacity);
         }
     #endif
 
@@ -795,14 +795,14 @@ namespace OpticalFlow
 
         pass Normalize_Frame
         {
-            VertexShader = PostProcessVS;
+            VertexShader = Basic_VS;
             PixelShader = Normalize_Frame_PS;
             RenderTarget0 = Shared_Resources_OpticalFlow::Render_Common_0;
         }
 
         pass Blit
         {
-            VertexShader = PostProcessVS;
+            VertexShader = Basic_VS;
             PixelShader = Blit_Frame_PS;
             RenderTarget = Shared_Resources_OpticalFlow::Render_Common_1_A;
         }
@@ -836,7 +836,7 @@ namespace OpticalFlow
 
         pass
         {
-            VertexShader = PostProcessVS;
+            VertexShader = Basic_VS;
             PixelShader = Level_4_PS;
             RenderTarget0 = Shared_Resources_OpticalFlow::Render_Common_4;
         }
@@ -871,7 +871,7 @@ namespace OpticalFlow
 
         pass Blit
         {
-            VertexShader = PostProcessVS;
+            VertexShader = Basic_VS;
             PixelShader = Blit_Previous_PS;
             RenderTarget = Render_Common_1_P;
         }
@@ -900,23 +900,23 @@ namespace OpticalFlow
             {
                 PrimitiveTopology = LINELIST;
                 VertexCount = NUM_LINES * 2;
-                VertexShader = VelocityStreamsVS;
-                PixelShader = VelocityStreamsPS;
+                VertexShader = Velocity_Streams_VS;
+                PixelShader = Velocity_Streams_PS;
                 ClearRenderTargets = TRUE;
-                RenderTarget0 = RenderLines;
+                RenderTarget0 = Render_Lines;
             }
 
             pass
             {
-                VertexShader = PostProcessVS;
-                PixelShader = VelocityStreamsDisplayPS;
+                VertexShader = Basic_VS;
+                PixelShader = Velocity_Streams_Display_PS;
                 ClearRenderTargets = FALSE;
             }
         #else
             pass
             {
-                VertexShader = PostProcessVS;
-                PixelShader = VelocityShadingPS;
+                VertexShader = Basic_VS;
+                PixelShader = Velocity_Shading_PS;
             }
         #endif
     }

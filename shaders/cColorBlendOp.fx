@@ -31,21 +31,21 @@ uniform float4 _Color <
 
 // Vertex shaders
 
-void PostProcessVS(in uint ID : SV_VertexID, out float4 Position : SV_Position)
+void Basic_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION)
 {
     // Clip a triangle twice the screen's size to make a quad
-    float2 TexCoord = 0.0;
-    TexCoord.x = (ID == 2) ? 2.0 : 0.0;
-    TexCoord.y = (ID == 1) ? 2.0 : 0.0;
-    Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    float2 Coord = 0.0;
+    Coord.x = (ID == 2) ? 2.0 : 0.0;
+    Coord.y = (ID == 1) ? 2.0 : 0.0;
+    Position = float4(Coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
 
 // Pixel shaders
 
-void ColorPS(in float4 Position : SV_Position, out float4 OutputColor0 : SV_Target0)
+void Color_PS(in float4 Position : SV_POSITION, out float4 Output_Color_0 : SV_TARGET0)
 {
     // Fill this quad with a color
-    OutputColor0 = _Color;
+    Output_Color_0 = _Color;
 }
 
 // Use BlendOp to multiple the backbuffer with this quad's color
@@ -53,8 +53,8 @@ technique cColorBlendOp
 {
     pass
     {
-        VertexShader = PostProcessVS;
-        PixelShader = ColorPS;
+        VertexShader = Basic_VS;
+        PixelShader = Color_PS;
         BlendEnable = TRUE;
         BlendOp = ADD;
         SrcBlend = DESTCOLOR;

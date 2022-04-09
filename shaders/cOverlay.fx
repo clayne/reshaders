@@ -33,28 +33,28 @@
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-uniform float2 _TexScale <
+uniform float2 _Tex_Scale <
     ui_label = "Scale";
     ui_category = "Texture";
     ui_type = "drag";
     ui_step = 0.001;
 > = 1.0;
 
-uniform float2 _TexOffset <
+uniform float2 _Tex_Offset <
     ui_label = "Offset";
     ui_category = "Texture";
     ui_type = "drag";
     ui_step = 0.001;
 > = float2(0.0, 0.0);
 
-uniform float2 _MaskScale <
+uniform float2 _Mask_Scale <
     ui_type = "drag";
     ui_label = "Scale";
     ui_category = "Mask";
     ui_min = 0.0;
 > = float2(0.0, 0.0);
 
-uniform float2 _MaskOffset <
+uniform float2 _Mask_Offset <
     ui_type = "drag";
     ui_label = "Scale";
     ui_category = "Mask";
@@ -65,11 +65,11 @@ uniform float2 _MaskOffset <
     #define ENABLE_POINT_SAMPLING 0
 #endif
 
-texture2D RenderColor : COLOR;
+texture2D Render_Color : COLOR;
 
-sampler2D SampleColor
+sampler2D Sample_Color
 {
-    Texture = RenderColor;
+    Texture = Render_Color;
     AddressU = MIRROR;
     AddressV = MIRROR;
     #if ENABLE_POINT_SAMPLING
@@ -86,41 +86,41 @@ sampler2D SampleColor
     #endif
 };
 
-void OverlayVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float4 TexCoord : TEXCOORD0)
+void Overlay_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 Coord : TEXCOORD0)
 {
-    TexCoord = 0.0;
-    TexCoord.x = (ID == 2) ? 2.0 : 0.0;
-    TexCoord.y = (ID == 1) ? 2.0 : 0.0;
-    Position = float4(TexCoord.xy * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    Coord = 0.0;
+    Coord.x = (ID == 2) ? 2.0 : 0.0;
+    Coord.y = (ID == 1) ? 2.0 : 0.0;
+    Position = float4(Coord.xy * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 
     // Scale texture coordinates from [0, 1] to [-1, 1] range
-    TexCoord.zw = TexCoord.xy * 2.0 - 1.0;
+    Coord.zw = Coord.xy * 2.0 - 1.0;
     // Scale and offset in [-1, 1] range
-    TexCoord.zw = TexCoord.zw * _TexScale + _TexOffset;
+    Coord.zw = Coord.zw * _Tex_Scale + _Tex_Offset;
     // Scale texture coordinates from [-1, 1] to [0, 1] range
-    TexCoord.zw = TexCoord.zw * 0.5 + 0.5;
+    Coord.zw = Coord.zw * 0.5 + 0.5;
 }
 
-void OverlayPS(in float4 Position : SV_Position, in float4 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+void Overlay_PS(in float4 Position : SV_POSITION, in float4 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
 {
-    float4 InputColor = tex2D(SampleColor, TexCoord.zw);
+    float4 Color = tex2D(Sample_Color, Coord.zw);
 
     // Output a rectangle
-    float2 MaskCoord = TexCoord.xy;
-    float2 Scale = -_MaskScale * 0.5 + 0.5;
-    float2 Shaper = step(Scale, MaskCoord.xy) * step(Scale, 1.0 - MaskCoord.xy);
+    float2 Mask_Coord = Coord.xy;
+    float2 Scale = -_Mask_Scale * 0.5 + 0.5;
+    float2 Shaper = step(Scale, Mask_Coord.xy) * step(Scale, 1.0 - Mask_Coord.xy);
     float Crop = Shaper.x * Shaper.y;
 
-    OutputColor0.rgb = InputColor.rgb;
-    OutputColor0.a = Crop;
+    Output_Color_0.rgb = Color.rgb;
+    Output_Color_0.a = Crop;
 }
 
 technique cOverlay
 {
     pass
     {
-        VertexShader = OverlayVS;
-        PixelShader = OverlayPS;
+        VertexShader = Overlay_VS;
+        PixelShader = Overlay_PS;
         // Blend the rectangle with the backbuffer
         ClearRenderTargets = FALSE;
         BlendEnable = TRUE;

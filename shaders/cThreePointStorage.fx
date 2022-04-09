@@ -33,7 +33,7 @@
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-namespace ThreePointStorage
+namespace Three_Point_Storage
 {
     // Consideration: Use A8 channel for difference requirement (normalize BW image)
 
@@ -95,11 +95,11 @@ namespace ThreePointStorage
         MipFilter = LINEAR;
     };
 
-    void PostProcessVS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float2 TexCoord : TEXCOORD0)
+    void Basic_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float2 Coord : TEXCOORD0)
     {
-        TexCoord.x = (ID == 2) ? 2.0 : 0.0;
-        TexCoord.y = (ID == 1) ? 2.0 : 0.0;
-        Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+        Coord.x = (ID == 2) ? 2.0 : 0.0;
+        Coord.y = (ID == 1) ? 2.0 : 0.0;
+        Position = float4(Coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
     }
 
     /*
@@ -114,19 +114,19 @@ namespace ThreePointStorage
         ... and so forth
     */
 
-    void Store_Frame_3_PS(float4 Position : SV_Position, float2 TexCoord : TEXCOORD, out float4 Color : SV_Target0)
+    void Store_Frame_3_PS(float4 Position : SV_POSITION, float2 Coord : TEXCOORD, out float4 Output_Color_0 : SV_TARGET0)
     {
-        Color = tex2D(Sample_Frame_2, TexCoord);
+        Output_Color_0 = tex2D(Sample_Frame_2, Coord);
     }
 
-    void Store_Frame_2_PS(float4 Position : SV_Position, float2 TexCoord : TEXCOORD, out float4 Color : SV_Target0)
+    void Store_Frame_2_PS(float4 Position : SV_POSITION, float2 Coord : TEXCOORD, out float4 Output_Color_0 : SV_TARGET0)
     {
-        Color = tex2D(Sample_Frame_1, TexCoord);
+        Output_Color_0 = tex2D(Sample_Frame_1, Coord);
     }
 
-    void Current_Frame_1_PS(float4 Position : SV_Position, float2 TexCoord : TEXCOORD, out float4 Color : SV_Target0)
+    void Current_Frame_1_PS(float4 Position : SV_POSITION, float2 Coord : TEXCOORD, out float4 Output_Color_0 : SV_TARGET0)
     {
-        Color = tex2D(Sample_Color, TexCoord);
+        Output_Color_0 = tex2D(Sample_Color, Coord);
     }
 
     /*
@@ -139,21 +139,21 @@ namespace ThreePointStorage
     {
         pass Store_Frame_3
         {
-            VertexShader = PostProcessVS;
+            VertexShader = Basic_VS;
             PixelShader = Store_Frame_3_PS;
             RenderTarget = Render_Frame_3;
         }
 
         pass Store_Frame_2
         {
-            VertexShader = PostProcessVS;
+            VertexShader = Basic_VS;
             PixelShader = Store_Frame_2_PS;
             RenderTarget = Render_Frame_2;
         }
 
         pass Store_Frame_1
         {
-            VertexShader = PostProcessVS;
+            VertexShader = Basic_VS;
             PixelShader = Current_Frame_1_PS;
             RenderTarget = Render_Frame_1;
         }

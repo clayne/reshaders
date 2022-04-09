@@ -35,16 +35,16 @@
 
 // Vertex shaders
 
-void PostProcessVS(out float4 Position : SV_Position)
+void Basic_VS(out float4 Position : SV_POSITION)
 {
-    Position = float4(0.0, 0.0, 0.0, 0.0);
+    Position = 0.0;
 }
 
 // Pixel shaders
 
-void PostProcessPS(out float4 OutputColor0 : SV_Target0)
+void Basic_PS(out float4 Output_Color_0 : SV_TARGET0)
 {
-    OutputColor0 = float4(0.0, 0.0, 0.0, 0.0);
+    Output_Color_0 = 0.0;
 }
 
 technique cDefault
@@ -52,7 +52,7 @@ technique cDefault
     pass
     {
         VertexCount = 0;
-        VertexShader = PostProcessVS;
-        PixelShader = PostProcessPS;
+        VertexShader = Basic_VS;
+        PixelShader = Basic_PS;
     }
 }

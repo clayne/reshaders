@@ -35,7 +35,7 @@
 
 namespace FrameDifference
 {
-    uniform float _BlendFactor <
+    uniform float _Blend_Factor <
         ui_type = "slider";
         ui_label = "Temporal blending factor";
         ui_min = 0.0;
@@ -68,11 +68,11 @@ namespace FrameDifference
         ui_label = "Normalize Input";
     > = false;
 
-    texture2D RenderColor : COLOR;
+    texture2D Render_Color : COLOR;
 
-    sampler2D SampleColor
+    sampler2D Sample_Color
     {
-        Texture = RenderColor;
+        Texture = Render_Color;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
@@ -128,76 +128,76 @@ namespace FrameDifference
 
     // Vertex shaders
 
-    void PostProcessVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float2 TexCoord : TEXCOORD0)
+    void Basic_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float2 Coord : TEXCOORD0)
     {
-        TexCoord.x = (ID == 2) ? 2.0 : 0.0;
-        TexCoord.y = (ID == 1) ? 2.0 : 0.0;
-        Position = TexCoord.xyxy * float4(2.0, -2.0, 0.0, 0.0) + float4(-1.0, 1.0, 0.0, 1.0);
+        Coord.x = (ID == 2) ? 2.0 : 0.0;
+        Coord.y = (ID == 1) ? 2.0 : 0.0;
+        Position = Coord.xyxy * float4(2.0, -2.0, 0.0, 0.0) + float4(-1.0, 1.0, 0.0, 1.0);
     }
 
     // Pixel shaders
 
-    void BlitPS0(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+    void BlitPS0(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
     {
-        float3 Color = max(tex2D(SampleColor, TexCoord).rgb, exp2(-10.0));
-        OutputColor0 = (_NormalizeInput) ? saturate(Color.xy / dot(Color, 1.0)) : max(max(Color.r, Color.g), Color.b);
+        float3 Color = max(tex2D(Sample_Color, Coord).rgb, exp2(-10.0));
+        Output_Color_0 = (_NormalizeInput) ? saturate(Color.xy / dot(Color, 1.0)) : max(max(Color.r, Color.g), Color.b);
     }
 
-    void DifferencePS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+    void DifferencePS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
     {
         float Difference = 0.0;
 
         if(_NormalizeInput)
         {
-            float2 Current = tex2D(SampleCurrent, TexCoord).rg;
-            float2 Previous = tex2D(SamplePrevious, TexCoord).rg;
+            float2 Current = tex2D(SampleCurrent, Coord).rg;
+            float2 Previous = tex2D(SamplePrevious, Coord).rg;
             Difference = abs(dot(Current - Previous, 1.0)) * _DifferenceWeight;
         }
         else
         {
-            float Current = tex2D(SampleCurrent, TexCoord).r;
-            float Previous = tex2D(SamplePrevious, TexCoord).r;
+            float Current = tex2D(SampleCurrent, Coord).r;
+            float Previous = tex2D(SamplePrevious, Coord).r;
             Difference = abs(Current - Previous) * _DifferenceWeight;
         }
 
         if (Difference <= _MinThreshold)
         {
-            OutputColor0 = 0.0;
+            Output_Color_0 = 0.0;
         }
         else if (Difference > _MaxThreshold)
         {
-            OutputColor0 = 1.0;
+            Output_Color_0 = 1.0;
         }
         else
         {
-            OutputColor0 = Difference;
+            Output_Color_0 = Difference;
         }
 
-        OutputColor0.a = _BlendFactor;
+        Output_Color_0.a = _Blend_Factor;
     }
 
-    void OutputPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+    void OutputPS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
     {
-        OutputColor0 = tex2D(SampleDifference, TexCoord).r;
+        Output_Color_0 = tex2D(SampleDifference, Coord).r;
     }
 
-    void BlitPS1(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+    void BlitPS1(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
     {
-        OutputColor0 = tex2D(SampleCurrent, TexCoord);
+        Output_Color_0 = tex2D(SampleCurrent, Coord);
     }
 
     technique cFrameDifference
     {
         pass
         {
-            VertexShader = PostProcessVS;
+            VertexShader = Basic_VS;
             PixelShader = BlitPS0;
             RenderTarget0 = RenderCurrent;
         }
 
         pass
         {
-            VertexShader = PostProcessVS;
+            VertexShader = Basic_VS;
             PixelShader = DifferencePS;
             RenderTarget0 = RenderDifference;
             ClearRenderTargets = FALSE;
@@ -209,7 +209,7 @@ namespace FrameDifference
 
         pass
         {
-            VertexShader = PostProcessVS;
+            VertexShader = Basic_VS;
             PixelShader = OutputPS;
             #if BUFFER_COLOR_BIT_DEPTH == 8
                 SRGBWriteEnable = TRUE;
@@ -218,7 +218,7 @@ namespace FrameDifference
 
         pass
         {
-            VertexShader = PostProcessVS;
+            VertexShader = Basic_VS;
             PixelShader = BlitPS1;
             RenderTarget0 = RenderPrevious;
         }

@@ -86,7 +86,7 @@ void SMAAMovc(bool4 cond, inout float4 variable, float4 value)
 }
 
 /*
-    Horizontal/Vertical Search Functions
+    Is_Horizontal/Vertical Search Functions
 
     This allows to determine how much length should we add in the last step
     of the searches. It takes the bilinearly interpolated edge (see
@@ -115,7 +115,7 @@ float SMAASearchLength( sampler2D searchTex, float2 e, float offset)
 }
 
 
-/* Horizontal/vertical search functions for the 2nd pass. */
+/* Is_Horizontal/vertical search functions for the 2nd pass. */
 
 float SMAASearchXLeft(sampler2D edgesTex, sampler2D searchTex, float2 texcoord, float end)
 {

@@ -33,11 +33,11 @@
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-namespace SharedResources
+namespace Shared_Resources
 {
     namespace RGBA8
     {
-        texture2D RenderCommon1 < pooled = true; >
+        texture2D Render_Common_1 < pooled = true; >
         {
             Width = BUFFER_WIDTH >> 1;
             Height = BUFFER_HEIGHT >> 1;
@@ -65,11 +65,11 @@ uniform int _Samples <
     ui_min = 0;
 > = 16;
 
-texture2D RenderColor : COLOR;
+texture2D Render_Color : COLOR;
 
-sampler2D SampleColor
+sampler2D Sample_Color
 {
-    Texture = RenderColor;
+    Texture = Render_Color;
     MagFilter = LINEAR;
     MinFilter = LINEAR;
     MipFilter = LINEAR;
@@ -78,9 +78,9 @@ sampler2D SampleColor
     #endif
 };
 
-sampler2D SampleCommon_RGBA8_1
+sampler2D Sample_Common_RGBA8_1
 {
-    Texture = SharedResources::RGBA8::RenderCommon1;
+    Texture = Shared_Resources::RGBA8::Render_Common_1;
     MagFilter = LINEAR;
     MinFilter = LINEAR;
     MipFilter = LINEAR;
@@ -91,77 +91,77 @@ sampler2D SampleCommon_RGBA8_1
 
 // Vertex shaders
 
-void PostProcessVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float2 TexCoord : TEXCOORD0)
+void Basic_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float2 Coord : TEXCOORD0)
 {
-    TexCoord.x = (ID == 2) ? 2.0 : 0.0;
-    TexCoord.y = (ID == 1) ? 2.0 : 0.0;
-    Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    Coord.x = (ID == 2) ? 2.0 : 0.0;
+    Coord.y = (ID == 1) ? 2.0 : 0.0;
+    Position = float4(Coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
 
 // Pixel shaders
 // Repurposed Wojciech Sterna's shadow sampling code as a screen-space convolution
 // http://maxest.gct-game.net/content/chss.pdf
 
-void VogelSample(int Index, int SamplesCount, float Phi, out float2 OutputValue)
+void Vogel_Sample(int Index, int Samples_Count, float Phi, out float2 Output)
 {
-    const float GoldenAngle = 2.4;
-    float Radius = sqrt(float(Index) + 0.5) * rsqrt(float(SamplesCount));
-    float Theta = float(Index) * GoldenAngle + Phi;
+    const float Golden_Angle = 2.4;
+    float Radius = sqrt(float(Index) + 0.5) * rsqrt(float(Samples_Count));
+    float Theta = float(Index) * Golden_Angle + Phi;
 
-    float2 SineCosine;
-    SineCosine[0] = sin(Theta);
-    SineCosine[1] = cos(Theta);
-    OutputValue = Radius * SineCosine;
+    float2 Sine_Cosine;
+    Sine_Cosine[0] = sin(Theta);
+    Sine_Cosine[1] = cos(Theta);
+    Output = Radius * Sine_Cosine;
 }
 
-void VogelBlur(sampler2D Source, float2 TexCoord, float2 ScreenSize, float Radius, int Samples, float Phi, out float4 OutputColor)
+void VogelBlur(sampler2D Source, float2 Coord, float2 Screen_Size, float Radius, int Samples, float Phi, out float4 Output_Color)
 {
     // Initialize variables we need to accumulate samples and calculate offsets
-    float2 Output;
-    float2 Offset;
+    float2 Output = 0.0;
+    float2 Offset = 0.0;
 
     // LOD calculation to fill in the gaps between samples
     const float Pi = 3.1415926535897932384626433832795;
-    float SampleArea = Pi * (Radius * Radius) / float(Samples);
-    float LOD = max(0.0, 0.5 * log2(SampleArea));
+    float Sample_Area = Pi * (Radius * Radius) / float(Samples);
+    float LOD = max(0.0, 0.5 * log2(Sample_Area));
 
     // Offset and weighting attributes
-    float2 PixelSize = 1.0 / ldexp(ScreenSize, -LOD);
+    float2 Pixel_Size = 1.0 / ldexp(Screen_Size, -LOD);
     float Weight = 1.0 / (float(Samples) + 1.0);
 
     for(int i = 0; i < Samples; i++)
     {
-        VogelSample(i, Samples, Phi, Offset);
-        OutputColor += tex2Dlod(Source, float4(TexCoord + (Offset * PixelSize), 0.0, LOD)) * Weight;
+        Vogel_Sample(i, Samples, Phi, Offset);
+        Output_Color += tex2Dlod(Source, float4(Coord + (Offset * Pixel_Size), 0.0, LOD)) * Weight;
     }
 }
 
-void BlitPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+void Blit_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
 {
-    OutputColor0 = tex2D(SampleColor, TexCoord);
+    Output_Color_0 = tex2D(Sample_Color, Coord);
 }
 
-void VogelConvolutionPS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+void Vogel_Convolution_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
 {
-    VogelBlur(SampleCommon_RGBA8_1, TexCoord, uint2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2), _Radius, _Samples, _Offset, OutputColor0);
+    VogelBlur(Sample_Common_RGBA8_1, Coord, int2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2), _Radius, _Samples, _Offset, Output_Color_0);
 }
 
 technique cBlur
 {
-    pass GenerateMipLevels
+    pass Generate_Mip_Levels
     {
-        VertexShader = PostProcessVS;
-        PixelShader = BlitPS;
-        RenderTarget0 = SharedResources::RGBA8::RenderCommon1;
+        VertexShader = Basic_VS;
+        PixelShader = Blit_PS;
+        RenderTarget0 = Shared_Resources::RGBA8::Render_Common_1;
         #if BUFFER_COLOR_BIT_DEPTH == 8
             SRGBWriteEnable = TRUE;
         #endif
     }
 
-    pass VogelBlur
+    pass Vogel_Blur
     {
-        VertexShader = PostProcessVS;
-        PixelShader = VogelConvolutionPS;
+        VertexShader = Basic_VS;
+        PixelShader = Vogel_Convolution_PS;
         #if BUFFER_COLOR_BIT_DEPTH == 8
             SRGBWriteEnable = TRUE;
         #endif

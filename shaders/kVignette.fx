@@ -31,30 +31,30 @@ uniform float _Falloff <
 
 // Vertex shaders
 
-void PostProcessVS(in uint ID : SV_VertexID, out float4 Position : SV_Position, out float2 TexCoord : TEXCOORD0)
+void Basic_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float2 Coord : TEXCOORD0)
 {
-    TexCoord.x = (ID == 2) ? 2.0 : 0.0;
-    TexCoord.y = (ID == 1) ? 2.0 : 0.0;
-    Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    Coord.x = (ID == 2) ? 2.0 : 0.0;
+    Coord.y = (ID == 1) ? 2.0 : 0.0;
+    Position = float4(Coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
 
 /* [ Pixel Shaders ] */
 
-void VignettePS(in float4 Position : SV_Position, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target0)
+void Vignette_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
 {
-    const float AspectRatio = BUFFER_WIDTH / BUFFER_HEIGHT;
-    float2 Coord = (TexCoord * 2.0 - 1.0) * AspectRatio;
+    const float Aspect_Ratio = BUFFER_WIDTH / BUFFER_HEIGHT;
+    float2 Coord = (Coord * 2.0 - 1.0) * Aspect_Ratio;
     float Radius = length(Coord) * _Falloff;
-    float Radius2_1 = mad(Radius, Radius, 1.0);
-    OutputColor0 = rcp(Radius2_1 * Radius2_1);
+    float Radius_2_1 = mad(Radius, Radius, 1.0);
+    Output_Color_0 = rcp(Radius_2_1 * Radius_2_1);
 }
 
 technique KinoVignette
 {
     pass
     {
-        VertexShader = PostProcessVS;
-        PixelShader = VignettePS;
+        VertexShader = Basic_VS;
+        PixelShader = Vignette_PS;
         // Multiplication blend mode
         BlendEnable = TRUE;
         BlendOp = ADD;
