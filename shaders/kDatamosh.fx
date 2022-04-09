@@ -474,12 +474,12 @@ namespace Optical_Flow
 
     // Math functions: https://github.com/microsoft/DirectX-Graphics-Samples/blob/master/MiniEngine/Core/Shaders/DoFMedianFilterCS.hlsl
 
-    float4 Max3(float4 a, float4 b, float4 c)
+    float4 Max_3(float4 a, float4 b, float4 c)
     {
         return max(max(a, b), c);
     }
 
-    float4 Min3(float4 a, float4 b, float4 c)
+    float4 Min_3(float4 a, float4 b, float4 c)
     {
         return min(min(a, b), c);
     }
@@ -493,8 +493,8 @@ namespace Optical_Flow
                 float4 x3, float4 x4, float4 x5,
                 float4 x6, float4 x7, float4 x8)
     {
-        float4 A = Max3(Min3(x0, x1, x2), Min3(x3, x4, x5), Min3(x6, x7, x8));
-        float4 B = Min3(Max3(x0, x1, x2), Max3(x3, x4, x5), Max3(x6, x7, x8));
+        float4 A = Max_3(Min_3(x0, x1, x2), Min_3(x3, x4, x5), Min_3(x6, x7, x8));
+        float4 B = Min_3(Max_3(x0, x1, x2), Max_3(x3, x4, x5), Max_3(x6, x7, x8));
         float4 C = Median_3(Median_3(x0, x1, x2), Median_3(x3, x4, x5), Median_3(x6, x7, x8));
         return Median_3(A, B, C);
     }

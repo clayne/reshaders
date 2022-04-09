@@ -246,7 +246,7 @@ void DownsamplePS(in sampler2D Source, in float4 Coords[4], out float4 Output_Co
     float4 A_0, A_1, A_2, A_3,
            B_0, B_1, B_2, B_3,
            C_0, C_1, C_2, C_3,
-           D0, D1, D2, D3;
+           D_0, D_1, D_2, D_3;
 
     switch(_Downsample_Method)
     {
@@ -282,14 +282,14 @@ void DownsamplePS(in sampler2D Source, in float4 Coords[4], out float4 Output_Co
         case 2: // Jorge
             // Sampler locations
             // A_0    B_0    C_0
-            //    D0    D1
+            //    D_0    D_1
             // A_1    B_1    C_1
-            //    D2    D3
+            //    D_2    D_3
             // A_2    B_2    C_2
-            D0 = tex2D(Source, Coords[0].xw);
-            D1 = tex2D(Source, Coords[0].zw);
-            D2 = tex2D(Source, Coords[0].xy);
-            D3 = tex2D(Source, Coords[0].zy);
+            D_0 = tex2D(Source, Coords[0].xw);
+            D_1 = tex2D(Source, Coords[0].zw);
+            D_2 = tex2D(Source, Coords[0].xy);
+            D_3 = tex2D(Source, Coords[0].zy);
 
             A_0 = tex2D(Source, Coords[1].xy);
             A_1 = tex2D(Source, Coords[1].xz);
@@ -304,7 +304,7 @@ void DownsamplePS(in sampler2D Source, in float4 Coords[4], out float4 Output_Co
             C_2 = tex2D(Source, Coords[3].xw);
 
             const float2 Weights = float2(0.5, 0.125) / 4.0;
-            Output_Color += (D0 + D1 + D2 + D3) * Weights.x;
+            Output_Color += (D_0 + D_1 + D_2 + D_3) * Weights.x;
             Output_Color += (A_0 + B_0 + A_1 + B_1) * Weights.y;
             Output_Color += (B_0 + C_0 + B_1 + C_1) * Weights.y;
             Output_Color += (A_1 + B_1 + A_2 + B_2) * Weights.y;

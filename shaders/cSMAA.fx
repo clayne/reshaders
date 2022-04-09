@@ -35,319 +35,319 @@
 
 #include "cSMAA.fxh"
 
-#define dTex(a, b, c) Width = ##a; Height = ##b; Format = ##c
+texture2D Color_Tex : COLOR;
 
-texture2D colorTex : COLOR;
-
-sampler2D colorLinearSampler
+sampler2D Color_Linear_Sampler
 {
-    Texture = colorTex;
+    Texture = Color_Tex;
     #if BUFFER_COLOR_BIT_DEPTH == 8
         SRGBTexture = TRUE;
     #endif
 };
 
-texture2D edgesTex < pooled = true; >
+texture2D Edges_Tex < pooled = true; >
 {
     Width = BUFFER_WIDTH;
     Height = BUFFER_HEIGHT;
     Format = RG8;
 };
 
-sampler2D edgesSampler
+sampler2D Edges_Sampler
 {
-    Texture = edgesTex;
+    Texture = Edges_Tex;
 };
 
-texture2D blendTex < pooled = true; >
+texture2D Blend_Tex < pooled = true; >
 {
     Width = BUFFER_WIDTH;
     Height = BUFFER_HEIGHT;
     Format = RGBA8;
 };
 
-sampler2D blendSampler
+sampler2D Blend_Sampler
 {
-    Texture = blendTex;
+    Texture = Blend_Tex;
 };
 
-texture2D areaTex < source = "AreaTex.dds"; >
+texture2D Area_Tex < source = "AreaTex.dds"; >
 {
     Width = 160;
     Height = 560;
     Format = RG8;
 };
 
-sampler2D areaSampler
+sampler2D Area_Sampler
 {
-    Texture = areaTex;
+    Texture = Area_Tex;
 };
 
-texture2D searchTex < source = "SearchTex.dds"; >
+texture2D Search_Tex < source = "SearchTex.dds"; >
 {
     Width = 64;
     Height = 16;
     Format = R8;
 };
 
-sampler2D searchSampler
+sampler2D Search_Sampler
 {
-    Texture = searchTex;
-    MipFilter = Point;
-    MinFilter = Point;
-    MagFilter = Point;
+    Texture = Search_Tex;
+    MipFilter = POINT;
+    MinFilter = POINT;
+    MagFilter = POINT;
 };
 
 /*
     Color Edge Detection Pixel Shaders (First Pass)
 
     IMPORTANT NOTICE: color edge detection requires gamma-corrected colors, and
-    thus 'colorTex' should be a non-sRGB texture.
+    thus 'Color_Tex' should be a non-sRGB texture.
 */
 
-struct v2f_1
+struct V2F_1
 {
-    float4 vpos   : SV_POSITION;
-    float2 uv0    : TEXCOORD0;
-    float4 uv1[3] : TEXCOORD1;
+    float4 Pos : SV_POSITION;
+    float2 Coord_0 : TEXCOORD0;
+    float4 Coord_1[3] : TEXCOORD1;
 };
 
-v2f_1 SMAAEdgeDetectionWrapVS(in uint id : SV_VERTEXID)
+V2F_1 SMAAEdgeDetectionWrapVS(in uint ID : SV_VERTEXID)
 {
-    v2f_1 o;
+    V2F_1 Output;
 
-    float2 coord;
-    coord.x = (id == 2) ? 2.0 : 0.0;
-    coord.y = (id == 1) ? 2.0 : 0.0;
-    o.vpos = float4(coord.xy * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    float2 Coord;
+    Coord.x = (ID == 2) ? 2.0 : 0.0;
+    Coord.y = (ID == 1) ? 2.0 : 0.0;
+    Output.Pos = float4(Coord.xy * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 
-    o.uv0 = coord;
-    o.uv1[0] = mad(SMAA_RT_METRICS.xyxy, float4(-1.0, 0.0, 0.0, -1.0), coord.xyxy);
-    o.uv1[1] = mad(SMAA_RT_METRICS.xyxy, float4( 1.0, 0.0, 0.0,  1.0), coord.xyxy);
-    o.uv1[2] = mad(SMAA_RT_METRICS.xyxy, float4(-2.0, 0.0, 0.0, -2.0), coord.xyxy);
-    return o;
+    Output.Coord_0 = Coord;
+    Output.Coord_1[0] = mad(SMAA_RT_METRICS.xyxy, float4(-1.0, 0.0, 0.0, -1.0), Coord.xyxy);
+    Output.Coord_1[1] = mad(SMAA_RT_METRICS.xyxy, float4( 1.0, 0.0, 0.0,  1.0), Coord.xyxy);
+    Output.Coord_1[2] = mad(SMAA_RT_METRICS.xyxy, float4(-2.0, 0.0, 0.0, -2.0), Coord.xyxy);
+    return Output;
 }
 
-float2 SMAAEdgeDetectionWrapPS(v2f_1 input) : SV_Target
+float2 SMAAEdgeDetectionWrapPS(V2F_1 Input) : SV_Target
 {
     // Calculate the threshold:
-    float2 threshold = float2(SMAA_THRESHOLD, SMAA_THRESHOLD);
+    float2 Threshold = float2(SMAA_THRESHOLD, SMAA_THRESHOLD);
 
     // Calculate color deltas:
-    float4 delta;
-    float3 C = tex2D(colorLinearSampler, input.uv0).rgb;
+    float4 Delta;
+    float3 C = tex2D(Color_Linear_Sampler, Input.Coord_0).rgb;
 
-    float3 Cleft = tex2D(colorLinearSampler, input.uv1[0].xy).rgb;
-    float3 t = abs(C - Cleft);
-    delta.x = max(max(t.r, t.g), t.b);
+    float3 C_Left = tex2D(Color_Linear_Sampler, Input.Coord_1[0].xy).rgb;
+    float3 T = abs(C - C_Left);
+    Delta.x = max(max(T.r, T.g), T.b);
 
-    float3 Ctop  = tex2D(colorLinearSampler, input.uv1[0].zw).rgb;
-    t = abs(C - Ctop);
-    delta.y = max(max(t.r, t.g), t.b);
+    float3 C_Top  = tex2D(Color_Linear_Sampler, Input.Coord_1[0].zw).rgb;
+    T = abs(C - C_Top);
+    Delta.y = max(max(T.r, T.g), T.b);
 
-    // We do the usual threshold:
-    float2 edges = step(threshold, delta.xy);
+    // We do the usual Threshold:
+    float2 Edges = step(Threshold, Delta.xy);
 
     // Then discard if there is no edge:
-    if (dot(edges, float2(1.0, 1.0)) == 0.0) discard;
+    if (dot(Edges, float2(1.0, 1.0)) == 0.0) discard;
 
     // Calculate right and bottom deltas:
-    float3 Cright = tex2D(colorLinearSampler, input.uv1[1].xy).rgb;
-    t = abs(C - Cright);
-    delta.z = max(max(t.r, t.g), t.b);
+    float3 C_Right = tex2D(Color_Linear_Sampler, Input.Coord_1[1].xy).rgb;
+    T = abs(C - C_Right);
+    Delta.z = max(max(T.r, T.g), T.b);
 
-    float3 Cbottom  = tex2D(colorLinearSampler, input.uv1[1].zw).rgb;
-    t = abs(C - Cbottom);
-    delta.w = max(max(t.r, t.g), t.b);
+    float3 C_Bottom  = tex2D(Color_Linear_Sampler, Input.Coord_1[1].zw).rgb;
+    T = abs(C - C_Bottom);
+    Delta.w = max(max(T.r, T.g), T.b);
 
     // Calculate the maximum delta in the direct neighborhood:
-    float2 maxDelta = max(delta.xy, delta.zw);
+    float2 Max_Delta = max(Delta.xy, Delta.zw);
 
     // Calculate left-left and top-top deltas:
-    float3 Cleftleft  = tex2D(colorLinearSampler, input.uv1[2].xy).rgb;
-    t = abs(Cleft - Cleftleft);
-    delta.z = max(max(t.r, t.g), t.b);
+    float3 C_Left_Left  = tex2D(Color_Linear_Sampler, Input.Coord_1[2].xy).rgb;
+    T = abs(C_Left - C_Left_Left);
+    Delta.z = max(max(T.r, T.g), T.b);
 
-    float3 Ctoptop = tex2D(colorLinearSampler, input.uv1[2].zw).rgb;
-    t = abs(Ctop - Ctoptop);
-    delta.w = max(max(t.r, t.g), t.b);
+    float3 C_Top_Top = tex2D(Color_Linear_Sampler, Input.Coord_1[2].zw).rgb;
+    T = abs(C_Top - C_Top_Top);
+    Delta.w = max(max(T.r, T.g), T.b);
 
-    // Calculate the final maximum delta:
-    maxDelta = max(maxDelta.xy, delta.zw);
-    float finalDelta = max(maxDelta.x, maxDelta.y);
+    // Calculate the final maximum Delta:
+    Max_Delta = max(Max_Delta.xy, Delta.zw);
+    float Final_Delta = max(Max_Delta.x, Max_Delta.y);
 
     // Local contrast adaptation:
-    edges.xy *= step(finalDelta, SMAA_LOCAL_CONTRAST_ADAPTATION_FACTOR * delta.xy);
+    Edges.xy *= step(Final_Delta, SMAA_LOCAL_CONTRAST_ADAPTATION_FACTOR * Delta.xy);
 
-    return edges;
+    return Edges;
 }
 
 /* Blending Weight Calculation Pixel Shader (Second Pass) */
 
-struct v2f_2
+struct V2F_2
 {
-    float4 vpos   : SV_POSITION;
-    float4 uv0    : TEXCOORD0;
-    float4 uv1[3] : TEXCOORD1;
+    float4 Pos : SV_POSITION;
+    float4 Coord_0 : TEXCOORD0;
+    float4 Coord_1[3] : TEXCOORD1;
 };
 
-v2f_2 SMAABlendingWeightCalculationWrapVS(in uint id : SV_VERTEXID)
+V2F_2 SMAABlendingWeightCalculationWrapVS(in uint ID : SV_VERTEXID)
 {
-    v2f_2 o;
-    float2 coord;
-    coord.x = (id == 2) ? 2.0 : 0.0;
-    coord.y = (id == 1) ? 2.0 : 0.0;
-    o.vpos = float4(coord.xy * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    V2F_2 Output;
+    float2 Coord;
+    Coord.x = (ID == 2) ? 2.0 : 0.0;
+    Coord.y = (ID == 1) ? 2.0 : 0.0;
+    Output.Pos = float4(Coord.xy * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 
-    o.uv0.xy = coord;
-    o.uv0.zw = o.uv0.xy * SMAA_RT_METRICS.zw;
+    Output.Coord_0.xy = Coord;
+    Output.Coord_0.zw = Output.Coord_0.xy * SMAA_RT_METRICS.zw;
 
     // We will use these offsets for the searches later on (see @PSEUDO_GATHER4):
-    o.uv1[0] = mad(SMAA_RT_METRICS.xyxy, float4(-0.25, -0.125,  1.25, -0.125), coord.xyxy);
-    o.uv1[1] = mad(SMAA_RT_METRICS.xyxy, float4(-0.125, -0.25, -0.125,  1.25), coord.xyxy);
+    Output.Coord_1[0] = mad(SMAA_RT_METRICS.xyxy, float4(-0.25, -0.125,  1.25, -0.125), Coord.xyxy);
+    Output.Coord_1[1] = mad(SMAA_RT_METRICS.xyxy, float4(-0.125, -0.25, -0.125,  1.25), Coord.xyxy);
 
     // And these for the searches, they indicate the ends of the loops:
-    o.uv1[2] = mad(SMAA_RT_METRICS.xxyy,
-                   float2(-2.0, 2.0).xyxy * float(SMAA_MAX_SEARCH_STEPS),
-                   float4(o.uv1[0].xz, o.uv1[1].yw));
-    return o;
+    Output.Coord_1[2] = mad(SMAA_RT_METRICS.xxyy,
+                            float2(-2.0, 2.0).xyxy * float(SMAA_MAX_SEARCH_STEPS),
+                            float4(Output.Coord_1[0].xz, Output.Coord_1[1].yw));
+    return Output;
 }
 
-float4 SMAABlendingWeightCalculationWrapPS(v2f_2 input) : SV_Target
+float4 SMAABlendingWeightCalculationWrapPS(V2F_2 Input) : SV_Target
 {
-    float4 weights = float4(0.0, 0.0, 0.0, 0.0);
-    float2 e = tex2D(edgesSampler, input.uv0.xy).rg;
+    float4 Weights = float4(0.0, 0.0, 0.0, 0.0);
+    float2 E = tex2D(Edges_Sampler, Input.Coord_0.xy).rg;
 
     [branch]
-    if (e.g > 0.0) { // Edge at north
-        float2 d;
+    if (E.g > 0.0) // Edge at north
+    {
+        float2 D;
 
         // Find the distance to the left:
-        float3 coords;
-        coords.x = SMAASearchXLeft(edgesSampler, searchSampler, input.uv1[0].xy, input.uv1[2].x);
-        coords.y = input.uv1[1].y;
-        d.x = coords.x;
+        float3 Coords;
+        Coords.x = SMAASearchXLeft(Edges_Sampler, Search_Sampler, Input.Coord_1[0].xy, Input.Coord_1[2].x);
+        Coords.y = Input.Coord_1[1].y;
+        D.x = Coords.x;
 
-        // Now fetch the left crossing edges, two at a time using bilinear
+        // Now fetch the left crossing Edges, two at a time using bilinear
         // filtering. Sampling at -0.25 (see @CROSSING_OFFSET) enables to
         // discern what value each edge has:
-        float e1 = tex2Dlod(edgesSampler, coords.xyxy).r;
+        float E_1 = tex2Dlod(Edges_Sampler, Coords.xyxy).r;
 
         // Find the distance to the right:
-        coords.z = SMAASearchXRight(edgesSampler, searchSampler, input.uv1[0].zw, input.uv1[2].y);
-        d.y = coords.z;
+        Coords.z = SMAASearchXRight(Edges_Sampler, Search_Sampler, Input.Coord_1[0].zw, Input.Coord_1[2].y);
+        D.y = Coords.z;
 
         // We want the distances to be in pixel units (doing this here allow to
         // better interleave arithmetic and memory accesses):
-        d = abs(round(mad(SMAA_RT_METRICS.zz, d, -input.uv0.zz)));
+        D = abs(round(mad(SMAA_RT_METRICS.zz, D, -Input.Coord_0.zz)));
 
         // SMAAArea below needs a sqrt, as the areas texture is compressed
         // quadratically:
-        float2 sqrt_d = sqrt(d);
+        float2 Sqrt_D = sqrt(D);
 
-        // Fetch the right crossing edges:
-        float e2 = tex2Dlod(edgesSampler, coords.zyzy, int2(1, 0)).r;
+        // Fetch the right crossing Edges:
+        float E_2 = tex2Dlod(Edges_Sampler, Coords.zyzy, int2(1, 0)).r;
 
         // Ok, we know how this pattern looks like, now it is time for getting
         // the actual area:
-        weights.rg = SMAAArea(areaSampler, sqrt_d, e1, e2, 0.0);
+        Weights.rg = SMAAArea(Area_Sampler, Sqrt_D, E_1, E_2, 0.0);
 
         // Fix corners:
-        coords.y = input.uv0.y;
+        Coords.y = Input.Coord_0.y;
     }
 
     [branch]
-    if (e.r > 0.0) { // Edge at west
-        float2 d;
+    if (E.r > 0.0) // Edge at west
+    {
+        float2 D;
 
         // Find the distance to the top:
-        float3 coords;
-        coords.y = SMAASearchYUp(edgesSampler, searchSampler, input.uv1[1].xy, input.uv1[2].z);
-        coords.x = input.uv1[0].x;
-        d.x = coords.y;
+        float3 Coords;
+        Coords.y = SMAASearchYUp(Edges_Sampler, Search_Sampler, Input.Coord_1[1].xy, Input.Coord_1[2].z);
+        Coords.x = Input.Coord_1[0].x;
+        D.x = Coords.y;
 
-        // Fetch the top crossing edges:
-        float e1 = tex2Dlod(edgesSampler, coords.xyxy).g;
+        // Fetch the top crossing Edges:
+        float E_1 = tex2Dlod(Edges_Sampler, Coords.xyxy).g;
 
         // Find the distance to the bottom:
-        coords.z = SMAASearchYDown(edgesSampler, searchSampler, input.uv1[1].zw, input.uv1[2].w);
-        d.y = coords.z;
+        Coords.z = SMAASearchYDown(Edges_Sampler, Search_Sampler, Input.Coord_1[1].zw, Input.Coord_1[2].w);
+        D.y = Coords.z;
 
         // We want the distances to be in pixel units:
-        d = abs(round(mad(SMAA_RT_METRICS.ww, d, -input.uv0.ww)));
+        D = abs(round(mad(SMAA_RT_METRICS.ww, D, -Input.Coord_0.ww)));
 
         // SMAAArea below needs a sqrt, as the areas texture is compressed
         // quadratically:
-        float2 sqrt_d = sqrt(d);
+        float2 Sqrt_D = sqrt(D);
 
-        // Fetch the bottom crossing edges:
-        float e2 = tex2Dlod(edgesSampler, coords.xzxz, int2(0, 1)).g;
+        // Fetch the bottom crossing Edges:
+        float E_2 = tex2Dlod(Edges_Sampler, Coords.xzxz, int2(0, 1)).g;
 
         // Get the area for this direction:
-        weights.ba = SMAAArea(areaSampler, sqrt_d, e1, e2, 0.0);
+        Weights.ba = SMAAArea(Area_Sampler, Sqrt_D, E_1, E_2, 0.0);
 
         // Fix corners:
-        coords.x = input.uv0.x;
+        Coords.x = Input.Coord_0.x;
     }
 
-    return weights;
+    return Weights;
 }
 
 /* Neighborhood Blending Pixel Shader (Third Pass) */
 
 struct v2f_3
 {
-    float4 vpos : SV_POSITION;
-    float2 uv0  : TEXCOORD0;
-    float4 uv1  : TEXCOORD1;
+    float4 Pos : SV_POSITION;
+    float2 Coord_0  : TEXCOORD0;
+    float4 Coord_1  : TEXCOORD1;
 };
 
-v2f_3 SMAANeighborhoodBlendingWrapVS(in uint id : SV_VERTEXID)
+v2f_3 SMAANeighborhoodBlendingWrapVS(in uint ID : SV_VERTEXID)
 {
-    v2f_3 o;
-    float2 coord;
-    coord.x = (id == 2) ? 2.0 : 0.0;
-    coord.y = (id == 1) ? 2.0 : 0.0;
-    o.vpos = float4(coord.xy * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    v2f_3 Output;
+    float2 Coord;
+    Coord.x = (ID == 2) ? 2.0 : 0.0;
+    Coord.y = (ID == 1) ? 2.0 : 0.0;
+    Output.Pos = float4(Coord.xy * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 
-    o.uv0 = coord;
-    o.uv1 = mad(SMAA_RT_METRICS.xyxy, float4( 1.0, 0.0, 0.0,  1.0), coord.xyxy);
-    return o;
+    Output.Coord_0 = Coord;
+    Output.Coord_1 = mad(SMAA_RT_METRICS.xyxy, float4( 1.0, 0.0, 0.0,  1.0), Coord.xyxy);
+    return Output;
 }
 
-float4 SMAANeighborhoodBlendingWrapPS(v2f_3 input) : SV_Target
+float4 SMAANeighborhoodBlendingWrapPS(v2f_3 Input) : SV_Target
 {
-    // Fetch the blending weights for current pixel:
-    float4 a;
-    a.x = tex2D(blendSampler, input.uv1.xy).a; // Right
-    a.y = tex2D(blendSampler, input.uv1.zw).g; // Top
-    a.wz = tex2D(blendSampler, input.uv0).xz; // Bottom / Left
+    // Fetch the blending Weights for current pixel:
+    float4 A;
+    A.x = tex2D(Blend_Sampler, Input.Coord_1.xy).a; // Right
+    A.y = tex2D(Blend_Sampler, Input.Coord_1.zw).g; // Top
+    A.wz = tex2D(Blend_Sampler, Input.Coord_0).xz; // Bottom / Left
 
     // Is there any blending weight with a value greater than 0.0?
 
     [branch]
-    if (dot(a, float4(1.0, 1.0, 1.0, 1.0)) < 1e-5)
+    if (dot(A, float4(1.0, 1.0, 1.0, 1.0)) < 1e-5)
     {
-        return tex2Dlod(colorLinearSampler, input.uv0.xyxy);
+        return tex2Dlod(Color_Linear_Sampler, Input.Coord_0.xyxy);
     } 
     else 
     {
-        bool h = max(a.x, a.z) > max(a.y, a.w); // max(horizontal) > max(vertical)
+        bool H = max(A.x, A.z) > max(A.y, A.w); // max(horizontal) > max(vertical)
 
         // Calculate the blending offsets:
-        float4 blendingOffset = float4(0.0, a.y, 0.0, a.w);
-        float2 blendingWeight = a.yw;
-        SMAAMovc(bool4(h, h, h, h), blendingOffset, float4(a.x, 0.0, a.z, 0.0));
-        SMAAMovc(bool2(h, h), blendingWeight, a.xz);
-        blendingWeight /= dot(blendingWeight, float2(1.0, 1.0));
+        float4 Blending_Offset = float4(0.0, A.y, 0.0, A.w);
+        float2 Blending_Weight = A.yw;
+        SMAA_Movc(bool4(H, H, H, H), Blending_Offset, float4(A.x, 0.0, A.z, 0.0));
+        SMAA_Movc(bool2(H, H), Blending_Weight, A.xz);
+        Blending_Weight /= dot(Blending_Weight, float2(1.0, 1.0));
 
         // Calculate the texture coordinates:
-        float4 blendingCoord = mad(blendingOffset, float4(SMAA_RT_METRICS.xy, -SMAA_RT_METRICS.xy), input.uv0.xyxy);
+        float4 Blending_Coord = mad(Blending_Offset, float4(SMAA_RT_METRICS.xy, -SMAA_RT_METRICS.xy), Input.Coord_0.xyxy);
 
         // We exploit bilinear filtering to mix current pixel with the chosen neighbor:
-        float4 color = blendingWeight.x * tex2Dlod(colorLinearSampler, blendingCoord.xyxy);
-        color += blendingWeight.y * tex2Dlod(colorLinearSampler, blendingCoord.zwzw);
-        return color;
+        float4 Color = Blending_Weight.x * tex2Dlod(Color_Linear_Sampler, Blending_Coord.xyxy);
+        Color += Blending_Weight.y * tex2Dlod(Color_Linear_Sampler, Blending_Coord.zwzw);
+        return Color;
     }
 }
 
@@ -357,7 +357,7 @@ technique SMAA
     {
         VertexShader = SMAAEdgeDetectionWrapVS;
         PixelShader = SMAAEdgeDetectionWrapPS;
-        RenderTarget = edgesTex;
+        RenderTarget = Edges_Tex;
         ClearRenderTargets = TRUE;
         StencilEnable = TRUE;
         StencilPass = REPLACE;
@@ -368,7 +368,7 @@ technique SMAA
     {
         VertexShader = SMAABlendingWeightCalculationWrapVS;
         PixelShader = SMAABlendingWeightCalculationWrapPS;
-        RenderTarget = blendTex;
+        RenderTarget = Blend_Tex;
         ClearRenderTargets = TRUE;
         StencilEnable = TRUE;
         StencilPass = KEEP;

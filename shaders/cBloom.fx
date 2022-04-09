@@ -368,15 +368,15 @@ void Upsample_1_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, 
 void Downsample(in sampler2D Source, in float4 Coord[4], out float4 Output)
 {
     // A_0    B_0    C_0
-    //    D0    D1
+    //    D_0    D_1
     // A_1    B_1    C_1
-    //    D2    D3
+    //    D_2    D_3
     // A_2    B_2    C_2
 
-    float4 D0 = tex2D(Source, Coord[0].xw);
-    float4 D1 = tex2D(Source, Coord[0].zw);
-    float4 D2 = tex2D(Source, Coord[0].xy);
-    float4 D3 = tex2D(Source, Coord[0].zy);
+    float4 D_0 = tex2D(Source, Coord[0].xw);
+    float4 D_1 = tex2D(Source, Coord[0].zw);
+    float4 D_2 = tex2D(Source, Coord[0].xy);
+    float4 D_3 = tex2D(Source, Coord[0].zy);
 
     float4 A_0 = tex2D(Source, Coord[1].xy);
     float4 A_1 = tex2D(Source, Coord[1].xz);
@@ -391,7 +391,7 @@ void Downsample(in sampler2D Source, in float4 Coord[4], out float4 Output)
     float4 C_2 = tex2D(Source, Coord[3].xw);
 
     const float2 Weights = float2(0.5, 0.125) / 4.0;
-    Output  = (D0 + D1 + D2 + D3) * Weights.x;
+    Output  = (D_0 + D_1 + D_2 + D_3) * Weights.x;
     Output += (A_0 + B_0 + A_1 + B_1) * Weights.y;
     Output += (B_0 + C_0 + B_1 + C_1) * Weights.y;
     Output += (A_1 + B_1 + A_2 + B_2) * Weights.y;
@@ -420,7 +420,6 @@ void Upsample(in sampler2D Source, in float4 Coord[3], in float Weight, out floa
     Output += (A_1 + B_0 + C_1 + B_2) * 2.0;
     Output += B_1 * 4.0;
     Output *= (1.0 / 16.0);
-    Output.a = abs(Weight);
 }
 
 float Median_3(float x, float y, float z)
@@ -449,24 +448,26 @@ void Prefilter_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0,
 }
 
 // sRGB => XYZ => D65_2_D60 => AP1 => RRT_SAT
-static const float3x3 ACES_Input_Mat = float3x3(
+static const float3x3 ACES_Input_Mat = float3x3
+(
     0.59719, 0.35458, 0.04823,
     0.07600, 0.90834, 0.01566,
     0.02840, 0.13383, 0.83777
 );
 
 // ODT_SAT => XYZ => D60_2_D65 => sRGB
-static const float3x3 ACES_Output_Mat = float3x3(
+static const float3x3 ACES_Output_Mat = float3x3
+(
      1.60475, -0.53108, -0.07367,
     -0.10208,  1.10813, -0.00605,
     -0.00327, -0.07276,  1.07602
 );
 
-float3 RRT_ODT_Fit(float3 v)
+float3 RRT_ODT_Fit(float3 V)
 {
-    float3 a = v * (v + 0.0245786f) - 0.000090537f;
-    float3 b = v * (0.983729f * v + 0.4329510f) + 0.238081f;
-    return a / b;
+    float3 A = V * (V + 0.0245786f) - 0.000090537f;
+    float3 B = V * (0.983729f * V + 0.4329510f) + 0.238081f;
+    return A / B;
 }
 
 void Downsample_1_PS(in float4 Position : SV_POSITION, in float4 Coord[4] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)

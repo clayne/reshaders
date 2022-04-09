@@ -303,15 +303,15 @@ namespace Motion_Blur
 
     void Sample_3x3_VS(in uint ID : SV_VERTEXID, in float2 Texel_Size, out float4 Position : SV_POSITION, out float4 Coords[3] : TEXCOORD0)
     {
-        float2 VS_TexCoord = 0.0;
-        Basic_VS(ID, Position, VS_TexCoord);
+        float2 VS_Coord = 0.0;
+        Basic_VS(ID, Position, VS_Coord);
         // Sample locations:
         // [0].xy [1].xy [2].xy
         // [0].xz [1].xz [2].xz
         // [0].xw [1].xw [2].xw
-        Coords[0] = VS_TexCoord.xyyy + (float4(-1.0, 1.0, 0.0, -1.0) / Texel_Size.xyyy);
-        Coords[1] = VS_TexCoord.xyyy + (float4(0.0, 1.0, 0.0, -1.0) / Texel_Size.xyyy);
-        Coords[2] = VS_TexCoord.xyyy + (float4(1.0, 1.0, 0.0, -1.0) / Texel_Size.xyyy);
+        Coords[0] = VS_Coord.xyyy + (float4(-1.0, 1.0, 0.0, -1.0) / Texel_Size.xyyy);
+        Coords[1] = VS_Coord.xyyy + (float4(0.0, 1.0, 0.0, -1.0) / Texel_Size.xyyy);
+        Coords[2] = VS_Coord.xyyy + (float4(1.0, 1.0, 0.0, -1.0) / Texel_Size.xyyy);
     }
 
     void Sample_3x3_1_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 Coords[3] : TEXCOORD0)
@@ -642,6 +642,7 @@ namespace Motion_Blur
         
         float Frame_Rate = 1e+3 / _Frame_Time;
         float Frame_Time_Ratio = _Target_Frame_Rate / Frame_Rate;
+
         float2 Velocity = (tex2Dlod(Shared_Resources_Motion_Blur::Sample_Common_1_B, float4(Coord, 0.0, _Mip_Bias)).xy / BUFFER_SIZE_1) * _Scale;
         Velocity /= (_FrameRateScaling) ? Frame_Time_Ratio : 1.0;
 

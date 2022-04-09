@@ -287,15 +287,15 @@ namespace cInterpolation
 
     void Sample_3x3_VS(in uint ID : SV_VERTEXID, in float2 Texel_Size, out float4 Position : SV_POSITION, out float4 Coords[3] : TEXCOORD0)
     {
-        float2 VS_TexCoord = 0.0;
-        Basic_VS(ID, Position, VS_TexCoord);
+        float2 VS_Coord = 0.0;
+        Basic_VS(ID, Position, VS_Coord);
         // Sample locations:
         // [0].xy [1].xy [2].xy
         // [0].xz [1].xz [2].xz
         // [0].xw [1].xw [2].xw
-        Coords[0] = VS_TexCoord.xyyy + (float4(-1.0, 1.0, 0.0, -1.0) / Texel_Size.xyyy);
-        Coords[1] = VS_TexCoord.xyyy + (float4(0.0, 1.0, 0.0, -1.0) / Texel_Size.xyyy);
-        Coords[2] = VS_TexCoord.xyyy + (float4(1.0, 1.0, 0.0, -1.0) / Texel_Size.xyyy);
+        Coords[0] = VS_Coord.xyyy + (float4(-1.0, 1.0, 0.0, -1.0) / Texel_Size.xyyy);
+        Coords[1] = VS_Coord.xyyy + (float4(0.0, 1.0, 0.0, -1.0) / Texel_Size.xyyy);
+        Coords[2] = VS_Coord.xyyy + (float4(1.0, 1.0, 0.0, -1.0) / Texel_Size.xyyy);
     }
 
     void Sample_3x3_1_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 Coords[3] : TEXCOORD0)
@@ -503,7 +503,7 @@ namespace cInterpolation
         float4 Area_Gradient = 0.0;
         float2 Area_Average[4];
         float4 Gradient_UV = 0.0;
-        float SqGradient_UV = 0.0;
+        float Sq_Gradient_UV = 0.0;
 
         // Center smoothness gradient and average
         // 0 3 6
@@ -511,8 +511,8 @@ namespace cInterpolation
         // 2 5 8
         Gradient_UV.xy = (Sample_UV[0] + (Sample_UV[1] * 2.0) + Sample_UV[2]) - (Sample_UV[6] + (Sample_UV[7] * 2.0) + Sample_UV[8]); // <IxU, IxV>
         Gradient_UV.zw = (Sample_UV[0] + (Sample_UV[3] * 2.0) + Sample_UV[6]) - (Sample_UV[2] + (Sample_UV[5] * 2.0) + Sample_UV[8]); // <IxU, IxV>
-        SqGradient_UV = dot(Gradient_UV.xzyw / 4.0, Gradient_UV.xzyw / 4.0) * 0.25;
-        Center_Gradient = rsqrt(SqGradient_UV + (E * E));
+        Sq_Gradient_UV = dot(Gradient_UV.xzyw / 4.0, Gradient_UV.xzyw / 4.0) * 0.25;
+        Center_Gradient = rsqrt(Sq_Gradient_UV + (E * E));
 
         Center_Average += ((Sample_UV[0] + Sample_UV[6] + Sample_UV[2] + Sample_UV[8]) * 1.0);
         Center_Average += ((Sample_UV[3] + Sample_UV[1] + Sample_UV[7] + Sample_UV[5]) * 2.0);
@@ -647,9 +647,9 @@ namespace cInterpolation
         Authors: Jan-Willem van de Waerdt, Stamatis Vassiliadis, Erwin B. Bellers, and Johan G. Janssen
     */
 
-    float4 Median(float4 a, float4 b, float4 c)
+    float4 Median(float4 A, float4 B, float4 C)
     {
-        return min(max(min(a, b), c), max(a, b));
+        return min(max(min(A, B), C), max(A, B));
     }
 
     void Interpolate_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)

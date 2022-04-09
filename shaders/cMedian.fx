@@ -73,28 +73,28 @@ void Median_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out 
 
 // Math functions: https://github.com/microsoft/DirectX-Graphics-Samples/blob/master/MiniEngine/Core/Shaders/DoFMedianFilterCS.hlsl
 
-float4 Max3(float4 a, float4 b, float4 c)
+float4 Max_3(float4 A, float4 B, float4 C)
 {
-    return max(max(a, b), c);
+    return max(max(A, B), C);
 }
 
-float4 Min3(float4 a, float4 b, float4 c)
+float4 Min_3(float4 A, float4 B, float4 C)
 {
-    return min(min(a, b), c);
+    return min(min(A, B), C);
 }
 
-float4 Median_3(float4 a, float4 b, float4 c)
+float4 Median_3(float4 A, float4 B, float4 C)
 {
-    return clamp(a, min(b, c), max(b, c));
+    return clamp(A, min(B, C), max(B, C));
 }
 
-float4 Median_9(float4 x0, float4 x1, float4 x2,
-            float4 x3, float4 x4, float4 x5,
-            float4 x6, float4 x7, float4 x8)
+float4 Median_9(float4 X_0, float4 X_1, float4 X_2,
+                float4 X_3, float4 X_4, float4 X_5,
+                float4 X_6, float4 X_7, float4 X_8)
 {
-    float4 A = Max3(Min3(x0, x1, x2), Min3(x3, x4, x5), Min3(x6, x7, x8));
-    float4 B = Min3(Max3(x0, x1, x2), Max3(x3, x4, x5), Max3(x6, x7, x8));
-    float4 C = Median_3(Median_3(x0, x1, x2), Median_3(x3, x4, x5), Median_3(x6, x7, x8));
+    float4 A = Max_3(Min_3(X_0, X_1, X_2), Min_3(X_3, X_4, X_5), Min_3(X_6, X_7, X_8));
+    float4 B = Min_3(Max_3(X_0, X_1, X_2), Max_3(X_3, X_4, X_5), Max_3(X_6, X_7, X_8));
+    float4 C = Median_3(Median_3(X_0, X_1, X_2), Median_3(X_3, X_4, X_5), Median_3(X_6, X_7, X_8));
     return Median_3(A, B, C);
 }
 

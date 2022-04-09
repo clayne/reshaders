@@ -39,7 +39,7 @@
 #define BUFFER_SIZE_3 int2(SIZE >> 4)
 #define BUFFER_SIZE_4 int2(SIZE >> 6)
 
-namespace Shared_Resources_OpticalFlow
+namespace Shared_Resources_Datamosh
 {
     // Store convoluted normalized frame 1 and 3
 
@@ -283,7 +283,7 @@ namespace Datamosh
     
     sampler2D Sample_Optical_Flow_Post
     {
-        Texture = Render_Optical_Flow;
+        Texture = Shared_Resources_Datamosh::Render_Common_1_B;
         MagFilter = _FILTER;
         MinFilter = _FILTER;
     };
@@ -371,15 +371,15 @@ namespace Datamosh
 
     void Sample_3x3_VS(in uint ID : SV_VERTEXID, in float2 Texel_Size, out float4 Position : SV_POSITION, out float4 Coords[3] : TEXCOORD0)
     {
-        float2 VS_TexCoord = 0.0;
-        Basic_VS(ID, Position, VS_TexCoord);
+        float2 VS_Coord = 0.0;
+        Basic_VS(ID, Position, VS_Coord);
         // Sample locations:
         // [0].xy [1].xy [2].xy
         // [0].xz [1].xz [2].xz
         // [0].xw [1].xw [2].xw
-        Coords[0] = VS_TexCoord.xyyy + (float4(-1.0, 1.0, 0.0, -1.0) / Texel_Size.xyyy);
-        Coords[1] = VS_TexCoord.xyyy + (float4(0.0, 1.0, 0.0, -1.0) / Texel_Size.xyyy);
-        Coords[2] = VS_TexCoord.xyyy + (float4(1.0, 1.0, 0.0, -1.0) / Texel_Size.xyyy);
+        Coords[0] = VS_Coord.xyyy + (float4(-1.0, 1.0, 0.0, -1.0) / Texel_Size.xyyy);
+        Coords[1] = VS_Coord.xyyy + (float4(0.0, 1.0, 0.0, -1.0) / Texel_Size.xyyy);
+        Coords[2] = VS_Coord.xyyy + (float4(1.0, 1.0, 0.0, -1.0) / Texel_Size.xyyy);
     }
 
     void Sample_3x3_1_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 Coords[3] : TEXCOORD0)
@@ -420,7 +420,7 @@ namespace Datamosh
 
     void Blit_Frame_PS(in float4 Position : SV_POSITION, float2 Coord : TEXCOORD, out float4 Output_Color_0 : SV_TARGET0)
     {
-        Output_Color_0 = tex2D(Shared_Resources_OpticalFlow::Sample_Common_0, Coord);
+        Output_Color_0 = tex2D(Shared_Resources_Datamosh::Sample_Common_0, Coord);
     }
 
     static const float Blur_Weights[8] =
@@ -452,12 +452,12 @@ namespace Datamosh
 
     void Pre_Blur_0_PS(in float4 Position : SV_POSITION, in float4 Coords[8] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
     {
-        Gaussian_Blur(Shared_Resources_OpticalFlow::Sample_Common_1_A, Coords, Output_Color_0);
+        Gaussian_Blur(Shared_Resources_Datamosh::Sample_Common_1_A, Coords, Output_Color_0);
     }
 
     void Pre_Blur_1_PS(in float4 Position : SV_POSITION, in float4 Coords[8] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
     {
-        Gaussian_Blur(Shared_Resources_OpticalFlow::Sample_Common_1_B, Coords, Output_Color_0);
+        Gaussian_Blur(Shared_Resources_Datamosh::Sample_Common_1_B, Coords, Output_Color_0);
     }
 
     void Derivatives_PS(in float4 Position : SV_POSITION, in float4 Coords[2] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
@@ -467,14 +467,14 @@ namespace Datamosh
         // A_0     A_1
         // A_2     B_0
         //   C_0 C_1
-        float2 A_0 = tex2D(Shared_Resources_OpticalFlow::Sample_Common_1_A, Coords[0].xw).xy * 4.0; // <-1.5, +0.5>
-        float2 A_1 = tex2D(Shared_Resources_OpticalFlow::Sample_Common_1_A, Coords[0].yw).xy * 4.0; // <+1.5, +0.5>
-        float2 A_2 = tex2D(Shared_Resources_OpticalFlow::Sample_Common_1_A, Coords[0].xz).xy * 4.0; // <-1.5, -0.5>
-        float2 B_0 = tex2D(Shared_Resources_OpticalFlow::Sample_Common_1_A, Coords[0].yz).xy * 4.0; // <+1.5, -0.5>
-        float2 B_1 = tex2D(Shared_Resources_OpticalFlow::Sample_Common_1_A, Coords[1].xw).xy * 4.0; // <-0.5, +1.5>
-        float2 B_2 = tex2D(Shared_Resources_OpticalFlow::Sample_Common_1_A, Coords[1].yw).xy * 4.0; // <+0.5, +1.5>
-        float2 C_0 = tex2D(Shared_Resources_OpticalFlow::Sample_Common_1_A, Coords[1].xz).xy * 4.0; // <-0.5, -1.5>
-        float2 C_1 = tex2D(Shared_Resources_OpticalFlow::Sample_Common_1_A, Coords[1].yz).xy * 4.0; // <+0.5, -1.5>
+        float2 A_0 = tex2D(Shared_Resources_Datamosh::Sample_Common_1_A, Coords[0].xw).xy * 4.0; // <-1.5, +0.5>
+        float2 A_1 = tex2D(Shared_Resources_Datamosh::Sample_Common_1_A, Coords[0].yw).xy * 4.0; // <+1.5, +0.5>
+        float2 A_2 = tex2D(Shared_Resources_Datamosh::Sample_Common_1_A, Coords[0].xz).xy * 4.0; // <-1.5, -0.5>
+        float2 B_0 = tex2D(Shared_Resources_Datamosh::Sample_Common_1_A, Coords[0].yz).xy * 4.0; // <+1.5, -0.5>
+        float2 B_1 = tex2D(Shared_Resources_Datamosh::Sample_Common_1_A, Coords[1].xw).xy * 4.0; // <-0.5, +1.5>
+        float2 B_2 = tex2D(Shared_Resources_Datamosh::Sample_Common_1_A, Coords[1].yw).xy * 4.0; // <+0.5, +1.5>
+        float2 C_0 = tex2D(Shared_Resources_Datamosh::Sample_Common_1_A, Coords[1].xz).xy * 4.0; // <-0.5, -1.5>
+        float2 C_1 = tex2D(Shared_Resources_Datamosh::Sample_Common_1_A, Coords[1].yz).xy * 4.0; // <+0.5, -1.5>
 
         //    -1 0 +1
         // -1 -2 0 +2 +1
@@ -502,11 +502,11 @@ namespace Datamosh
         const float Alpha = max(ldexp(_Constraint * 1e-4, Level - Max_Level), 1e-7);
 
         // Load textures
-        float2 Current = tex2Dlod(Shared_Resources_OpticalFlow::Sample_Common_1_A, float4(Coord, 0.0, Level)).xy;
+        float2 Current = tex2Dlod(Shared_Resources_Datamosh::Sample_Common_1_A, float4(Coord, 0.0, Level)).xy;
         float2 Previous = tex2Dlod(Sample_Common_1_P, float4(Coord, 0.0, Level)).xy;
 
         // <Rx, Gx, Ry, Gy>
-        float4 S_D = tex2Dlod(Shared_Resources_OpticalFlow::Sample_Common_1_B, float4(Coord, 0.0, Level));
+        float4 S_D = tex2Dlod(Shared_Resources_Datamosh::Sample_Common_1_B, float4(Coord, 0.0, Level));
 
         // <Rz, Gz>
         float2 T_D = Current - Previous;
@@ -610,11 +610,11 @@ namespace Datamosh
         const float Alpha = max(ldexp(_Constraint * 1e-4, Level - Max_Level), 1e-7);
 
         // Load textures
-        float2 Current = tex2Dlod(Shared_Resources_OpticalFlow::Sample_Common_1_A, float4(Coords[1].xz, 0.0, Level)).xy;
+        float2 Current = tex2Dlod(Shared_Resources_Datamosh::Sample_Common_1_A, float4(Coords[1].xz, 0.0, Level)).xy;
         float2 Previous = tex2Dlod(Sample_Common_1_P, float4(Coords[1].xz, 0.0, Level)).xy;
 
         // <Rx, Gx, Ry, Gy>
-        float4 S_D = tex2Dlod(Shared_Resources_OpticalFlow::Sample_Common_1_B, float4(Coords[1].xz, 0.0, Level));
+        float4 S_D = tex2Dlod(Shared_Resources_Datamosh::Sample_Common_1_B, float4(Coords[1].xz, 0.0, Level));
 
         // <Rz, Gz>
         float2 T_D = Current - Previous;
@@ -671,23 +671,23 @@ namespace Datamosh
 
     void Level_3_PS(in float4 Position : SV_POSITION, in float4 Coords[3] : TEXCOORD0, out float2 Color : SV_TARGET0)
     {
-        Optical_Flow_TV(Shared_Resources_OpticalFlow::Sample_Common_4, Coords, 4.5, Color);
+        Optical_Flow_TV(Shared_Resources_Datamosh::Sample_Common_4, Coords, 4.5, Color);
     }
 
     void Level_2_PS(in float4 Position : SV_POSITION, in float4 Coords[3] : TEXCOORD0, out float2 Color : SV_TARGET0)
     {
-        Optical_Flow_TV(Shared_Resources_OpticalFlow::Sample_Common_3, Coords, 2.5, Color);
+        Optical_Flow_TV(Shared_Resources_Datamosh::Sample_Common_3, Coords, 2.5, Color);
     }
 
     void Level_1_PS(in float4 Position : SV_POSITION, in float4 Coords[3] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
     {
-        Optical_Flow_TV(Shared_Resources_OpticalFlow::Sample_Common_2, Coords, 0.5, Output_Color_0.rg);
+        Optical_Flow_TV(Shared_Resources_Datamosh::Sample_Common_2, Coords, 0.5, Output_Color_0.rg);
         Output_Color_0.ba = float2(0.0, _Blend_Factor);
     }
 
     void Blit_Previous_PS(in float4 Position : SV_POSITION, float2 Coord : TEXCOORD, out float4 Output_Color_0 : SV_TARGET0)
     {
-        Output_Color_0 = tex2D(Shared_Resources_OpticalFlow::Sample_Common_1_A, Coord);
+        Output_Color_0 = tex2D(Shared_Resources_Datamosh::Sample_Common_1_A, Coord);
     }
 
     void Post_Blur_0_PS(in float4 Position : SV_POSITION, in float4 Coords[8] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
@@ -698,7 +698,7 @@ namespace Datamosh
 
     void Post_Blur_1_PS(in float4 Position : SV_POSITION, in float4 Coords[8] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
     {
-        Gaussian_Blur(Shared_Resources_OpticalFlow::Sample_Common_1_A, Coords, Output_Color_0);
+        Gaussian_Blur(Shared_Resources_Datamosh::Sample_Common_1_A, Coords, Output_Color_0);
         Output_Color_0.a = 1.0;
     }
 
@@ -731,7 +731,7 @@ namespace Datamosh
         For more information, please refer to <http://unlicense.org/>
     */
 
-    float Random_Noise(float2 Coord)
+    float RandomNoise(float2 Coord)
     {
         float f = dot(float2(12.9898, 78.233), Coord);
         return frac(43758.5453 * sin(f));
@@ -744,50 +744,50 @@ namespace Datamosh
 
         // Random numbers
         float3 Random;
-        Random.x = Random_Noise(Coord.xy + Time.xy);
-        Random.y = Random_Noise(Coord.xy + Time.yx);
-        Random.z = Random_Noise(Coord.yx - Time.xx);
+        Random.x = RandomNoise(Coord.xy + Time.xy);
+        Random.y = RandomNoise(Coord.xy + Time.yx);
+        Random.z = RandomNoise(Coord.yx - Time.xx);
 
         // Motion vector
-        float2 Motion_Vectors = tex2Dlod(Shared_Resources_OpticalFlow::Sample_Common_1_B, float4(Coord, 0.0, _Mip_Bias)).xy;
+        float2 Motion_Vectors = tex2Dlod(Sample_Optical_Flow_Post, float4(Coord, 0.0, _Mip_Bias)).xy;
         Motion_Vectors = Motion_Vectors * BUFFER_SIZE_1; // Normalized screen space -> Pixel coordinates
         Motion_Vectors *= _Scale;
         Motion_Vectors += (Random.xy - 0.5)  * _Diffusion; // Small random displacement (diffusion)
         Motion_Vectors = round(Motion_Vectors); // Pixel perfect snapping
 
         // Accumulates the amount of motion.
-        float Motion_Vector_Length = length(Motion_Vectors);
+        float MotionVectorLength = length(Motion_Vectors);
 
         // - Simple update
-        float Update_Accumulation = min(Motion_Vector_Length, _Block_Size) * 0.005;
-        Update_Accumulation = saturate(Update_Accumulation + Random.z * lerp(-0.02, 0.02, Quality));
+        float UpdateAccumulation = min(MotionVectorLength, _Block_Size) * 0.005;
+        UpdateAccumulation = saturate(UpdateAccumulation + Random.z * lerp(-0.02, 0.02, Quality));
 
         // - Reset to random level
-        float Reset_Accumulation = saturate(Random.z * 0.5 + Quality);
+        float ResetAccumulation = saturate(Random.z * 0.5 + Quality);
 
         // - Reset if the amount of motion is larger than the block size.
-        Output_Color_0.rgb = Motion_Vector_Length > _Block_Size ? Reset_Accumulation : Update_Accumulation;
-        Output_Color_0.a = Motion_Vector_Length > _Block_Size ? 0.0 : 1.0;
+        Output_Color_0.rgb = MotionVectorLength > _Block_Size ? ResetAccumulation : UpdateAccumulation;
+        Output_Color_0.a = MotionVectorLength > _Block_Size ? 0.0 : 1.0;
     }
 
     void Datamosh_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
     {
-        const float2 Displacement_Texel = 1.0 / BUFFER_SIZE_1;
+        const float2 DisplacementTexel = 1.0 / BUFFER_SIZE_1;
         const float Quality = 1.0 - _Entropy;
 
         // Random numbers
         float2 Time = float2(_Time, 0.0);
         float3 Random;
-        Random.x = Random_Noise(Coord.xy + Time.xy);
-        Random.y = Random_Noise(Coord.xy + Time.yx);
-        Random.z = Random_Noise(Coord.yx - Time.xx);
+        Random.x = RandomNoise(Coord.xy + Time.xy);
+        Random.y = RandomNoise(Coord.xy + Time.yx);
+        Random.z = RandomNoise(Coord.yx - Time.xx);
 
-        float2 Motion_Vectors = tex2Dlod(Shared_Resources_OpticalFlow::Sample_Common_1_B, float4(Coord, 0.0, _Mip_Bias)).xy;
+        float2 Motion_Vectors = tex2Dlod(Sample_Optical_Flow_Post, float4(Coord, 0.0, _Mip_Bias)).xy;
         Motion_Vectors *= _Scale;
 
         float4 Source = tex2D(Sample_Color, Coord); // Color from the original image
         float Displacement = tex2D(Sample_Accumulation, Coord).r; // Displacement vector
-        float4 Working = tex2D(Sample_Feedback, Coord - Motion_Vectors * Displacement_Texel);
+        float4 Working = tex2D(Sample_Feedback, Coord - Motion_Vectors * DisplacementTexel);
 
         Motion_Vectors *= int2(BUFFER_WIDTH, BUFFER_HEIGHT); // Normalized screen space -> Pixel coordinates
         Motion_Vectors += (Random.xy - 0.5) * _Diffusion; // Small random displacement (diffusion)
@@ -795,29 +795,30 @@ namespace Datamosh
         Motion_Vectors *= (1.0 / int2(BUFFER_WIDTH, BUFFER_HEIGHT)); // Pixel coordinates -> Normalized screen space
 
         // Generate some pseudo random numbers.
-        float Random_Motion = Random_Noise(Coord + length(Motion_Vectors));
-        float4 Random_Numbers = frac(float4(1.0, 17.37135, 841.4272, 3305.121) * Random_Motion);
+        float RandomMotion = RandomNoise(Coord + length(Motion_Vectors));
+        float4 RandomNumbers = frac(float4(1.0, 17.37135, 841.4272, 3305.121) * RandomMotion);
 
         // Generate noise patterns that look like DCT bases.
-        float2 Frequency = Coord * Displacement_Texel * (Random_Numbers.x * 80.0 / _Contrast);
+        float2 Frequency = Coord * DisplacementTexel * (RandomNumbers.x * 80.0 / _Contrast);
         // - Basis wave (vertical or horizontal)
-        float DCT = cos(lerp(Frequency.x, Frequency.y, 0.5 < Random_Numbers.y));
+        float DCT = cos(lerp(Frequency.x, Frequency.y, 0.5 < RandomNumbers.y));
         // - Random amplitude (the high freq, the less amp)
-        DCT *= Random_Numbers.z * (1.0 - Random_Numbers.x) * _Contrast;
+        DCT *= RandomNumbers.z * (1.0 - RandomNumbers.x) * _Contrast;
 
         // Conditional weighting
         // - DCT-ish noise: acc > 0.5
-        float Conditional_Weight = (Displacement > 0.5) * DCT;
+        float ConditionalWeight = (Displacement > 0.5) * DCT;
         // - Original image: rand < (Q * 0.8 + 0.2) && acc == 1.0
-        Conditional_Weight = lerp(Conditional_Weight, 1.0, Random_Numbers.w < lerp(0.2, 1.0, Quality) * (Displacement > 1.0 - 1e-3));
+        ConditionalWeight = lerp(ConditionalWeight, 1.0, RandomNumbers.w < lerp(0.2, 1.0, Quality) * (Displacement > 1.0 - 1e-3));
 
         // - If the conditions above are not met, choose work.
-        Output_Color_0 = lerp(Working, Source, Conditional_Weight);
+        Output_Color_0 = lerp(Working, Source, ConditionalWeight);
     }
 
     void Copy_0_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
     {
         Output_Color_0 = tex2D(Sample_Color, Coord);
+        Output_Color_0.a = 1.0;
     }
 
     technique KinoDatamosh
@@ -828,14 +829,14 @@ namespace Datamosh
         {
             VertexShader = Basic_VS;
             PixelShader = Normalize_Frame_PS;
-            RenderTarget0 = Shared_Resources_OpticalFlow::Render_Common_0;
+            RenderTarget0 = Shared_Resources_Datamosh::Render_Common_0;
         }
 
         pass Blit
         {
             VertexShader = Basic_VS;
             PixelShader = Blit_Frame_PS;
-            RenderTarget = Shared_Resources_OpticalFlow::Render_Common_1_A;
+            RenderTarget = Shared_Resources_Datamosh::Render_Common_1_A;
         }
 
         // Gaussian blur
@@ -844,14 +845,14 @@ namespace Datamosh
         {
             VertexShader = Blur_0_VS;
             PixelShader = Pre_Blur_0_PS;
-            RenderTarget0 = Shared_Resources_OpticalFlow::Render_Common_1_B;
+            RenderTarget0 = Shared_Resources_Datamosh::Render_Common_1_B;
         }
 
         pass Blur1
         {
             VertexShader = Blur_1_VS;
             PixelShader = Pre_Blur_1_PS;
-            RenderTarget0 = Shared_Resources_OpticalFlow::Render_Common_1_A; // Save this to store later
+            RenderTarget0 = Shared_Resources_Datamosh::Render_Common_1_A; // Save this to store later
         }
 
         // Calculate spatial derivative pyramid
@@ -860,7 +861,7 @@ namespace Datamosh
         {
             VertexShader = Derivatives_VS;
             PixelShader = Derivatives_PS;
-            RenderTarget0 = Shared_Resources_OpticalFlow::Render_Common_1_B;
+            RenderTarget0 = Shared_Resources_Datamosh::Render_Common_1_B;
         }
 
         // Trilinear Optical Flow, calculate 2 levels at a time
@@ -869,21 +870,21 @@ namespace Datamosh
         {
             VertexShader = Basic_VS;
             PixelShader = Level_4_PS;
-            RenderTarget0 = Shared_Resources_OpticalFlow::Render_Common_4;
+            RenderTarget0 = Shared_Resources_Datamosh::Render_Common_4;
         }
 
         pass
         {
             VertexShader = Sample_3x3_4_VS;
             PixelShader = Level_3_PS;
-            RenderTarget0 = Shared_Resources_OpticalFlow::Render_Common_3;
+            RenderTarget0 = Shared_Resources_Datamosh::Render_Common_3;
         }
 
         pass
         {
             VertexShader = Sample_3x3_3_VS;
             PixelShader = Level_2_PS;
-            RenderTarget0 = Shared_Resources_OpticalFlow::Render_Common_2;
+            RenderTarget0 = Shared_Resources_Datamosh::Render_Common_2;
         }
 
         pass
@@ -913,14 +914,14 @@ namespace Datamosh
         {
             VertexShader = Blur_0_VS;
             PixelShader = Post_Blur_0_PS;
-            RenderTarget0 = Shared_Resources_OpticalFlow::Render_Common_1_A;
+            RenderTarget0 = Shared_Resources_Datamosh::Render_Common_1_A;
         }
 
         pass Blur1
         {
             VertexShader = Blur_1_VS;
             PixelShader = Post_Blur_1_PS;
-            RenderTarget0 = Shared_Resources_OpticalFlow::Render_Common_1_B;
+            RenderTarget0 = Shared_Resources_Datamosh::Render_Common_1_B;
         }
 
         // Datamoshing
