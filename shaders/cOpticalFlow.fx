@@ -67,7 +67,7 @@ namespace Shared_Resources_OpticalFlow
     {
         Width = BUFFER_SIZE_1.x;
         Height = BUFFER_SIZE_1.y;
-        Format = RGBA16F;
+        Format = RG16F;
         MipLevels = 8;
     };
 
