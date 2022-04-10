@@ -33,6 +33,8 @@
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include "ReShade.fxh"
+
 #define SIZE int2(128, 128)
 #define BUFFER_SIZE_1 int2(SIZE >> 0)
 #define BUFFER_SIZE_2 int2(SIZE >> 2)
@@ -158,49 +160,71 @@ namespace Motion_Blur
     uniform float _Constraint <
         ui_type = "slider";
         ui_category = "Optical flow";
-        ui_label = "Motion Threshold";
+        ui_label = "Motion threshold";
+        ui_min = 0.0;
+        ui_max = 2.0;
+    > = 1.0;
+
+    uniform float _Smoothness <
+        ui_type = "slider";
+        ui_category = "Optical flow";
+        ui_label = "Motion smoothness";
         ui_min = 0.0;
         ui_max = 2.0;
     > = 1.0;
 
     uniform float _Mip_Bias <
-        ui_type = "drag";
+        ui_type = "slider";
         ui_category = "Optical flow";
         ui_label = "Optical flow mipmap bias";
         ui_min = 0.0;
+        ui_max = 7.0;
     > = 2.5;
 
     uniform float _Blend_Factor <
         ui_type = "slider";
         ui_category = "Optical flow";
-        ui_label = "Temporal Blending Factor";
+        ui_label = "Temporal blending factor";
         ui_min = 0.0;
         ui_Max = 0.9;
     > = 0.1;
 
+    uniform bool _NormalMode <
+        ui_type = "radio";
+        ui_category = "Main";
+        ui_label = "Estimate normals";
+    > = false;
+
     uniform float _Scale <
         ui_type = "slider";
         ui_category = "Main";
-        ui_label = "Flow Scale";
-        ui_tooltip = "Higher = More motion blur";
+        ui_label = "Flow scale";
+        ui_tooltip = "Higher = more motion blur";
         ui_min = 0.0;
         ui_max = 1.0;
     > = 0.5;
 
-    uniform float _Target_Frame_Rate <
-        ui_type = "drag";
-        ui_category = "Main";
-        ui_label = "Target Frame-Rate";
-        ui_tooltip = "Targeted frame-rate";
-    > = 60.00;
-
     uniform bool _FrameRateScaling <
         ui_type = "radio";
         ui_category = "Main";
-        ui_label = "Frame-Rate Scaling";
+        ui_label = "Frame-rate scaling";
         ui_tooltip = "Enables frame-rate scaling";
     > = false;
 
+    uniform float _Target_Frame_Rate <
+        ui_type = "drag";
+        ui_category = "Main";
+        ui_label = "Target frame-rate";
+        ui_tooltip = "Targeted frame-rate";
+    > = 60.00;
+
+    uniform int _Debug_Display <
+        ui_type = "combo";
+        ui_category = "Debug";
+        ui_items = " Display input color\0 Display velocity\0";
+        ui_label = "Method";
+        ui_tooltip = "Method Edge Detection";
+    > = 0;
 
     uniform float _Frame_Time < source = "frametime"; >;
 
@@ -344,10 +368,59 @@ namespace Motion_Blur
 
     // Pixel Shaders
 
+    // Generate normals: https://github.com/crosire/reshade-shaders/blob/slim/Shaders/DisplayDepth.fx [MIT]
+    // Normal encodes: https://knarkowicz.wordpress.com/2014/04/16/octahedron-normal-vector-encoding/
+    // Contour pass: https://github.com/keijiro/KinoContour [MIT]
+
+    float3 Get_Screen_Space_Normal(float2 texcoord)
+    {
+    float3 Offset = float3(BUFFER_PIXEL_SIZE, 0.0);
+    float2 Pos_Center = texcoord.xy;
+    float2 Pos_North = Pos_Center - Offset.zy;
+    float2 Pos_East = Pos_Center + Offset.xz;
+
+    float3 Vert_Center = float3(Pos_Center - 0.5, 1.0) * ReShade::GetLinearizedDepth(Pos_Center);
+    float3 Vert_North  = float3(Pos_North - 0.5,  1.0) * ReShade::GetLinearizedDepth(Pos_North);
+    float3 Vert_East   = float3(Pos_East - 0.5,   1.0) * ReShade::GetLinearizedDepth(Pos_East);
+
+    return normalize(cross(Vert_Center - Vert_North, Vert_Center - Vert_East));
+    }
+
+    float2 OctWrap(float2 V)
+    {
+    return (1.0 - abs(V.yx)) * (V.xy >= 0.0 ? 1.0 : -1.0);
+    }
+
+    float2 Encode(float3 Normal)
+    {
+    // max() divide based on
+    Normal /= max(max(abs(Normal.x), abs(Normal.y)), abs(Normal.z));
+    Normal.xy = Normal.z >= 0.0 ? Normal.xy : OctWrap(Normal.xy);
+    Normal.xy = saturate(Normal.xy * 0.5 + 0.5);
+    return Normal.xy;
+    }
+
+    float3 Decode(float2 f)
+    {
+    f = f * 2.0 - 1.0;
+    // https://twitter.com/Stubbesaurus/status/937994790553227264
+    float3 Normal = float3(f.x, f.y, 1.0 - abs(f.x) - abs(f.y));
+    float T = saturate(-Normal.z);
+    Normal.xy += Normal.xy >= 0.0 ? -T : T;
+    return normalize(Normal);
+    }
+
     void Normalize_Frame_PS(in float4 Position : SV_POSITION, float2 Coord : TEXCOORD, out float2 Color : SV_TARGET0)
     {
-        float4 Frame = max(tex2D(Sample_Color, Coord), exp2(-10.0));
-        Color.xy = saturate(Frame.xy / dot(Frame.rgb, 1.0));
+        if(_NormalMode)
+        {
+            Color.xy = Encode(Get_Screen_Space_Normal(Coord));
+        }
+        else
+        {
+            float4 Frame = max(tex2D(Sample_Color, Coord), exp2(-10.0));
+            Color.xy = saturate(Frame.xy / dot(Frame.rgb, 1.0));
+        }
     }
 
     void Blit_Frame_PS(in float4 Position : SV_POSITION, float2 Coord : TEXCOORD, out float4 Output_Color_0 : SV_TARGET0)
@@ -426,7 +499,7 @@ namespace Motion_Blur
     }
 
     #define Max_Level 7
-    #define E 2e-3
+    #define E 2e-2 * _Smoothness
 
     void Coarse_Optical_Flow_TV(in float2 Coord, in float Level, in float2 UV, out float2 Optical_Flow)
     {
@@ -639,21 +712,33 @@ namespace Motion_Blur
         Output_Color_0 = 0.0;
         const int Samples = 4;
         float Noise = frac(52.9829189 * frac(dot(Position.xy, float2(0.06711056, 0.00583715))));
-        
+
         float Frame_Rate = 1e+3 / _Frame_Time;
         float Frame_Time_Ratio = _Target_Frame_Rate / Frame_Rate;
 
-        float2 Velocity = (tex2Dlod(Shared_Resources_Motion_Blur::Sample_Common_1_B, float4(Coord, 0.0, _Mip_Bias)).xy / BUFFER_SIZE_1) * _Scale;
-        Velocity /= (_FrameRateScaling) ? Frame_Time_Ratio : 1.0;
+        float2 Velocity = tex2Dlod(Shared_Resources_Motion_Blur::Sample_Common_1_B, float4(Coord, 0.0, _Mip_Bias)).xy;
+
+        float2 Scaled_Velocity = (Velocity / BUFFER_SIZE_1) * _Scale;
+        Scaled_Velocity = (_FrameRateScaling) ?  Scaled_Velocity / Frame_Time_Ratio : Scaled_Velocity;
 
         for(int k = 0; k < Samples; ++k)
         {
-            float2 Offset = Velocity * (Noise + k);
+            float2 Offset = Scaled_Velocity * (Noise + k);
             Output_Color_0 += tex2D(Sample_Color, (Coord + Offset));
             Output_Color_0 += tex2D(Sample_Color, (Coord - Offset));
         }
 
         Output_Color_0 /= (Samples * 2.0);
+
+        switch(_Debug_Display)
+        {
+            case 0: // Display input color
+                Output_Color_0 = tex2D(Shared_Resources_Motion_Blur::Sample_Common_0, Coord);
+                break;
+            case 1: // Display velocity
+                Output_Color_0 = float4(Velocity * 0.5 + 0.5, 0.0, 1.0);
+                break;
+        }
     }
 
 

@@ -251,7 +251,6 @@ void Edge_Operator(in sampler2D Source, in float4 Coords[3], inout float4 Ix, in
     }
 }
 
-
 void Edge_Detection_PS(in float4 Position : SV_POSITION, in float4 Coords[3] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
 {
     Output_Color_0 = 1.0;

@@ -33,6 +33,8 @@
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include "ReShade.fxh"
+
 uniform float _Threshold <
     ui_label = "Threshold";
     ui_type = "slider";
@@ -94,6 +96,21 @@ sampler2D Sample_Color
     #endif
 };
 
+texture2D Render_Normals
+{
+    Width = BUFFER_WIDTH;
+    Height = BUFFER_HEIGHT;
+    Format = RG8;
+};
+
+sampler2D Sample_Normals
+{
+    Texture = Render_Normals;
+    MagFilter = LINEAR;
+    MinFilter = LINEAR;
+    MipFilter = LINEAR;
+};
+
 // Vertex shaders
 
 void Basic_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float2 Coord : TEXCOORD0)
@@ -127,9 +144,76 @@ float Magnitude(float3 X, float3 Y)
 }
 
 // Pixel shaders
+// Generate normals: https://github.com/crosire/reshade-shaders/blob/slim/Shaders/DisplayDepth.fx [MIT]
+// Normal encodes: https://knarkowicz.wordpress.com/2014/04/16/octahedron-normal-vector-encoding/
 // Contour pass: https://github.com/keijiro/KinoContour [MIT]
 
-void Contour_PS(in float4 Position : SV_POSITION, in float4 Coord[4] : TEXCOORD0, out float3 Output_Color_0 : SV_TARGET0)
+float3 Get_Screen_Space_Normal(float2 texcoord)
+{
+    float3 Offset = float3(BUFFER_PIXEL_SIZE, 0.0);
+    float2 Pos_Center = texcoord.xy;
+    float2 Pos_North = Pos_Center - Offset.zy;
+    float2 Pos_East = Pos_Center + Offset.xz;
+
+    float3 Vert_Center = float3(Pos_Center - 0.5, 1.0) * ReShade::GetLinearizedDepth(Pos_Center);
+    float3 Vert_North  = float3(Pos_North - 0.5,  1.0) * ReShade::GetLinearizedDepth(Pos_North);
+    float3 Vert_East   = float3(Pos_East - 0.5,   1.0) * ReShade::GetLinearizedDepth(Pos_East);
+
+    return normalize(cross(Vert_Center - Vert_North, Vert_Center - Vert_East));
+}
+
+float2 OctWrap(float2 V)
+{
+    return (1.0 - abs(V.yx)) * (V.xy >= 0.0 ? 1.0 : -1.0);
+}
+
+float2 Encode(float3 Normal)
+{
+    // max() divide based on
+    Normal /= max(max(abs(Normal.x), abs(Normal.y)), abs(Normal.z));
+    Normal.xy = Normal.z >= 0.0 ? Normal.xy : OctWrap(Normal.xy);
+    Normal.xy = saturate(Normal.xy * 0.5 + 0.5);
+    return Normal.xy;
+}
+
+float3 Decode(float2 f)
+{
+    f = f * 2.0 - 1.0;
+    // https://twitter.com/Stubbesaurus/status/937994790553227264
+    float3 Normal = float3(f.x, f.y, 1.0 - abs(f.x) - abs(f.y));
+    float T = saturate(-Normal.z);
+    Normal.xy += Normal.xy >= 0.0 ? -T : T;
+    return normalize(Normal);
+}
+
+void Generate_Normals_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float2 Output_Color_0 : SV_TARGET0)
+{
+    Output_Color_0 = Encode(Get_Screen_Space_Normal(Coord));
+}
+
+// 0 = Color, 1 = Normal, 2 = Depth
+
+float3 SampleTexture(float2 Coord, int Color_Normal_Depth)
+{
+    float3 Texture = 0.0;
+
+    switch(Color_Normal_Depth)
+    {
+        case 0:
+            Texture = tex2D(Sample_Color, Coord).xyz;
+            break;
+        case 1:
+            Texture = Decode(tex2D(Sample_Normals, Coord).xy);
+            break;
+        case 2:
+            Texture = tex2D(ReShade::DepthBuffer, Coord).xyz;
+            break;
+    }
+
+    return Texture;
+}
+
+void Contour(in float4 Coords[4], out float3 Output_Color_0, int Color_Normal_Depth)
 {
     /*
         A_0 B_0 C_0
@@ -137,17 +221,17 @@ void Contour_PS(in float4 Position : SV_POSITION, in float4 Coord[4] : TEXCOORD0
         A_2 B_2 C_2
     */
 
-    float3 A_0 = tex2D(Sample_Color, Coord[0].xy).rgb;
-    float3 A_1 = tex2D(Sample_Color, Coord[0].xz).rgb;
-    float3 A_2 = tex2D(Sample_Color, Coord[0].xw).rgb;
+    float3 A_0 = SampleTexture(Coords[0].xy, Color_Normal_Depth).rgb;
+    float3 A_1 = SampleTexture(Coords[0].xz, Color_Normal_Depth).rgb;
+    float3 A_2 = SampleTexture(Coords[0].xw, Color_Normal_Depth).rgb;
 
-    float3 B_0 = tex2D(Sample_Color, Coord[1].xy).rgb;
-    float3 B_1 = tex2D(Sample_Color, Coord[1].xz).rgb;
-    float3 B_2 = tex2D(Sample_Color, Coord[1].xw).rgb;
+    float3 B_0 = SampleTexture(Coords[1].xy, Color_Normal_Depth).rgb;
+    float3 B_1 = SampleTexture(Coords[1].xz, Color_Normal_Depth).rgb;
+    float3 B_2 = SampleTexture(Coords[1].xw, Color_Normal_Depth).rgb;
 
-    float3 C_0 = tex2D(Sample_Color, Coord[2].xy).rgb;
-    float3 C_1 = tex2D(Sample_Color, Coord[2].xz).rgb;
-    float3 C_2 = tex2D(Sample_Color, Coord[2].xw).rgb;
+    float3 C_0 = SampleTexture(Coords[2].xy, Color_Normal_Depth).rgb;
+    float3 C_1 = SampleTexture(Coords[2].xz, Color_Normal_Depth).rgb;
+    float3 C_2 = SampleTexture(Coords[2].xw, Color_Normal_Depth).rgb;
 
     float3 Bilinear_Sample_0, Bilinear_Sample_1, Bilinear_Sample_2, Bilinear_Sample_3;
 
@@ -161,10 +245,10 @@ void Contour_PS(in float4 Position : SV_POSITION, in float4 Coord[4] : TEXCOORD0
             Edge = Magnitude(Ix, Iy);
             break;
         case 1: // Laplacian
-            Bilinear_Sample_0 = tex2D(Sample_Color, Coord[3].zy).rgb; // (-x, +y)
-            Bilinear_Sample_1 = tex2D(Sample_Color, Coord[3].xy).rgb; // (+x, +y)
-            Bilinear_Sample_2 = tex2D(Sample_Color, Coord[3].zw).rgb; // (-x, -y)
-            Bilinear_Sample_3 = tex2D(Sample_Color, Coord[3].xw).rgb; // (+x, -y)
+            Bilinear_Sample_0 = SampleTexture(Coords[3].zy, Color_Normal_Depth).rgb; // (-x, +y)
+            Bilinear_Sample_1 = SampleTexture(Coords[3].xy, Color_Normal_Depth).rgb; // (+x, +y)
+            Bilinear_Sample_2 = SampleTexture(Coords[3].zw, Color_Normal_Depth).rgb; // (-x, -y)
+            Bilinear_Sample_3 = SampleTexture(Coords[3].xw, Color_Normal_Depth).rgb; // (+x, -y)
             Edge = (Bilinear_Sample_0 + Bilinear_Sample_1 + Bilinear_Sample_2 + Bilinear_Sample_3) - (B_1 * 4.0);
             Edge = Normalize_Output(Edge);
             Edge = length(Edge) / sqrt(3.0);
@@ -221,33 +305,62 @@ void Contour_PS(in float4 Position : SV_POSITION, in float4 Coord[4] : TEXCOORD0
             Edge = Magnitude(Ix, Iy);
             break;
         case 8: // Bilinear Sobel
-            Bilinear_Sample_0 = tex2D(Sample_Color, Coord[3].zy).rgb; // (-x, +y)
-            Bilinear_Sample_1 = tex2D(Sample_Color, Coord[3].xy).rgb; // (+x, +y)
-            Bilinear_Sample_2 = tex2D(Sample_Color, Coord[3].zw).rgb; // (-x, -y)
-            Bilinear_Sample_3 = tex2D(Sample_Color, Coord[3].xw).rgb; // (+x, -y)
+            Bilinear_Sample_0 = SampleTexture(Coords[3].zy, Color_Normal_Depth).rgb; // (-x, +y)
+            Bilinear_Sample_1 = SampleTexture(Coords[3].xy, Color_Normal_Depth).rgb; // (+x, +y)
+            Bilinear_Sample_2 = SampleTexture(Coords[3].zw, Color_Normal_Depth).rgb; // (-x, -y)
+            Bilinear_Sample_3 = SampleTexture(Coords[3].xw, Color_Normal_Depth).rgb; // (+x, -y)
             Ix = ((-Bilinear_Sample_2 + -Bilinear_Sample_0) + (Bilinear_Sample_3 + Bilinear_Sample_1)) * 4.0;
             Iy = ((Bilinear_Sample_2 + Bilinear_Sample_3) + (-Bilinear_Sample_0 + -Bilinear_Sample_1)) * 4.0;
             Edge = Magnitude(Ix, Iy);
             break;
         default:
-            Edge = tex2D(Sample_Color, Coord[1].xz).rgb;
+            Edge = SampleTexture(Coords[1].xz, Color_Normal_Depth).rgb;
             break;
     }
 
     // Thresholding
     Edge = Edge * _Color_Sensitivity;
     Edge = saturate((Edge - _Threshold) * _Inverse_Range);
-    float3 Base = tex2D(Sample_Color, Coord[1].xz).rgb;
+    float3 Base = tex2D(Sample_Color, Coords[1].xz).rgb;
     float3 Color_Background = lerp(Base, _Back_Color.rgb, _Back_Color.a);
     Output_Color_0 = lerp(Color_Background, _Front_Color.rgb, Edge * _Front_Color.a);
 }
 
-technique KinoContour
+void Contour_Color_PS(in float4 Position : SV_POSITION, in float4 Coords[4] : TEXCOORD0, out float3 Output_Color_0 : SV_TARGET0)
+{
+    Contour(Coords, Output_Color_0, 1);
+}
+
+void Contour_Normal_PS(in float4 Position : SV_POSITION, in float4 Coords[4] : TEXCOORD0, out float3 Output_Color_0 : SV_TARGET0)
+{
+    Contour(Coords, Output_Color_0, 1);
+}
+
+technique KinoContourColor
 {
     pass
     {
         VertexShader = Contour_VS;
-        PixelShader = Contour_PS;
+        PixelShader = Contour_Color_PS;
+        #if BUFFER_COLOR_BIT_DEPTH == 8
+            SRGBWriteEnable = TRUE;
+        #endif
+    }
+}
+
+technique KinoContourNormal
+{
+    pass
+    {
+        VertexShader = Basic_VS;
+        PixelShader = Generate_Normals_PS;
+        RenderTarget0 = Render_Normals;
+    }
+
+    pass
+    {
+        VertexShader = Contour_VS;
+        PixelShader = Contour_Normal_PS;
         #if BUFFER_COLOR_BIT_DEPTH == 8
             SRGBWriteEnable = TRUE;
         #endif
