@@ -257,7 +257,7 @@ void Edge_Detection_PS(in float4 Position : SV_POSITION, in float4 Coords[3] : T
     float4 Ix, Iy, Gradient;
     Edge_Operator(Sample_Color, Coords, Ix, Iy, Gradient);
 
-    float ScaleWeight = 1.0;
+    float ScaleWeight = 0.0;
 
     switch(_Method)
     {
@@ -282,6 +282,9 @@ void Edge_Detection_PS(in float4 Position : SV_POSITION, in float4 Coords[3] : T
         case 6:
             ScaleWeight = 16.0;
             break;
+        default:
+            ScaleWeight = 1.0;
+            break;
     }
 
     Ix = (_Scale) ? Ix / ScaleWeight : Ix;
@@ -294,11 +297,12 @@ void Edge_Detection_PS(in float4 Position : SV_POSITION, in float4 Coords[3] : T
 
     if(_Method == 1) // Laplacian
     {
-        Output_Color_0 = length(Gradient.rgb);
+        Output_Color_0 = length(Gradient.rgb) * rsqrt(3.0);
     }
     else // Edge detection
     {
-        Output_Color_0.rg = float2(dot(Ix.rgb, 1.0 / 3.0), dot(Iy.rgb, 1.0 / 3.0));
+        Output_Color_0.r = dot(Ix.rgb, 1.0 / 3.0);
+        Output_Color_0.g = dot(Iy.rgb, 1.0 / 3.0);
         Output_Color_0.b = (_Normal) ? 1.0 : 0.0;
         Output_Color_0 = (_Normal) ? Output_Color_0 * 0.5 + 0.5 : Output_Color_0;
     }

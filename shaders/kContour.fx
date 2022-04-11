@@ -1,6 +1,6 @@
 
 /*
-    Various edge detection shaders
+    Heavily modified version of KinoContour
 
     BSD 3-Clause License
 
@@ -31,6 +31,31 @@
     CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
     OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+
+/*
+    https://github.com/keijiro/KinoContour
+
+    MIT License
+
+    Copyright (C) 2015-2017 Keijiro Takahashi
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy of
+    this software and associated documentation files (the "Software"), to deal in
+    the Software without restriction, including without limitation the rights to
+    use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+    the Software, and to permit persons to whom the Software is furnished to do so,
+    subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in all
+    copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+    FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+    COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+    IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+    CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #include "ReShade.fxh"
@@ -65,12 +90,17 @@ uniform float4 _Back_Color <
     ui_min = 0.0; ui_max = 1.0;
 > = float4(0.0, 0.0, 0.0, 0.0);
 
-uniform int _Select <
+uniform int _Method <
     ui_type = "combo";
-    ui_items = " Fwidth\0 Laplacian\0 Sobel\0 Prewitt\0 Robert\0 Scharr\0 Kayyali\0 Kroon\0 Bilinear Sobel\0 None\0";
+    ui_items = " ddx(), ddy()\0 Bilinear 3x3 Laplacian\0 Bilinear 3x3 Sobel\0 Bilinear 5x5 Prewitt\0 Bilinear 5x5 Sobel\0 3x3 Prewitt\0 3x3 Scharr\0 None\0";
     ui_label = "Method";
-    ui_tooltip = "Select Edge Detection";
+    ui_tooltip = "Method Edge Detection";
 > = 0;
+
+uniform bool _Scale_Derivatives <
+    ui_label = "Scale Derivatives to [-1, 1] range";
+    ui_type = "radio";
+> = true;
 
 uniform bool _Normalize_Output <
     ui_label = "Normalize Output";
@@ -120,27 +150,48 @@ void Basic_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out f
     Position = float4(Coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
 
-void Contour_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 Coord[4] : TEXCOORD0)
+void Contour_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 Coords[3] : TEXCOORD0)
 {
     float2 VS_Coord = 0.0;
     Basic_VS(ID, Position, VS_Coord);
-    const float2 Pixel_Size = 1.0 / float2(BUFFER_WIDTH, BUFFER_HEIGHT);
-    Coord[0] = VS_Coord.xyyy + float4(-Pixel_Size.x, Pixel_Size.y, 0.0, -Pixel_Size.y);
-    Coord[1] = VS_Coord.xyyy + float4(0.0, Pixel_Size.y, 0.0, -Pixel_Size.y);
-    Coord[2] = VS_Coord.xyyy + float4(Pixel_Size.x, Pixel_Size.y, 0.0, -Pixel_Size.y);
-    Coord[3] = VS_Coord.xyxy + float4(Pixel_Size, -Pixel_Size) * 0.5;
-}
+    const float2 Pixel_Size = 1.0 / int2(BUFFER_WIDTH, BUFFER_HEIGHT);
 
-float3 Normalize_Output(float3 Input)
-{
-    return (_Normalize_Output) ? Input * rsqrt(dot(Input, Input) + _Normalize_Weight) : Input;
-}
+    Coords[0] = 0.0;
+    Coords[1] = 0.0;
+    Coords[2] = 0.0;
 
-float Magnitude(float3 X, float3 Y)
-{
-    X = Normalize_Output(X);
-    Y = Normalize_Output(Y);
-    return sqrt(dot(X, X) + dot(Y, Y));
+    switch(_Method)
+    {
+        case 0: // Fwidth
+            Coords[0].xy = VS_Coord;
+            break;
+        case 1: // Bilinear 3x3 Laplacian
+            Coords[0].xy = VS_Coord;
+            Coords[1] = VS_Coord.xyxy + (float4(-0.5, -0.5, 0.5, 0.5) * Pixel_Size.xyxy);
+            break;
+        case 2: // Bilinear 3x3 Sobel
+            Coords[0] = VS_Coord.xyxy + (float4(-0.5, -0.5, 0.5, 0.5) * Pixel_Size.xyxy);
+            break;
+        case 3: // Bilinear 5x5 Prewitt
+            Coords[0] = VS_Coord.xyyy + (float4(-1.5, 1.5, 0.0, -1.5) * Pixel_Size.xyyy);
+            Coords[1] = VS_Coord.xyyy + (float4( 0.0, 1.5, 0.0, -1.5) * Pixel_Size.xyyy);
+            Coords[2] = VS_Coord.xyyy + (float4( 1.5, 1.5, 0.0, -1.5) * Pixel_Size.xyyy);
+            break;
+        case 4: // Bilinear 5x5 Sobel
+            Coords[0] = VS_Coord.xxyy + (float4(-1.5, 1.5, -0.5, 0.5) * Pixel_Size.xxyy);
+            Coords[1] = VS_Coord.xxyy + (float4(-0.5, 0.5, -1.5, 1.5) * Pixel_Size.xxyy);
+            break;
+        case 5: // 3x3 Prewitt
+            Coords[0] = VS_Coord.xyyy + (float4(-1.0, 1.0, 0.0, -1.0) * Pixel_Size.xyyy);
+            Coords[1] = VS_Coord.xyyy + (float4(0.0, 1.0, 0.0, -1.0) * Pixel_Size.xyyy);
+            Coords[2] = VS_Coord.xyyy + (float4(1.0, 1.0, 0.0, -1.0) * Pixel_Size.xyyy);
+            break;
+        case 6: // 3x3 Scharr
+            Coords[0] = VS_Coord.xyyy + (float4(-1.0, 1.0, 0.0, -1.0) * Pixel_Size.xyyy);
+            Coords[1] = VS_Coord.xyyy + (float4(0.0, 1.0, 0.0, -1.0) * Pixel_Size.xyyy);
+            Coords[2] = VS_Coord.xyyy + (float4(1.0, 1.0, 0.0, -1.0) * Pixel_Size.xyyy);
+            break;
+    }
 }
 
 // Pixel shaders
@@ -193,11 +244,11 @@ void Generate_Normals_PS(in float4 Position : SV_POSITION, in float2 Coord : TEX
 
 // 0 = Color, 1 = Normal, 2 = Depth
 
-float3 SampleTexture(float2 Coord, int Color_Normal_Depth)
+float3 SampleTexture(float2 Coord, int Mode)
 {
     float3 Texture = 0.0;
 
-    switch(Color_Normal_Depth)
+    switch(Mode)
     {
         case 0:
             Texture = tex2D(Sample_Color, Coord).xyz;
@@ -213,127 +264,208 @@ float3 SampleTexture(float2 Coord, int Color_Normal_Depth)
     return Texture;
 }
 
-void Contour(in float4 Coords[4], out float3 Output_Color_0, int Color_Normal_Depth)
+float Magnitude(float3 X, float3 Y)
 {
-    /*
-        A_0 B_0 C_0
-        A_1 B_1 C_1
-        A_2 B_2 C_2
-    */
+    X = (_Normalize_Output) ?  X * rsqrt(dot(X, X) + _Normalize_Weight) : X;
+    Y = (_Normalize_Output) ?  Y * rsqrt(dot(Y, Y) + _Normalize_Weight) : Y;
+    return sqrt(dot(X, X) + dot(Y, Y));
+}
 
-    float3 A_0 = SampleTexture(Coords[0].xy, Color_Normal_Depth).rgb;
-    float3 A_1 = SampleTexture(Coords[0].xz, Color_Normal_Depth).rgb;
-    float3 A_2 = SampleTexture(Coords[0].xw, Color_Normal_Depth).rgb;
+float4 Scale_Derivative(float4 Input)
+{
+    float ScaleWeight = 0.0;
 
-    float3 B_0 = SampleTexture(Coords[1].xy, Color_Normal_Depth).rgb;
-    float3 B_1 = SampleTexture(Coords[1].xz, Color_Normal_Depth).rgb;
-    float3 B_2 = SampleTexture(Coords[1].xw, Color_Normal_Depth).rgb;
-
-    float3 C_0 = SampleTexture(Coords[2].xy, Color_Normal_Depth).rgb;
-    float3 C_1 = SampleTexture(Coords[2].xz, Color_Normal_Depth).rgb;
-    float3 C_2 = SampleTexture(Coords[2].xw, Color_Normal_Depth).rgb;
-
-    float3 Bilinear_Sample_0, Bilinear_Sample_1, Bilinear_Sample_2, Bilinear_Sample_3;
-
-    float3 Ix, Iy, Edge;
-
-    switch(_Select)
+    switch(_Method)
     {
-        case 0: // fwidth()
-            Ix = Normalize_Output(ddx(B_1));
-            Iy = Normalize_Output(ddy(B_1));
-            Edge = Magnitude(Ix, Iy);
+        case 0: // Fwidth
+            ScaleWeight = 1.0;
             break;
-        case 1: // Laplacian
-            Bilinear_Sample_0 = SampleTexture(Coords[3].zy, Color_Normal_Depth).rgb; // (-x, +y)
-            Bilinear_Sample_1 = SampleTexture(Coords[3].xy, Color_Normal_Depth).rgb; // (+x, +y)
-            Bilinear_Sample_2 = SampleTexture(Coords[3].zw, Color_Normal_Depth).rgb; // (-x, -y)
-            Bilinear_Sample_3 = SampleTexture(Coords[3].xw, Color_Normal_Depth).rgb; // (+x, -y)
-            Edge = (Bilinear_Sample_0 + Bilinear_Sample_1 + Bilinear_Sample_2 + Bilinear_Sample_3) - (B_1 * 4.0);
-            Edge = Normalize_Output(Edge);
-            Edge = length(Edge) / sqrt(3.0);
+        case 1: // Bilinear 3x3 Laplacian
+            ScaleWeight = 1.0;
             break;
-        case 2: // Sobel
-            Ix = (-A_0 + ((-A_1 * 2.0) + -A_2)) + (C_0 + (C_1 * 2.0) + C_2);
-            Iy = (-A_0 + ((-B_0 * 2.0) + -C_0)) + (A_2 + (B_2 * 2.0) + C_2);
-            Edge = Magnitude(Ix, Iy);
+        case 2: // Bilinear 3x3 Sobel
+            ScaleWeight = 4.0;
             break;
-        case 3: // Prewitt
-            Ix = (-A_0 - A_1 - A_2) + (C_0 + C_1 + C_2);
-            Iy = (-A_0 - B_0 - C_0) + (A_2 + B_2 + C_2);
-            Edge = Magnitude(Ix, Iy);
+        case 3: // Bilinear 5x5 Prewitt
+            ScaleWeight = 10.0;
             break;
-        case 4: // Robert's Cross
-            Ix = C_0 - B_1;
-            Iy = B_0 - C_1;
-            Edge = Magnitude(Ix, Iy);
+        case 4: // Bilinear 5x5 Sobel by CeeJayDK
+            ScaleWeight = 12.0;
             break;
-        case 5: // Scharr
-            Ix += A_0 * -3.0;
-            Ix += A_1 * -10.0;
-            Ix += A_2 * -3.0;
-            Ix += C_0 * 3.0;
-            Ix += C_1 * 10.0;
-            Ix += C_2 * 3.0;
-
-            Iy += A_0 * 3.0;
-            Iy += B_0 * 10.0;
-            Iy += C_0 * 3.0;
-            Iy += A_2 * -3.0;
-            Iy += B_2 * -10.0;
-            Iy += C_2 * -3.0;
-            Edge = Magnitude(Ix, Iy);
+        case 5: // 3x3 Prewitt
+            ScaleWeight = 3.0;
             break;
-        case 6: // Kayyali
-            float3 Cross = (A_0 * 6.0) + (C_0 * -6.0) + (A_2 * -6.0) + (C_2 * 6.0);
-            Edge = Magnitude(Cross, -Cross);
-            break;
-        case 7: // Kroon
-            Ix += A_0 * -17.0;
-            Ix += A_1 * -61.0;
-            Ix += A_2 * -17.0;
-            Ix += C_0 * 17.0;
-            Ix += C_1 * 61.0;
-            Ix += C_2 * 17.0;
-
-            Iy += A_0 * 17.0;
-            Iy += B_0 * 61.0;
-            Iy += C_0 * 17.0;
-            Iy += A_2 * -17.0;
-            Iy += B_2 * -61.0;
-            Iy += C_2 * -17.0;
-            Edge = Magnitude(Ix, Iy);
-            break;
-        case 8: // Bilinear Sobel
-            Bilinear_Sample_0 = SampleTexture(Coords[3].zy, Color_Normal_Depth).rgb; // (-x, +y)
-            Bilinear_Sample_1 = SampleTexture(Coords[3].xy, Color_Normal_Depth).rgb; // (+x, +y)
-            Bilinear_Sample_2 = SampleTexture(Coords[3].zw, Color_Normal_Depth).rgb; // (-x, -y)
-            Bilinear_Sample_3 = SampleTexture(Coords[3].xw, Color_Normal_Depth).rgb; // (+x, -y)
-            Ix = ((-Bilinear_Sample_2 + -Bilinear_Sample_0) + (Bilinear_Sample_3 + Bilinear_Sample_1)) * 4.0;
-            Iy = ((Bilinear_Sample_2 + Bilinear_Sample_3) + (-Bilinear_Sample_0 + -Bilinear_Sample_1)) * 4.0;
-            Edge = Magnitude(Ix, Iy);
+        case 6: // 3x3 Scharr
+            ScaleWeight = 16.0;
             break;
         default:
-            Edge = SampleTexture(Coords[1].xz, Color_Normal_Depth).rgb;
+            ScaleWeight = 1.0;
             break;
     }
 
+    Input = (_Scale_Derivatives) ? Input / ScaleWeight : Input;
+    return Input;
+}
+
+void Contour(in float4 Coords[3], in int Mode, out float4 Output_Color_0)
+{
+    float4 Ix, Iy, Gradient;
+    float4 A_0, B_0, C_0;
+    float4 A_1, B_1, C_1;
+    float4 A_2, B_2, C_2;
+
+    switch(_Method)
+    {
+        case 0: // Fwidth
+            A_0 = SampleTexture(Coords[0].xy, Mode);
+            Ix = ddx(A_0);
+            Iy = ddy(A_0);
+            Gradient = Magnitude(Ix.rgb, Iy.rgb);
+            break;
+        case 1: // Bilinear 3x3 Laplacian
+            // A_0    C_0
+            //    B_1
+            // A_2    C_2
+            A_0 = SampleTexture(Coords[1].xw, Mode); // <-0.5, +0.5>
+            C_0 = SampleTexture(Coords[1].zw, Mode); // <+0.5, +0.5>
+            B_1 = SampleTexture(Coords[0].xy, Mode); // < 0.0,  0.0>
+            A_2 = SampleTexture(Coords[1].xy, Mode); // <-0.5, -0.5>
+            C_2 = SampleTexture(Coords[1].zy, Mode); // <+0.5, -0.5>
+
+            Gradient = (A_0 + C_0 + A_2 + C_2) - (B_1 * 4.0);
+            Gradient = length(Gradient) * rsqrt(3.0);
+            break;
+        case 2: // Bilinear 3x3 Sobel
+            A_0 = SampleTexture(Coords[0].xw, Mode).rgb * 4.0; // <-0.5, +0.5>
+            C_0 = SampleTexture(Coords[0].zw, Mode).rgb * 4.0; // <+0.5, +0.5>
+            A_2 = SampleTexture(Coords[0].xy, Mode).rgb * 4.0; // <-0.5, -0.5>
+            C_2 = SampleTexture(Coords[0].zy, Mode).rgb * 4.0; // <+0.5, -0.5>
+
+            Ix = Scale_Derivative((C_0 + C_2) - (A_0 + A_2));
+            Iy = Scale_Derivative((A_0 + C_0) - (A_2 + C_2));
+            Gradient = Magnitude(Ix.rgb, Iy.rgb);
+            break;
+        case 3: // Bilinear 5x5 Prewitt
+            // A_0 B_0 C_0
+            // A_1    C_1
+            // A_2 B_2 C_2
+            A_0 = SampleTexture(Coords[0].xy, Mode) * 4.0; // <-1.5, +1.5>
+            A_1 = SampleTexture(Coords[0].xz, Mode) * 2.0; // <-1.5,  0.0>
+            A_2 = SampleTexture(Coords[0].xw, Mode) * 4.0; // <-1.5, -1.5>
+            B_0 = SampleTexture(Coords[1].xy, Mode) * 2.0; // < 0.0, +1.5>
+            B_2 = SampleTexture(Coords[1].xw, Mode) * 2.0; // < 0.0, -1.5>
+            C_0 = SampleTexture(Coords[2].xy, Mode) * 4.0; // <+1.5, +1.5>
+            C_1 = SampleTexture(Coords[2].xz, Mode) * 2.0; // <+1.5,  0.0>
+            C_2 = SampleTexture(Coords[2].xw, Mode) * 4.0; // <+1.5, -1.5>
+
+            // -1 -1  0  +1 +1
+            // -1 -1  0  +1 +1
+            // -1 -1  0  +1 +1
+            // -1 -1  0  +1 +1
+            // -1 -1  0  +1 +1
+            Ix = Scale_Derivative((C_0 + C_1 + C_2) - (A_0 + A_1 + A_2));
+
+            // +1 +1 +1 +1 +1
+            // +1 +1 +1 +1 +1
+            //  0  0  0  0  0
+            // -1 -1 -1 -1 -1
+            // -1 -1 -1 -1 -1
+            Iy = Scale_Derivative((A_0 + B_0 + C_0) - (A_2 + B_2 + C_2));
+
+            Gradient = Magnitude(Ix.rgb, Iy.rgb);
+            break;
+        case 4: // Bilinear 5x5 Sobel by CeeJayDK
+            //   B_1 B_2
+            // A_0     A_1
+            // A_2     B_0
+            //   C_0 C_1
+            A_0 = SampleTexture(Coords[0].xw, Mode) * 4.0; // <-1.5, +0.5>
+            A_1 = SampleTexture(Coords[0].yw, Mode) * 4.0; // <+1.5, +0.5>
+            A_2 = SampleTexture(Coords[0].xz, Mode) * 4.0; // <-1.5, -0.5>
+            B_0 = SampleTexture(Coords[0].yz, Mode) * 4.0; // <+1.5, -0.5>
+            B_1 = SampleTexture(Coords[1].xw, Mode) * 4.0; // <-0.5, +1.5>
+            B_2 = SampleTexture(Coords[1].yw, Mode) * 4.0; // <+0.5, +1.5>
+            C_0 = SampleTexture(Coords[1].xz, Mode) * 4.0; // <-0.5, -1.5>
+            C_1 = SampleTexture(Coords[1].yz, Mode) * 4.0; // <+0.5, -1.5>
+
+            //    -1 0 +1
+            // -1 -2 0 +2 +1
+            // -2 -2 0 +2 +2
+            // -1 -2 0 +2 +1
+            //    -1 0 +1
+            Ix = Scale_Derivative((B_2 + A_1 + B_0 + C_1) - (B_1 + A_0 + A_2 + C_0));
+
+            //    +1 +2 +1
+            // +1 +2 +2 +2 +1
+            //  0  0  0  0  0
+            // -1 -2 -2 -2 -1
+            //    -1 -2 -1
+            Iy = Scale_Derivative((A_0 + B_1 + B_2 + A_1) - (A_2 + C_0 + C_1 + B_0));
+
+            Gradient = Magnitude(Ix.rgb, Iy.rgb);
+            break;
+        case 5: // 3x3 Prewitt
+            // A_0 B_0 C_0
+            // A_1     C_1
+            // A_2 B_2 C_2
+            A_0 = SampleTexture(Coords[0].xy, Mode);
+            A_1 = SampleTexture(Coords[0].xz, Mode);
+            A_2 = SampleTexture(Coords[0].xw, Mode);
+            B_0 = SampleTexture(Coords[1].xy, Mode);
+            B_2 = SampleTexture(Coords[1].xw, Mode);
+            C_0 = SampleTexture(Coords[2].xy, Mode);
+            C_1 = SampleTexture(Coords[2].xz, Mode);
+            C_2 = SampleTexture(Coords[2].xw, Mode);
+
+            Ix = Scale_Derivative((C_0 + C_1 + C_2) - (A_0 + A_1 + A_2));
+            Iy = Scale_Derivative((A_0 + B_0 + C_0) - (A_2 + B_2 + C_2));
+            Gradient = Magnitude(Ix.rgb, Iy.rgb);
+            break;
+        case 6: // 3x3 Scharr
+        {
+            A_0 = SampleTexture(Coords[0].xy, Mode) * 3.0;
+            A_1 = SampleTexture(Coords[0].xz, Mode) * 10.0;
+            A_2 = SampleTexture(Coords[0].xw, Mode) * 3.0;
+            B_0 = SampleTexture(Coords[1].xy, Mode) * 10.0;
+            B_2 = SampleTexture(Coords[1].xw, Mode) * 10.0;
+            C_0 = SampleTexture(Coords[2].xy, Mode) * 3.0;
+            C_1 = SampleTexture(Coords[2].xz, Mode) * 10.0;
+            C_2 = SampleTexture(Coords[2].xw, Mode) * 3.0;
+
+            Ix = Scale_Derivative((C_0 + C_1 + C_2) - (A_0 + A_1 + A_2));
+            Iy = Scale_Derivative((A_0 + B_0 + C_0) - (A_2 + B_2 + C_2));
+            Gradient = Magnitude(Ix.rgb, Iy.rgb);
+            break;
+        }
+    }
+
     // Thresholding
-    Edge = Edge * _Color_Sensitivity;
-    Edge = saturate((Edge - _Threshold) * _Inverse_Range);
-    float3 Base = tex2D(Sample_Color, Coords[1].xz).rgb;
+    Gradient = Gradient * _Color_Sensitivity;
+    Gradient = saturate((Gradient - _Threshold) * _Inverse_Range);
+
+    float3 Base = 0.0;
+
+    if(_Method == 0 || _Method == 1)
+    {
+        Base = tex2D(Sample_Color, Coords[0].xy).rgb;
+    }
+    else
+    {
+        Base = tex2D(Sample_Color, Coords[1].xz).rgb;
+    }
+
     float3 Color_Background = lerp(Base, _Back_Color.rgb, _Back_Color.a);
-    Output_Color_0 = lerp(Color_Background, _Front_Color.rgb, Edge * _Front_Color.a);
+    Output_Color_0 = lerp(Color_Background, _Front_Color.rgb, Gradient.a * _Front_Color.a);
 }
 
-void Contour_Color_PS(in float4 Position : SV_POSITION, in float4 Coords[4] : TEXCOORD0, out float3 Output_Color_0 : SV_TARGET0)
+void Contour_Color_PS(in float4 Position : SV_POSITION, in float4 Coords[3] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
 {
-    Contour(Coords, Output_Color_0, 1);
+    Contour(Coords, 0, Output_Color_0);
 }
 
-void Contour_Normal_PS(in float4 Position : SV_POSITION, in float4 Coords[4] : TEXCOORD0, out float3 Output_Color_0 : SV_TARGET0)
+void Contour_Normal_PS(in float4 Position : SV_POSITION, in float4 Coords[3] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
 {
-    Contour(Coords, Output_Color_0, 1);
+    Contour(Coords, 1, Output_Color_0);
 }
 
 technique KinoContourColor
