@@ -221,7 +221,7 @@ namespace Motion_Blur
     uniform int _Debug_Display <
         ui_type = "combo";
         ui_category = "Debug";
-        ui_items = " Display input color\0 Display velocity\0";
+        ui_items = " None\0 Display input color\0 Display velocity\0";
         ui_label = "Method";
         ui_tooltip = "Method Edge Detection";
     > = 0;
@@ -504,7 +504,7 @@ namespace Motion_Blur
     void Coarse_Optical_Flow_TV(in float2 Coord, in float Level, in float2 UV, out float2 Optical_Flow)
     {
         Optical_Flow = 0.0;
-        const float Alpha = max(ldexp(_Constraint * 1e-3, Level - Max_Level), 1e-7);
+        const float Alpha = max(ldexp(_Constraint * 1e-4, Level - Max_Level), 1e-7);
 
         // Load textures
         float2 Current = tex2Dlod(Shared_Resources_Motion_Blur::Sample_Common_1_A, float4(Coord, 0.0, Level)).xy;
@@ -612,7 +612,7 @@ namespace Motion_Blur
     void Optical_Flow_TV(in sampler2D SourceUV, in float4 Coords[3], in float Level, out float2 Optical_Flow)
     {
         Optical_Flow = 0.0;
-        const float Alpha = max(ldexp(_Constraint * 1e-3, Level - Max_Level), 1e-7);
+        const float Alpha = max(ldexp(_Constraint * 1e-4, Level - Max_Level), 1e-7);
 
         // Load textures
         float2 Current = tex2Dlod(Shared_Resources_Motion_Blur::Sample_Common_1_A, float4(Coords[1].xz, 0.0, Level)).xy;
@@ -687,6 +687,7 @@ namespace Motion_Blur
     void Level_1_PS(in float4 Position : SV_POSITION, in float4 Coords[3] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
     {
         Optical_Flow_TV(Shared_Resources_Motion_Blur::Sample_Common_2, Coords, 0.5, Output_Color_0.rg);
+        Output_Color_0.y *= -1.0;
         Output_Color_0.ba = float2(0.0, _Blend_Factor);
     }
 
@@ -728,14 +729,15 @@ namespace Motion_Blur
             Output_Color_0 += tex2D(Sample_Color, (Coord - Offset));
         }
 
-        Output_Color_0 /= (Samples * 2.0);
-
         switch(_Debug_Display)
         {
-            case 0: // Display input color
+        	case 0: // No debug
+		        Output_Color_0 /= (Samples * 2.0);
+        		break;
+            case 1: // Display input color
                 Output_Color_0 = tex2D(Shared_Resources_Motion_Blur::Sample_Common_0, Coord);
                 break;
-            case 1: // Display velocity
+            case 2: // Display velocity
                 Output_Color_0 = float4(Velocity * 0.5 + 0.5, 0.0, 1.0);
                 break;
         }

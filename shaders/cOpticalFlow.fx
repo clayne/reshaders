@@ -733,6 +733,7 @@ namespace Optical_Flow
     void Level_1_PS(in float4 Position : SV_POSITION, in float4 Coords[3] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
     {
         Optical_Flow_TV(Shared_Resources_OpticalFlow::Sample_Common_2, Coords, 0.5, Output_Color_0.rg);
+        Output_Color_0.y *= -1.0;
         Output_Color_0.ba = float2(0.0, _Blend_Factor);
     }
 
