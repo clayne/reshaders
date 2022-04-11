@@ -283,7 +283,7 @@ namespace Datamosh
         MinFilter = LINEAR;
         MipFilter = LINEAR;
     };
-    
+
     sampler2D Sample_Optical_Flow_Post
     {
         Texture = Shared_Resources_Datamosh::Render_Common_1_B;
