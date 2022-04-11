@@ -132,9 +132,6 @@ technique cCopyBuffer
         VertexShader = Basic_VS;
         PixelShader = Blit_PS;
         RenderTarget0 = Render_Copy;
-        #if BUFFER_COLOR_BIT_DEPTH == 8
-           SRGBWriteEnable = TRUE;
-        #endif
     }
 }
 
