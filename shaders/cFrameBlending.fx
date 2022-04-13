@@ -79,16 +79,16 @@ void Basic_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out f
 
 // Pixel shaders
 
-void Blend_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+void Blend_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
     // Copy backbuffer to a that continuously blends with its previous result 
-    Output_Color_0 = float4(tex2D(Sample_Color, Coord).rgb, _Blend_Factor);
+    OutputColor0 = float4(tex2D(Sample_Color, Coord).rgb, _Blend_Factor);
 }
 
-void Display_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+void Display_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
     // Display the buffer
-    Output_Color_0 = tex2D(Sample_Copy, Coord);
+    OutputColor0 = tex2D(Sample_Copy, Coord);
 }
 
 technique cFrameBlending

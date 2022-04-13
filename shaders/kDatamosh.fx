@@ -421,9 +421,9 @@ namespace Datamosh
         Color.xy = saturate(Frame.xy / dot(Frame.rgb, 1.0));
     }
 
-    void Blit_Frame_PS(in float4 Position : SV_POSITION, float2 Coord : TEXCOORD, out float4 Output_Color_0 : SV_TARGET0)
+    void Blit_Frame_PS(in float4 Position : SV_POSITION, float2 Coord : TEXCOORD, out float4 OutputColor0 : SV_TARGET0)
     {
-        Output_Color_0 = tex2D(Shared_Resources_Datamosh::Sample_Common_0, Coord);
+        OutputColor0 = tex2D(Shared_Resources_Datamosh::Sample_Common_0, Coord);
     }
 
     static const float Blur_Weights[8] =
@@ -438,32 +438,32 @@ namespace Datamosh
         0.0042996835
     };
 
-    void Gaussian_Blur(in sampler2D Source, in float4 Coords[8], out float4 Output_Color_0)
+    void Gaussian_Blur(in sampler2D Source, in float4 Coords[8], out float4 OutputColor0)
     {
         float Total_Weights = Blur_Weights[0];
-        Output_Color_0 = (tex2D(Source, Coords[0].xy) * Blur_Weights[0]);
+        OutputColor0 = (tex2D(Source, Coords[0].xy) * Blur_Weights[0]);
 
         for(int i = 1; i < 8; i++)
         {
-            Output_Color_0 += (tex2D(Source, Coords[i].xy) * Blur_Weights[i]);
-            Output_Color_0 += (tex2D(Source, Coords[i].zw) * Blur_Weights[i]);
+            OutputColor0 += (tex2D(Source, Coords[i].xy) * Blur_Weights[i]);
+            OutputColor0 += (tex2D(Source, Coords[i].zw) * Blur_Weights[i]);
             Total_Weights += (Blur_Weights[i] * 2.0);
         }
 
-        Output_Color_0 = Output_Color_0 / Total_Weights;
+        OutputColor0 = OutputColor0 / Total_Weights;
     }
 
-    void Pre_Blur_0_PS(in float4 Position : SV_POSITION, in float4 Coords[8] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+    void Pre_Blur_0_PS(in float4 Position : SV_POSITION, in float4 Coords[8] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
-        Gaussian_Blur(Shared_Resources_Datamosh::Sample_Common_1_A, Coords, Output_Color_0);
+        Gaussian_Blur(Shared_Resources_Datamosh::Sample_Common_1_A, Coords, OutputColor0);
     }
 
-    void Pre_Blur_1_PS(in float4 Position : SV_POSITION, in float4 Coords[8] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+    void Pre_Blur_1_PS(in float4 Position : SV_POSITION, in float4 Coords[8] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
-        Gaussian_Blur(Shared_Resources_Datamosh::Sample_Common_1_B, Coords, Output_Color_0);
+        Gaussian_Blur(Shared_Resources_Datamosh::Sample_Common_1_B, Coords, OutputColor0);
     }
 
-    void Derivatives_PS(in float4 Position : SV_POSITION, in float4 Coords[2] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+    void Derivatives_PS(in float4 Position : SV_POSITION, in float4 Coords[2] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
         // Bilinear 5x5 Sobel by CeeJayDK
         //   B_1 B_2
@@ -484,16 +484,16 @@ namespace Datamosh
         // -2 -2 0 +2 +2
         // -1 -2 0 +2 +1
         //    -1 0 +1
-        Output_Color_0.xy = ((B_2 + A_1 + B_0 + C_1) - (B_1 + A_0 + A_2 + C_0)) / 12.0;
+        OutputColor0.xy = ((B_2 + A_1 + B_0 + C_1) - (B_1 + A_0 + A_2 + C_0)) / 12.0;
 
         //    +1 +2 +1
         // +1 +2 +2 +2 +1
         //  0  0  0  0  0
         // -1 -2 -2 -2 -1
         //    -1 -2 -1
-        Output_Color_0.zw = ((A_0 + B_1 + B_2 + A_1) - (A_2 + C_0 + C_1 + B_0)) / 12.0;
-        Output_Color_0.xz *= rsqrt(dot(Output_Color_0.xz, Output_Color_0.xz) + 1.0);
-        Output_Color_0.yw *= rsqrt(dot(Output_Color_0.yw, Output_Color_0.yw) + 1.0);
+        OutputColor0.zw = ((A_0 + B_1 + B_2 + A_1) - (A_2 + C_0 + C_1 + B_0)) / 12.0;
+        OutputColor0.xz *= rsqrt(dot(OutputColor0.xz, OutputColor0.xz) + 1.0);
+        OutputColor0.yw *= rsqrt(dot(OutputColor0.yw, OutputColor0.yw) + 1.0);
     }
 
     #define Max_Level 7
@@ -682,28 +682,28 @@ namespace Datamosh
         Optical_Flow_TV(Shared_Resources_Datamosh::Sample_Common_3, Coords, 2.5, Color);
     }
 
-    void Level_1_PS(in float4 Position : SV_POSITION, in float4 Coords[3] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+    void Level_1_PS(in float4 Position : SV_POSITION, in float4 Coords[3] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
-        Optical_Flow_TV(Shared_Resources_Datamosh::Sample_Common_2, Coords, 0.5, Output_Color_0.rg);
-        Output_Color_0.y *= -1.0;
-        Output_Color_0.ba = float2(0.0, _Blend_Factor);
+        Optical_Flow_TV(Shared_Resources_Datamosh::Sample_Common_2, Coords, 0.5, OutputColor0.rg);
+        OutputColor0.y *= -1.0;
+        OutputColor0.ba = float2(0.0, _Blend_Factor);
     }
 
-    void Blit_Previous_PS(in float4 Position : SV_POSITION, float2 Coord : TEXCOORD, out float4 Output_Color_0 : SV_TARGET0)
+    void Blit_Previous_PS(in float4 Position : SV_POSITION, float2 Coord : TEXCOORD, out float4 OutputColor0 : SV_TARGET0)
     {
-        Output_Color_0 = tex2D(Shared_Resources_Datamosh::Sample_Common_1_A, Coord);
+        OutputColor0 = tex2D(Shared_Resources_Datamosh::Sample_Common_1_A, Coord);
     }
 
-    void Post_Blur_0_PS(in float4 Position : SV_POSITION, in float4 Coords[8] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+    void Post_Blur_0_PS(in float4 Position : SV_POSITION, in float4 Coords[8] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
-        Gaussian_Blur(Sample_Optical_Flow, Coords, Output_Color_0);
-        Output_Color_0.a = 1.0;
+        Gaussian_Blur(Sample_Optical_Flow, Coords, OutputColor0);
+        OutputColor0.a = 1.0;
     }
 
-    void Post_Blur_1_PS(in float4 Position : SV_POSITION, in float4 Coords[8] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+    void Post_Blur_1_PS(in float4 Position : SV_POSITION, in float4 Coords[8] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
-        Gaussian_Blur(Shared_Resources_Datamosh::Sample_Common_1_A, Coords, Output_Color_0);
-        Output_Color_0.a = 1.0;
+        Gaussian_Blur(Shared_Resources_Datamosh::Sample_Common_1_A, Coords, OutputColor0);
+        OutputColor0.a = 1.0;
     }
 
     /*
@@ -741,7 +741,7 @@ namespace Datamosh
         return frac(43758.5453 * sin(f));
     }
 
-    void Accumulate_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+    void Accumulate_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
         float Quality = 1.0 - _Entropy;
         float2 Time = float2(_Time, 0.0);
@@ -770,11 +770,11 @@ namespace Datamosh
         float ResetAccumulation = saturate(Random.z * 0.5 + Quality);
 
         // - Reset if the amount of motion is larger than the block size.
-        Output_Color_0.rgb = MotionVectorLength > _Block_Size ? ResetAccumulation : UpdateAccumulation;
-        Output_Color_0.a = MotionVectorLength > _Block_Size ? 0.0 : 1.0;
+        OutputColor0.rgb = MotionVectorLength > _Block_Size ? ResetAccumulation : UpdateAccumulation;
+        OutputColor0.a = MotionVectorLength > _Block_Size ? 0.0 : 1.0;
     }
 
-    void Datamosh_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+    void Datamosh_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
         const float2 DisplacementTexel = 1.0 / BUFFER_SIZE_1;
         const float Quality = 1.0 - _Entropy;
@@ -816,13 +816,13 @@ namespace Datamosh
         ConditionalWeight = lerp(ConditionalWeight, 1.0, RandomNumbers.w < lerp(0.2, 1.0, Quality) * (Displacement > 1.0 - 1e-3));
 
         // - If the conditions above are not met, choose work.
-        Output_Color_0 = lerp(Working, Source, ConditionalWeight);
+        OutputColor0 = lerp(Working, Source, ConditionalWeight);
     }
 
-    void Copy_0_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+    void Copy_0_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
-        Output_Color_0 = tex2D(Sample_Color, Coord);
-        Output_Color_0.a = 1.0;
+        OutputColor0 = tex2D(Sample_Color, Coord);
+        OutputColor0.a = 1.0;
     }
 
     technique KinoDatamosh

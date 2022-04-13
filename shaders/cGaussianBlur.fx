@@ -70,15 +70,15 @@ float Gaussian(float Pixel_Index, float Sigma)
     return Output * exp(-(Pixel_Index * Pixel_Index) / (2.0 * Sigma * Sigma));
 }
 
-void Gaussian_Blur(in float2 Coord, in bool Is_Horizontal, out float4 Output_Color_0)
+void Gaussian_Blur(in float2 Coord, in bool Is_Horizontal, out float4 OutputColor0)
 {
     float2 Direction = Is_Horizontal ? float2(1.0, 0.0) : float2(0.0, 1.0);
-    float2 Pixel_Size = (1.0 / float2(BUFFER_WIDTH, BUFFER_HEIGHT)) * Direction;
+    float2 PixelSize = (1.0 / float2(BUFFER_WIDTH, BUFFER_HEIGHT)) * Direction;
     float Kernel_Size = _Sigma * 3.0;
 
     if(_Sigma == 0.0)
     {
-        Output_Color_0 = tex2Dlod(Sample_Color, float4(Coord, 0.0, 0.0));
+        OutputColor0 = tex2Dlod(Sample_Color, float4(Coord, 0.0, 0.0));
     }
     else
     {
@@ -95,24 +95,24 @@ void Gaussian_Blur(in float2 Coord, in bool Is_Horizontal, out float4 Output_Col
             float Linear_Weight = Weight_1 + Weight_2;
             float Linear_Offset = ((Offset_1 * Weight_1) + (Offset_2 * Weight_2)) / Linear_Weight;
 
-            Output_Color += tex2Dlod(Sample_Color, float4(Coord - Linear_Offset * Pixel_Size, 0.0, 0.0)) * Linear_Weight;
-            Output_Color += tex2Dlod(Sample_Color, float4(Coord + Linear_Offset * Pixel_Size, 0.0, 0.0)) * Linear_Weight;
+            Output_Color += tex2Dlod(Sample_Color, float4(Coord - Linear_Offset * PixelSize, 0.0, 0.0)) * Linear_Weight;
+            Output_Color += tex2Dlod(Sample_Color, float4(Coord + Linear_Offset * PixelSize, 0.0, 0.0)) * Linear_Weight;
             Total_Weight += Linear_Weight * 2.0;
         }
 
         // Normalize intensity to prevent altered output
-        Output_Color_0 = Output_Color / Total_Weight;
+        OutputColor0 = Output_Color / Total_Weight;
     }
 }
 
-void Horizontal_Gaussian_Blur_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+void Horizontal_Gaussian_Blur_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    Gaussian_Blur(Coord, true, Output_Color_0);
+    Gaussian_Blur(Coord, true, OutputColor0);
 }
 
-void Vertical_Gaussian_Blur_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+void Vertical_Gaussian_Blur_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    Gaussian_Blur(Coord, false, Output_Color_0);
+    Gaussian_Blur(Coord, false, OutputColor0);
 }
 
 technique cHorizontalGaussianBlur

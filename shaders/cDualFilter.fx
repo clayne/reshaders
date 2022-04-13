@@ -368,44 +368,44 @@ void UpsamplePS(in sampler2D Source, in float4 Coords[3], out float4 Output_Colo
     Output_Color.a = 1.0;
 }
 
-void Downsample_1_PS(in float4 Position : SV_POSITION, in float4 Coords[4] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+void Downsample_1_PS(in float4 Position : SV_POSITION, in float4 Coords[4] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    DownsamplePS(Sample_Color, Coords, Output_Color_0);
+    DownsamplePS(Sample_Color, Coords, OutputColor0);
 }
 
-void Downsample_2_PS(in float4 Position : SV_POSITION, in float4 Coords[4] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+void Downsample_2_PS(in float4 Position : SV_POSITION, in float4 Coords[4] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    DownsamplePS(Sample_Common_1, Coords, Output_Color_0);
+    DownsamplePS(Sample_Common_1, Coords, OutputColor0);
 }
 
-void Downsample_3_PS(in float4 Position : SV_POSITION, in float4 Coords[4] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+void Downsample_3_PS(in float4 Position : SV_POSITION, in float4 Coords[4] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    DownsamplePS(Sample_Common_2, Coords, Output_Color_0);
+    DownsamplePS(Sample_Common_2, Coords, OutputColor0);
 }
 
-void Downsample_4_PS(in float4 Position : SV_POSITION, in float4 Coords[4] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+void Downsample_4_PS(in float4 Position : SV_POSITION, in float4 Coords[4] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    DownsamplePS(Sample_Common_3, Coords, Output_Color_0);
+    DownsamplePS(Sample_Common_3, Coords, OutputColor0);
 }
 
-void Upsample_3_PS(in float4 Position : SV_POSITION, in float4 Coords[3] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+void Upsample_3_PS(in float4 Position : SV_POSITION, in float4 Coords[3] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    UpsamplePS(Sample_Common_4, Coords, Output_Color_0);
+    UpsamplePS(Sample_Common_4, Coords, OutputColor0);
 }
 
-void Upsample_2_PS(in float4 Position : SV_POSITION, in float4 Coords[3] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+void Upsample_2_PS(in float4 Position : SV_POSITION, in float4 Coords[3] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    UpsamplePS(Sample_Common_3, Coords, Output_Color_0);
+    UpsamplePS(Sample_Common_3, Coords, OutputColor0);
 }
 
-void Upsample_1_PS(in float4 Position : SV_POSITION, in float4 Coords[3] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+void Upsample_1_PS(in float4 Position : SV_POSITION, in float4 Coords[3] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    UpsamplePS(Sample_Common_2, Coords, Output_Color_0);
+    UpsamplePS(Sample_Common_2, Coords, OutputColor0);
 }
 
-void Upsample_0_PS(in float4 Position : SV_POSITION, in float4 Coords[3] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+void Upsample_0_PS(in float4 Position : SV_POSITION, in float4 Coords[3] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    UpsamplePS(Sample_Common_1, Coords, Output_Color_0);
+    UpsamplePS(Sample_Common_1, Coords, OutputColor0);
 }
 
 technique cDualFilter

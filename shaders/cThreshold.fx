@@ -86,7 +86,7 @@ float Median_3(float x, float y, float z)
 
 // Pixel shaders
 
-void Threshold_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+void Threshold_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
     const float Knee = mad(_Threshold, _Smooth, 1e-5f);
     const float3 Curve = float3(_Threshold - Knee, Knee * 2.0, 0.25 / Knee);
@@ -100,7 +100,7 @@ void Threshold_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0,
     // Combine and apply the brightness response curve
     Color = Color * max(Response_Curve, Brightness - _Threshold) / max(Brightness, 1e-10);
     Brightness = Median_3(Color.r, Color.g, Color.b);
-    Output_Color_0 = saturate(lerp(Brightness, Color, _Saturation) * _Intensity);
+    OutputColor0 = saturate(lerp(Brightness, Color, _Saturation) * _Intensity);
 }
 
 technique cThreshold

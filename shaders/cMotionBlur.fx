@@ -374,7 +374,7 @@ namespace Motion_Blur
 
     float3 Get_Screen_Space_Normal(float2 texcoord)
     {
-    float3 Offset = float3(BUFFER_PIXEL_SIZE, 0.0);
+    float3 Offset = float3(BUFFER_PixelSize, 0.0);
     float2 Pos_Center = texcoord.xy;
     float2 Pos_North = Pos_Center - Offset.zy;
     float2 Pos_East = Pos_Center + Offset.xz;
@@ -423,9 +423,9 @@ namespace Motion_Blur
         }
     }
 
-    void Blit_Frame_PS(in float4 Position : SV_POSITION, float2 Coord : TEXCOORD, out float4 Output_Color_0 : SV_TARGET0)
+    void Blit_Frame_PS(in float4 Position : SV_POSITION, float2 Coord : TEXCOORD, out float4 OutputColor0 : SV_TARGET0)
     {
-        Output_Color_0 = tex2D(Shared_Resources_Motion_Blur::Sample_Common_0, Coord);
+        OutputColor0 = tex2D(Shared_Resources_Motion_Blur::Sample_Common_0, Coord);
     }
 
     static const float Blur_Weights[8] =
@@ -440,32 +440,32 @@ namespace Motion_Blur
         0.0042996835
     };
 
-    void Gaussian_Blur(in sampler2D Source, in float4 Coords[8], out float4 Output_Color_0)
+    void Gaussian_Blur(in sampler2D Source, in float4 Coords[8], out float4 OutputColor0)
     {
         float Total_Weights = Blur_Weights[0];
-        Output_Color_0 = (tex2D(Source, Coords[0].xy) * Blur_Weights[0]);
+        OutputColor0 = (tex2D(Source, Coords[0].xy) * Blur_Weights[0]);
 
         for(int i = 1; i < 8; i++)
         {
-            Output_Color_0 += (tex2D(Source, Coords[i].xy) * Blur_Weights[i]);
-            Output_Color_0 += (tex2D(Source, Coords[i].zw) * Blur_Weights[i]);
+            OutputColor0 += (tex2D(Source, Coords[i].xy) * Blur_Weights[i]);
+            OutputColor0 += (tex2D(Source, Coords[i].zw) * Blur_Weights[i]);
             Total_Weights += (Blur_Weights[i] * 2.0);
         }
 
-        Output_Color_0  = Output_Color_0 / Total_Weights;
+        OutputColor0  = OutputColor0 / Total_Weights;
     }
 
-    void Pre_Blur_0_PS(in float4 Position : SV_POSITION, in float4 Coords[8] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+    void Pre_Blur_0_PS(in float4 Position : SV_POSITION, in float4 Coords[8] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
-        Gaussian_Blur(Shared_Resources_Motion_Blur::Sample_Common_1_A, Coords, Output_Color_0);
+        Gaussian_Blur(Shared_Resources_Motion_Blur::Sample_Common_1_A, Coords, OutputColor0);
     }
 
-    void Pre_Blur_1_PS(in float4 Position : SV_POSITION, in float4 Coords[8] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+    void Pre_Blur_1_PS(in float4 Position : SV_POSITION, in float4 Coords[8] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
-        Gaussian_Blur(Shared_Resources_Motion_Blur::Sample_Common_1_B, Coords, Output_Color_0);
+        Gaussian_Blur(Shared_Resources_Motion_Blur::Sample_Common_1_B, Coords, OutputColor0);
     }
 
-    void Derivatives_PS(in float4 Position : SV_POSITION, in float4 Coords[2] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+    void Derivatives_PS(in float4 Position : SV_POSITION, in float4 Coords[2] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
         // Bilinear 5x5 Sobel by CeeJayDK
         //   B_1 B_2
@@ -486,16 +486,16 @@ namespace Motion_Blur
         // -2 -2 0 +2 +2
         // -1 -2 0 +2 +1
         //    -1 0 +1
-        Output_Color_0.xy = ((B_2 + A_1 + B_0 + C_1) - (B_1 + A_0 + A_2 + C_0)) / 12.0;
+        OutputColor0.xy = ((B_2 + A_1 + B_0 + C_1) - (B_1 + A_0 + A_2 + C_0)) / 12.0;
 
         //    +1 +2 +1
         // +1 +2 +2 +2 +1
         //  0  0  0  0  0
         // -1 -2 -2 -2 -1
         //    -1 -2 -1
-        Output_Color_0.zw = ((A_0 + B_1 + B_2 + A_1) - (A_2 + C_0 + C_1 + B_0)) / 12.0;
-        Output_Color_0.xz *= rsqrt(dot(Output_Color_0.xz, Output_Color_0.xz) + 1.0);
-        Output_Color_0.yw *= rsqrt(dot(Output_Color_0.yw, Output_Color_0.yw) + 1.0);
+        OutputColor0.zw = ((A_0 + B_1 + B_2 + A_1) - (A_2 + C_0 + C_1 + B_0)) / 12.0;
+        OutputColor0.xz *= rsqrt(dot(OutputColor0.xz, OutputColor0.xz) + 1.0);
+        OutputColor0.yw *= rsqrt(dot(OutputColor0.yw, OutputColor0.yw) + 1.0);
     }
 
     #define Max_Level 7
@@ -684,33 +684,33 @@ namespace Motion_Blur
         Optical_Flow_TV(Shared_Resources_Motion_Blur::Sample_Common_3, Coords, 2.5, Color);
     }
 
-    void Level_1_PS(in float4 Position : SV_POSITION, in float4 Coords[3] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+    void Level_1_PS(in float4 Position : SV_POSITION, in float4 Coords[3] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
-        Optical_Flow_TV(Shared_Resources_Motion_Blur::Sample_Common_2, Coords, 0.5, Output_Color_0.rg);
-        Output_Color_0.y *= -1.0;
-        Output_Color_0.ba = float2(0.0, _Blend_Factor);
+        Optical_Flow_TV(Shared_Resources_Motion_Blur::Sample_Common_2, Coords, 0.5, OutputColor0.rg);
+        OutputColor0.y *= -1.0;
+        OutputColor0.ba = float2(0.0, _Blend_Factor);
     }
 
-    void Blit_Previous_PS(in float4 Position : SV_POSITION, float2 Coord : TEXCOORD, out float4 Output_Color_0 : SV_TARGET0)
+    void Blit_Previous_PS(in float4 Position : SV_POSITION, float2 Coord : TEXCOORD, out float4 OutputColor0 : SV_TARGET0)
     {
-        Output_Color_0 = tex2D(Shared_Resources_Motion_Blur::Sample_Common_1_A, Coord);
+        OutputColor0 = tex2D(Shared_Resources_Motion_Blur::Sample_Common_1_A, Coord);
     }
 
-    void Post_Blur_0_PS(in float4 Position : SV_POSITION, in float4 Coords[8] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+    void Post_Blur_0_PS(in float4 Position : SV_POSITION, in float4 Coords[8] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
-        Gaussian_Blur(Sample_Optical_Flow, Coords, Output_Color_0);
-        Output_Color_0.a = 1.0;
+        Gaussian_Blur(Sample_Optical_Flow, Coords, OutputColor0);
+        OutputColor0.a = 1.0;
     }
 
-    void Post_Blur_1_PS(in float4 Position : SV_POSITION, in float4 Coords[8] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+    void Post_Blur_1_PS(in float4 Position : SV_POSITION, in float4 Coords[8] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
-        Gaussian_Blur(Shared_Resources_Motion_Blur::Sample_Common_1_A, Coords, Output_Color_0);
-        Output_Color_0.a = 1.0;
+        Gaussian_Blur(Shared_Resources_Motion_Blur::Sample_Common_1_A, Coords, OutputColor0);
+        OutputColor0.a = 1.0;
     }
 
-    void Motion_BlurPS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_Target)
+    void Motion_BlurPS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 OutputColor0 : SV_Target)
     {
-        Output_Color_0 = 0.0;
+        OutputColor0 = 0.0;
         const int Samples = 4;
         float Noise = frac(52.9829189 * frac(dot(Position.xy, float2(0.06711056, 0.00583715))));
 
@@ -725,20 +725,20 @@ namespace Motion_Blur
         for(int k = 0; k < Samples; ++k)
         {
             float2 Offset = Scaled_Velocity * (Noise + k);
-            Output_Color_0 += tex2D(Sample_Color, (Coord + Offset));
-            Output_Color_0 += tex2D(Sample_Color, (Coord - Offset));
+            OutputColor0 += tex2D(Sample_Color, (Coord + Offset));
+            OutputColor0 += tex2D(Sample_Color, (Coord - Offset));
         }
 
         switch(_Debug_Display)
         {
         	case 0: // No debug
-		        Output_Color_0 /= (Samples * 2.0);
+		        OutputColor0 /= (Samples * 2.0);
         		break;
             case 1: // Display input color
-                Output_Color_0 = tex2D(Shared_Resources_Motion_Blur::Sample_Common_0, Coord);
+                OutputColor0 = tex2D(Shared_Resources_Motion_Blur::Sample_Common_0, Coord);
                 break;
             case 2: // Display velocity
-                Output_Color_0 = float4(Velocity * 0.5 + 0.5, 0.0, 1.0);
+                OutputColor0 = float4(Velocity * 0.5 + 0.5, 0.0, 1.0);
                 break;
         }
     }

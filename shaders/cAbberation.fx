@@ -33,15 +33,15 @@
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-uniform float2 _Shift_Red <
+uniform float2 _ShiftRed <
     ui_type = "drag";
 > = -1.0;
 
-uniform float2 _Shift_Green <
+uniform float2 _ShiftGreen <
     ui_type = "drag";
 > = 0.0;
 
-uniform float2 _Shift_Blue <
+uniform float2 _ShiftBlue <
     ui_type = "drag";
 > = 1.0;
 
@@ -69,17 +69,17 @@ void Basic_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out f
 
 // Pixel shaders
 
-void Abberation_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+void Abberation_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    const float2 Pixel_Size = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
+    const float2 PixelSize = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
     // Shift red channel
-    Output_Color_0.r = tex2D(Sample_Color, Coord + _Shift_Red * Pixel_Size).r;
+    OutputColor0.r = tex2D(Sample_Color, Coord + _ShiftRed * PixelSize).r;
     // Keep green channel to the center
-    Output_Color_0.g = tex2D(Sample_Color, Coord + _Shift_Green * Pixel_Size).g;
+    OutputColor0.g = tex2D(Sample_Color, Coord + _ShiftGreen * PixelSize).g;
     // Shift blue channel
-    Output_Color_0.b = tex2D(Sample_Color, Coord + _Shift_Blue * Pixel_Size).b;
+    OutputColor0.b = tex2D(Sample_Color, Coord + _ShiftBlue * PixelSize).b;
     // Write alpha value
-    Output_Color_0.a = 1.0;
+    OutputColor0.a = 1.0;
 }
 
 technique cAbberation

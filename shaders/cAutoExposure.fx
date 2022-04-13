@@ -33,7 +33,7 @@
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-uniform float _Time_Rate <
+uniform float _TimeRate <
     ui_label = "Smoothing";
     ui_type = "drag";
     ui_tooltip = "Exposure time smoothing";
@@ -41,7 +41,7 @@ uniform float _Time_Rate <
     ui_max = 1.0;
 > = 0.95;
 
-uniform float _Manual_Bias <
+uniform float _ManualBias <
     ui_label = "Exposure";
     ui_type = "drag";
     ui_tooltip = "Optional manual bias ";
@@ -88,26 +88,26 @@ void Basic_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out f
 
 // Pixel shaders
 
-void Blit_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+void Blit_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
     float4 Color = tex2D(Sample_Color, Coord);
 
-    // Output_Color_0.rgb = Output the highest brightness out of red/green/blue component
-    // Output_Color_0.a = Output the weight for temporal blending
-    Output_Color_0 = float4(max(Color.r, max(Color.g, Color.b)).rrr, _Time_Rate);
+    // OutputColor0.rgb = Output the highest brightness out of red/green/blue component
+    // OutputColor0.a = Output the weight for temporal blending
+    OutputColor0 = float4(max(Color.r, max(Color.g, Color.b)).rrr, _TimeRate);
 }
 
-void Exposure_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+void Exposure_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
     // Average Luma = Average value (1x1) for all of the pixels
-    float Average_Luma = tex2Dlod(Sample_Luma_LOD, float4(Coord, 0.0, 8.0)).r;
+    float AverageLuma = tex2Dlod(Sample_Luma_LOD, float4(Coord, 0.0, 8.0)).r;
     float4 Color = tex2D(Sample_Color, Coord);
 
-    // Key_Value is an exposure compensation curve
+    // KeyValue is an exposure compensation curve
     // Source: https://knarkowicz.wordpress.com/2016/01/09/automatic-exposure/
-    float Key_Value = 1.03 - (2.0 / (log10(Average_Luma + 1.0) + 2.0));
-    float Exposure_Value = log2(Key_Value / Average_Luma) + _Manual_Bias;
-    Output_Color_0 = Color * exp2(Exposure_Value);
+    float KeyValue = 1.03 - (2.0 / (log10(AverageLuma + 1.0) + 2.0));
+    float ExposureValue = log2(KeyValue / AverageLuma) + _ManualBias;
+    OutputColor0 = Color * exp2(ExposureValue);
 }
 
 technique cAutoExposure

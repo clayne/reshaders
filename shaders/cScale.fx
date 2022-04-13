@@ -84,9 +84,9 @@ void Scale_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out f
     Coord = Coord * 0.5 + 0.5;
 }
 
-void Scale_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+void Scale_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    Output_Color_0 = tex2D(Sample_Color, Coord);
+    OutputColor0 = tex2D(Sample_Color, Coord);
 }
 
 technique cScale

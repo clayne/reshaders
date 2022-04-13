@@ -101,7 +101,7 @@ void Overlay_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out
     Coord.zw = Coord.zw * 0.5 + 0.5;
 }
 
-void Overlay_PS(in float4 Position : SV_POSITION, in float4 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+void Overlay_PS(in float4 Position : SV_POSITION, in float4 Coord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
     float4 Color = tex2D(Sample_Color, Coord.zw);
 
@@ -111,8 +111,8 @@ void Overlay_PS(in float4 Position : SV_POSITION, in float4 Coord : TEXCOORD0, o
     float2 Shaper = step(Scale, Mask_Coord.xy) * step(Scale, 1.0 - Mask_Coord.xy);
     float Crop = Shaper.x * Shaper.y;
 
-    Output_Color_0.rgb = Color.rgb;
-    Output_Color_0.a = Crop;
+    OutputColor0.rgb = Color.rgb;
+    OutputColor0.a = Crop;
 }
 
 technique cOverlay

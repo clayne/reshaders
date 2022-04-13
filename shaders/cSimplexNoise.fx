@@ -185,10 +185,10 @@ float Simplex_Noise(float3 V)
     return 105.0 * dot(M * M, float4(dot(P_0, X_0), dot(P_1, X_1), dot(P_2, X_2), dot(P_3, X_3)));
 }
 
-void Simplex_Noise_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+void Simplex_Noise_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
     float3 Value_3 = float3(Position.xy / 2.0, Time / min(BUFFER_WIDTH, BUFFER_HEIGHT));
-    Output_Color_0 = Simplex_Noise(Value_3) * 0.5 + 0.5;
+    OutputColor0 = Simplex_Noise(Value_3) * 0.5 + 0.5;
 }
 
 technique cSimplexNoise

@@ -134,45 +134,45 @@ void Basic_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out f
 float4 Gaussian_Blur(sampler2D Source, float2 Coord, const float2 Direction)
 {
     float4 Output = 0.0;
-    const float2 Pixel_Size = (2.0 / float2(BUFFER_WIDTH, BUFFER_HEIGHT)) * Direction;
+    const float2 PixelSize = (2.0 / float2(BUFFER_WIDTH, BUFFER_HEIGHT)) * Direction;
     const float Weight = 1.0 / _Radius;
 
     for(float Index = -_Radius + 0.5; Index <= _Radius; Index += 2.0)
     {
-        Output += tex2Dlod(Source, float4(Coord + Index * Pixel_Size, 0.0, 0.0)) * Weight;
+        Output += tex2Dlod(Source, float4(Coord + Index * PixelSize, 0.0, 0.0)) * Weight;
     }
 
     return Output;
 }
 
-void Blit_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+void Blit_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    Output_Color_0 = tex2D(Sample_Color, Coord);
+    OutputColor0 = tex2D(Sample_Color, Coord);
 }
 
-void Horizontal_Blur_0_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+void Horizontal_Blur_0_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    Output_Color_0 = Gaussian_Blur(Sample_Buffer_A, Coord, float2(1.0, 0.0));
+    OutputColor0 = Gaussian_Blur(Sample_Buffer_A, Coord, float2(1.0, 0.0));
 }
 
-void Vertical_Blur_0_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+void Vertical_Blur_0_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    Output_Color_0 = Gaussian_Blur(Sample_Buffer_B, Coord, float2(0.0, 1.0));
+    OutputColor0 = Gaussian_Blur(Sample_Buffer_B, Coord, float2(0.0, 1.0));
 }
 
-void Horizontal_Blur_1_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+void Horizontal_Blur_1_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    Output_Color_0 = Gaussian_Blur(Sample_Buffer_A, Coord, float2(1.0, 0.0));
+    OutputColor0 = Gaussian_Blur(Sample_Buffer_A, Coord, float2(1.0, 0.0));
 }
 
-void Vertical_Blur_1_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+void Vertical_Blur_1_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    Output_Color_0 = Gaussian_Blur(Sample_Buffer_B, Coord, float2(0.0, 1.0));
+    OutputColor0 = Gaussian_Blur(Sample_Buffer_B, Coord, float2(0.0, 1.0));
 }
 
-void OutputPS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+void OutputPS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    Output_Color_0 = tex2D(Sample_Buffer_A, Coord);
+    OutputColor0 = tex2D(Sample_Buffer_A, Coord);
 }
 
 technique cPingPong

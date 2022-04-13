@@ -42,9 +42,9 @@ void Basic_VS(out float4 Position : SV_POSITION)
 
 // Pixel shaders
 
-void Basic_PS(out float4 Output_Color_0 : SV_TARGET0)
+void Basic_PS(out float4 OutputColor0 : SV_TARGET0)
 {
-    Output_Color_0 = 0.0;
+    OutputColor0 = 0.0;
 }
 
 technique cDefault

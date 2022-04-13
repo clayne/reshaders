@@ -64,40 +64,40 @@ void Basic_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out f
 
 // Pixel shaders
 
-void Normalization_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float3 Output_Color_0 : SV_TARGET0)
+void Normalization_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float3 OutputColor0 : SV_TARGET0)
 {
-    Output_Color_0 = 0.0;
+    OutputColor0 = 0.0;
     const float Minima = exp2(-10.0);
     float3 Color = max(tex2D(Sample_Color, Coord).rgb, Minima);
     switch(_Select)
     {
         case 0: // Length (RG)
-            Output_Color_0.rg = saturate(normalize(Color).rg);
+            OutputColor0.rg = saturate(normalize(Color).rg);
             break;
         case 1: // Length (RGB)
-            Output_Color_0 = saturate(normalize(Color));
+            OutputColor0 = saturate(normalize(Color));
             break;
         case 2: // Average (RG)
-            Output_Color_0.rg = saturate(Color.rg / dot(Color, 1.0 / 3.0));
+            OutputColor0.rg = saturate(Color.rg / dot(Color, 1.0 / 3.0));
             break;
         case 3: // Average (RGB)
-            Output_Color_0 = saturate(Color / dot(Color, 1.0 / 3.0));
+            OutputColor0 = saturate(Color / dot(Color, 1.0 / 3.0));
             break;
         case 4: // Sum (RG)
-            Output_Color_0.rg = saturate(Color.rg /  dot(Color, 1.0));
+            OutputColor0.rg = saturate(Color.rg /  dot(Color, 1.0));
             break;
         case 5: // Sum (RGB)
-            Output_Color_0 = saturate(Color / dot(Color, 1.0));
+            OutputColor0 = saturate(Color / dot(Color, 1.0));
             break;
         case 6: // Max (RG)
-            Output_Color_0.rg = saturate(Color.rg / max(max(Color.r, Color.g), Color.b));
+            OutputColor0.rg = saturate(Color.rg / max(max(Color.r, Color.g), Color.b));
             break;
         case 7: // Max (RGB)
-            Output_Color_0 = saturate(Color / max(max(Color.r, Color.g), Color.b));
+            OutputColor0 = saturate(Color / max(max(Color.r, Color.g), Color.b));
             break;
         default:
             // No Chromaticity
-            Output_Color_0 = Color;
+            OutputColor0 = Color;
             break;
     }
 }

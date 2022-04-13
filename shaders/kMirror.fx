@@ -61,7 +61,7 @@ void Basic_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out f
 
 /* [ Pixel Shaders ] */
 
-void Mirror_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+void Mirror_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
     // Convert to polar coordinates
     float2 Polar = Coord * 2.0 - 1.0;
@@ -80,7 +80,7 @@ void Mirror_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, ou
 
     // Reflection at the border of the screen.
     Coord = max(min(Coord, 2.0 - Coord), -Coord);
-    Output_Color_0 = tex2D(Sample_Color, Coord);
+    OutputColor0 = tex2D(Sample_Color, Coord);
 }
 
 technique KinoMirror

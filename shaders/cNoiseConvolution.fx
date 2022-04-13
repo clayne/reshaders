@@ -91,11 +91,11 @@ float Gradient_Noise(float2 Position)
     return frac(Numbers.z * frac(dot(Position.xy, Numbers.xy)));
 }
 
-void Noise_Convolution_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+void Noise_Convolution_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    Output_Color_0 = 0.0;
+    OutputColor0 = 0.0;
 
-    const float2 Pixel_Size = 1.0 / int2(BUFFER_WIDTH, BUFFER_HEIGHT);
+    const float2 PixelSize = 1.0 / int2(BUFFER_WIDTH, BUFFER_HEIGHT);
     float Noise = 2.0 * Pi * Gradient_Noise(Position.xy);
 
     float2 Rotation = 0.0;
@@ -107,10 +107,10 @@ void Noise_Convolution_PS(in float4 Position : SV_POSITION, in float2 Coord : TE
     for(int i = 0; i < _Samples; i++)
     {
         float2 Sample_Offset = mul(Vogel_Sample(i, _Samples) * _Radius, Rotation_Matrix);
-        Output_Color_0 += tex2Dlod(Sample_Color, float4(Coord.xy + (Sample_Offset * Pixel_Size), 0.0, 0.0));
+        OutputColor0 += tex2Dlod(Sample_Color, float4(Coord.xy + (Sample_Offset * PixelSize), 0.0, 0.0));
     }
 
-    Output_Color_0 = Output_Color_0 / _Samples;
+    OutputColor0 = OutputColor0 / _Samples;
 }
 
 technique cNoiseConvolution

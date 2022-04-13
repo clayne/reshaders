@@ -57,13 +57,13 @@ void Shard_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out f
     Coord.x = (ID == 2) ? 2.0 : 0.0;
     Coord.y = (ID == 1) ? 2.0 : 0.0;
     Position = float4(Coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
-    const float2 Pixel_Size = 0.5 / float2(BUFFER_WIDTH, BUFFER_HEIGHT);
-    Offset = Coord.xyxy + float4(-Pixel_Size, Pixel_Size);
+    const float2 PixelSize = 0.5 / float2(BUFFER_WIDTH, BUFFER_HEIGHT);
+    Offset = Coord.xyxy + float4(-PixelSize, PixelSize);
 }
 
 /* [ Pixel Shaders ] */
 
-void Shard_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, in float4 Offset : TEXCOORD1, out float4 Output_Color_0 : SV_TARGET0)
+void Shard_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, in float4 Offset : TEXCOORD1, out float4 OutputColor0 : SV_TARGET0)
 {
     float4 Original_Sample = tex2D(Sample_Color, Coord);
     float4 Blur_Sample = 0.0;
@@ -71,7 +71,7 @@ void Shard_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, in 
     Blur_Sample += tex2D(Sample_Color, Offset.zw) * 0.25;
     Blur_Sample += tex2D(Sample_Color, Offset.xy) * 0.25;
     Blur_Sample += tex2D(Sample_Color, Offset.zy) * 0.25;
-    Output_Color_0 = Original_Sample + (Original_Sample - Blur_Sample) * _Weight;
+    OutputColor0 = Original_Sample + (Original_Sample - Blur_Sample) * _Weight;
 }
 
 technique cShard

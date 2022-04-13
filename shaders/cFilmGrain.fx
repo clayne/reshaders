@@ -70,12 +70,12 @@ float Gaussian_Weight(float x, float Sigma)
     return rsqrt(Pi * Sigma) * exp(-((x * x) / (2.0 * Sigma)));
 }
 
-void Film_Grain_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+void Film_Grain_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
     float Time = rcp(1e+3 / _Time) * _Speed;
     float Seed = dot(Position.xy, float2(12.9898, 78.233));
     float Noise = frac(sin(Seed) * 43758.5453 + Time);
-    Output_Color_0 = Gaussian_Weight(Noise, _Variance) * _Intensity;
+    OutputColor0 = Gaussian_Weight(Noise, _Variance) * _Intensity;
 }
 
 technique cFilmGrain

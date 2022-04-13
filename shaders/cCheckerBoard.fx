@@ -33,19 +33,19 @@
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-uniform float4 _Color_1 <
+uniform float4 _Color1 <
     ui_min = 0.0;
     ui_label = "Color 1";
     ui_type = "color";
 > = 1.0;
 
-uniform float4 _Color_2 <
+uniform float4 _Color2 <
     ui_min = 0.0;
     ui_label = "Color 2";
     ui_type = "color";
 > = 0.0;
 
-uniform bool _Invert_Checkerboard <
+uniform bool _InvertCheckerboard <
     ui_type = "radio";
     ui_label = "Invert Checkerboard Pattern";
 > = false;
@@ -61,11 +61,11 @@ void Basic_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out f
 
 // Pixel shaders
 
-void Checkerboard_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+void Checkerboard_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
     float4 Checkerboard = frac(dot(Position.xy, 0.5)) * 2.0;
-    Checkerboard = _Invert_Checkerboard ? 1.0 - Checkerboard : Checkerboard;
-    Output_Color_0 = Checkerboard == 1.0 ? _Color_1 : _Color_2;
+    Checkerboard = _InvertCheckerboard ? 1.0 - Checkerboard : Checkerboard;
+    OutputColor0 = Checkerboard == 1.0 ? _Color1 : _Color2;
 }
 
 technique cCheckerBoard

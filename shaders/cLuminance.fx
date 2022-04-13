@@ -64,41 +64,41 @@ void Basic_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out f
 
 // Pixel shaders
 
-void Luminance_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+void Luminance_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
     float4 Color = tex2D(Sample_Color, Coord);
     switch(_Select)
     {
         case 0:
             // Average
-            Output_Color_0 = dot(Color.rgb, 1.0 / 3.0);
+            OutputColor0 = dot(Color.rgb, 1.0 / 3.0);
             break;
         case 1:
             // Sum
-            Output_Color_0 = dot(Color.rgb, 1.0);
+            OutputColor0 = dot(Color.rgb, 1.0);
             break;
         case 2:
             // Min
-            Output_Color_0 = min(Color.r, min(Color.g, Color.b));
+            OutputColor0 = min(Color.r, min(Color.g, Color.b));
             break;
         case 3:
             // Median
-            Output_Color_0 = max(min(Color.r, Color.g), min(max(Color.r, Color.g), Color.b));
+            OutputColor0 = max(min(Color.r, Color.g), min(max(Color.r, Color.g), Color.b));
             break;
         case 4:
             // Max
-            Output_Color_0 = max(Color.r, max(Color.g, Color.b));
+            OutputColor0 = max(Color.r, max(Color.g, Color.b));
             break;
         case 5:
             // Length
-            Output_Color_0 = length(Color.rgb);
+            OutputColor0 = length(Color.rgb);
             break;
         case 6:
             // Clamped Length
-            Output_Color_0 = length(Color.rgb) * rsqrt(3.0);
+            OutputColor0 = length(Color.rgb) * rsqrt(3.0);
             break;
         default:
-            Output_Color_0 = Color;
+            OutputColor0 = Color;
             break;
     }
 }

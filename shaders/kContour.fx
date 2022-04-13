@@ -154,7 +154,7 @@ void Contour_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out
 {
     float2 VS_Coord = 0.0;
     Basic_VS(ID, Position, VS_Coord);
-    const float2 Pixel_Size = 1.0 / int2(BUFFER_WIDTH, BUFFER_HEIGHT);
+    const float2 PixelSize = 1.0 / int2(BUFFER_WIDTH, BUFFER_HEIGHT);
 
     Coords[0] = 0.0;
     Coords[1] = 0.0;
@@ -167,29 +167,29 @@ void Contour_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out
             break;
         case 1: // Bilinear 3x3 Laplacian
             Coords[0].xy = VS_Coord;
-            Coords[1] = VS_Coord.xyxy + (float4(-0.5, -0.5, 0.5, 0.5) * Pixel_Size.xyxy);
+            Coords[1] = VS_Coord.xyxy + (float4(-0.5, -0.5, 0.5, 0.5) * PixelSize.xyxy);
             break;
         case 2: // Bilinear 3x3 Sobel
-            Coords[0] = VS_Coord.xyxy + (float4(-0.5, -0.5, 0.5, 0.5) * Pixel_Size.xyxy);
+            Coords[0] = VS_Coord.xyxy + (float4(-0.5, -0.5, 0.5, 0.5) * PixelSize.xyxy);
             break;
         case 3: // Bilinear 5x5 Prewitt
-            Coords[0] = VS_Coord.xyyy + (float4(-1.5, 1.5, 0.0, -1.5) * Pixel_Size.xyyy);
-            Coords[1] = VS_Coord.xyyy + (float4( 0.0, 1.5, 0.0, -1.5) * Pixel_Size.xyyy);
-            Coords[2] = VS_Coord.xyyy + (float4( 1.5, 1.5, 0.0, -1.5) * Pixel_Size.xyyy);
+            Coords[0] = VS_Coord.xyyy + (float4(-1.5, 1.5, 0.0, -1.5) * PixelSize.xyyy);
+            Coords[1] = VS_Coord.xyyy + (float4( 0.0, 1.5, 0.0, -1.5) * PixelSize.xyyy);
+            Coords[2] = VS_Coord.xyyy + (float4( 1.5, 1.5, 0.0, -1.5) * PixelSize.xyyy);
             break;
         case 4: // Bilinear 5x5 Sobel
-            Coords[0] = VS_Coord.xxyy + (float4(-1.5, 1.5, -0.5, 0.5) * Pixel_Size.xxyy);
-            Coords[1] = VS_Coord.xxyy + (float4(-0.5, 0.5, -1.5, 1.5) * Pixel_Size.xxyy);
+            Coords[0] = VS_Coord.xxyy + (float4(-1.5, 1.5, -0.5, 0.5) * PixelSize.xxyy);
+            Coords[1] = VS_Coord.xxyy + (float4(-0.5, 0.5, -1.5, 1.5) * PixelSize.xxyy);
             break;
         case 5: // 3x3 Prewitt
-            Coords[0] = VS_Coord.xyyy + (float4(-1.0, 1.0, 0.0, -1.0) * Pixel_Size.xyyy);
-            Coords[1] = VS_Coord.xyyy + (float4(0.0, 1.0, 0.0, -1.0) * Pixel_Size.xyyy);
-            Coords[2] = VS_Coord.xyyy + (float4(1.0, 1.0, 0.0, -1.0) * Pixel_Size.xyyy);
+            Coords[0] = VS_Coord.xyyy + (float4(-1.0, 1.0, 0.0, -1.0) * PixelSize.xyyy);
+            Coords[1] = VS_Coord.xyyy + (float4(0.0, 1.0, 0.0, -1.0) * PixelSize.xyyy);
+            Coords[2] = VS_Coord.xyyy + (float4(1.0, 1.0, 0.0, -1.0) * PixelSize.xyyy);
             break;
         case 6: // 3x3 Scharr
-            Coords[0] = VS_Coord.xyyy + (float4(-1.0, 1.0, 0.0, -1.0) * Pixel_Size.xyyy);
-            Coords[1] = VS_Coord.xyyy + (float4(0.0, 1.0, 0.0, -1.0) * Pixel_Size.xyyy);
-            Coords[2] = VS_Coord.xyyy + (float4(1.0, 1.0, 0.0, -1.0) * Pixel_Size.xyyy);
+            Coords[0] = VS_Coord.xyyy + (float4(-1.0, 1.0, 0.0, -1.0) * PixelSize.xyyy);
+            Coords[1] = VS_Coord.xyyy + (float4(0.0, 1.0, 0.0, -1.0) * PixelSize.xyyy);
+            Coords[2] = VS_Coord.xyyy + (float4(1.0, 1.0, 0.0, -1.0) * PixelSize.xyyy);
             break;
     }
 }
@@ -201,7 +201,7 @@ void Contour_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out
 
 float3 Get_Screen_Space_Normal(float2 texcoord)
 {
-    float3 Offset = float3(BUFFER_PIXEL_SIZE, 0.0);
+    float3 Offset = float3(BUFFER_PixelSize, 0.0);
     float2 Pos_Center = texcoord.xy;
     float2 Pos_North = Pos_Center - Offset.zy;
     float2 Pos_East = Pos_Center + Offset.xz;
@@ -237,9 +237,9 @@ float3 Decode(float2 f)
     return normalize(Normal);
 }
 
-void Generate_Normals_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float2 Output_Color_0 : SV_TARGET0)
+void Generate_Normals_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0)
 {
-    Output_Color_0 = Encode(Get_Screen_Space_Normal(Coord));
+    OutputColor0 = Encode(Get_Screen_Space_Normal(Coord));
 }
 
 // 0 = Color, 1 = Normal, 2 = Depth
@@ -307,7 +307,7 @@ float4 Scale_Derivative(float4 Input)
     return Input;
 }
 
-void Contour(in float4 Coords[3], in int Mode, out float4 Output_Color_0)
+void Contour(in float4 Coords[3], in int Mode, out float4 OutputColor0)
 {
     float4 Ix, Iy, Gradient;
     float4 A_0, B_0, C_0;
@@ -455,17 +455,17 @@ void Contour(in float4 Coords[3], in int Mode, out float4 Output_Color_0)
     }
 
     float3 Color_Background = lerp(Base, _Back_Color.rgb, _Back_Color.a);
-    Output_Color_0 = lerp(Color_Background, _Front_Color.rgb, Gradient.a * _Front_Color.a);
+    OutputColor0 = lerp(Color_Background, _Front_Color.rgb, Gradient.a * _Front_Color.a);
 }
 
-void Contour_Color_PS(in float4 Position : SV_POSITION, in float4 Coords[3] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+void Contour_Color_PS(in float4 Position : SV_POSITION, in float4 Coords[3] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    Contour(Coords, 0, Output_Color_0);
+    Contour(Coords, 0, OutputColor0);
 }
 
-void Contour_Normal_PS(in float4 Position : SV_POSITION, in float4 Coords[3] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+void Contour_Normal_PS(in float4 Position : SV_POSITION, in float4 Coords[3] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    Contour(Coords, 1, Output_Color_0);
+    Contour(Coords, 1, OutputColor0);
 }
 
 technique KinoContourColor

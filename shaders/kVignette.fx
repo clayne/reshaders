@@ -40,13 +40,13 @@ void Basic_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out f
 
 /* [ Pixel Shaders ] */
 
-void Vignette_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+void Vignette_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
     const float Aspect_Ratio = BUFFER_WIDTH / BUFFER_HEIGHT;
     Coord = (Coord * 2.0 - 1.0) * Aspect_Ratio;
     float Radius = length(Coord) * _Falloff;
     float Radius_2_1 = mad(Radius, Radius, 1.0);
-    Output_Color_0 = rcp(Radius_2_1 * Radius_2_1);
+    OutputColor0 = rcp(Radius_2_1 * Radius_2_1);
 }
 
 technique KinoVignette

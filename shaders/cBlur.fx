@@ -126,24 +126,24 @@ void VogelBlur(sampler2D Source, float2 Coord, float2 Screen_Size, float Radius,
     float LOD = max(0.0, 0.5 * log2(Sample_Area));
 
     // Offset and weighting attributes
-    float2 Pixel_Size = 1.0 / ldexp(Screen_Size, -LOD);
+    float2 PixelSize = 1.0 / ldexp(Screen_Size, -LOD);
     float Weight = 1.0 / (float(Samples) + 1.0);
 
     for(int i = 0; i < Samples; i++)
     {
         Vogel_Sample(i, Samples, Phi, Offset);
-        Output_Color += tex2Dlod(Source, float4(Coord + (Offset * Pixel_Size), 0.0, LOD)) * Weight;
+        Output_Color += tex2Dlod(Source, float4(Coord + (Offset * PixelSize), 0.0, LOD)) * Weight;
     }
 }
 
-void Blit_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+void Blit_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    Output_Color_0 = tex2D(Sample_Color, Coord);
+    OutputColor0 = tex2D(Sample_Color, Coord);
 }
 
-void Vogel_Convolution_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+void Vogel_Convolution_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    VogelBlur(Sample_Common_RGBA8_1, Coord, int2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2), _Radius, _Samples, _Offset, Output_Color_0);
+    VogelBlur(Sample_Common_RGBA8_1, Coord, int2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2), _Radius, _Samples, _Offset, OutputColor0);
 }
 
 technique cBlur

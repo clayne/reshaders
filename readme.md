@@ -57,10 +57,11 @@ kVignette           | Natural vignetting effect
 
 Practice | Variable
 -------- | --------
-**ALLCAPS** | System-Value semantics, state parameters
-**Snake_Case** | Namespaces, structs, methods, texture objects, and local variables
+**ALLCAPS**     | System-Value semantics, state parameters
+**ALL_CAPS**    | Preprocessor macros
+**SnakeCase**   | Local variables and function parameters
+**Snake_Case**  | Global objects (structs, functions, textures, samplers)
 **_Snake_Case** | Uniform variables
-**SNAKE_CASE** | Macros and preprocessor defines
 Suffix `VS` and `PS` | `PixelShader` and `VertexShader`
 
 ## Acknowledgements

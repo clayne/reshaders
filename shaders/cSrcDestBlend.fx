@@ -86,12 +86,12 @@ void Basic_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out f
 
 // Pixel shaders
 
-void Blit_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+void Blit_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    Output_Color_0 = tex2D(Sample_Color, Coord);
+    OutputColor0 = tex2D(Sample_Color, Coord);
 }
 
-void Blend_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+void Blend_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
     float4 Src = tex2D(Sample_Copy, Coord);
     float4 Dest = tex2D(Sample_Color, Coord);
@@ -99,28 +99,28 @@ void Blend_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out
     switch(_Blend)
     {
         case 0: // Add
-            Output_Color_0 = Src + Dest;
+            OutputColor0 = Src + Dest;
             break;
         case 1: // Subtract
-            Output_Color_0 = Src - Dest;
+            OutputColor0 = Src - Dest;
             break;
         case 2: // Multiply
-            Output_Color_0 = Src * Dest;
+            OutputColor0 = Src * Dest;
             break;
         case 3: // Min
-            Output_Color_0 = min(Src, Dest);
+            OutputColor0 = min(Src, Dest);
             break;
         case 4: // Max
-            Output_Color_0 = max(Src, Dest);
+            OutputColor0 = max(Src, Dest);
             break;
         case 5: // Screen
-            Output_Color_0 = (Src + Dest) - (Src * Dest);
+            OutputColor0 = (Src + Dest) - (Src * Dest);
             break;
         case 6: // Lerp
-            Output_Color_0 = lerp(Src, Dest, _Lerp_Weight);
+            OutputColor0 = lerp(Src, Dest, _Lerp_Weight);
             break;
         default:
-            Output_Color_0 = Dest;
+            OutputColor0 = Dest;
             break;
     }
 }

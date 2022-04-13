@@ -114,19 +114,19 @@ namespace Three_Point_Storage
         ... and so forth
     */
 
-    void Store_Frame_3_PS(float4 Position : SV_POSITION, float2 Coord : TEXCOORD, out float4 Output_Color_0 : SV_TARGET0)
+    void Store_Frame_3_PS(float4 Position : SV_POSITION, float2 Coord : TEXCOORD, out float4 OutputColor0 : SV_TARGET0)
     {
-        Output_Color_0 = tex2D(Sample_Frame_2, Coord);
+        OutputColor0 = tex2D(Sample_Frame_2, Coord);
     }
 
-    void Store_Frame_2_PS(float4 Position : SV_POSITION, float2 Coord : TEXCOORD, out float4 Output_Color_0 : SV_TARGET0)
+    void Store_Frame_2_PS(float4 Position : SV_POSITION, float2 Coord : TEXCOORD, out float4 OutputColor0 : SV_TARGET0)
     {
-        Output_Color_0 = tex2D(Sample_Frame_1, Coord);
+        OutputColor0 = tex2D(Sample_Frame_1, Coord);
     }
 
-    void Current_Frame_1_PS(float4 Position : SV_POSITION, float2 Coord : TEXCOORD, out float4 Output_Color_0 : SV_TARGET0)
+    void Current_Frame_1_PS(float4 Position : SV_POSITION, float2 Coord : TEXCOORD, out float4 OutputColor0 : SV_TARGET0)
     {
-        Output_Color_0 = tex2D(Sample_Color, Coord);
+        OutputColor0 = tex2D(Sample_Color, Coord);
     }
 
     /*

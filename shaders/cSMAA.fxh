@@ -63,7 +63,7 @@
 
 #define SMAA_AREATEX_MAX_DISTANCE 16
 #define SMAA_AREATEX_MAX_DISTANCE_DIAG 20
-#define SMAA_AREATEX_PIXEL_SIZE (1.0 / float2(160.0, 560.0))
+#define SMAA_AREATEX_PixelSize (1.0 / float2(160.0, 560.0))
 #define SMAA_AREATEX_SUBTEX_SIZE (1.0 / 7.0)
 #define SMAA_SEARCHTEX_SIZE float2(66.0, 33.0)
 #define SMAA_SEARCHTEX_PACKED_SIZE float2(64.0, 16.0)
@@ -199,7 +199,7 @@ float2 SMAAArea(sampler2D Area_Tex, float2 Dist, float E_1, float E_2, float Off
     float2 Coord = mad(float2(SMAA_AREATEX_MAX_DISTANCE, SMAA_AREATEX_MAX_DISTANCE), round(4.0 * float2(E_1, E_2)), Dist);
 
     // We do a scale and bias for mapping to texel space:
-    Coord = mad(SMAA_AREATEX_PIXEL_SIZE, Coord, 0.5 * SMAA_AREATEX_PIXEL_SIZE);
+    Coord = mad(SMAA_AREATEX_PixelSize, Coord, 0.5 * SMAA_AREATEX_PixelSize);
 
     // Move to proper place, according to the subpixel Offset:
     Coord.y = mad(SMAA_AREATEX_SUBTEX_SIZE, Offset, Coord.y);

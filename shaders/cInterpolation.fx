@@ -340,19 +340,19 @@ namespace cInterpolation
         ... and so forth
     */
 
-    void Store_Frame_3_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD, out float4 Output_Color_0 : SV_TARGET0)
+    void Store_Frame_3_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD, out float4 OutputColor0 : SV_TARGET0)
     {
-        Output_Color_0 = tex2D(Sample_Frame_2, Coord);
+        OutputColor0 = tex2D(Sample_Frame_2, Coord);
     }
 
-    void Store_Frame_2_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD, out float4 Output_Color_0 : SV_TARGET0)
+    void Store_Frame_2_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD, out float4 OutputColor0 : SV_TARGET0)
     {
-        Output_Color_0 = tex2D(Sample_Frame_1, Coord);
+        OutputColor0 = tex2D(Sample_Frame_1, Coord);
     }
 
-    void Current_Frame_1_PS(float4 Position : SV_POSITION, in float2 Coord : TEXCOORD, out float4 Output_Color_0 : SV_TARGET0)
+    void Current_Frame_1_PS(float4 Position : SV_POSITION, in float2 Coord : TEXCOORD, out float4 OutputColor0 : SV_TARGET0)
     {
-        Output_Color_0 = tex2D(Sample_Color, Coord);
+        OutputColor0 = tex2D(Sample_Color, Coord);
     }
 
     /*
@@ -360,12 +360,12 @@ namespace cInterpolation
         2. Filter incoming frame
     */
 
-    void Normalize_Frame_PS(in float4 Position : SV_POSITION, float2 Coord : TEXCOORD, out float4 Output_Color_0 : SV_TARGET0)
+    void Normalize_Frame_PS(in float4 Position : SV_POSITION, float2 Coord : TEXCOORD, out float4 OutputColor0 : SV_TARGET0)
     {
         float4 Frame_1 = tex2D(Sample_Frame_1, Coord);
         float4 Frame_3 = tex2D(Sample_Frame_3, Coord);
-        Output_Color_0.xy = saturate(Frame_1.xy / dot(Frame_1.rgb, 1.0));
-        Output_Color_0.zw = saturate(Frame_3.xy / dot(Frame_3.rgb, 1.0));
+        OutputColor0.xy = saturate(Frame_1.xy / dot(Frame_1.rgb, 1.0));
+        OutputColor0.zw = saturate(Frame_3.xy / dot(Frame_3.rgb, 1.0));
     }
 
     static const float Blur_Weights[8] =
@@ -380,32 +380,32 @@ namespace cInterpolation
         0.0042996835
     };
 
-    void Gaussian_Blur(in sampler2D Source, in float4 Coords[8], out float4 Output_Color_0)
+    void Gaussian_Blur(in sampler2D Source, in float4 Coords[8], out float4 OutputColor0)
     {
         float Total_Weights = Blur_Weights[0];
-        Output_Color_0 = (tex2D(Source, Coords[0].xy) * Blur_Weights[0]);
+        OutputColor0 = (tex2D(Source, Coords[0].xy) * Blur_Weights[0]);
 
         for(int i = 1; i < 8; i++)
         {
-            Output_Color_0 += (tex2D(Source, Coords[i].xy) * Blur_Weights[i]);
-            Output_Color_0 += (tex2D(Source, Coords[i].zw) * Blur_Weights[i]);
+            OutputColor0 += (tex2D(Source, Coords[i].xy) * Blur_Weights[i]);
+            OutputColor0 += (tex2D(Source, Coords[i].zw) * Blur_Weights[i]);
             Total_Weights += (Blur_Weights[i] * 2.0);
         }
 
-        Output_Color_0 = Output_Color_0 / Total_Weights;
+        OutputColor0 = OutputColor0 / Total_Weights;
     }
 
-    void Pre_Blur_0_PS(in float4 Position : SV_POSITION, in float4 Coords[8] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+    void Pre_Blur_0_PS(in float4 Position : SV_POSITION, in float4 Coords[8] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
-        Gaussian_Blur(Sample_Normalized_Frame, Coords, Output_Color_0);
+        Gaussian_Blur(Sample_Normalized_Frame, Coords, OutputColor0);
     }
 
-    void Pre_Blur_1_PS(in float4 Position : SV_POSITION, in float4 Coords[8] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+    void Pre_Blur_1_PS(in float4 Position : SV_POSITION, in float4 Coords[8] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
-        Gaussian_Blur(Shared_Resources::Sample_Common_1, Coords, Output_Color_0);
+        Gaussian_Blur(Shared_Resources::Sample_Common_1, Coords, OutputColor0);
     }
 
-    void Derivatives_PS(in float4 Position : SV_POSITION, in float4 Coords[2] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+    void Derivatives_PS(in float4 Position : SV_POSITION, in float4 Coords[2] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
         // Bilinear 5x5 Sobel by CeeJayDK
         //   B_1 B_2
@@ -426,16 +426,16 @@ namespace cInterpolation
         // -2 -2 0 +2 +2
         // -1 -2 0 +2 +1
         //    -1 0 +1
-        Output_Color_0.xy = ((B_2 + A_1 + B_0 + C_1) - (B_1 + A_0 + A_2 + C_0)) / 12.0;
+        OutputColor0.xy = ((B_2 + A_1 + B_0 + C_1) - (B_1 + A_0 + A_2 + C_0)) / 12.0;
 
         //    +1 +2 +1
         // +1 +2 +2 +2 +1
         //  0  0  0  0  0
         // -1 -2 -2 -2 -1
         //    -1 -2 -1
-        Output_Color_0.zw = ((A_0 + B_1 + B_2 + A_1) - (A_2 + C_0 + C_1 + B_0)) / 12.0;
-        Output_Color_0.xz *= rsqrt(dot(Output_Color_0.xz, Output_Color_0.xz) + 1.0);
-        Output_Color_0.yw *= rsqrt(dot(Output_Color_0.yw, Output_Color_0.yw) + 1.0);
+        OutputColor0.zw = ((A_0 + B_1 + B_2 + A_1) - (A_2 + C_0 + C_1 + B_0)) / 12.0;
+        OutputColor0.xz *= rsqrt(dot(OutputColor0.xz, OutputColor0.xz) + 1.0);
+        OutputColor0.yw *= rsqrt(dot(OutputColor0.yw, OutputColor0.yw) + 1.0);
     }
 
     #define Max_Level 7
@@ -622,23 +622,23 @@ namespace cInterpolation
         Optical_Flow_TV(Shared_Resources::Sample_Common_3, Coords, 2.5, Color);
     }
 
-    void Level_1_PS(in float4 Position : SV_POSITION, in float4 Coords[3] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+    void Level_1_PS(in float4 Position : SV_POSITION, in float4 Coords[3] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
-        Optical_Flow_TV(Shared_Resources::Sample_Common_2, Coords, 0.5, Output_Color_0.rg);
-        Output_Color_0.y *= -1.0;
-        Output_Color_0.ba = float2(0.0, 1.0);
+        Optical_Flow_TV(Shared_Resources::Sample_Common_2, Coords, 0.5, OutputColor0.rg);
+        OutputColor0.y *= -1.0;
+        OutputColor0.ba = float2(0.0, 1.0);
     }
 
-    void Post_Blur_0_PS(in float4 Position : SV_POSITION, in float4 Coords[8] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+    void Post_Blur_0_PS(in float4 Position : SV_POSITION, in float4 Coords[8] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
-        Gaussian_Blur(Shared_Resources::Sample_Common_1, Coords, Output_Color_0);
-        Output_Color_0.a = 1.0;
+        Gaussian_Blur(Shared_Resources::Sample_Common_1, Coords, OutputColor0);
+        OutputColor0.a = 1.0;
     }
 
-    void Post_Blur_1_PS(in float4 Position : SV_POSITION, in float4 Coords[8] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+    void Post_Blur_1_PS(in float4 Position : SV_POSITION, in float4 Coords[8] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
-        Gaussian_Blur(Sample_Normalized_Frame, Coords, Output_Color_0);
-        Output_Color_0.a = 1.0;
+        Gaussian_Blur(Sample_Normalized_Frame, Coords, OutputColor0);
+        OutputColor0.a = 1.0;
     }
 
     /*
@@ -653,7 +653,7 @@ namespace cInterpolation
         return min(max(min(A, B), C), max(A, B));
     }
 
-    void Interpolate_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+    void Interpolate_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
         float2 Texel_Size = 1.0 / BUFFER_SIZE_1;
         float2 Motion_Vectors = tex2Dlod(Shared_Resources::Sample_Common_1, float4(Coord, 0.0, _Mip_Bias)).xy * Texel_Size.xy;
@@ -672,8 +672,8 @@ namespace cInterpolation
 
         float4 Cascaded_Median = Median(Static_Median, Motion_Filter, Dynamic_Median);
 
-        Output_Color_0 = lerp(Cascaded_Median, Dynamic_Average, 0.5);
-        Output_Color_0.a = 1.0;
+        OutputColor0 = lerp(Cascaded_Median, Dynamic_Average, 0.5);
+        OutputColor0.a = 1.0;
     }
 
     /*

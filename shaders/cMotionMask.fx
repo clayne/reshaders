@@ -137,13 +137,13 @@ namespace Motion_Mask
 
     // Pixel shaders
 
-    void Blit_0_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+    void Blit_0_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
         float3 Color = max(tex2D(Sample_Color, Coord).rgb, exp2(-10.0));
-        Output_Color_0 = (_Normalize_Input) ? saturate(Color.xy / dot(Color, 1.0)) : max(max(Color.r, Color.g), Color.b);
+        OutputColor0 = (_Normalize_Input) ? saturate(Color.xy / dot(Color, 1.0)) : max(max(Color.r, Color.g), Color.b);
     }
 
-    void Difference_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+    void Difference_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
         float Difference = 0.0;
 
@@ -162,28 +162,28 @@ namespace Motion_Mask
 
         if (Difference <= _Min_Threshold)
         {
-            Output_Color_0 = 0.0;
+            OutputColor0 = 0.0;
         }
         else if (Difference > _Max_Threshold)
         {
-            Output_Color_0 = 1.0;
+            OutputColor0 = 1.0;
         }
         else
         {
-            Output_Color_0 = Difference;
+            OutputColor0 = Difference;
         }
 
-        Output_Color_0.a = _Blend_Factor;
+        OutputColor0.a = _Blend_Factor;
     }
 
-    void Output_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+    void Output_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
-        Output_Color_0 = tex2D(Sample_Difference, Coord).r;
+        OutputColor0 = tex2D(Sample_Difference, Coord).r;
     }
 
-    void Blit_1_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+    void Blit_1_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
-        Output_Color_0 = tex2D(Sample_Current, Coord);
+        OutputColor0 = tex2D(Sample_Current, Coord);
     }
 
     technique cMotionMask

@@ -42,141 +42,117 @@
 #define BUFFER_SIZE_7 int2(BUFFER_WIDTH >> 7, BUFFER_HEIGHT >> 7)
 #define BUFFER_SIZE_8 int2(BUFFER_WIDTH >> 8, BUFFER_HEIGHT >> 8)
 
-namespace Shared_Resources
-{
-    namespace RGBA16F
-    {
-        texture2D Render_Common_1 < pooled = true; >
-        {
-            Width = BUFFER_SIZE_1.x;
-            Height = BUFFER_SIZE_1.y;
-            Format = RGBA16F;
-            MipLevels = 8;
-        };
+#define TEXTURE(Name, InputSize, InputFormat, InputLevels) \
+    texture2D Name                                         \
+    {                                                      \
+        Width = InputSize.x;                               \
+        Height = InputSize.y;                              \
+        Format = InputFormat;                              \
+        MipLevels = InputLevels;                           \
+    };
 
-        texture2D Render_Common_2 < pooled = true; >
-        {
-            Width = BUFFER_SIZE_2.x;
-            Height = BUFFER_SIZE_2.y;
-            Format = RGBA16F;
-        };
+#define SAMPLER(Name, InputTexture) \
+    sampler2D Name                  \
+    {                               \
+        Texture = InputTexture;     \
+        MagFilter = LINEAR; 		\
+        MinFilter = LINEAR; 		\
+        MipFilter = LINEAR; 		\
+    };
 
-        texture2D Render_Common_3 < pooled = true; >
-        {
-            Width = BUFFER_SIZE_3.x;
-            Height = BUFFER_SIZE_3.y;
-            Format = RGBA16F;
-        };
-
-        texture2D Render_Common_4 < pooled = true; >
-        {
-            Width = BUFFER_SIZE_4.x;
-            Height = BUFFER_SIZE_4.y;
-            Format = RGBA16F;
-        };
-
-        texture2D Render_Common_5 < pooled = true; >
-        {
-            Width = BUFFER_SIZE_5.x;
-            Height = BUFFER_SIZE_5.y;
-            Format = RGBA16F;
-        };
-
-        texture2D Render_Common_6 < pooled = true; >
-        {
-            Width = BUFFER_SIZE_6.x;
-            Height = BUFFER_SIZE_6.y;
-            Format = RGBA16F;
-        };
-
-        texture2D Render_Common_7 < pooled = true; >
-        {
-            Width = BUFFER_SIZE_7.x;
-            Height = BUFFER_SIZE_7.y;
-            Format = RGBA16F;
-        };
-
-        texture2D Render_Common_8 < pooled = true; >
-        {
-            Width = BUFFER_SIZE_8.x;
-            Height = BUFFER_SIZE_8.y;
-            Format = RGBA16F;
-        };
+#define DOWNSAMPLE_VERTEX_SHADER(Name, TexelSize)                                                           \
+    void Name(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 Coord[4] : TEXCOORD0) \
+    {                                                                                                       \
+        DownsampleVS(ID, Position, Coord, TexelSize);                                                       \
     }
+
+#define UPSAMPLE_VERTEX_SHADER(Name, TexelSize)                                                             \
+    void Name(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 Coord[3] : TEXCOORD0) \
+    {                                                                                                       \
+        UpsampleVS(ID, Position, Coord, TexelSize);                                                         \
+    }
+
+#define DOWNSAMPLE_PIXEL_SHADER(Name, Sampler)                                                                          \
+    void Name(in float4 Position : SV_POSITION, in float4 Coord[4] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0) \
+    {                                                                                                                   \
+        Downsample(Sampler, Coord, OutputColor0);                                                                     \
+    }
+
+#define UPSAMPLE_PIXEL_SHADER(Name, Sampler, LevelWeight)                                                               \
+    void Name(in float4 Position : SV_POSITION, in float4 Coord[3] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0) \
+    {                                                                                                                   \
+        Upsample(Sampler, Coord, LevelWeight, OutputColor0);                                                          \
+    }
+
+#define DOWNSAMPLE_PASS(InputVertexShader, InputPixelShader, InputRenderTarget) \
+    pass                                                                        \
+    {                                                                           \
+        VertexShader = InputVertexShader;                                       \
+        PixelShader = InputPixelShader;                                         \
+        RenderTarget0 = InputRenderTarget;                                      \
+    }
+
+#define UPSAMPLE_BLEND_PASS(InputVertexShader, InputPixelShader, InputRenderTarget) \
+    pass                                                                            \
+    {                                                                               \
+        VertexShader = InputVertexShader;                                           \
+        PixelShader = InputPixelShader;                                             \
+        RenderTarget0 = InputRenderTarget;                                          \
+        ClearRenderTargets = FALSE;                                                 \
+        BlendEnable = TRUE;                                                         \
+        BlendOp = ADD;                                                              \
+        SrcBlend = SRCALPHA;                                                        \
+        DestBlend = ONE;                                                            \
+    }
+
+#define OPTION(DataType, Name, Category, Label, Type, Maximum, Default) \
+    uniform DataType Name <                                             \
+        ui_category = Category;                                         \
+        ui_label = Label;                                               \
+        ui_type = Type;                                                 \
+        ui_min = 0.0;                                                   \
+        ui_max = Maximum;                                               \
+    > = Default;
+
+namespace Shared_Resources_Bloom
+{
+    TEXTURE(Render_Common_1, BUFFER_SIZE_1, RGBA16F, 8)
+    SAMPLER(Sample_Common_1, Render_Common_1)
+
+    TEXTURE(Render_Common_2, BUFFER_SIZE_2, RGBA16F, 1)
+    SAMPLER(Sample_Common_2, Render_Common_2)
+
+    TEXTURE(Render_Common_3, BUFFER_SIZE_3, RGBA16F, 1)
+    SAMPLER(Sample_Common_3, Render_Common_3)
+
+    TEXTURE(Render_Common_4, BUFFER_SIZE_4, RGBA16F, 1)
+    SAMPLER(Sample_Common_4, Render_Common_4)
+
+    TEXTURE(Render_Common_5, BUFFER_SIZE_5, RGBA16F, 1)
+    SAMPLER(Sample_Common_5, Render_Common_5)
+
+    TEXTURE(Render_Common_6, BUFFER_SIZE_6, RGBA16F, 1)
+    SAMPLER(Sample_Common_6, Render_Common_6)
+
+    TEXTURE(Render_Common_7, BUFFER_SIZE_7, RGBA16F, 1)
+    SAMPLER(Sample_Common_7, Render_Common_7)
+
+    TEXTURE(Render_Common_8, BUFFER_SIZE_8, RGBA16F, 1)
+    SAMPLER(Sample_Common_8, Render_Common_8)
 }
 
-uniform float _Threshold <
-    ui_type = "drag";
-    ui_min = 0.0;
-    ui_label = "Threshold";
-> = 0.8;
+OPTION(float, _Threshold, "Main", "Threshold", "drag", 1.0, 0.8)
+OPTION(float, _Smooth, "Main", "Smoothing", "drag", 1.0, 0.5)
+OPTION(float, _Saturation, "Main", "Saturation", "drag", 4.0, 1.0)
+OPTION(float, _ColorShift, "Main", "Saturation", "drag", 1.0, 1.0)
+OPTION(float, _Intensity, "Main", "Color Intensity", "drag", 4.0, 1.0)
 
-uniform float _Smooth <
-    ui_type = "drag";
-    ui_min = 0.0;
-    ui_label = "Smoothing";
-    ui_max = 1.0;
-> = 0.5;
-
-uniform float _Saturation <
-    ui_type = "drag";
-    ui_min = 0.0;
-    ui_label = "Saturation";
-> = 1.0;
-
-uniform float3 _Color_Shift <
-    ui_type = "color";
-    ui_min = 0.0;
-    ui_label = "Color Shift";
-> = 1.0;
-
-uniform float _Intensity <
-    ui_type = "drag";
-    ui_min = 0.0;
-    ui_label = "Color Intensity";
-> = 1.0;
-
-uniform float _Level_6_Weight <
-    ui_type = "drag";
-    ui_min = 0.0;
-    ui_label = "Level 6 Weight";
-    ui_category = "Level Weights";
-> = 1.0;
-
-uniform float _Level_5_Weight <
-    ui_type = "drag";
-    ui_min = 0.0;
-    ui_label = "Level 5 Weight";
-    ui_category = "Level Weights";
-> = 1.0;
-
-uniform float _Level_4_Weight <
-    ui_type = "drag";
-    ui_min = 0.0;
-    ui_label = "Level 4 Weight";
-    ui_category = "Level Weights";
-> = 1.0;
-
-uniform float _Level_3_Weight <
-    ui_type = "drag";
-    ui_min = 0.0;
-    ui_label = "Level 3 Weight";
-    ui_category = "Level Weights";
-> = 1.0;
-
-uniform float _Level_2_Weight <
-    ui_type = "drag";
-    ui_min = 0.0;
-    ui_label = "Level 2 Weight";
-    ui_category = "Level Weights";
-> = 1.0;
-
-uniform float _Level_1_Weight <
-    ui_type = "drag";
-    ui_min = 0.0;
-    ui_label = "Level 1 Weight";
-    ui_category = "Level Weights";
-> = 1.0;
+OPTION(float, _Level6Weight, "Level Weights", "Level 6", "drag", 2.0, 1.0)
+OPTION(float, _Level5Weight, "Level Weights", "Level 5", "drag", 2.0, 1.0)
+OPTION(float, _Level4Weight, "Level Weights", "Level 4", "drag", 2.0, 1.0)
+OPTION(float, _Level3Weight, "Level Weights", "Level 3", "drag", 2.0, 1.0)
+OPTION(float, _Level2Weight, "Level Weights", "Level 2", "drag", 2.0, 1.0)
+OPTION(float, _Level1Weight, "Level Weights", "Level 1", "drag", 2.0, 1.0)
 
 texture2D Render_Color : COLOR;
 
@@ -191,70 +167,6 @@ sampler2D Sample_Color
     #endif
 };
 
-sampler2D Sample_Common_RGBA16F_1
-{
-    Texture = Shared_Resources::RGBA16F::Render_Common_1;
-    MagFilter = LINEAR;
-    MinFilter = LINEAR;
-    MipFilter = LINEAR;
-};
-
-sampler2D Sample_Common_RGBA16F_2
-{
-    Texture = Shared_Resources::RGBA16F::Render_Common_2;
-    MagFilter = LINEAR;
-    MinFilter = LINEAR;
-    MipFilter = LINEAR;
-};
-
-sampler2D Sample_Common_RGBA16F_3
-{
-    Texture = Shared_Resources::RGBA16F::Render_Common_3;
-    MagFilter = LINEAR;
-    MinFilter = LINEAR;
-    MipFilter = LINEAR;
-};
-
-sampler2D Sample_Common_RGBA16F_4
-{
-    Texture = Shared_Resources::RGBA16F::Render_Common_4;
-    MagFilter = LINEAR;
-    MinFilter = LINEAR;
-    MipFilter = LINEAR;
-};
-
-sampler2D Sample_Common_RGBA16F_5
-{
-    Texture = Shared_Resources::RGBA16F::Render_Common_5;
-    MagFilter = LINEAR;
-    MinFilter = LINEAR;
-    MipFilter = LINEAR;
-};
-
-sampler2D Sample_Common_RGBA16F_6
-{
-    Texture = Shared_Resources::RGBA16F::Render_Common_6;
-    MagFilter = LINEAR;
-    MinFilter = LINEAR;
-    MipFilter = LINEAR;
-};
-
-sampler2D Sample_Common_RGBA16F_7
-{
-    Texture = Shared_Resources::RGBA16F::Render_Common_7;
-    MagFilter = LINEAR;
-    MinFilter = LINEAR;
-    MipFilter = LINEAR;
-};
-
-sampler2D Sample_Common_RGBA16F_8
-{
-    Texture = Shared_Resources::RGBA16F::Render_Common_8;
-    MagFilter = LINEAR;
-    MinFilter = LINEAR;
-    MipFilter = LINEAR;
-};
-
 // Vertex shaders
 // Sampling kernels: http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare
 
@@ -265,105 +177,56 @@ void Basic_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out f
     Position = float4(Coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
 
-void DownsampleVS(in uint ID, out float4 Position, out float4 Coord[4], float2 Pixel_Size)
+void DownsampleVS(in uint ID, out float4 Position, out float4 Coord[4], float2 PixelSize)
 {
     float2 VS_Coord = 0.0;
     Basic_VS(ID, Position, VS_Coord);
     // Quadrant
-    Coord[0] = VS_Coord.xyxy + float4(-1.0, -1.0, 1.0, 1.0) * Pixel_Size.xyxy;
+    Coord[0] = VS_Coord.xyxy + float4(-1.0, -1.0, 1.0, 1.0) * PixelSize.xyxy;
     // Left column
-    Coord[1] = VS_Coord.xyyy + float4(-2.0, 2.0, 0.0, -2.0) * Pixel_Size.xyyy;
+    Coord[1] = VS_Coord.xyyy + float4(-2.0, 2.0, 0.0, -2.0) * PixelSize.xyyy;
     // Center column
-    Coord[2] = VS_Coord.xyyy + float4(0.0, 2.0, 0.0, -2.0) * Pixel_Size.xyyy;
+    Coord[2] = VS_Coord.xyyy + float4(0.0, 2.0, 0.0, -2.0) * PixelSize.xyyy;
     // Right column
-    Coord[3] = VS_Coord.xyyy + float4(2.0, 2.0, 0.0, -2.0) * Pixel_Size.xyyy;
+    Coord[3] = VS_Coord.xyyy + float4(2.0, 2.0, 0.0, -2.0) * PixelSize.xyyy;
 }
 
-void UpsampleVS(in uint ID, out float4 Position, out float4 Coord[3], float2 Pixel_Size)
+void UpsampleVS(in uint ID, out float4 Position, out float4 Coord[3], float2 PixelSize)
 {
     float2 VS_Coord = 0.0;
     Basic_VS(ID, Position, VS_Coord);
     // Left column
-    Coord[0] = VS_Coord.xyyy + float4(-2.0, 2.0, 0.0, -2.0) * Pixel_Size.xyyy;
+    Coord[0] = VS_Coord.xyyy + float4(-2.0, 2.0, 0.0, -2.0) * PixelSize.xyyy;
     // Center column
-    Coord[1] = VS_Coord.xyyy + float4(0.0, 2.0, 0.0, -2.0) * Pixel_Size.xyyy;
+    Coord[1] = VS_Coord.xyyy + float4(0.0, 2.0, 0.0, -2.0) * PixelSize.xyyy;
     // Right column
-    Coord[2] = VS_Coord.xyyy + float4(2.0, 2.0, 0.0, -2.0) * Pixel_Size.xyyy;
+    Coord[2] = VS_Coord.xyyy + float4(2.0, 2.0, 0.0, -2.0) * PixelSize.xyyy;
 }
 
-void Downsample_1_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 Coord[4] : TEXCOORD0)
-{
-    DownsampleVS(ID, Position, Coord, 1.0 / BUFFER_SIZE_1);
-}
+DOWNSAMPLE_VERTEX_SHADER(Downsample_1_VS, 1.0 / BUFFER_SIZE_1)
+DOWNSAMPLE_VERTEX_SHADER(Downsample_2_VS, 1.0 / BUFFER_SIZE_2)
+DOWNSAMPLE_VERTEX_SHADER(Downsample_3_VS, 1.0 / BUFFER_SIZE_3)
+DOWNSAMPLE_VERTEX_SHADER(Downsample_4_VS, 1.0 / BUFFER_SIZE_4)
+DOWNSAMPLE_VERTEX_SHADER(Downsample_5_VS, 1.0 / BUFFER_SIZE_5)
+DOWNSAMPLE_VERTEX_SHADER(Downsample_6_VS, 1.0 / BUFFER_SIZE_6)
+DOWNSAMPLE_VERTEX_SHADER(Downsample_7_VS, 1.0 / BUFFER_SIZE_7)
 
-void Downsample_2_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 Coord[4] : TEXCOORD0)
-{
-    DownsampleVS(ID, Position, Coord, 1.0 / BUFFER_SIZE_2);
-}
-
-void Downsample_3_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 Coord[4] : TEXCOORD0)
-{
-    DownsampleVS(ID, Position, Coord, 1.0 / BUFFER_SIZE_3);
-}
-
-void Downsample_4_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 Coord[4] : TEXCOORD0)
-{
-    DownsampleVS(ID, Position, Coord, 1.0 / BUFFER_SIZE_4);
-}
-
-void Downsample_5_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 Coord[4] : TEXCOORD0)
-{
-    DownsampleVS(ID, Position, Coord, 1.0 / BUFFER_SIZE_5);
-}
-
-void Downsample_6_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 Coord[4] : TEXCOORD0)
-{
-    DownsampleVS(ID, Position, Coord, 1.0 / BUFFER_SIZE_6);
-}
-
-void Downsample_7_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 Coord[4] : TEXCOORD0)
-{
-    DownsampleVS(ID, Position, Coord, 1.0 / BUFFER_SIZE_7);
-}
-
-void Upsample_7_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 Coord[3] : TEXCOORD0)
-{
-    UpsampleVS(ID, Position, Coord, 1.0 / BUFFER_SIZE_7);
-}
-
-void Upsample_6_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 Coord[3] : TEXCOORD0)
-{
-    UpsampleVS(ID, Position, Coord, 1.0 / BUFFER_SIZE_6);
-}
-
-void Upsample_5_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 Coord[3] : TEXCOORD0)
-{
-    UpsampleVS(ID, Position, Coord, 1.0 / BUFFER_SIZE_5);
-}
-
-void Upsample_4_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 Coord[3] : TEXCOORD0)
-{
-    UpsampleVS(ID, Position, Coord, 1.0 / BUFFER_SIZE_4);
-}
-
-void Upsample_3_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 Coord[3] : TEXCOORD0)
-{
-    UpsampleVS(ID, Position, Coord, 1.0 / BUFFER_SIZE_3);
-}
-
-void Upsample_2_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 Coord[3] : TEXCOORD0)
-{
-    UpsampleVS(ID, Position, Coord, 1.0 / BUFFER_SIZE_2);
-}
-
-void Upsample_1_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 Coord[3] : TEXCOORD0)
-{
-    UpsampleVS(ID, Position, Coord, 1.0 / BUFFER_SIZE_1);
-}
+UPSAMPLE_VERTEX_SHADER(Upsample_7_VS, 1.0 / BUFFER_SIZE_7)
+UPSAMPLE_VERTEX_SHADER(Upsample_6_VS, 1.0 / BUFFER_SIZE_6)
+UPSAMPLE_VERTEX_SHADER(Upsample_5_VS, 1.0 / BUFFER_SIZE_5)
+UPSAMPLE_VERTEX_SHADER(Upsample_4_VS, 1.0 / BUFFER_SIZE_4)
+UPSAMPLE_VERTEX_SHADER(Upsample_3_VS, 1.0 / BUFFER_SIZE_3)
+UPSAMPLE_VERTEX_SHADER(Upsample_2_VS, 1.0 / BUFFER_SIZE_2)
+UPSAMPLE_VERTEX_SHADER(Upsample_1_VS, 1.0 / BUFFER_SIZE_1)
 
 // Pixel shaders
 // Thresholding: https://github.com/keijiro/Kino [MIT]
 // Tonemapping: https://github.com/TheRealMJP/BakingLab [MIT]
+
+float Median_3(float x, float y, float z)
+{
+    return max(min(x, y), min(max(x, y), z));
+}
 
 void Downsample(in sampler2D Source, in float4 Coord[4], out float4 Output)
 {
@@ -420,31 +283,7 @@ void Upsample(in sampler2D Source, in float4 Coord[3], in float Weight, out floa
     Output += (A_1 + B_0 + C_1 + B_2) * 2.0;
     Output += B_1 * 4.0;
     Output *= (1.0 / 16.0);
-}
-
-float Median_3(float x, float y, float z)
-{
-    return max(min(x, y), min(max(x, y), z));
-}
-
-void Prefilter_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
-{
-    const float Knee = mad(_Threshold, _Smooth, 1e-5f);
-    const float3 Curve = float3(_Threshold - Knee, Knee * 2.0, 0.25 / Knee);
-    float4 Color = tex2D(Sample_Color, Coord);
-
-    // Under-threshold
-    float Brightness = Median_3(Color.r, Color.g, Color.b);
-    float Response_Curve = clamp(Brightness - Curve.x, 0.0, Curve.y);
-    Response_Curve = Curve.z * Response_Curve * Response_Curve;
-
-    // Combine and apply the brightness response curve
-    Color = Color * max(Response_Curve, Brightness - _Threshold) / max(Brightness, 1e-10);
-    Brightness = Median_3(Color.r, Color.g, Color.b);
-    Output_Color_0 = saturate(lerp(Brightness, Color.rgb, _Saturation)) * _Color_Shift;
-
-    // Set alpha to 1.0 so we can see the complete results in ReShade's statistics
-    Output_Color_0.a = 1.0;
+    Output.a = Weight;
 }
 
 // sRGB => XYZ => D65_2_D60 => AP1 => RRT_SAT
@@ -470,84 +309,50 @@ float3 RRT_ODT_Fit(float3 V)
     return A / B;
 }
 
-void Downsample_1_PS(in float4 Position : SV_POSITION, in float4 Coord[4] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+void Prefilter_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    Downsample(Sample_Common_RGBA16F_1, Coord, Output_Color_0);
+    const float Knee = mad(_Threshold, _Smooth, 1e-5f);
+    const float3 Curve = float3(_Threshold - Knee, Knee * 2.0, 0.25 / Knee);
+    float4 Color = tex2D(Sample_Color, Coord);
+
+    // Under-threshold
+    float Brightness = Median_3(Color.r, Color.g, Color.b);
+    float Response_Curve = clamp(Brightness - Curve.x, 0.0, Curve.y);
+    Response_Curve = Curve.z * Response_Curve * Response_Curve;
+
+    // Combine and apply the brightness response curve
+    Color = Color * max(Response_Curve, Brightness - _Threshold) / max(Brightness, 1e-10);
+    Brightness = Median_3(Color.r, Color.g, Color.b);
+    OutputColor0 = saturate(lerp(Brightness, Color.rgb, _Saturation)) * _ColorShift;
+
+    // Set alpha to 1.0 so we can see the complete results in ReShade's statistics
+    OutputColor0.a = 1.0;
 }
 
-void Downsample_2_PS(in float4 Position : SV_POSITION, in float4 Coord[4] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
-{
-    Downsample(Sample_Common_RGBA16F_2, Coord, Output_Color_0);
-}
+DOWNSAMPLE_PIXEL_SHADER(Downsample_1_PS, Shared_Resources_Bloom::Sample_Common_1)
+DOWNSAMPLE_PIXEL_SHADER(Downsample_2_PS, Shared_Resources_Bloom::Sample_Common_2)
+DOWNSAMPLE_PIXEL_SHADER(Downsample_3_PS, Shared_Resources_Bloom::Sample_Common_3)
+DOWNSAMPLE_PIXEL_SHADER(Downsample_4_PS, Shared_Resources_Bloom::Sample_Common_4)
+DOWNSAMPLE_PIXEL_SHADER(Downsample_5_PS, Shared_Resources_Bloom::Sample_Common_5)
+DOWNSAMPLE_PIXEL_SHADER(Downsample_6_PS, Shared_Resources_Bloom::Sample_Common_6)
+DOWNSAMPLE_PIXEL_SHADER(Downsample_7_PS, Shared_Resources_Bloom::Sample_Common_7)
 
-void Downsample_3_PS(in float4 Position : SV_POSITION, in float4 Coord[4] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
-{
-    Downsample(Sample_Common_RGBA16F_3, Coord, Output_Color_0);
-}
+UPSAMPLE_PIXEL_SHADER(Upsample_7_PS, Shared_Resources_Bloom::Sample_Common_8, _Level6Weight)
+UPSAMPLE_PIXEL_SHADER(Upsample_6_PS, Shared_Resources_Bloom::Sample_Common_7, _Level5Weight)
+UPSAMPLE_PIXEL_SHADER(Upsample_5_PS, Shared_Resources_Bloom::Sample_Common_6, _Level4Weight)
+UPSAMPLE_PIXEL_SHADER(Upsample_4_PS, Shared_Resources_Bloom::Sample_Common_5, _Level3Weight)
+UPSAMPLE_PIXEL_SHADER(Upsample_3_PS, Shared_Resources_Bloom::Sample_Common_4, _Level2Weight)
+UPSAMPLE_PIXEL_SHADER(Upsample_2_PS, Shared_Resources_Bloom::Sample_Common_3, _Level1Weight)
+UPSAMPLE_PIXEL_SHADER(Upsample_1_PS, Shared_Resources_Bloom::Sample_Common_2, 0.0)
 
-void Downsample_4_PS(in float4 Position : SV_POSITION, in float4 Coord[4] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+void Composite_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    Downsample(Sample_Common_RGBA16F_4, Coord, Output_Color_0);
-}
-
-void Downsample_5_PS(in float4 Position : SV_POSITION, in float4 Coord[4] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
-{
-    Downsample(Sample_Common_RGBA16F_5, Coord, Output_Color_0);
-}
-
-void Downsample_6_PS(in float4 Position : SV_POSITION, in float4 Coord[4] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
-{
-    Downsample(Sample_Common_RGBA16F_6, Coord, Output_Color_0);
-}
-
-void Downsample_7_PS(in float4 Position : SV_POSITION, in float4 Coord[4] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
-{
-    Downsample(Sample_Common_RGBA16F_7, Coord, Output_Color_0);
-}
-
-void Upsample_7_PS(in float4 Position : SV_POSITION, in float4 Coord[3] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
-{
-    Upsample(Sample_Common_RGBA16F_8, Coord, _Level_6_Weight, Output_Color_0);
-}
-
-void Upsample_6_PS(in float4 Position : SV_POSITION, in float4 Coord[3] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
-{
-    Upsample(Sample_Common_RGBA16F_7, Coord, _Level_5_Weight, Output_Color_0);
-}
-
-void Upsample_5_PS(in float4 Position : SV_POSITION, in float4 Coord[3] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
-{
-    Upsample(Sample_Common_RGBA16F_6, Coord, _Level_4_Weight, Output_Color_0);
-}
-
-void Upsample_4_PS(in float4 Position : SV_POSITION, in float4 Coord[3] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
-{
-    Upsample(Sample_Common_RGBA16F_5, Coord, _Level_3_Weight, Output_Color_0);
-}
-
-void Upsample_3_PS(in float4 Position : SV_POSITION, in float4 Coord[3] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
-{
-    Upsample(Sample_Common_RGBA16F_4, Coord, _Level_2_Weight, Output_Color_0);
-}
-
-void Upsample_2_PS(in float4 Position : SV_POSITION, in float4 Coord[3] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
-{
-    Upsample(Sample_Common_RGBA16F_3, Coord, _Level_1_Weight, Output_Color_0);
-}
-
-void Upsample_1_PS(in float4 Position : SV_POSITION, in float4 Coord[3] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
-{
-    Upsample(Sample_Common_RGBA16F_2, Coord, 0.0, Output_Color_0);
-}
-
-void Composite_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
-{
-    float4 Src = tex2D(Sample_Common_RGBA16F_1, Coord);
+    float4 Src = tex2D(Shared_Resources_Bloom::Sample_Common_1, Coord);
     Src *= _Intensity;
     Src = mul(ACES_Input_Mat, Src.rgb);
     Src = RRT_ODT_Fit(Src.rgb);
     Src = saturate(mul(ACES_Output_Mat, Src.rgb));
-    Output_Color_0 = Src;
+    OutputColor0 = Src;
 }
 
 /* [ TECHNIQUE ] */
@@ -558,135 +363,29 @@ technique cBloom
     {
         VertexShader = Basic_VS;
         PixelShader = Prefilter_PS;
-        RenderTarget0 = Shared_Resources::RGBA16F::Render_Common_1;
+        RenderTarget0 = Shared_Resources_Bloom::Render_Common_1;
     }
 
-    pass
-    {
-        VertexShader = Downsample_1_VS;
-        PixelShader = Downsample_1_PS;
-        RenderTarget0 = Shared_Resources::RGBA16F::Render_Common_2;
-    }
+    DOWNSAMPLE_PASS(Downsample_1_VS, Downsample_1_PS, Shared_Resources_Bloom::Render_Common_2)
+    DOWNSAMPLE_PASS(Downsample_2_VS, Downsample_2_PS, Shared_Resources_Bloom::Render_Common_3)
+    DOWNSAMPLE_PASS(Downsample_3_VS, Downsample_3_PS, Shared_Resources_Bloom::Render_Common_4)
+    DOWNSAMPLE_PASS(Downsample_4_VS, Downsample_4_PS, Shared_Resources_Bloom::Render_Common_5)
+    DOWNSAMPLE_PASS(Downsample_5_VS, Downsample_5_PS, Shared_Resources_Bloom::Render_Common_6)
+    DOWNSAMPLE_PASS(Downsample_6_VS, Downsample_6_PS, Shared_Resources_Bloom::Render_Common_7)
+    DOWNSAMPLE_PASS(Downsample_7_VS, Downsample_7_PS, Shared_Resources_Bloom::Render_Common_8)
 
-    pass
-    {
-        VertexShader = Downsample_2_VS;
-        PixelShader = Downsample_2_PS;
-        RenderTarget0 = Shared_Resources::RGBA16F::Render_Common_3;
-    }
-
-    pass
-    {
-        VertexShader = Downsample_3_VS;
-        PixelShader = Downsample_3_PS;
-        RenderTarget0 = Shared_Resources::RGBA16F::Render_Common_4;
-    }
-
-    pass
-    {
-        VertexShader = Downsample_4_VS;
-        PixelShader = Downsample_4_PS;
-        RenderTarget0 = Shared_Resources::RGBA16F::Render_Common_5;
-    }
-
-    pass
-    {
-        VertexShader = Downsample_5_VS;
-        PixelShader = Downsample_5_PS;
-        RenderTarget0 = Shared_Resources::RGBA16F::Render_Common_6;
-    }
-
-    pass
-    {
-        VertexShader = Downsample_6_VS;
-        PixelShader = Downsample_6_PS;
-        RenderTarget0 = Shared_Resources::RGBA16F::Render_Common_7;
-    }
-
-    pass
-    {
-        VertexShader = Downsample_7_VS;
-        PixelShader = Downsample_7_PS;
-        RenderTarget0 = Shared_Resources::RGBA16F::Render_Common_8;
-    }
-
-    pass
-    {
-        VertexShader = Upsample_7_VS;
-        PixelShader = Upsample_7_PS;
-        RenderTarget0 = Shared_Resources::RGBA16F::Render_Common_7;
-        ClearRenderTargets = FALSE;
-        BlendEnable = TRUE;
-        BlendOp = ADD;
-        SrcBlend = SRCALPHA;
-        DestBlend = ONE;
-    }
-
-    pass
-    {
-        VertexShader = Upsample_6_VS;
-        PixelShader = Upsample_6_PS;
-        RenderTarget0 = Shared_Resources::RGBA16F::Render_Common_6;
-        ClearRenderTargets = FALSE;
-        BlendEnable = TRUE;
-        BlendOp = ADD;
-        SrcBlend = SRCALPHA;
-        DestBlend = ONE;
-    }
-
-    pass
-    {
-        VertexShader = Upsample_5_VS;
-        PixelShader = Upsample_5_PS;
-        RenderTarget0 = Shared_Resources::RGBA16F::Render_Common_5;
-        ClearRenderTargets = FALSE;
-        BlendEnable = TRUE;
-        BlendOp = ADD;
-        SrcBlend = SRCALPHA;
-        DestBlend = ONE;
-    }
-
-    pass
-    {
-        VertexShader = Upsample_4_VS;
-        PixelShader = Upsample_4_PS;
-        RenderTarget0 = Shared_Resources::RGBA16F::Render_Common_4;
-        ClearRenderTargets = FALSE;
-        BlendEnable = TRUE;
-        BlendOp = ADD;
-        SrcBlend = SRCALPHA;
-        DestBlend = ONE;
-    }
-
-    pass
-    {
-        VertexShader = Upsample_3_VS;
-        PixelShader = Upsample_3_PS;
-        RenderTarget0 = Shared_Resources::RGBA16F::Render_Common_3;
-        ClearRenderTargets = FALSE;
-        BlendEnable = TRUE;
-        BlendOp = ADD;
-        SrcBlend = SRCALPHA;
-        DestBlend = ONE;
-    }
-
-    pass
-    {
-        VertexShader = Upsample_2_VS;
-        PixelShader = Upsample_2_PS;
-        RenderTarget0 = Shared_Resources::RGBA16F::Render_Common_2;
-        ClearRenderTargets = FALSE;
-        BlendEnable = TRUE;
-        BlendOp = ADD;
-        SrcBlend = SRCALPHA;
-        DestBlend = ONE;
-    }
+    UPSAMPLE_BLEND_PASS(Upsample_7_VS, Upsample_7_PS, Shared_Resources_Bloom::Render_Common_7)
+    UPSAMPLE_BLEND_PASS(Upsample_6_VS, Upsample_6_PS, Shared_Resources_Bloom::Render_Common_6)
+    UPSAMPLE_BLEND_PASS(Upsample_5_VS, Upsample_5_PS, Shared_Resources_Bloom::Render_Common_5)
+    UPSAMPLE_BLEND_PASS(Upsample_4_VS, Upsample_4_PS, Shared_Resources_Bloom::Render_Common_4)
+    UPSAMPLE_BLEND_PASS(Upsample_3_VS, Upsample_3_PS, Shared_Resources_Bloom::Render_Common_3)
+    UPSAMPLE_BLEND_PASS(Upsample_2_VS, Upsample_2_PS, Shared_Resources_Bloom::Render_Common_2)
 
     pass
     {
         VertexShader = Upsample_1_VS;
         PixelShader = Upsample_1_PS;
-        RenderTarget0 = Shared_Resources::RGBA16F::Render_Common_1;
+        RenderTarget0 = Shared_Resources_Bloom::Render_Common_1;
     }
 
     pass

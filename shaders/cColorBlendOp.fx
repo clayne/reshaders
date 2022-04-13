@@ -42,10 +42,10 @@ void Basic_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION)
 
 // Pixel shaders
 
-void Color_PS(in float4 Position : SV_POSITION, out float4 Output_Color_0 : SV_TARGET0)
+void Color_PS(in float4 Position : SV_POSITION, out float4 OutputColor0 : SV_TARGET0)
 {
     // Fill this quad with a color
-    Output_Color_0 = _Color;
+    OutputColor0 = _Color;
 }
 
 // Use BlendOp to multiple the backbuffer with this quad's color

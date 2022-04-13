@@ -51,7 +51,7 @@
     #define RESHADE_DEPTH_INPUT_X_PIXEL_OFFSET 0
 #endif
 
-#define BUFFER_PIXEL_SIZE float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT)
+#define BUFFER_PixelSize float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT)
 #define BUFFER_SCREEN_SIZE float2(BUFFER_WIDTH, BUFFER_HEIGHT)
 #define BUFFER_ASPECT_RATIO (BUFFER_WIDTH * BUFFER_RCP_HEIGHT)
 
@@ -62,12 +62,12 @@ namespace ReShade
         float2 GetPixelSize() { return float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT); }
         float2 GetScreen_Size() { return float2(BUFFER_WIDTH, BUFFER_HEIGHT); }
         #define Aspect_Ratio GetAspect_Ratio()
-        #define Pixel_Size GetPixelSize()
+        #define PixelSize GetPixelSize()
         #define Screen_Size GetScreen_Size()
     #else
         // These are deprecated and will be removed eventually.
         static const float Aspect_Ratio = BUFFER_WIDTH * BUFFER_RCP_HEIGHT;
-        static const float2 Pixel_Size = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
+        static const float2 PixelSize = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
         static const float2 Screen_Size = float2(BUFFER_WIDTH, BUFFER_HEIGHT);
     #endif
 

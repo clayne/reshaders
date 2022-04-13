@@ -425,9 +425,9 @@ namespace Optical_Flow
         float2 Origin = Offset + float2(Column, Row) * Spacing;
 
         // Get velocity from texture at origin location
-        const float2 Pixel_Size = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
+        const float2 PixelSize = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
         float2 Velocity_Coord = 0.0;
-        Velocity_Coord.xy = Origin.xy * Pixel_Size.xy;
+        Velocity_Coord.xy = Origin.xy * PixelSize.xy;
         Velocity_Coord.y = 1.0 - Velocity_Coord.y;
         Velocity = tex2Dlod(Shared_Resources_OpticalFlow::Sample_Common_1_B, float4(Velocity_Coord, 0.0, _Mip_Bias)).xy;
 
@@ -457,7 +457,7 @@ namespace Optical_Flow
         }
 
         // Finish vertex position
-        float2 Vertex_Position_Normal = (Vertex_Position + 0.5) * Pixel_Size; // [0, 1]
+        float2 Vertex_Position_Normal = (Vertex_Position + 0.5) * PixelSize; // [0, 1]
         Position = float4(Vertex_Position_Normal * 2.0 - 1.0, 0.0, 1.0); // ndc: [-1, +1]
     }
 
@@ -469,9 +469,9 @@ namespace Optical_Flow
         Color.xy = saturate(Frame.xy / dot(Frame.rgb, 1.0));
     }
 
-    void Blit_Frame_PS(in float4 Position : SV_POSITION, float2 Coord : TEXCOORD, out float4 Output_Color_0 : SV_TARGET0)
+    void Blit_Frame_PS(in float4 Position : SV_POSITION, float2 Coord : TEXCOORD, out float4 OutputColor0 : SV_TARGET0)
     {
-        Output_Color_0 = tex2D(Shared_Resources_OpticalFlow::Sample_Common_0, Coord);
+        OutputColor0 = tex2D(Shared_Resources_OpticalFlow::Sample_Common_0, Coord);
     }
 
     static const float Blur_Weights[8] =
@@ -486,32 +486,32 @@ namespace Optical_Flow
         0.0042996835
     };
 
-    void Gaussian_Blur(in sampler2D Source, in float4 Coords[8], out float4 Output_Color_0)
+    void Gaussian_Blur(in sampler2D Source, in float4 Coords[8], out float4 OutputColor0)
     {
         float Total_Weights = Blur_Weights[0];
-        Output_Color_0 = (tex2D(Source, Coords[0].xy) * Blur_Weights[0]);
+        OutputColor0 = (tex2D(Source, Coords[0].xy) * Blur_Weights[0]);
 
         for(int i = 1; i < 8; i++)
         {
-            Output_Color_0 += (tex2D(Source, Coords[i].xy) * Blur_Weights[i]);
-            Output_Color_0 += (tex2D(Source, Coords[i].zw) * Blur_Weights[i]);
+            OutputColor0 += (tex2D(Source, Coords[i].xy) * Blur_Weights[i]);
+            OutputColor0 += (tex2D(Source, Coords[i].zw) * Blur_Weights[i]);
             Total_Weights += (Blur_Weights[i] * 2.0);
         }
 
-        Output_Color_0 = Output_Color_0 / Total_Weights;
+        OutputColor0 = OutputColor0 / Total_Weights;
     }
 
-    void Pre_Blur_0_PS(in float4 Position : SV_POSITION, in float4 Coords[8] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+    void Pre_Blur_0_PS(in float4 Position : SV_POSITION, in float4 Coords[8] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
-        Gaussian_Blur(Shared_Resources_OpticalFlow::Sample_Common_1_A, Coords, Output_Color_0);
+        Gaussian_Blur(Shared_Resources_OpticalFlow::Sample_Common_1_A, Coords, OutputColor0);
     }
 
-    void Pre_Blur_1_PS(in float4 Position : SV_POSITION, in float4 Coords[8] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+    void Pre_Blur_1_PS(in float4 Position : SV_POSITION, in float4 Coords[8] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
-        Gaussian_Blur(Shared_Resources_OpticalFlow::Sample_Common_1_B, Coords, Output_Color_0);
+        Gaussian_Blur(Shared_Resources_OpticalFlow::Sample_Common_1_B, Coords, OutputColor0);
     }
 
-    void Derivatives_PS(in float4 Position : SV_POSITION, in float4 Coords[2] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+    void Derivatives_PS(in float4 Position : SV_POSITION, in float4 Coords[2] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
         // Bilinear 5x5 Sobel by CeeJayDK
         //   B_1 B_2
@@ -532,16 +532,16 @@ namespace Optical_Flow
         // -2 -2 0 +2 +2
         // -1 -2 0 +2 +1
         //    -1 0 +1
-        Output_Color_0.xy = ((B_2 + A_1 + B_0 + C_1) - (B_1 + A_0 + A_2 + C_0)) / 12.0;
+        OutputColor0.xy = ((B_2 + A_1 + B_0 + C_1) - (B_1 + A_0 + A_2 + C_0)) / 12.0;
 
         //    +1 +2 +1
         // +1 +2 +2 +2 +1
         //  0  0  0  0  0
         // -1 -2 -2 -2 -1
         //    -1 -2 -1
-        Output_Color_0.zw = ((A_0 + B_1 + B_2 + A_1) - (A_2 + C_0 + C_1 + B_0)) / 12.0;
-        Output_Color_0.xz *= rsqrt(dot(Output_Color_0.xz, Output_Color_0.xz) + 1.0);
-        Output_Color_0.yw *= rsqrt(dot(Output_Color_0.yw, Output_Color_0.yw) + 1.0);
+        OutputColor0.zw = ((A_0 + B_1 + B_2 + A_1) - (A_2 + C_0 + C_1 + B_0)) / 12.0;
+        OutputColor0.xz *= rsqrt(dot(OutputColor0.xz, OutputColor0.xz) + 1.0);
+        OutputColor0.yw *= rsqrt(dot(OutputColor0.yw, OutputColor0.yw) + 1.0);
     }
 
     #define Max_Level 7
@@ -730,63 +730,63 @@ namespace Optical_Flow
         Optical_Flow_TV(Shared_Resources_OpticalFlow::Sample_Common_3, Coords, 2.5, Color);
     }
 
-    void Level_1_PS(in float4 Position : SV_POSITION, in float4 Coords[3] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+    void Level_1_PS(in float4 Position : SV_POSITION, in float4 Coords[3] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
-        Optical_Flow_TV(Shared_Resources_OpticalFlow::Sample_Common_2, Coords, 0.5, Output_Color_0.rg);
-        Output_Color_0.y *= -1.0;
-        Output_Color_0.ba = float2(0.0, _Blend_Factor);
+        Optical_Flow_TV(Shared_Resources_OpticalFlow::Sample_Common_2, Coords, 0.5, OutputColor0.rg);
+        OutputColor0.y *= -1.0;
+        OutputColor0.ba = float2(0.0, _Blend_Factor);
     }
 
-    void Blit_Previous_PS(in float4 Position : SV_POSITION, float2 Coord : TEXCOORD, out float4 Output_Color_0 : SV_TARGET0)
+    void Blit_Previous_PS(in float4 Position : SV_POSITION, float2 Coord : TEXCOORD, out float4 OutputColor0 : SV_TARGET0)
     {
-        Output_Color_0 = tex2D(Shared_Resources_OpticalFlow::Sample_Common_1_A, Coord);
+        OutputColor0 = tex2D(Shared_Resources_OpticalFlow::Sample_Common_1_A, Coord);
     }
 
-    void Post_Blur_0_PS(in float4 Position : SV_POSITION, in float4 Coords[8] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+    void Post_Blur_0_PS(in float4 Position : SV_POSITION, in float4 Coords[8] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
-        Gaussian_Blur(Sample_Optical_Flow, Coords, Output_Color_0);
-        Output_Color_0.a = 1.0;
+        Gaussian_Blur(Sample_Optical_Flow, Coords, OutputColor0);
+        OutputColor0.a = 1.0;
     }
 
-    void Post_Blur_1_PS(in float4 Position : SV_POSITION, in float4 Coords[8] : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+    void Post_Blur_1_PS(in float4 Position : SV_POSITION, in float4 Coords[8] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
-        Gaussian_Blur(Shared_Resources_OpticalFlow::Sample_Common_1_A, Coords, Output_Color_0);
-        Output_Color_0.a = 1.0;
+        Gaussian_Blur(Shared_Resources_OpticalFlow::Sample_Common_1_A, Coords, OutputColor0);
+        OutputColor0.a = 1.0;
     }
 
-    void Velocity_Shading_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 Output_Color_0 : SV_Target)
+    void Velocity_Shading_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 OutputColor0 : SV_Target)
     {
         float2 Velocity = tex2Dlod(Shared_Resources_OpticalFlow::Sample_Common_1_B, float4(Coord, 0.0, _Mip_Bias)).xy;
 
         if(_Normalized_Shading)
         {
             float Velocity_Length = saturate(rsqrt(dot(Velocity, Velocity)));
-            Output_Color_0.rg = (Velocity * Velocity_Length) * 0.5 + 0.5;
-            Output_Color_0.b = -dot(Output_Color_0.rg, 1.0) * 0.5 + 1.0;
-            Output_Color_0.rgb /= max(max(Output_Color_0.x, Output_Color_0.y), Output_Color_0.z);
-            Output_Color_0.a = 1.0;
+            OutputColor0.rg = (Velocity * Velocity_Length) * 0.5 + 0.5;
+            OutputColor0.b = -dot(OutputColor0.rg, 1.0) * 0.5 + 1.0;
+            OutputColor0.rgb /= max(max(OutputColor0.x, OutputColor0.y), OutputColor0.z);
+            OutputColor0.a = 1.0;
         }
         else
         {
-            Output_Color_0 = float4(Velocity, 0.0, 1.0);
+            OutputColor0 = float4(Velocity, 0.0, 1.0);
         }
     }
 
     #if RENDER_VELOCITY_STREAMS
-        void Velocity_Streams_PS(in float4 Position : SV_POSITION, in float2 Velocity : TEXCOORD0, out float4 Output_Color_0 : SV_TARGET0)
+        void Velocity_Streams_PS(in float4 Position : SV_POSITION, in float2 Velocity : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
         {
-            Output_Color_0.rg = (_Scale_Line_Velocity) ? (Velocity.xy / (length(Velocity) * VELOCITY_SCALE * 0.05)) : normalize(Velocity.xy);
-            Output_Color_0.rg = Output_Color_0.xy * 0.5 + 0.5;
-            Output_Color_0.b = -dot(Output_Color_0.rg, 1.0) * 0.5 + 1.0;
-            Output_Color_0.rgb /= max(max(Output_Color_0.x, Output_Color_0.y), Output_Color_0.z);
-            Output_Color_0.a = 1.0;
+            OutputColor0.rg = (_Scale_Line_Velocity) ? (Velocity.xy / (length(Velocity) * VELOCITY_SCALE * 0.05)) : normalize(Velocity.xy);
+            OutputColor0.rg = OutputColor0.xy * 0.5 + 0.5;
+            OutputColor0.b = -dot(OutputColor0.rg, 1.0) * 0.5 + 1.0;
+            OutputColor0.rgb /= max(max(OutputColor0.x, OutputColor0.y), OutputColor0.z);
+            OutputColor0.a = 1.0;
         }
 
-        void Velocity_Streams_Display_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float3 Output_Color_0 : SV_TARGET0)
+        void Velocity_Streams_Display_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float3 OutputColor0 : SV_TARGET0)
         {
             float4 Lines = tex2D(Sample_Lines, Coord);
             float3 Main_Color = (_Background_Color) ? _Backgound_Color_Shift : tex2D(Sample_Color_Gamma, Coord).rgb * _Backgound_Color_Shift;
-            Output_Color_0 = lerp(Main_Color, Lines.rgb * _Line_Color_Shift, Lines.aaa * _Line_Opacity);
+            OutputColor0 = lerp(Main_Color, Lines.rgb * _Line_Color_Shift, Lines.aaa * _Line_Opacity);
         }
     #endif
 
