@@ -56,13 +56,24 @@ uniform float _DestFactor <
 
 texture2D Render_Color : COLOR;
 
-sampler2D Sample_Color
+sampler2D Sample_Color_Copy
+{
+    Texture = Render_Color;
+    MagFilter = LINEAR;
+    MinFilter = LINEAR;
+    MipFilter = LINEAR;
+};
+
+sampler2D Sample_Color_Blend
 {
     Texture = Render_Color;
     MagFilter = LINEAR;
     MinFilter = LINEAR;
     MipFilter = LINEAR;
 
+    #if BUFFER_COLOR_BIT_DEPTH == 8
+        SRGBTexture = TRUE;
+    #endif
 };
 
 texture2D Render_Copy
@@ -77,12 +88,16 @@ texture2D Render_Copy
     #endif
 };
 
-sampler2D Sample_Copy
+sampler2D Sample_Copy_Blend
 {
     Texture = Render_Copy;
     MagFilter = LINEAR;
     MinFilter = LINEAR;
     MipFilter = LINEAR;
+
+    #if BUFFER_COLOR_BIT_DEPTH == 8
+        SRGBTexture = TRUE;
+    #endif
 };
 
 // Vertex shaders
@@ -98,13 +113,13 @@ void Basic_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out f
 
 void Blit_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    OutputColor0 = tex2D(Sample_Color, Coord);
+    OutputColor0 = tex2D(Sample_Color_Copy, Coord);
 }
 
 void Blend_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    float4 Src = tex2D(Sample_Copy, Coord) * _SrcFactor;
-    float4 Dest = tex2D(Sample_Color, Coord) * _DestFactor;
+    float4 Src = tex2D(Sample_Copy_Blend, Coord) * _SrcFactor;
+    float4 Dest = tex2D(Sample_Color_Blend, Coord) * _DestFactor;
 
     switch(_Blend)
     {
