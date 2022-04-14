@@ -35,7 +35,23 @@
 
 #include "ReShade.fxh"
 
-#define SIZE int2(128, 128)
+#ifndef USER_BUFFER_WIDTH
+    #define USER_BUFFER_WIDTH 128
+#endif
+
+#ifndef USER_BUFFER_HEIGHT
+    #define USER_BUFFER_HEIGHT 128
+#endif
+
+#if USER_BUFFER_WIDTH > (BUFFER_WIDTH >> 1)
+    #error
+#endif
+
+#if USER_BUFFER_HEIGHT > (BUFFER_HEIGHT >> 1)
+    #error
+#endif
+
+#define SIZE int2(USER_BUFFER_WIDTH, USER_BUFFER_HEIGHT)
 #define BUFFER_SIZE_1 int2(SIZE >> 0)
 #define BUFFER_SIZE_2 int2(SIZE >> 2)
 #define BUFFER_SIZE_3 int2(SIZE >> 4)
@@ -731,9 +747,9 @@ namespace Motion_Blur
 
         switch(_Debug_Display)
         {
-        	case 0: // No debug
-		        OutputColor0 /= (Samples * 2.0);
-        		break;
+            case 0: // No debug
+                OutputColor0 /= (Samples * 2.0);
+                break;
             case 1: // Display input color
                 OutputColor0 = tex2D(Shared_Resources_Motion_Blur::Sample_Common_0, Coord);
                 break;
