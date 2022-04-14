@@ -257,7 +257,7 @@ float3 SampleTexture(float2 Coord, int Mode)
             Texture = Decode(tex2D(Sample_Normals, Coord).xy);
             break;
         case 2:
-            Texture = tex2D(ReShade::DepthBuffer, Coord).xyz;
+            Texture = ReShade::GetLinearizedDepth(Coord);
             break;
     }
 
@@ -468,12 +468,29 @@ void Contour_Normal_PS(in float4 Position : SV_POSITION, in float4 Coords[3] : T
     Contour(Coords, 1, OutputColor0);
 }
 
+void Contour_Depth_PS(in float4 Position : SV_POSITION, in float4 Coords[3] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+{
+    Contour(Coords, 2, OutputColor0);
+}
+
 technique KinoContourColor
 {
     pass
     {
         VertexShader = Contour_VS;
         PixelShader = Contour_Color_PS;
+        #if BUFFER_COLOR_BIT_DEPTH == 8
+            SRGBWriteEnable = TRUE;
+        #endif
+    }
+}
+
+technique KinoContourDepth
+{
+    pass
+    {
+        VertexShader = Contour_VS;
+        PixelShader = Contour_Depth_PS;
         #if BUFFER_COLOR_BIT_DEPTH == 8
             SRGBWriteEnable = TRUE;
         #endif
