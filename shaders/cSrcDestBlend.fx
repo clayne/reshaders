@@ -165,7 +165,7 @@ technique cBlendBuffer
         PixelShader = Blend_PS;
 
         #if BUFFER_COLOR_BIT_DEPTH == 8
-           SRGBWriteEnable = TRUE;
+            SRGBWriteEnable = TRUE;
         #endif
     }
 }
