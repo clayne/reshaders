@@ -36,13 +36,23 @@
 uniform int _Blend <
     ui_label = "Blend Mode";
     ui_type = "combo";
-    ui_items = " Add\0 Subtract\0 Multiply\0 Min\0 Max\0 Screen\0 Lerp\0";
+    ui_items = " Add\0 Subtract\0 Multiply\0 Min\0 Max\0 Screen\0";
 > = 0;
 
-uniform float _Lerp_Weight <
+uniform float _LerpWeight <
     ui_label = "Lerp Weight";
     ui_type = "slider";
 > = 0.5;
+
+uniform float _SrcFactor <
+    ui_label = "Source Factor";
+    ui_type = "drag";
+> = 1.0;
+
+uniform float _DestFactor <
+    ui_label = "Destination Factor";
+    ui_type = "drag";
+> = 1.0;
 
 texture2D Render_Color : COLOR;
 
@@ -93,8 +103,8 @@ void Blit_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out 
 
 void Blend_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    float4 Src = tex2D(Sample_Copy, Coord);
-    float4 Dest = tex2D(Sample_Color, Coord);
+    float4 Src = tex2D(Sample_Copy, Coord) * _SrcFactor;
+    float4 Dest = tex2D(Sample_Color, Coord) * _DestFactor;
 
     switch(_Blend)
     {
@@ -115,9 +125,6 @@ void Blend_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out
             break;
         case 5: // Screen
             OutputColor0 = (Src + Dest) - (Src * Dest);
-            break;
-        case 6: // Lerp
-            OutputColor0 = lerp(Src, Dest, _Lerp_Weight);
             break;
         default:
             OutputColor0 = Dest;

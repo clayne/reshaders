@@ -53,16 +53,16 @@ sampler2D Sample_Color
     #endif
 };
 
-texture2D Render_Copy
+texture2D Render_Blend
 {
     Width = BUFFER_WIDTH;
     Height = BUFFER_HEIGHT;
     Format = RGBA8;
 };
 
-sampler2D Sample_Copy
+sampler2D Sample_Blend
 {
-    Texture = Render_Copy;
+    Texture = Render_Blend;
     MagFilter = LINEAR;
     MinFilter = LINEAR;
     MipFilter = LINEAR;
@@ -88,7 +88,7 @@ void Blend_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out
 void Display_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
     // Display the buffer
-    OutputColor0 = tex2D(Sample_Copy, Coord);
+    OutputColor0 = tex2D(Sample_Blend, Coord);
 }
 
 technique cFrameBlending
@@ -97,7 +97,7 @@ technique cFrameBlending
     {
         VertexShader = Basic_VS;
         PixelShader = Blend_PS;
-        RenderTarget0 = Render_Copy;
+        RenderTarget0 = Render_Blend;
         ClearRenderTargets = FALSE;
         BlendEnable = TRUE;
         BlendOp = ADD;

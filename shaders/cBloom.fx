@@ -144,7 +144,7 @@ namespace Shared_Resources_Bloom
 OPTION(float, _Threshold, "Main", "Threshold", "drag", 1.0, 0.8)
 OPTION(float, _Smooth, "Main", "Smoothing", "drag", 1.0, 0.5)
 OPTION(float, _Saturation, "Main", "Saturation", "drag", 4.0, 1.0)
-OPTION(float, _ColorShift, "Main", "Saturation", "drag", 1.0, 1.0)
+OPTION(float3, _ColorShift, "Main", "Color shift", "color", 1.0, 1.0)
 OPTION(float, _Intensity, "Main", "Color Intensity", "drag", 4.0, 1.0)
 
 OPTION(float, _Level6Weight, "Level Weights", "Level 6", "drag", 2.0, 1.0)
