@@ -39,18 +39,13 @@ uniform int _Blend <
     ui_items = " Add\0 Subtract\0 Multiply\0 Min\0 Max\0 Screen\0";
 > = 0;
 
-uniform float _LerpWeight <
-    ui_label = "Lerp Weight";
-    ui_type = "slider";
-> = 0.5;
-
-uniform float _SrcFactor <
-    ui_label = "Source Factor";
+uniform float3 _SrcFactor <
+    ui_label = "Source Factor (RGB)";
     ui_type = "drag";
 > = 1.0;
 
-uniform float _DestFactor <
-    ui_label = "Destination Factor";
+uniform float3 _DestFactor <
+    ui_label = "Destination Factor (RGB)";
     ui_type = "drag";
 > = 1.0;
 
@@ -118,8 +113,8 @@ void Blit_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out 
 
 void Blend_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    float4 Src = tex2D(Sample_Copy_Blend, Coord) * _SrcFactor;
-    float4 Dest = tex2D(Sample_Color_Blend, Coord) * _DestFactor;
+    float4 Src = tex2D(Sample_Copy_Blend, Coord) * float4(_SrcFactor, 1.0);
+    float4 Dest = tex2D(Sample_Color_Blend, Coord) * float4(_DestFactor, 1.0);
 
     switch(_Blend)
     {
