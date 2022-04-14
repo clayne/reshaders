@@ -62,9 +62,7 @@ sampler2D Sample_Color
     MagFilter = LINEAR;
     MinFilter = LINEAR;
     MipFilter = LINEAR;
-    #if BUFFER_COLOR_BIT_DEPTH == 8
-      SRGBTexture = TRUE;
-    #endif
+
 };
 
 texture2D Render_Copy
