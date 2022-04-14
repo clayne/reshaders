@@ -59,9 +59,9 @@ Practice | Variable
 -------- | --------
 **ALLCAPS**     | System-Value semantics, state parameters
 **ALL_CAPS**    | Preprocessor macros
-**SnakeCase**   | Local variables and function parameters
-**Snake_Case**  | Global objects (structs, functions, textures, samplers)
-**_Snake_Case** | Uniform variables
+**SnakeCase**   | Discrete local and global data
+**Snake_Case**  | Structs, functions, textures, sampler, and packed data (i.e. `float4 TexCoord_Base_Water` stores 2 UVs for 2 textures, base and water)
+**_Snake_Case** | Uniform data
 Suffix `VS` and `PS` | `PixelShader` and `VertexShader`
 
 ## Acknowledgements
