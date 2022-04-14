@@ -69,7 +69,12 @@ texture2D Render_Copy
 {
     Width = BUFFER_WIDTH;
     Height = BUFFER_HEIGHT;
-    Format = RGBA8;
+
+    #if BUFFER_COLOR_BIT_DEPTH == 8
+        Format = RGBA8;
+    #else
+        Format = RGB10A2;
+    #endif
 };
 
 sampler2D Sample_Copy
@@ -78,9 +83,6 @@ sampler2D Sample_Copy
     MagFilter = LINEAR;
     MinFilter = LINEAR;
     MipFilter = LINEAR;
-    #if BUFFER_COLOR_BIT_DEPTH == 8
-        SRGBTexture = TRUE;
-    #endif
 };
 
 // Vertex shaders
@@ -146,6 +148,7 @@ technique cBlendBuffer
     {
         VertexShader = Basic_VS;
         PixelShader = Blend_PS;
+
         #if BUFFER_COLOR_BIT_DEPTH == 8
            SRGBWriteEnable = TRUE;
         #endif
