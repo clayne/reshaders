@@ -97,24 +97,24 @@ sampler2D Sample_Copy_Blend
 
 // Vertex shaders
 
-void Basic_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float2 Coord : TEXCOORD0)
+void Basic_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float2 TexCoord : TEXCOORD0)
 {
-    Coord.x = (ID == 2) ? 2.0 : 0.0;
-    Coord.y = (ID == 1) ? 2.0 : 0.0;
-    Position = float4(Coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    TexCoord.x = (ID == 2) ? 2.0 : 0.0;
+    TexCoord.y = (ID == 1) ? 2.0 : 0.0;
+    Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
 
 // Pixel shaders
 
-void Blit_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+void Blit_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    OutputColor0 = tex2D(Sample_Color_Copy, Coord);
+    OutputColor0 = tex2D(Sample_Color_Copy, TexCoord);
 }
 
-void Blend_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+void Blend_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    float4 Src = tex2D(Sample_Copy_Blend, Coord) * float4(_SrcFactor, 1.0);
-    float4 Dest = tex2D(Sample_Color_Blend, Coord) * float4(_DestFactor, 1.0);
+    float4 Src = tex2D(Sample_Copy_Blend, TexCoord) * float4(_SrcFactor, 1.0);
+    float4 Dest = tex2D(Sample_Color_Blend, TexCoord) * float4(_DestFactor, 1.0);
 
     switch(_Blend)
     {

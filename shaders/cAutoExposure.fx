@@ -79,29 +79,29 @@ sampler2D Sample_Luma_LOD
 
 // Vertex shaders
 
-void Basic_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float2 Coord : TEXCOORD0)
+void Basic_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float2 TexCoord : TEXCOORD0)
 {
-    Coord.x = (ID == 2) ? 2.0 : 0.0;
-    Coord.y = (ID == 1) ? 2.0 : 0.0;
-    Position = float4(Coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    TexCoord.x = (ID == 2) ? 2.0 : 0.0;
+    TexCoord.y = (ID == 1) ? 2.0 : 0.0;
+    Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
 
 // Pixel shaders
 
-void Blit_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+void Blit_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    float4 Color = tex2D(Sample_Color, Coord);
+    float4 Color = tex2D(Sample_Color, TexCoord);
 
     // OutputColor0.rgb = Output the highest brightness out of red/green/blue component
     // OutputColor0.a = Output the weight for temporal blending
     OutputColor0 = float4(max(Color.r, max(Color.g, Color.b)).rrr, _TimeRate);
 }
 
-void Exposure_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+void Exposure_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
     // Average Luma = Average value (1x1) for all of the pixels
-    float AverageLuma = tex2Dlod(Sample_Luma_LOD, float4(Coord, 0.0, 8.0)).r;
-    float4 Color = tex2D(Sample_Color, Coord);
+    float AverageLuma = tex2Dlod(Sample_Luma_LOD, float4(TexCoord, 0.0, 8.0)).r;
+    float4 Color = tex2D(Sample_Color, TexCoord);
 
     // KeyValue is an exposure compensation curve
     // Source: https://knarkowicz.wordpress.com/2016/01/09/automatic-exposure/

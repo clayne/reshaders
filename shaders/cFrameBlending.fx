@@ -33,7 +33,7 @@
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-uniform float _Blend_Factor <
+uniform float _BlendFactor <
     ui_label = "Blend Factor";
     ui_type = "slider";
     ui_min = 0.0;
@@ -70,25 +70,25 @@ sampler2D Sample_Blend
 
 // Vertex shaders
 
-void Basic_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float2 Coord : TEXCOORD0)
+void Basic_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float2 TexCoord : TEXCOORD0)
 {
-    Coord.x = (ID == 2) ? 2.0 : 0.0;
-    Coord.y = (ID == 1) ? 2.0 : 0.0;
-    Position = float4(Coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    TexCoord.x = (ID == 2) ? 2.0 : 0.0;
+    TexCoord.y = (ID == 1) ? 2.0 : 0.0;
+    Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
 
 // Pixel shaders
 
-void Blend_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+void Blend_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
     // Copy backbuffer to a that continuously blends with its previous result 
-    OutputColor0 = float4(tex2D(Sample_Color, Coord).rgb, _Blend_Factor);
+    OutputColor0 = float4(tex2D(Sample_Color, TexCoord).rgb, _BlendFactor);
 }
 
-void Display_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+void Display_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
     // Display the buffer
-    OutputColor0 = tex2D(Sample_Blend, Coord);
+    OutputColor0 = tex2D(Sample_Blend, TexCoord);
 }
 
 technique cFrameBlending

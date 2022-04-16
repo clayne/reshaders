@@ -72,11 +72,11 @@ sampler2D Sample_Color
 
 // Vertex shaders
 
-void Basic_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float2 Coord : TEXCOORD0)
+void Basic_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float2 TexCoord : TEXCOORD0)
 {
-    Coord.x = (ID == 2) ? 2.0 : 0.0;
-    Coord.y = (ID == 1) ? 2.0 : 0.0;
-    Position = float4(Coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    TexCoord.x = (ID == 2) ? 2.0 : 0.0;
+    TexCoord.y = (ID == 1) ? 2.0 : 0.0;
+    Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
 
 float Median_3(float x, float y, float z)
@@ -86,19 +86,19 @@ float Median_3(float x, float y, float z)
 
 // Pixel shaders
 
-void Threshold_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+void Threshold_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
     const float Knee = mad(_Threshold, _Smooth, 1e-5f);
     const float3 Curve = float3(_Threshold - Knee, Knee * 2.0, 0.25 / Knee);
-    float4 Color = tex2D(Sample_Color, Coord);
+    float4 Color = tex2D(Sample_Color, TexCoord);
 
     // Under-threshold
     float Brightness = Median_3(Color.r, Color.g, Color.b);
-    float Response_Curve = clamp(Brightness - Curve.x, 0.0, Curve.y);
-    Response_Curve = Curve.z * Response_Curve * Response_Curve;
+    float ResponseCurve = clamp(Brightness - Curve.x, 0.0, Curve.y);
+    ResponseCurve = Curve.z * ResponseCurve * ResponseCurve;
 
     // Combine and apply the brightness response curve
-    Color = Color * max(Response_Curve, Brightness - _Threshold) / max(Brightness, 1e-10);
+    Color = Color * max(ResponseCurve, Brightness - _Threshold) / max(Brightness, 1e-10);
     Brightness = Median_3(Color.r, Color.g, Color.b);
     OutputColor0 = saturate(lerp(Brightness, Color, _Saturation) * _Intensity);
 }

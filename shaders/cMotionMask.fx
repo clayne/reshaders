@@ -35,7 +35,7 @@
 
 namespace Motion_Mask
 {
-    uniform float _Blend_Factor <
+    uniform float _BlendFactor <
         ui_type = "slider";
         ui_label = "Temporal blending factor";
         ui_min = 0.0;
@@ -128,35 +128,35 @@ namespace Motion_Mask
 
     // Vertex shaders
 
-    void Basic_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float2 Coord : TEXCOORD0)
+    void Basic_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float2 TexCoord : TEXCOORD0)
     {
-        Coord.x = (ID == 2) ? 2.0 : 0.0;
-        Coord.y = (ID == 1) ? 2.0 : 0.0;
-        Position = Coord.xyxy * float4(2.0, -2.0, 0.0, 0.0) + float4(-1.0, 1.0, 0.0, 1.0);
+        TexCoord.x = (ID == 2) ? 2.0 : 0.0;
+        TexCoord.y = (ID == 1) ? 2.0 : 0.0;
+        Position = TexCoord.xyxy * float4(2.0, -2.0, 0.0, 0.0) + float4(-1.0, 1.0, 0.0, 1.0);
     }
 
     // Pixel shaders
 
-    void Blit_0_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+    void Blit_0_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
-        float3 Color = max(tex2D(Sample_Color, Coord).rgb, exp2(-10.0));
+        float3 Color = max(tex2D(Sample_Color, TexCoord).rgb, exp2(-10.0));
         OutputColor0 = (_Normalize_Input) ? saturate(Color.xy / dot(Color, 1.0)) : max(max(Color.r, Color.g), Color.b);
     }
 
-    void Difference_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+    void Difference_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
         float Difference = 0.0;
 
         if(_Normalize_Input)
         {
-            float2 Current = tex2D(Sample_Current, Coord).rg;
-            float2 Previous = tex2D(Sample_Previous, Coord).rg;
+            float2 Current = tex2D(Sample_Current, TexCoord).rg;
+            float2 Previous = tex2D(Sample_Previous, TexCoord).rg;
             Difference = abs(dot(Current - Previous, 1.0)) * _Difference_Weight;
         }
         else
         {
-            float Current = tex2D(Sample_Current, Coord).r;
-            float Previous = tex2D(Sample_Previous, Coord).r;
+            float Current = tex2D(Sample_Current, TexCoord).r;
+            float Previous = tex2D(Sample_Previous, TexCoord).r;
             Difference = abs(Current - Previous) * _Difference_Weight;
         }
 
@@ -173,17 +173,17 @@ namespace Motion_Mask
             OutputColor0 = Difference;
         }
 
-        OutputColor0.a = _Blend_Factor;
+        OutputColor0.a = _BlendFactor;
     }
 
-    void Output_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+    void Output_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
-        OutputColor0 = tex2D(Sample_Difference, Coord).r;
+        OutputColor0 = tex2D(Sample_Difference, TexCoord).r;
     }
 
-    void Blit_1_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+    void Blit_1_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
-        OutputColor0 = tex2D(Sample_Current, Coord);
+        OutputColor0 = tex2D(Sample_Current, TexCoord);
     }
 
     technique cMotionMask

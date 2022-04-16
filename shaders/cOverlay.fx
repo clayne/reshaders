@@ -33,28 +33,21 @@
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-uniform float2 _Tex_Scale <
+uniform float2 _TexScale <
     ui_label = "Scale";
     ui_category = "Texture";
     ui_type = "drag";
     ui_step = 0.001;
 > = 1.0;
 
-uniform float2 _Tex_Offset <
+uniform float2 _TexOffset <
     ui_label = "Offset";
     ui_category = "Texture";
     ui_type = "drag";
     ui_step = 0.001;
 > = float2(0.0, 0.0);
 
-uniform float2 _Mask_Scale <
-    ui_type = "drag";
-    ui_label = "Scale";
-    ui_category = "Mask";
-    ui_min = 0.0;
-> = float2(0.0, 0.0);
-
-uniform float2 _Mask_Offset <
+uniform float2 _MaskScale <
     ui_type = "drag";
     ui_label = "Scale";
     ui_category = "Mask";
@@ -86,28 +79,28 @@ sampler2D Sample_Color
     #endif
 };
 
-void Overlay_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 Coord : TEXCOORD0)
+void Overlay_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 TexCoord : TEXCOORD0)
 {
-    Coord = 0.0;
-    Coord.x = (ID == 2) ? 2.0 : 0.0;
-    Coord.y = (ID == 1) ? 2.0 : 0.0;
-    Position = float4(Coord.xy * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    TexCoord = 0.0;
+    TexCoord.x = (ID == 2) ? 2.0 : 0.0;
+    TexCoord.y = (ID == 1) ? 2.0 : 0.0;
+    Position = float4(TexCoord.xy * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 
     // Scale texture coordinates from [0, 1] to [-1, 1] range
-    Coord.zw = Coord.xy * 2.0 - 1.0;
+    TexCoord.zw = TexCoord.xy * 2.0 - 1.0;
     // Scale and offset in [-1, 1] range
-    Coord.zw = Coord.zw * _Tex_Scale + _Tex_Offset;
+    TexCoord.zw = TexCoord.zw * _TexScale + _TexOffset;
     // Scale texture coordinates from [-1, 1] to [0, 1] range
-    Coord.zw = Coord.zw * 0.5 + 0.5;
+    TexCoord.zw = TexCoord.zw * 0.5 + 0.5;
 }
 
-void Overlay_PS(in float4 Position : SV_POSITION, in float4 Coord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+void Overlay_PS(in float4 Position : SV_POSITION, in float4 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    float4 Color = tex2D(Sample_Color, Coord.zw);
+    float4 Color = tex2D(Sample_Color, TexCoord.zw);
 
     // Output a rectangle
-    float2 Mask_Coord = Coord.xy;
-    float2 Scale = -_Mask_Scale * 0.5 + 0.5;
+    float2 Mask_Coord = TexCoord.xy;
+    float2 Scale = -_MaskScale * 0.5 + 0.5;
     float2 Shaper = step(Scale, Mask_Coord.xy) * step(Scale, 1.0 - Mask_Coord.xy);
     float Crop = Shaper.x * Shaper.y;
 

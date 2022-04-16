@@ -52,19 +52,19 @@ sampler2D Sample_Color
 
 // Vertex shaders
 
-void Basic_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float2 Coord : TEXCOORD0)
+void Basic_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float2 TexCoord : TEXCOORD0)
 {
-    Coord.x = (ID == 2) ? 2.0 : 0.0;
-    Coord.y = (ID == 1) ? 2.0 : 0.0;
-    Position = float4(Coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    TexCoord.x = (ID == 2) ? 2.0 : 0.0;
+    TexCoord.y = (ID == 1) ? 2.0 : 0.0;
+    Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
 
 /* [ Pixel Shaders ] */
 
-void Mirror_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+void Mirror_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
     // Convert to polar coordinates
-    float2 Polar = Coord * 2.0 - 1.0;
+    float2 Polar = TexCoord * 2.0 - 1.0;
     float Phi = atan2(Polar.y, Polar.x);
     float Radius = length(Polar);
 
@@ -76,11 +76,11 @@ void Mirror_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, ou
 
     // Convert back to the texture coordinate.
     float2 Phi_Sin_Cos; sincos(Phi, Phi_Sin_Cos.x, Phi_Sin_Cos.y);
-    Coord = (Phi_Sin_Cos.yx * Radius) * 0.5 + 0.5;
+    TexCoord = (Phi_Sin_Cos.yx * Radius) * 0.5 + 0.5;
 
     // Reflection at the border of the screen.
-    Coord = max(min(Coord, 2.0 - Coord), -Coord);
-    OutputColor0 = tex2D(Sample_Color, Coord);
+    TexCoord = max(min(TexCoord, 2.0 - TexCoord), -TexCoord);
+    OutputColor0 = tex2D(Sample_Color, TexCoord);
 }
 
 technique KinoMirror

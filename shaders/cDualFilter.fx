@@ -39,40 +39,55 @@
 #define BUFFER_SIZE_3 int2(BUFFER_WIDTH >> 3, BUFFER_HEIGHT >> 3)
 #define BUFFER_SIZE_4 int2(BUFFER_WIDTH >> 4, BUFFER_HEIGHT >> 4)
 
-namespace Shared_Resources
-{
-    namespace RGBA16F
-    {
-        texture2D Render_Common_1 < pooled = true; >
-        {
-            Width = BUFFER_SIZE_1.x;
-            Height = BUFFER_SIZE_1.y;
-            Format = RGBA16F;
-            MipLevels = 8;
-        };
+#define TEXTURE(NAME, SIZE, FORMAT, LEVELS) \
+    texture2D NAME < pooled = true; >       \
+    {                                       \
+        Width = SIZE.x;                     \
+        Height = SIZE.y;                    \
+        Format = FORMAT;                    \
+        MipLevels = LEVELS;                 \
+    };
 
-        texture2D Render_Common_2 < pooled = true; >
-        {
-            Width = BUFFER_SIZE_2.x;
-            Height = BUFFER_SIZE_2.y;
-            Format = RGBA16F;
-        };
+#define SAMPLER(NAME, TEXTURE) \
+    sampler2D NAME             \
+    {                          \
+        Texture = TEXTURE;     \
+        MagFilter = LINEAR;    \
+        MinFilter = LINEAR;    \
+        MipFilter = LINEAR;    \
+    };
 
-        texture2D Render_Common_3 < pooled = true; >
-        {
-            Width = BUFFER_SIZE_3.x;
-            Height = BUFFER_SIZE_3.y;
-            Format = RGBA16F;
-        };
-
-        texture2D Render_Common_4 < pooled = true; >
-        {
-            Width = BUFFER_SIZE_4.x;
-            Height = BUFFER_SIZE_4.y;
-            Format = RGBA16F;
-        };
+#define DOWNSAMPLE_VS(NAME, TEXEL_SIZE)                                                                          \
+    void NAME(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float4 TexCoords[4] : TEXCOORD0) \
+    {                                                                                                            \
+        Downsample_VS(ID, Position, TexCoords, TEXEL_SIZE);                                                         \
     }
-}
+
+#define UPSAMPLE_VS(NAME, TEXEL_SIZE)                                                                            \
+    void NAME(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float4 TexCoords[3] : TEXCOORD0) \
+    {                                                                                                            \
+        Upsample_VS(ID, Position, TexCoords, TEXEL_SIZE);                                                           \
+    }
+
+#define DOWNSAMPLE_PS(NAME, SAMPLER)                                                                                   \
+    void NAME(in float4 Position : SV_POSITION, in float4 TexCoords[4] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0) \
+    {                                                                                                                  \
+        Downsample_PS(SAMPLER, TexCoords, OutputColor0);                                                                  \
+    }
+
+#define UPSAMPLE_PS(NAME, SAMPLER)                                                                                     \
+    void NAME(in float4 Position : SV_POSITION, in float4 TexCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0) \
+    {                                                                                                                  \
+        Upsample_PS(SAMPLER, TexCoords, OutputColor0);                                                                    \
+    }
+
+#define PASS(VERTEX_SHADER, PIXEL_SHADER, RENDER_TARGET) \
+    pass                                                 \
+    {                                                    \
+        VertexShader = VERTEX_SHADER;                    \
+        PixelShader = PIXEL_SHADER;                      \
+        RenderTarget0 = RENDER_TARGET;                   \
+    }
 
 texture2D Render_Color : COLOR;
 
@@ -87,48 +102,28 @@ sampler2D Sample_Color
     #endif
 };
 
-sampler2D Sample_Common_1
-{
-    Texture = Shared_Resources::RGBA16F::Render_Common_1;
-    MagFilter = LINEAR;
-    MinFilter = LINEAR;
-    MipFilter = LINEAR;
-};
+TEXTURE(Render_Common_1, BUFFER_SIZE_1, RGBA16F, 8)
+SAMPLER(Sample_Common_1, Render_Common_1)
 
-sampler2D Sample_Common_2
-{
-    Texture = Shared_Resources::RGBA16F::Render_Common_2;
-    MagFilter = LINEAR;
-    MinFilter = LINEAR;
-    MipFilter = LINEAR;
-};
+TEXTURE(Render_Common_2, BUFFER_SIZE_2, RGBA16F, 1)
+SAMPLER(Sample_Common_2, Render_Common_2)
 
-sampler2D Sample_Common_3
-{
-    Texture = Shared_Resources::RGBA16F::Render_Common_3;
-    MagFilter = LINEAR;
-    MinFilter = LINEAR;
-    MipFilter = LINEAR;
-};
+TEXTURE(Render_Common_3, BUFFER_SIZE_3, RGBA16F, 1)
+SAMPLER(Sample_Common_3, Render_Common_3)
 
-sampler2D Sample_Common_4
-{
-    Texture = Shared_Resources::RGBA16F::Render_Common_4;
-    MagFilter = LINEAR;
-    MinFilter = LINEAR;
-    MipFilter = LINEAR;
-};
+TEXTURE(Render_Common_4, BUFFER_SIZE_4, RGBA16F, 1)
+SAMPLER(Sample_Common_4, Render_Common_4)
 
 // Shader properties
 
-uniform int _Downsample_Method <
+uniform int _DownsampleMethod <
     ui_type = "combo";
     ui_items = " 2x2 Box\0 3x3 Tent\0 Jorge\0 Kawase\0";
     ui_label = "Downsample kernel";
     ui_tooltip = "Downsampling Method";
 > = 0;
 
-uniform int _Upsample_Method <
+uniform int _UpsampleMethod <
     ui_type = "combo";
     ui_items = " 2x2 Box\0 3x3 Tent\0 Kawase\0";
     ui_label = "Upsample kernel";
@@ -137,101 +132,71 @@ uniform int _Upsample_Method <
 
 // Vertex shaders
 
-void Basic_VS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 Coord : TEXCOORD0)
+void Basic_VS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD0)
 {
-    Coord.x = (ID == 2) ? 2.0 : 0.0;
-    Coord.y = (ID == 1) ? 2.0 : 0.0;
-    Position = float4(Coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    TexCoord.x = (ID == 2) ? 2.0 : 0.0;
+    TexCoord.y = (ID == 1) ? 2.0 : 0.0;
+    Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
 
-void DownsampleVS(in uint ID, inout float4 Position, inout float4 Coords[4], float2 Texel_Size)
+void Downsample_VS(in uint ID, inout float4 Position, inout float4 TexCoords[4], float2 TexelSize)
 {
-    float2 VS_Coord;;
-    Basic_VS(ID, Position, VS_Coord);
-    switch(_Downsample_Method)
+    float2 CoordVS;;
+    Basic_VS(ID, Position, CoordVS);
+    switch(_DownsampleMethod)
     {
         case 0: // 4x4 Box
-            Coords[0] = VS_Coord.xyxy + float4(-1.0, -1.0, 1.0, 1.0) * Texel_Size.xyxy;
+            TexCoords[0] = CoordVS.xyxy + float4(-1.0, -1.0, 1.0, 1.0) * TexelSize.xyxy;
             break;
         case 1: // 6x6 Tent
-            Coords[0] = VS_Coord.xyyy + float4(-2.0, 2.0, 0.0, -2.0) * Texel_Size.xyyy;
-            Coords[1] = VS_Coord.xyyy + float4(0.0, 2.0, 0.0, -2.0) * Texel_Size.xyyy;
-            Coords[2] = VS_Coord.xyyy + float4(2.0, 2.0, 0.0, -2.0) * Texel_Size.xyyy;
+            TexCoords[0] = CoordVS.xyyy + float4(-2.0, 2.0, 0.0, -2.0) * TexelSize.xyyy;
+            TexCoords[1] = CoordVS.xyyy + float4(0.0, 2.0, 0.0, -2.0) * TexelSize.xyyy;
+            TexCoords[2] = CoordVS.xyyy + float4(2.0, 2.0, 0.0, -2.0) * TexelSize.xyyy;
             break;
         case 2: // Jorge
-            Coords[0] = VS_Coord.xyxy + float4(-1.0, -1.0, 1.0, 1.0) * Texel_Size.xyxy;
-            Coords[1] = VS_Coord.xyyy + float4(-2.0, 2.0, 0.0, -2.0) * Texel_Size.xyyy;
-            Coords[2] = VS_Coord.xyyy + float4(0.0, 2.0, 0.0, -2.0) * Texel_Size.xyyy;
-            Coords[3] = VS_Coord.xyyy + float4(2.0, 2.0, 0.0, -2.0) * Texel_Size.xyyy;
+            TexCoords[0] = CoordVS.xyxy + float4(-1.0, -1.0, 1.0, 1.0) * TexelSize.xyxy;
+            TexCoords[1] = CoordVS.xyyy + float4(-2.0, 2.0, 0.0, -2.0) * TexelSize.xyyy;
+            TexCoords[2] = CoordVS.xyyy + float4(0.0, 2.0, 0.0, -2.0) * TexelSize.xyyy;
+            TexCoords[3] = CoordVS.xyyy + float4(2.0, 2.0, 0.0, -2.0) * TexelSize.xyyy;
             break;
         case 3: // Kawase
-            Coords[0] = VS_Coord.xyxy;
-            Coords[1] = VS_Coord.xyxy + float4(-1.0, -1.0, 1.0, 1.0) * Texel_Size.xyxy;
+            TexCoords[0] = CoordVS.xyxy;
+            TexCoords[1] = CoordVS.xyxy + float4(-1.0, -1.0, 1.0, 1.0) * TexelSize.xyxy;
             break;
     }
 }
 
-void UpsampleVS(in uint ID, inout float4 Position, inout float4 Coords[3], float2 Texel_Size)
+DOWNSAMPLE_VS(Downsample_1_VS, 1.0 / BUFFER_SIZE_0)
+DOWNSAMPLE_VS(Downsample_2_VS, 1.0 / BUFFER_SIZE_1)
+DOWNSAMPLE_VS(Downsample_3_VS, 1.0 / BUFFER_SIZE_2)
+DOWNSAMPLE_VS(Downsample_4_VS, 1.0 / BUFFER_SIZE_3)
+
+void Upsample_VS(in uint ID, inout float4 Position, inout float4 TexCoords[3], float2 TexelSize)
 {
-    float2 VS_Coord = 0.0;
-    Basic_VS(ID, Position, VS_Coord);
-    switch(_Upsample_Method)
+    float2 CoordVS = 0.0;
+    Basic_VS(ID, Position, CoordVS);
+    switch(_UpsampleMethod)
     {
         case 0: // 4x4 Box
-            Coords[0] = VS_Coord.xyxy + float4(-0.5, -0.5, 0.5, 0.5) * Texel_Size.xyxy;
+            TexCoords[0] = CoordVS.xyxy + float4(-0.5, -0.5, 0.5, 0.5) * TexelSize.xyxy;
             break;
         case 1: // 6x6 Tent
-            Coords[0] = VS_Coord.xyyy + float4(-1.0, 1.0, 0.0, -1.0) * Texel_Size.xyyy;
-            Coords[1] = VS_Coord.xyyy + float4(0.0, 1.0, 0.0, -1.0) * Texel_Size.xyyy;
-            Coords[2] = VS_Coord.xyyy + float4(1.0, 1.0, 0.0, -1.0) * Texel_Size.xyyy;
+            TexCoords[0] = CoordVS.xyyy + float4(-1.0, 1.0, 0.0, -1.0) * TexelSize.xyyy;
+            TexCoords[1] = CoordVS.xyyy + float4(0.0, 1.0, 0.0, -1.0) * TexelSize.xyyy;
+            TexCoords[2] = CoordVS.xyyy + float4(1.0, 1.0, 0.0, -1.0) * TexelSize.xyyy;
             break;
         case 2: // Kawase
-            Coords[0] = VS_Coord.xyxy + float4(-0.5, -0.5, 0.5, 0.5) * Texel_Size.xyxy;
-            Coords[1] = VS_Coord.xxxy + float4(1.0, 0.0, -1.0, 0.0) * Texel_Size.xxxy;
-            Coords[2] = VS_Coord.xyyy + float4(0.0, 1.0, 0.0, -1.0) * Texel_Size.xyyy;
+            TexCoords[0] = CoordVS.xyxy + float4(-0.5, -0.5, 0.5, 0.5) * TexelSize.xyxy;
+            TexCoords[1] = CoordVS.xxxy + float4(1.0, 0.0, -1.0, 0.0) * TexelSize.xxxy;
+            TexCoords[2] = CoordVS.xyyy + float4(0.0, 1.0, 0.0, -1.0) * TexelSize.xyyy;
             break;
     }
 }
 
-void Downsample_1_VS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float4 Coords[4] : TEXCOORD0)
-{
-    DownsampleVS(ID, Position, Coords, 1.0 / BUFFER_SIZE_0);
-}
-
-void Downsample_2_VS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float4 Coords[4] : TEXCOORD0)
-{
-    DownsampleVS(ID, Position, Coords, 1.0 / BUFFER_SIZE_1);
-}
-
-void Downsample_3_VS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float4 Coords[4] : TEXCOORD0)
-{
-    DownsampleVS(ID, Position, Coords, 1.0 / BUFFER_SIZE_2);
-}
-
-void Downsample_4_VS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float4 Coords[4] : TEXCOORD0)
-{
-    DownsampleVS(ID, Position, Coords, 1.0 / BUFFER_SIZE_3);
-}
-
-void Upsample_3_VS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float4 Coords[3] : TEXCOORD0)
-{
-    UpsampleVS(ID, Position, Coords, 1.0 / BUFFER_SIZE_4);
-}
-
-void Upsample_2_VS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float4 Coords[3] : TEXCOORD0)
-{
-    UpsampleVS(ID, Position, Coords, 1.0 / BUFFER_SIZE_3);
-}
-
-void Upsample_1_VS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float4 Coords[3] : TEXCOORD0)
-{
-    UpsampleVS(ID, Position, Coords, 1.0 / BUFFER_SIZE_2);
-}
-
-void Upsample_0_VS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float4 Coords[3] : TEXCOORD0)
-{
-    UpsampleVS(ID, Position, Coords, 1.0 / BUFFER_SIZE_1);
-}
+UPSAMPLE_VS(Upsample_3_VS, 1.0 / BUFFER_SIZE_4)
+UPSAMPLE_VS(Upsample_2_VS, 1.0 / BUFFER_SIZE_3)
+UPSAMPLE_VS(Upsample_1_VS, 1.0 / BUFFER_SIZE_2)
+UPSAMPLE_VS(Upsample_0_VS, 1.0 / BUFFER_SIZE_1)
 
 // Pixel Shaders
 // 1: https://catlikecoding.com/unity/tutorials/advanced-rendering/bloom/
@@ -239,225 +204,155 @@ void Upsample_0_VS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION
 // 3: https://community.arm.com/cfs-file/__key/communityserver-blogs-components-weblogfiles/00-00-00-20-66/siggraph2015_2D00_mmg_2D00_marius_2D00_slides.pdf
 // More: https://github.com/powervr-graphics/Native_SDK
 
-void DownsamplePS(in sampler2D Source, in float4 Coords[4], out float4 Output_Color)
+void Downsample_PS(in sampler2D Source, in float4 TexCoords[4], out float4 OutputColor)
 {
-    Output_Color = 0.0;
+    OutputColor = 0.0;
 
-    float4 A_0, A_1, A_2, A_3,
-           B_0, B_1, B_2, B_3,
-           C_0, C_1, C_2, C_3,
-           D_0, D_1, D_2, D_3;
+    float4 A0, A1, A2, A3,
+           B0, B1, B2, B3,
+           C0, C1, C2, C3,
+           D0, D1, D2, D3;
 
-    switch(_Downsample_Method)
+    switch(_DownsampleMethod)
     {
         case 0: // 2x2 Box
-            Output_Color += tex2D(Source, Coords[0].xw);
-            Output_Color += tex2D(Source, Coords[0].zw);
-            Output_Color += tex2D(Source, Coords[0].xy);
-            Output_Color += tex2D(Source, Coords[0].zy);
-            Output_Color = Output_Color / 4.0;
+            OutputColor += tex2D(Source, TexCoords[0].xw);
+            OutputColor += tex2D(Source, TexCoords[0].zw);
+            OutputColor += tex2D(Source, TexCoords[0].xy);
+            OutputColor += tex2D(Source, TexCoords[0].zy);
+            OutputColor = OutputColor / 4.0;
             break;
         case 1: // 3x3 Tent
             // Sampler locations
-            // A_0 B_0 C_0
-            // A_1 B_1 C_1
-            // A_2 B_2 C_2
-            A_0 = tex2D(Source, Coords[0].xy);
-            A_1 = tex2D(Source, Coords[0].xz);
-            A_2 = tex2D(Source, Coords[0].xw);
+            // A0 B0 C0
+            // A1 B1 C1
+            // A2 B2 C2
+            A0 = tex2D(Source, TexCoords[0].xy);
+            A1 = tex2D(Source, TexCoords[0].xz);
+            A2 = tex2D(Source, TexCoords[0].xw);
 
-            B_0 = tex2D(Source, Coords[1].xy);
-            B_1 = tex2D(Source, Coords[1].xz);
-            B_2 = tex2D(Source, Coords[1].xw);
+            B0 = tex2D(Source, TexCoords[1].xy);
+            B1 = tex2D(Source, TexCoords[1].xz);
+            B2 = tex2D(Source, TexCoords[1].xw);
 
-            C_0 = tex2D(Source, Coords[2].xy);
-            C_1 = tex2D(Source, Coords[2].xz);
-            C_2 = tex2D(Source, Coords[2].xw);
+            C0 = tex2D(Source, TexCoords[2].xy);
+            C1 = tex2D(Source, TexCoords[2].xz);
+            C2 = tex2D(Source, TexCoords[2].xw);
 
-            Output_Color += ((A_0 + C_0 + A_2 + C_2) * 1.0);
-            Output_Color += ((B_0 + A_1 + C_1 + B_2) * 2.0);
-            Output_Color += (B_1 * 4.0);
-            Output_Color = Output_Color / 16.0;
+            OutputColor += ((A0 + C0 + A2 + C2) * 1.0);
+            OutputColor += ((B0 + A1 + C1 + B2) * 2.0);
+            OutputColor += (B1 * 4.0);
+            OutputColor = OutputColor / 16.0;
             break;
         case 2: // Jorge
             // Sampler locations
-            // A_0    B_0    C_0
-            //    D_0    D_1
-            // A_1    B_1    C_1
-            //    D_2    D_3
-            // A_2    B_2    C_2
-            D_0 = tex2D(Source, Coords[0].xw);
-            D_1 = tex2D(Source, Coords[0].zw);
-            D_2 = tex2D(Source, Coords[0].xy);
-            D_3 = tex2D(Source, Coords[0].zy);
+            // A0    B0    C0
+            //    D0    D1
+            // A1    B1    C1
+            //    D2    D3
+            // A2    B2    C2
+            D0 = tex2D(Source, TexCoords[0].xw);
+            D1 = tex2D(Source, TexCoords[0].zw);
+            D2 = tex2D(Source, TexCoords[0].xy);
+            D3 = tex2D(Source, TexCoords[0].zy);
 
-            A_0 = tex2D(Source, Coords[1].xy);
-            A_1 = tex2D(Source, Coords[1].xz);
-            A_2 = tex2D(Source, Coords[1].xw);
+            A0 = tex2D(Source, TexCoords[1].xy);
+            A1 = tex2D(Source, TexCoords[1].xz);
+            A2 = tex2D(Source, TexCoords[1].xw);
 
-            B_0 = tex2D(Source, Coords[2].xy);
-            B_1 = tex2D(Source, Coords[2].xz);
-            B_2 = tex2D(Source, Coords[2].xw);
+            B0 = tex2D(Source, TexCoords[2].xy);
+            B1 = tex2D(Source, TexCoords[2].xz);
+            B2 = tex2D(Source, TexCoords[2].xw);
 
-            C_0 = tex2D(Source, Coords[3].xy);
-            C_1 = tex2D(Source, Coords[3].xz);
-            C_2 = tex2D(Source, Coords[3].xw);
+            C0 = tex2D(Source, TexCoords[3].xy);
+            C1 = tex2D(Source, TexCoords[3].xz);
+            C2 = tex2D(Source, TexCoords[3].xw);
 
             const float2 Weights = float2(0.5, 0.125) / 4.0;
-            Output_Color += (D_0 + D_1 + D_2 + D_3) * Weights.x;
-            Output_Color += (A_0 + B_0 + A_1 + B_1) * Weights.y;
-            Output_Color += (B_0 + C_0 + B_1 + C_1) * Weights.y;
-            Output_Color += (A_1 + B_1 + A_2 + B_2) * Weights.y;
-            Output_Color += (B_1 + C_1 + B_2 + C_2) * Weights.y;
+            OutputColor += (D0 + D1 + D2 + D3) * Weights.x;
+            OutputColor += (A0 + B0 + A1 + B1) * Weights.y;
+            OutputColor += (B0 + C0 + B1 + C1) * Weights.y;
+            OutputColor += (A1 + B1 + A2 + B2) * Weights.y;
+            OutputColor += (B1 + C1 + B2 + C2) * Weights.y;
             break;
         case 3: // Kawase
-            Output_Color += tex2D(Source, Coords[0].xy) * 4.0;
-            Output_Color += tex2D(Source, Coords[1].xw);
-            Output_Color += tex2D(Source, Coords[1].zw);
-            Output_Color += tex2D(Source, Coords[1].xy);
-            Output_Color += tex2D(Source, Coords[1].zy);
-            Output_Color = Output_Color / 8.0;
+            OutputColor += tex2D(Source, TexCoords[0].xy) * 4.0;
+            OutputColor += tex2D(Source, TexCoords[1].xw);
+            OutputColor += tex2D(Source, TexCoords[1].zw);
+            OutputColor += tex2D(Source, TexCoords[1].xy);
+            OutputColor += tex2D(Source, TexCoords[1].zy);
+            OutputColor = OutputColor / 8.0;
             break;
     }
 
-    Output_Color.a = 1.0;
+    OutputColor.a = 1.0;
 }
 
-void UpsamplePS(in sampler2D Source, in float4 Coords[3], out float4 Output_Color)
-{
-    Output_Color = 0.0;
+DOWNSAMPLE_PS(Downsample_1_PS, Sample_Color)
+DOWNSAMPLE_PS(Downsample_2_PS, Sample_Common_1)
+DOWNSAMPLE_PS(Downsample_3_PS, Sample_Common_2)
+DOWNSAMPLE_PS(Downsample_4_PS, Sample_Common_3)
 
-    switch(_Upsample_Method)
+void Upsample_PS(in sampler2D Source, in float4 TexCoords[3], out float4 OutputColor)
+{
+    OutputColor = 0.0;
+
+    switch(_UpsampleMethod)
     {
         case 0: // 2x2 Box
-            Output_Color += tex2D(Source, Coords[0].xw);
-            Output_Color += tex2D(Source, Coords[0].zw);
-            Output_Color += tex2D(Source, Coords[0].xy);
-            Output_Color += tex2D(Source, Coords[0].zy);
-            Output_Color = Output_Color / 4.0;
+            OutputColor += tex2D(Source, TexCoords[0].xw);
+            OutputColor += tex2D(Source, TexCoords[0].zw);
+            OutputColor += tex2D(Source, TexCoords[0].xy);
+            OutputColor += tex2D(Source, TexCoords[0].zy);
+            OutputColor = OutputColor / 4.0;
             break;
         case 1: // 3x3 Tent
             // Sample locations:
-            // A_0 B_0 C_0
-            // A_1 B_1 C_1
-            // A_2 B_2 C_2
-            float4 A_0 = tex2D(Source, Coords[0].xy);
-            float4 A_1 = tex2D(Source, Coords[0].xz);
-            float4 A_2 = tex2D(Source, Coords[0].xw);
-            float4 B_0 = tex2D(Source, Coords[1].xy);
-            float4 B_1 = tex2D(Source, Coords[1].xz);
-            float4 B_2 = tex2D(Source, Coords[1].xw);
-            float4 C_0 = tex2D(Source, Coords[2].xy);
-            float4 C_1 = tex2D(Source, Coords[2].xz);
-            float4 C_2 = tex2D(Source, Coords[2].xw);
-            Output_Color = (((A_0 + C_0 + A_2 + C_2) * 1.0) + ((B_0 + A_1 + C_1 + B_2) * 2.0) + (B_1 * 4.0)) / 16.0;
+            // A0 B0 C0
+            // A1 B1 C1
+            // A2 B2 C2
+            float4 A0 = tex2D(Source, TexCoords[0].xy);
+            float4 A1 = tex2D(Source, TexCoords[0].xz);
+            float4 A2 = tex2D(Source, TexCoords[0].xw);
+            float4 B0 = tex2D(Source, TexCoords[1].xy);
+            float4 B1 = tex2D(Source, TexCoords[1].xz);
+            float4 B2 = tex2D(Source, TexCoords[1].xw);
+            float4 C0 = tex2D(Source, TexCoords[2].xy);
+            float4 C1 = tex2D(Source, TexCoords[2].xz);
+            float4 C2 = tex2D(Source, TexCoords[2].xw);
+            OutputColor = (((A0 + C0 + A2 + C2) * 1.0) + ((B0 + A1 + C1 + B2) * 2.0) + (B1 * 4.0)) / 16.0;
             break;
         case 2: // Kawase
-            Output_Color += tex2D(Source, Coords[0].xw) * 2.0;
-            Output_Color += tex2D(Source, Coords[0].zw) * 2.0;
-            Output_Color += tex2D(Source, Coords[0].xy) * 2.0;
-            Output_Color += tex2D(Source, Coords[0].zy) * 2.0;
-            Output_Color += tex2D(Source, Coords[1].xw);
-            Output_Color += tex2D(Source, Coords[1].zw);
-            Output_Color += tex2D(Source, Coords[2].xy);
-            Output_Color += tex2D(Source, Coords[2].xw);
-            Output_Color = Output_Color / 12.0;
+            OutputColor += tex2D(Source, TexCoords[0].xw) * 2.0;
+            OutputColor += tex2D(Source, TexCoords[0].zw) * 2.0;
+            OutputColor += tex2D(Source, TexCoords[0].xy) * 2.0;
+            OutputColor += tex2D(Source, TexCoords[0].zy) * 2.0;
+            OutputColor += tex2D(Source, TexCoords[1].xw);
+            OutputColor += tex2D(Source, TexCoords[1].zw);
+            OutputColor += tex2D(Source, TexCoords[2].xy);
+            OutputColor += tex2D(Source, TexCoords[2].xw);
+            OutputColor = OutputColor / 12.0;
             break;
     }
 
-    Output_Color.a = 1.0;
+    OutputColor.a = 1.0;
 }
 
-void Downsample_1_PS(in float4 Position : SV_POSITION, in float4 Coords[4] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
-{
-    DownsamplePS(Sample_Color, Coords, OutputColor0);
-}
-
-void Downsample_2_PS(in float4 Position : SV_POSITION, in float4 Coords[4] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
-{
-    DownsamplePS(Sample_Common_1, Coords, OutputColor0);
-}
-
-void Downsample_3_PS(in float4 Position : SV_POSITION, in float4 Coords[4] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
-{
-    DownsamplePS(Sample_Common_2, Coords, OutputColor0);
-}
-
-void Downsample_4_PS(in float4 Position : SV_POSITION, in float4 Coords[4] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
-{
-    DownsamplePS(Sample_Common_3, Coords, OutputColor0);
-}
-
-void Upsample_3_PS(in float4 Position : SV_POSITION, in float4 Coords[3] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
-{
-    UpsamplePS(Sample_Common_4, Coords, OutputColor0);
-}
-
-void Upsample_2_PS(in float4 Position : SV_POSITION, in float4 Coords[3] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
-{
-    UpsamplePS(Sample_Common_3, Coords, OutputColor0);
-}
-
-void Upsample_1_PS(in float4 Position : SV_POSITION, in float4 Coords[3] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
-{
-    UpsamplePS(Sample_Common_2, Coords, OutputColor0);
-}
-
-void Upsample_0_PS(in float4 Position : SV_POSITION, in float4 Coords[3] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
-{
-    UpsamplePS(Sample_Common_1, Coords, OutputColor0);
-}
+UPSAMPLE_PS(Upsample_3_PS, Sample_Common_4)
+UPSAMPLE_PS(Upsample_2_PS, Sample_Common_3)
+UPSAMPLE_PS(Upsample_1_PS, Sample_Common_2)
+UPSAMPLE_PS(Upsample_0_PS, Sample_Common_1)
 
 technique cDualFilter
 {
-    pass
-    {
-        VertexShader = Downsample_1_VS;
-        PixelShader = Downsample_1_PS;
-        RenderTarget0 = Shared_Resources::RGBA16F::Render_Common_1;
-    }
+    PASS(Downsample_1_VS, Downsample_1_PS, Render_Common_1)
+    PASS(Downsample_2_VS, Downsample_2_PS, Render_Common_2)
+    PASS(Downsample_3_VS, Downsample_3_PS, Render_Common_3)
+    PASS(Downsample_4_VS, Downsample_4_PS, Render_Common_4)
 
-    pass
-    {
-        VertexShader = Downsample_2_VS;
-        PixelShader = Downsample_2_PS;
-        RenderTarget0 = Shared_Resources::RGBA16F::Render_Common_2;
-    }
-
-    pass
-    {
-        VertexShader = Downsample_3_VS;
-        PixelShader = Downsample_3_PS;
-        RenderTarget0 = Shared_Resources::RGBA16F::Render_Common_3;
-    }
-
-    pass
-    {
-        VertexShader = Downsample_4_VS;
-        PixelShader = Downsample_4_PS;
-        RenderTarget0 = Shared_Resources::RGBA16F::Render_Common_4;
-    }
-
-    pass
-    {
-        VertexShader = Upsample_3_VS;
-        PixelShader = Upsample_3_PS;
-        RenderTarget0 = Shared_Resources::RGBA16F::Render_Common_3;
-    }
-
-    pass
-    {
-        VertexShader = Upsample_2_VS;
-        PixelShader = Upsample_2_PS;
-        RenderTarget0 = Shared_Resources::RGBA16F::Render_Common_2;
-    }
-
-    pass
-    {
-        VertexShader = Upsample_1_VS;
-        PixelShader = Upsample_1_PS;
-        RenderTarget0 = Shared_Resources::RGBA16F::Render_Common_1;
-    }
+    PASS(Upsample_3_VS, Upsample_3_PS, Render_Common_3)
+    PASS(Upsample_2_VS, Upsample_2_PS, Render_Common_2)
+    PASS(Upsample_1_VS, Upsample_1_PS, Render_Common_1)
 
     pass
     {

@@ -34,10 +34,10 @@ uniform float4 _Color <
 void Basic_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION)
 {
     // Clip a triangle twice the screen's size to make a quad
-    float2 Coord = 0.0;
-    Coord.x = (ID == 2) ? 2.0 : 0.0;
-    Coord.y = (ID == 1) ? 2.0 : 0.0;
-    Position = float4(Coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    float2 TexCoord = 0.0;
+    TexCoord.x = (ID == 2) ? 2.0 : 0.0;
+    TexCoord.y = (ID == 1) ? 2.0 : 0.0;
+    Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
 
 // Pixel shaders

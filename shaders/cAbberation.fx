@@ -60,24 +60,24 @@ sampler2D Sample_Color
 
 // Vertex shaders
 
-void Basic_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float2 Coord : TEXCOORD0)
+void Basic_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float2 TexCoord : TEXCOORD0)
 {
-    Coord.x = (ID == 2) ? 2.0 : 0.0;
-    Coord.y = (ID == 1) ? 2.0 : 0.0;
-    Position = float4(Coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    TexCoord.x = (ID == 2) ? 2.0 : 0.0;
+    TexCoord.y = (ID == 1) ? 2.0 : 0.0;
+    Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
 
 // Pixel shaders
 
-void Abberation_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+void Abberation_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
     const float2 PixelSize = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
     // Shift red channel
-    OutputColor0.r = tex2D(Sample_Color, Coord + _ShiftRed * PixelSize).r;
+    OutputColor0.r = tex2D(Sample_Color, TexCoord + _ShiftRed * PixelSize).r;
     // Keep green channel to the center
-    OutputColor0.g = tex2D(Sample_Color, Coord + _ShiftGreen * PixelSize).g;
+    OutputColor0.g = tex2D(Sample_Color, TexCoord + _ShiftGreen * PixelSize).g;
     // Shift blue channel
-    OutputColor0.b = tex2D(Sample_Color, Coord + _ShiftBlue * PixelSize).b;
+    OutputColor0.b = tex2D(Sample_Color, TexCoord + _ShiftBlue * PixelSize).b;
     // Write alpha value
     OutputColor0.a = 1.0;
 }

@@ -58,9 +58,9 @@ kVignette           | Natural vignetting effect
 Practice | Variable
 -------- | --------
 **ALLCAPS**     | System-Value semantics, state parameters
-**ALL_CAPS**    | Preprocessor macros
+**ALL_CAPS**    | Preprocessor macros and parameters
 **SnakeCase**   | Discrete local and global data
-**Snake_Case**  | Structs, functions, textures, sampler, and packed data (i.e. `float4 TexCoord_Base_Water` stores 2 UVs for 2 textures, base and water)
+**Snake_Case**  | Namespace, structs, functions, textures, sampler, and packed data (i.e. `float4 TexCoord_Base_Water` stores 2 UVs for 2 textures, base and water)
 **_Snake_Case** | Uniform data
 Suffix `VS` and `PS` | `PixelShader` and `VertexShader`
 

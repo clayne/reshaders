@@ -114,15 +114,15 @@ V2F_1 SMAAEdgeDetectionWrapVS(in uint ID : SV_VERTEXID)
 {
     V2F_1 Output;
 
-    float2 Coord;
-    Coord.x = (ID == 2) ? 2.0 : 0.0;
-    Coord.y = (ID == 1) ? 2.0 : 0.0;
-    Output.Pos = float4(Coord.xy * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    float2 TexCoord;
+    TexCoord.x = (ID == 2) ? 2.0 : 0.0;
+    TexCoord.y = (ID == 1) ? 2.0 : 0.0;
+    Output.Pos = float4(TexCoord.xy * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 
-    Output.Coord_0 = Coord;
-    Output.Coord_1[0] = mad(SMAA_RT_METRICS.xyxy, float4(-1.0, 0.0, 0.0, -1.0), Coord.xyxy);
-    Output.Coord_1[1] = mad(SMAA_RT_METRICS.xyxy, float4( 1.0, 0.0, 0.0,  1.0), Coord.xyxy);
-    Output.Coord_1[2] = mad(SMAA_RT_METRICS.xyxy, float4(-2.0, 0.0, 0.0, -2.0), Coord.xyxy);
+    Output.Coord_0 = TexCoord;
+    Output.Coord_1[0] = mad(SMAA_RT_METRICS.xyxy, float4(-1.0, 0.0, 0.0, -1.0), TexCoord.xyxy);
+    Output.Coord_1[1] = mad(SMAA_RT_METRICS.xyxy, float4( 1.0, 0.0, 0.0,  1.0), TexCoord.xyxy);
+    Output.Coord_1[2] = mad(SMAA_RT_METRICS.xyxy, float4(-2.0, 0.0, 0.0, -2.0), TexCoord.xyxy);
     return Output;
 }
 
@@ -192,17 +192,17 @@ struct V2F_2
 V2F_2 SMAABlendingWeightCalculationWrapVS(in uint ID : SV_VERTEXID)
 {
     V2F_2 Output;
-    float2 Coord;
-    Coord.x = (ID == 2) ? 2.0 : 0.0;
-    Coord.y = (ID == 1) ? 2.0 : 0.0;
-    Output.Pos = float4(Coord.xy * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    float2 TexCoord;
+    TexCoord.x = (ID == 2) ? 2.0 : 0.0;
+    TexCoord.y = (ID == 1) ? 2.0 : 0.0;
+    Output.Pos = float4(TexCoord.xy * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 
-    Output.Coord_0.xy = Coord;
+    Output.Coord_0.xy = TexCoord;
     Output.Coord_0.zw = Output.Coord_0.xy * SMAA_RT_METRICS.zw;
 
     // We will use these offsets for the searches later on (see @PSEUDO_GATHER4):
-    Output.Coord_1[0] = mad(SMAA_RT_METRICS.xyxy, float4(-0.25, -0.125,  1.25, -0.125), Coord.xyxy);
-    Output.Coord_1[1] = mad(SMAA_RT_METRICS.xyxy, float4(-0.125, -0.25, -0.125,  1.25), Coord.xyxy);
+    Output.Coord_1[0] = mad(SMAA_RT_METRICS.xyxy, float4(-0.25, -0.125,  1.25, -0.125), TexCoord.xyxy);
+    Output.Coord_1[1] = mad(SMAA_RT_METRICS.xyxy, float4(-0.125, -0.25, -0.125,  1.25), TexCoord.xyxy);
 
     // And these for the searches, they indicate the ends of the loops:
     Output.Coord_1[2] = mad(SMAA_RT_METRICS.xxyy,
@@ -222,19 +222,19 @@ float4 SMAABlendingWeightCalculationWrapPS(V2F_2 Input) : SV_Target
         float2 D;
 
         // Find the distance to the left:
-        float3 Coords;
-        Coords.x = SMAASearchXLeft(Edges_Sampler, Search_Sampler, Input.Coord_1[0].xy, Input.Coord_1[2].x);
-        Coords.y = Input.Coord_1[1].y;
-        D.x = Coords.x;
+        float3 TexCoords;
+        TexCoords.x = SMAASearchXLeft(Edges_Sampler, Search_Sampler, Input.Coord_1[0].xy, Input.Coord_1[2].x);
+        TexCoords.y = Input.Coord_1[1].y;
+        D.x = TexCoords.x;
 
         // Now fetch the left crossing Edges, two at a time using bilinear
         // filtering. Sampling at -0.25 (see @CROSSING_OFFSET) enables to
         // discern what value each edge has:
-        float E_1 = tex2Dlod(Edges_Sampler, Coords.xyxy).r;
+        float E_1 = tex2Dlod(Edges_Sampler, TexCoords.xyxy).r;
 
         // Find the distance to the right:
-        Coords.z = SMAASearchXRight(Edges_Sampler, Search_Sampler, Input.Coord_1[0].zw, Input.Coord_1[2].y);
-        D.y = Coords.z;
+        TexCoords.z = SMAASearchXRight(Edges_Sampler, Search_Sampler, Input.Coord_1[0].zw, Input.Coord_1[2].y);
+        D.y = TexCoords.z;
 
         // We want the distances to be in pixel units (doing this here allow to
         // better interleave arithmetic and memory accesses):
@@ -245,14 +245,14 @@ float4 SMAABlendingWeightCalculationWrapPS(V2F_2 Input) : SV_Target
         float2 Sqrt_D = sqrt(D);
 
         // Fetch the right crossing Edges:
-        float E_2 = tex2Dlod(Edges_Sampler, Coords.zyzy, int2(1, 0)).r;
+        float E_2 = tex2Dlod(Edges_Sampler, TexCoords.zyzy, int2(1, 0)).r;
 
         // Ok, we know how this pattern looks like, now it is time for getting
         // the actual area:
         Weights.rg = SMAAArea(Area_Sampler, Sqrt_D, E_1, E_2, 0.0);
 
         // Fix corners:
-        Coords.y = Input.Coord_0.y;
+        TexCoords.y = Input.Coord_0.y;
     }
 
     [branch]
@@ -261,17 +261,17 @@ float4 SMAABlendingWeightCalculationWrapPS(V2F_2 Input) : SV_Target
         float2 D;
 
         // Find the distance to the top:
-        float3 Coords;
-        Coords.y = SMAASearchYUp(Edges_Sampler, Search_Sampler, Input.Coord_1[1].xy, Input.Coord_1[2].z);
-        Coords.x = Input.Coord_1[0].x;
-        D.x = Coords.y;
+        float3 TexCoords;
+        TexCoords.y = SMAASearchYUp(Edges_Sampler, Search_Sampler, Input.Coord_1[1].xy, Input.Coord_1[2].z);
+        TexCoords.x = Input.Coord_1[0].x;
+        D.x = TexCoords.y;
 
         // Fetch the top crossing Edges:
-        float E_1 = tex2Dlod(Edges_Sampler, Coords.xyxy).g;
+        float E_1 = tex2Dlod(Edges_Sampler, TexCoords.xyxy).g;
 
         // Find the distance to the bottom:
-        Coords.z = SMAASearchYDown(Edges_Sampler, Search_Sampler, Input.Coord_1[1].zw, Input.Coord_1[2].w);
-        D.y = Coords.z;
+        TexCoords.z = SMAASearchYDown(Edges_Sampler, Search_Sampler, Input.Coord_1[1].zw, Input.Coord_1[2].w);
+        D.y = TexCoords.z;
 
         // We want the distances to be in pixel units:
         D = abs(round(mad(SMAA_RT_METRICS.ww, D, -Input.Coord_0.ww)));
@@ -281,13 +281,13 @@ float4 SMAABlendingWeightCalculationWrapPS(V2F_2 Input) : SV_Target
         float2 Sqrt_D = sqrt(D);
 
         // Fetch the bottom crossing Edges:
-        float E_2 = tex2Dlod(Edges_Sampler, Coords.xzxz, int2(0, 1)).g;
+        float E_2 = tex2Dlod(Edges_Sampler, TexCoords.xzxz, int2(0, 1)).g;
 
         // Get the area for this direction:
         Weights.ba = SMAAArea(Area_Sampler, Sqrt_D, E_1, E_2, 0.0);
 
         // Fix corners:
-        Coords.x = Input.Coord_0.x;
+        TexCoords.x = Input.Coord_0.x;
     }
 
     return Weights;
@@ -305,13 +305,13 @@ struct v2f_3
 v2f_3 SMAANeighborhoodBlendingWrapVS(in uint ID : SV_VERTEXID)
 {
     v2f_3 Output;
-    float2 Coord;
-    Coord.x = (ID == 2) ? 2.0 : 0.0;
-    Coord.y = (ID == 1) ? 2.0 : 0.0;
-    Output.Pos = float4(Coord.xy * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    float2 TexCoord;
+    TexCoord.x = (ID == 2) ? 2.0 : 0.0;
+    TexCoord.y = (ID == 1) ? 2.0 : 0.0;
+    Output.Pos = float4(TexCoord.xy * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 
-    Output.Coord_0 = Coord;
-    Output.Coord_1 = mad(SMAA_RT_METRICS.xyxy, float4( 1.0, 0.0, 0.0,  1.0), Coord.xyxy);
+    Output.Coord_0 = TexCoord;
+    Output.Coord_1 = mad(SMAA_RT_METRICS.xyxy, float4( 1.0, 0.0, 0.0,  1.0), TexCoord.xyxy);
     return Output;
 }
 

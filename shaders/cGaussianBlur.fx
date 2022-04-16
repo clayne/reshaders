@@ -53,11 +53,11 @@ sampler2D Sample_Color
 
 // Vertex shaders
 
-void Basic_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float2 Coord : TEXCOORD0)
+void Basic_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float2 TexCoord : TEXCOORD0)
 {
-    Coord.x = (ID == 2) ? 2.0 : 0.0;
-    Coord.y = (ID == 1) ? 2.0 : 0.0;
-    Position = float4(Coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    TexCoord.x = (ID == 2) ? 2.0 : 0.0;
+    TexCoord.y = (ID == 1) ? 2.0 : 0.0;
+    Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
 
 // Pixel shaders
@@ -70,49 +70,49 @@ float Gaussian(float Pixel_Index, float Sigma)
     return Output * exp(-(Pixel_Index * Pixel_Index) / (2.0 * Sigma * Sigma));
 }
 
-void Gaussian_Blur(in float2 Coord, in bool Is_Horizontal, out float4 OutputColor0)
+void Gaussian_Blur(in float2 TexCoord, in bool Is_Horizontal, out float4 OutputColor0)
 {
     float2 Direction = Is_Horizontal ? float2(1.0, 0.0) : float2(0.0, 1.0);
     float2 PixelSize = (1.0 / float2(BUFFER_WIDTH, BUFFER_HEIGHT)) * Direction;
-    float Kernel_Size = _Sigma * 3.0;
+    float KernelSize = _Sigma * 3.0;
 
     if(_Sigma == 0.0)
     {
-        OutputColor0 = tex2Dlod(Sample_Color, float4(Coord, 0.0, 0.0));
+        OutputColor0 = tex2Dlod(Sample_Color, float4(TexCoord, 0.0, 0.0));
     }
     else
     {
         // Sample and weight center first to get even number sides
-        float Total_Weight = Gaussian(0.0, _Sigma);
-        float4 Output_Color = tex2D(Sample_Color, Coord) * Total_Weight;
+        float TotalWeight = Gaussian(0.0, _Sigma);
+        float4 OutputColor = tex2D(Sample_Color, TexCoord) * TotalWeight;
 
-        for(float i = 1.0; i < Kernel_Size; i += 2.0)
+        for(float i = 1.0; i < KernelSize; i += 2.0)
         {
-            float Offset_1 = i;
-            float Offset_2 = i + 1.0;
-            float Weight_1 = Gaussian(Offset_1, _Sigma);
-            float Weight_2 = Gaussian(Offset_2, _Sigma);
-            float Linear_Weight = Weight_1 + Weight_2;
-            float Linear_Offset = ((Offset_1 * Weight_1) + (Offset_2 * Weight_2)) / Linear_Weight;
+            float Offset1 = i;
+            float Offset2 = i + 1.0;
+            float Weight1 = Gaussian(Offset1, _Sigma);
+            float Weight2 = Gaussian(Offset2, _Sigma);
+            float LinearWeight = Weight1 + Weight2;
+            float LinearOffset = ((Offset1 * Weight1) + (Offset2 * Weight2)) / LinearWeight;
 
-            Output_Color += tex2Dlod(Sample_Color, float4(Coord - Linear_Offset * PixelSize, 0.0, 0.0)) * Linear_Weight;
-            Output_Color += tex2Dlod(Sample_Color, float4(Coord + Linear_Offset * PixelSize, 0.0, 0.0)) * Linear_Weight;
-            Total_Weight += Linear_Weight * 2.0;
+            OutputColor += tex2Dlod(Sample_Color, float4(TexCoord - LinearOffset * PixelSize, 0.0, 0.0)) * LinearWeight;
+            OutputColor += tex2Dlod(Sample_Color, float4(TexCoord + LinearOffset * PixelSize, 0.0, 0.0)) * LinearWeight;
+            TotalWeight += LinearWeight * 2.0;
         }
 
         // Normalize intensity to prevent altered output
-        OutputColor0 = Output_Color / Total_Weight;
+        OutputColor0 = OutputColor / TotalWeight;
     }
 }
 
-void Horizontal_Gaussian_Blur_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+void Horizontal_Gaussian_Blur_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    Gaussian_Blur(Coord, true, OutputColor0);
+    Gaussian_Blur(TexCoord, true, OutputColor0);
 }
 
-void Vertical_Gaussian_Blur_PS(in float4 Position : SV_POSITION, in float2 Coord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+void Vertical_Gaussian_Blur_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
-    Gaussian_Blur(Coord, false, OutputColor0);
+    Gaussian_Blur(TexCoord, false, OutputColor0);
 }
 
 technique cHorizontalGaussianBlur

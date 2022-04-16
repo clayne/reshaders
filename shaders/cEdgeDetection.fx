@@ -76,186 +76,186 @@ sampler2D Sample_Color
 
 // Vertex shaders
 
-void Basic_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float2 Coord : TEXCOORD0)
+void Basic_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float2 TexCoord : TEXCOORD0)
 {
-    Coord.x = (ID == 2) ? 2.0 : 0.0;
-    Coord.y = (ID == 1) ? 2.0 : 0.0;
-    Position = float4(Coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+    TexCoord.x = (ID == 2) ? 2.0 : 0.0;
+    TexCoord.y = (ID == 1) ? 2.0 : 0.0;
+    Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
 }
 
-void Edge_Detection_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 Coords[3] : TEXCOORD0)
+void Edge_Detection_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 TexCoords[3] : TEXCOORD0)
 {
-    float2 VS_Coord = 0.0;
-    Basic_VS(ID, Position, VS_Coord);
+    float2 CoordVS = 0.0;
+    Basic_VS(ID, Position, CoordVS);
     const float2 PixelSize = 1.0 / int2(BUFFER_WIDTH, BUFFER_HEIGHT);
 
-    Coords[0] = 0.0;
-    Coords[1] = 0.0;
-    Coords[2] = 0.0;
+    TexCoords[0] = 0.0;
+    TexCoords[1] = 0.0;
+    TexCoords[2] = 0.0;
 
     switch(_Method)
     {
         case 0: // Fwidth
-            Coords[0].xy = VS_Coord;
+            TexCoords[0].xy = CoordVS;
             break;
         case 1: // Bilinear 3x3 Laplacian
-            Coords[0].xy = VS_Coord;
-            Coords[1] = VS_Coord.xyxy + (float4(-0.5, -0.5, 0.5, 0.5) * PixelSize.xyxy);
+            TexCoords[0].xy = CoordVS;
+            TexCoords[1] = CoordVS.xyxy + (float4(-0.5, -0.5, 0.5, 0.5) * PixelSize.xyxy);
             break;
         case 2: // Bilinear 3x3 Sobel
-            Coords[0] = VS_Coord.xyxy + (float4(-0.5, -0.5, 0.5, 0.5) * PixelSize.xyxy);
+            TexCoords[0] = CoordVS.xyxy + (float4(-0.5, -0.5, 0.5, 0.5) * PixelSize.xyxy);
             break;
         case 3: // Bilinear 5x5 Prewitt
-            Coords[0] = VS_Coord.xyyy + (float4(-1.5, 1.5, 0.0, -1.5) * PixelSize.xyyy);
-            Coords[1] = VS_Coord.xyyy + (float4( 0.0, 1.5, 0.0, -1.5) * PixelSize.xyyy);
-            Coords[2] = VS_Coord.xyyy + (float4( 1.5, 1.5, 0.0, -1.5) * PixelSize.xyyy);
+            TexCoords[0] = CoordVS.xyyy + (float4(-1.5, 1.5, 0.0, -1.5) * PixelSize.xyyy);
+            TexCoords[1] = CoordVS.xyyy + (float4( 0.0, 1.5, 0.0, -1.5) * PixelSize.xyyy);
+            TexCoords[2] = CoordVS.xyyy + (float4( 1.5, 1.5, 0.0, -1.5) * PixelSize.xyyy);
             break;
         case 4: // Bilinear 5x5 Sobel
-            Coords[0] = VS_Coord.xxyy + (float4(-1.5, 1.5, -0.5, 0.5) * PixelSize.xxyy);
-            Coords[1] = VS_Coord.xxyy + (float4(-0.5, 0.5, -1.5, 1.5) * PixelSize.xxyy);
+            TexCoords[0] = CoordVS.xxyy + (float4(-1.5, 1.5, -0.5, 0.5) * PixelSize.xxyy);
+            TexCoords[1] = CoordVS.xxyy + (float4(-0.5, 0.5, -1.5, 1.5) * PixelSize.xxyy);
             break;
         case 5: // 3x3 Prewitt
-            Coords[0] = VS_Coord.xyyy + (float4(-1.0, 1.0, 0.0, -1.0) * PixelSize.xyyy);
-            Coords[1] = VS_Coord.xyyy + (float4(0.0, 1.0, 0.0, -1.0) * PixelSize.xyyy);
-            Coords[2] = VS_Coord.xyyy + (float4(1.0, 1.0, 0.0, -1.0) * PixelSize.xyyy);
+            TexCoords[0] = CoordVS.xyyy + (float4(-1.0, 1.0, 0.0, -1.0) * PixelSize.xyyy);
+            TexCoords[1] = CoordVS.xyyy + (float4(0.0, 1.0, 0.0, -1.0) * PixelSize.xyyy);
+            TexCoords[2] = CoordVS.xyyy + (float4(1.0, 1.0, 0.0, -1.0) * PixelSize.xyyy);
             break;
         case 6: // 3x3 Scharr
-            Coords[0] = VS_Coord.xyyy + (float4(-1.0, 1.0, 0.0, -1.0) * PixelSize.xyyy);
-            Coords[1] = VS_Coord.xyyy + (float4(0.0, 1.0, 0.0, -1.0) * PixelSize.xyyy);
-            Coords[2] = VS_Coord.xyyy + (float4(1.0, 1.0, 0.0, -1.0) * PixelSize.xyyy);
+            TexCoords[0] = CoordVS.xyyy + (float4(-1.0, 1.0, 0.0, -1.0) * PixelSize.xyyy);
+            TexCoords[1] = CoordVS.xyyy + (float4(0.0, 1.0, 0.0, -1.0) * PixelSize.xyyy);
+            TexCoords[2] = CoordVS.xyyy + (float4(1.0, 1.0, 0.0, -1.0) * PixelSize.xyyy);
             break;
     }
 }
 
-void Edge_Operator(in sampler2D Source, in float4 Coords[3], inout float4 Ix, inout float4 Iy, inout float4 Gradient)
+void Edge_Operator(in sampler2D Source, in float4 TexCoords[3], inout float4 Ix, inout float4 Iy, inout float4 Gradient)
 {
-    float4 A_0, B_0, C_0;
-    float4 A_1, B_1, C_1;
-    float4 A_2, B_2, C_2;
+    float4 A0, B0, C0;
+    float4 A1, B1, C1;
+    float4 A2, B2, C2;
 
     switch(_Method)
     {
         case 0: // Fwidth
-            A_0 = tex2D(Source, Coords[0].xy);
+            A0 = tex2D(Source, TexCoords[0].xy);
 
-            Ix = ddx(A_0);
-            Iy = ddy(A_0);
+            Ix = ddx(A0);
+            Iy = ddy(A0);
             break;
         case 1: // Bilinear 3x3 Laplacian
-            // A_0    C_0
-            //    B_1
-            // A_2    C_2
-            A_0 = tex2D(Source, Coords[1].xw); // <-0.5, +0.5>
-            C_0 = tex2D(Source, Coords[1].zw); // <+0.5, +0.5>
-            B_1 = tex2D(Source, Coords[0].xy); // < 0.0,  0.0>
-            A_2 = tex2D(Source, Coords[1].xy); // <-0.5, -0.5>
-            C_2 = tex2D(Source, Coords[1].zy); // <+0.5, -0.5>
+            // A0    C0
+            //    B1
+            // A2    C2
+            A0 = tex2D(Source, TexCoords[1].xw); // <-0.5, +0.5>
+            C0 = tex2D(Source, TexCoords[1].zw); // <+0.5, +0.5>
+            B1 = tex2D(Source, TexCoords[0].xy); // < 0.0,  0.0>
+            A2 = tex2D(Source, TexCoords[1].xy); // <-0.5, -0.5>
+            C2 = tex2D(Source, TexCoords[1].zy); // <+0.5, -0.5>
 
-            Gradient = (A_0 + C_0 + A_2 + C_2) - (B_1 * 4.0);
+            Gradient = (A0 + C0 + A2 + C2) - (B1 * 4.0);
             break;
         case 2: // Bilinear 3x3 Sobel
-            A_0 = tex2D(Source, Coords[0].xw).rgb; // <-0.5, +0.5>
-            C_0 = tex2D(Source, Coords[0].zw).rgb; // <+0.5, +0.5>
-            A_2 = tex2D(Source, Coords[0].xy).rgb; // <-0.5, -0.5>
-            C_2 = tex2D(Source, Coords[0].zy).rgb; // <+0.5, -0.5>
+            A0 = tex2D(Source, TexCoords[0].xw).rgb; // <-0.5, +0.5>
+            C0 = tex2D(Source, TexCoords[0].zw).rgb; // <+0.5, +0.5>
+            A2 = tex2D(Source, TexCoords[0].xy).rgb; // <-0.5, -0.5>
+            C2 = tex2D(Source, TexCoords[0].zy).rgb; // <+0.5, -0.5>
 
-            Ix = ((C_0 + C_2) - (A_0 + A_2)) * 4.0;
-            Iy = ((A_0 + C_0) - (A_2 + C_2)) * 4.0;
+            Ix = ((C0 + C2) - (A0 + A2)) * 4.0;
+            Iy = ((A0 + C0) - (A2 + C2)) * 4.0;
             break;
         case 3: // Bilinear 5x5 Prewitt
-            // A_0 B_0 C_0
-            // A_1    C_1
-            // A_2 B_2 C_2
-            A_0 = tex2D(Source, Coords[0].xy) * 4.0; // <-1.5, +1.5>
-            A_1 = tex2D(Source, Coords[0].xz) * 2.0; // <-1.5,  0.0>
-            A_2 = tex2D(Source, Coords[0].xw) * 4.0; // <-1.5, -1.5>
-            B_0 = tex2D(Source, Coords[1].xy) * 2.0; // < 0.0, +1.5>
-            B_2 = tex2D(Source, Coords[1].xw) * 2.0; // < 0.0, -1.5>
-            C_0 = tex2D(Source, Coords[2].xy) * 4.0; // <+1.5, +1.5>
-            C_1 = tex2D(Source, Coords[2].xz) * 2.0; // <+1.5,  0.0>
-            C_2 = tex2D(Source, Coords[2].xw) * 4.0; // <+1.5, -1.5>
+            // A0 B0 C0
+            // A1    C1
+            // A2 B2 C2
+            A0 = tex2D(Source, TexCoords[0].xy) * 4.0; // <-1.5, +1.5>
+            A1 = tex2D(Source, TexCoords[0].xz) * 2.0; // <-1.5,  0.0>
+            A2 = tex2D(Source, TexCoords[0].xw) * 4.0; // <-1.5, -1.5>
+            B0 = tex2D(Source, TexCoords[1].xy) * 2.0; // < 0.0, +1.5>
+            B2 = tex2D(Source, TexCoords[1].xw) * 2.0; // < 0.0, -1.5>
+            C0 = tex2D(Source, TexCoords[2].xy) * 4.0; // <+1.5, +1.5>
+            C1 = tex2D(Source, TexCoords[2].xz) * 2.0; // <+1.5,  0.0>
+            C2 = tex2D(Source, TexCoords[2].xw) * 4.0; // <+1.5, -1.5>
 
             // -1 -1  0  +1 +1
             // -1 -1  0  +1 +1
             // -1 -1  0  +1 +1
             // -1 -1  0  +1 +1
             // -1 -1  0  +1 +1
-            Ix = (C_0 + C_1 + C_2) - (A_0 + A_1 + A_2);
+            Ix = (C0 + C1 + C2) - (A0 + A1 + A2);
 
             // +1 +1 +1 +1 +1
             // +1 +1 +1 +1 +1
             //  0  0  0  0  0
             // -1 -1 -1 -1 -1
             // -1 -1 -1 -1 -1
-            Iy = (A_0 + B_0 + C_0) - (A_2 + B_2 + C_2);
+            Iy = (A0 + B0 + C0) - (A2 + B2 + C2);
             break;
         case 4: // Bilinear 5x5 Sobel by CeeJayDK
-            //   B_1 B_2
-            // A_0     A_1
-            // A_2     B_0
-            //   C_0 C_1
-            A_0 = tex2D(Source, Coords[0].xw) * 4.0; // <-1.5, +0.5>
-            A_1 = tex2D(Source, Coords[0].yw) * 4.0; // <+1.5, +0.5>
-            A_2 = tex2D(Source, Coords[0].xz) * 4.0; // <-1.5, -0.5>
-            B_0 = tex2D(Source, Coords[0].yz) * 4.0; // <+1.5, -0.5>
-            B_1 = tex2D(Source, Coords[1].xw) * 4.0; // <-0.5, +1.5>
-            B_2 = tex2D(Source, Coords[1].yw) * 4.0; // <+0.5, +1.5>
-            C_0 = tex2D(Source, Coords[1].xz) * 4.0; // <-0.5, -1.5>
-            C_1 = tex2D(Source, Coords[1].yz) * 4.0; // <+0.5, -1.5>
+            //   B1 B2
+            // A0     A1
+            // A2     B0
+            //   C0 C1
+            A0 = tex2D(Source, TexCoords[0].xw) * 4.0; // <-1.5, +0.5>
+            A1 = tex2D(Source, TexCoords[0].yw) * 4.0; // <+1.5, +0.5>
+            A2 = tex2D(Source, TexCoords[0].xz) * 4.0; // <-1.5, -0.5>
+            B0 = tex2D(Source, TexCoords[0].yz) * 4.0; // <+1.5, -0.5>
+            B1 = tex2D(Source, TexCoords[1].xw) * 4.0; // <-0.5, +1.5>
+            B2 = tex2D(Source, TexCoords[1].yw) * 4.0; // <+0.5, +1.5>
+            C0 = tex2D(Source, TexCoords[1].xz) * 4.0; // <-0.5, -1.5>
+            C1 = tex2D(Source, TexCoords[1].yz) * 4.0; // <+0.5, -1.5>
 
             //    -1 0 +1
             // -1 -2 0 +2 +1
             // -2 -2 0 +2 +2
             // -1 -2 0 +2 +1
             //    -1 0 +1
-            Ix = (B_2 + A_1 + B_0 + C_1) - (B_1 + A_0 + A_2 + C_0);
+            Ix = (B2 + A1 + B0 + C1) - (B1 + A0 + A2 + C0);
 
             //    +1 +2 +1
             // +1 +2 +2 +2 +1
             //  0  0  0  0  0
             // -1 -2 -2 -2 -1
             //    -1 -2 -1
-            Iy = (A_0 + B_1 + B_2 + A_1) - (A_2 + C_0 + C_1 + B_0);
+            Iy = (A0 + B1 + B2 + A1) - (A2 + C0 + C1 + B0);
             break;
         case 5: // 3x3 Prewitt
-            // A_0 B_0 C_0
-            // A_1    C_1
-            // A_2 B_2 C_2
-            A_0 = tex2D(Sample_Color, Coords[0].xy);
-            A_1 = tex2D(Sample_Color, Coords[0].xz);
-            A_2 = tex2D(Sample_Color, Coords[0].xw);
-            B_0 = tex2D(Sample_Color, Coords[1].xy);
-            B_2 = tex2D(Sample_Color, Coords[1].xw);
-            C_0 = tex2D(Sample_Color, Coords[2].xy);
-            C_1 = tex2D(Sample_Color, Coords[2].xz);
-            C_2 = tex2D(Sample_Color, Coords[2].xw);
+            // A0 B0 C0
+            // A1    C1
+            // A2 B2 C2
+            A0 = tex2D(Sample_Color, TexCoords[0].xy);
+            A1 = tex2D(Sample_Color, TexCoords[0].xz);
+            A2 = tex2D(Sample_Color, TexCoords[0].xw);
+            B0 = tex2D(Sample_Color, TexCoords[1].xy);
+            B2 = tex2D(Sample_Color, TexCoords[1].xw);
+            C0 = tex2D(Sample_Color, TexCoords[2].xy);
+            C1 = tex2D(Sample_Color, TexCoords[2].xz);
+            C2 = tex2D(Sample_Color, TexCoords[2].xw);
 
-            Ix = (C_0 + C_1 + C_2) - (A_0 + A_1 + A_2);
-            Iy = (A_0 + B_0 + C_0) - (A_2 + B_2 + C_2);
+            Ix = (C0 + C1 + C2) - (A0 + A1 + A2);
+            Iy = (A0 + B0 + C0) - (A2 + B2 + C2);
             break;
         case 6: // 3x3 Scharr
         {
-            A_0 = tex2D(Sample_Color, Coords[0].xy) * 3.0;
-            A_1 = tex2D(Sample_Color, Coords[0].xz) * 10.0;
-            A_2 = tex2D(Sample_Color, Coords[0].xw) * 3.0;
-            B_0 = tex2D(Sample_Color, Coords[1].xy) * 10.0;
-            B_2 = tex2D(Sample_Color, Coords[1].xw) * 10.0;
-            C_0 = tex2D(Sample_Color, Coords[2].xy) * 3.0;
-            C_1 = tex2D(Sample_Color, Coords[2].xz) * 10.0;
-            C_2 = tex2D(Sample_Color, Coords[2].xw) * 3.0;
+            A0 = tex2D(Sample_Color, TexCoords[0].xy) * 3.0;
+            A1 = tex2D(Sample_Color, TexCoords[0].xz) * 10.0;
+            A2 = tex2D(Sample_Color, TexCoords[0].xw) * 3.0;
+            B0 = tex2D(Sample_Color, TexCoords[1].xy) * 10.0;
+            B2 = tex2D(Sample_Color, TexCoords[1].xw) * 10.0;
+            C0 = tex2D(Sample_Color, TexCoords[2].xy) * 3.0;
+            C1 = tex2D(Sample_Color, TexCoords[2].xz) * 10.0;
+            C2 = tex2D(Sample_Color, TexCoords[2].xw) * 3.0;
 
-            Ix = (C_0 + C_1 + C_2) - (A_0 + A_1 + A_2);
-            Iy = (A_0 + B_0 + C_0) - (A_2 + B_2 + C_2);
+            Ix = (C0 + C1 + C2) - (A0 + A1 + A2);
+            Iy = (A0 + B0 + C0) - (A2 + B2 + C2);
             break;
         }
     }
 }
 
-void Edge_Detection_PS(in float4 Position : SV_POSITION, in float4 Coords[3] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+void Edge_Detection_PS(in float4 Position : SV_POSITION, in float4 TexCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
     OutputColor0 = 1.0;
     float4 Ix, Iy, Gradient;
-    Edge_Operator(Sample_Color, Coords, Ix, Iy, Gradient);
+    Edge_Operator(Sample_Color, TexCoords, Ix, Iy, Gradient);
 
     float ScaleWeight = 0.0;
 

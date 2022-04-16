@@ -105,7 +105,7 @@ float SMAA_Search_Length(sampler2D Search_Tex, float2 E, float Offset)
     Scale += float2(-1.0,  1.0);
     Bias  += float2( 0.5, -0.5);
 
-    // Convert from pixel coordinates to Coords:
+    // Convert from pixel coordinates to TexCoords:
     // (We use SMAA_SEARCHTEX_PACKED_SIZE because the texture is cropped)
     Scale *= 1.0 / SMAA_SEARCHTEX_PACKED_SIZE;
     Bias *= 1.0 / SMAA_SEARCHTEX_PACKED_SIZE;
@@ -116,11 +116,11 @@ float SMAA_Search_Length(sampler2D Search_Tex, float2 E, float Offset)
 
 /* Is_Horizontal/vertical search functions for the 2nd pass. */
 
-float SMAASearchXLeft(sampler2D Edges_Tex, sampler2D Search_Tex, float2 Coord, float End)
+float SMAASearchXLeft(sampler2D Edges_Tex, sampler2D Search_Tex, float2 TexCoord, float End)
 {
     /*
         @PSEUDO_GATHER4
-        This Coord has been Offset by (-0.25, -0.125) in the vertex shader to
+        This TexCoord has been Offset by (-0.25, -0.125) in the vertex shader to
         sample between edge, thus fetching four edges in a row.
         Sampling with different offsets in each direction allows to disambiguate
         which edges are active from the four fetched ones.
@@ -128,64 +128,64 @@ float SMAASearchXLeft(sampler2D Edges_Tex, sampler2D Search_Tex, float2 Coord, f
 
     float2 E = float2(0.0, 1.0);
 
-    while (Coord.x > End &&
+    while (TexCoord.x > End &&
            E.g > 0.8281 && // Is there some edge not activated?
            E.r == 0.0) // Or is there a crossing edge that breaks the line?
     {
-        E = tex2Dlod(Edges_Tex, Coord.xyxy).rg;
-        Coord = mad(-float2(2.0, 0.0), SMAA_RT_METRICS.xy, Coord);
+        E = tex2Dlod(Edges_Tex, TexCoord.xyxy).rg;
+        TexCoord = mad(-float2(2.0, 0.0), SMAA_RT_METRICS.xy, TexCoord);
     }
 
     float Offset = mad(-(255.0 / 127.0), SMAA_Search_Length(Search_Tex, E, 0.0), 3.25);
-    return mad(SMAA_RT_METRICS.x, Offset, Coord.x);
+    return mad(SMAA_RT_METRICS.x, Offset, TexCoord.x);
 }
 
-float SMAASearchXRight(sampler2D Edges_Tex, sampler2D Search_Tex, float2 Coord, float End)
+float SMAASearchXRight(sampler2D Edges_Tex, sampler2D Search_Tex, float2 TexCoord, float End)
 {
     float2 E = float2(0.0, 1.0);
 
-    while (Coord.x < End &&
+    while (TexCoord.x < End &&
            E.g > 0.8281 && // Is there some edge not activated?
            E.r == 0.0) // Or is there a crossing edge that breaks the line?
     {
-        E = tex2Dlod(Edges_Tex, Coord.xyxy).rg;
-        Coord = mad(float2(2.0, 0.0), SMAA_RT_METRICS.xy, Coord);
+        E = tex2Dlod(Edges_Tex, TexCoord.xyxy).rg;
+        TexCoord = mad(float2(2.0, 0.0), SMAA_RT_METRICS.xy, TexCoord);
     }
 
     float Offset = mad(-(255.0 / 127.0), SMAA_Search_Length(Search_Tex, E, 0.5), 3.25);
-    return mad(-SMAA_RT_METRICS.x, Offset, Coord.x);
+    return mad(-SMAA_RT_METRICS.x, Offset, TexCoord.x);
 }
 
-float SMAASearchYUp(sampler2D Edges_Tex, sampler2D Search_Tex, float2 Coord, float End)
+float SMAASearchYUp(sampler2D Edges_Tex, sampler2D Search_Tex, float2 TexCoord, float End)
 {
     float2 E = float2(1.0, 0.0);
 
-    while (Coord.y > End &&
+    while (TexCoord.y > End &&
            E.r > 0.8281 && // Is there some edge not activated?
            E.g == 0.0) // Or is there a crossing edge that breaks the line?
     {
-        E = tex2Dlod(Edges_Tex, Coord.xyxy).rg;
-        Coord = mad(-float2(0.0, 2.0), SMAA_RT_METRICS.xy, Coord);
+        E = tex2Dlod(Edges_Tex, TexCoord.xyxy).rg;
+        TexCoord = mad(-float2(0.0, 2.0), SMAA_RT_METRICS.xy, TexCoord);
     }
 
     float Offset = mad(-(255.0 / 127.0), SMAA_Search_Length(Search_Tex, E.gr, 0.0), 3.25);
-    return mad(SMAA_RT_METRICS.y, Offset, Coord.y);
+    return mad(SMAA_RT_METRICS.y, Offset, TexCoord.y);
 }
 
-float SMAASearchYDown(sampler2D Edges_Tex, sampler2D Search_Tex, float2 Coord, float End)
+float SMAASearchYDown(sampler2D Edges_Tex, sampler2D Search_Tex, float2 TexCoord, float End)
 {
     float2 E = float2(1.0, 0.0);
 
-    while (Coord.y < End &&
+    while (TexCoord.y < End &&
            E.r > 0.8281 && // Is there some edge not activated?
            E.g == 0.0) // Or is there a crossing edge that breaks the line?
     {
-        E = tex2Dlod(Edges_Tex, Coord.xyxy).rg;
-        Coord = mad(float2(0.0, 2.0), SMAA_RT_METRICS.xy, Coord);
+        E = tex2Dlod(Edges_Tex, TexCoord.xyxy).rg;
+        TexCoord = mad(float2(0.0, 2.0), SMAA_RT_METRICS.xy, TexCoord);
     }
 
     float Offset = mad(-(255.0 / 127.0), SMAA_Search_Length(Search_Tex, E.gr, 0.5), 3.25);
-    return mad(-SMAA_RT_METRICS.y, Offset, Coord.y);
+    return mad(-SMAA_RT_METRICS.y, Offset, TexCoord.y);
 }
 
 /*
@@ -196,14 +196,14 @@ float SMAASearchYDown(sampler2D Edges_Tex, sampler2D Search_Tex, float2 Coord, f
 float2 SMAAArea(sampler2D Area_Tex, float2 Dist, float E_1, float E_2, float Offset)
 {
     // Rounding prevents precision errors of bilinear filtering:
-    float2 Coord = mad(float2(SMAA_AREATEX_MAX_DISTANCE, SMAA_AREATEX_MAX_DISTANCE), round(4.0 * float2(E_1, E_2)), Dist);
+    float2 TexCoord = mad(float2(SMAA_AREATEX_MAX_DISTANCE, SMAA_AREATEX_MAX_DISTANCE), round(4.0 * float2(E_1, E_2)), Dist);
 
     // We do a scale and bias for mapping to texel space:
-    Coord = mad(SMAA_AREATEX_PixelSize, Coord, 0.5 * SMAA_AREATEX_PixelSize);
+    TexCoord = mad(SMAA_AREATEX_PixelSize, TexCoord, 0.5 * SMAA_AREATEX_PixelSize);
 
     // Move to proper place, according to the subpixel Offset:
-    Coord.y = mad(SMAA_AREATEX_SUBTEX_SIZE, Offset, Coord.y);
+    TexCoord.y = mad(SMAA_AREATEX_SUBTEX_SIZE, Offset, TexCoord.y);
 
     // Do it!
-    return tex2Dlod(Area_Tex, Coord.xyxy).rg;
+    return tex2Dlod(Area_Tex, TexCoord.xyxy).rg;
 }

@@ -95,11 +95,11 @@ namespace Three_Point_Storage
         MipFilter = LINEAR;
     };
 
-    void Basic_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float2 Coord : TEXCOORD0)
+    void Basic_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float2 TexCoord : TEXCOORD0)
     {
-        Coord.x = (ID == 2) ? 2.0 : 0.0;
-        Coord.y = (ID == 1) ? 2.0 : 0.0;
-        Position = float4(Coord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+        TexCoord.x = (ID == 2) ? 2.0 : 0.0;
+        TexCoord.y = (ID == 1) ? 2.0 : 0.0;
+        Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
     }
 
     /*
@@ -114,19 +114,19 @@ namespace Three_Point_Storage
         ... and so forth
     */
 
-    void Store_Frame_3_PS(float4 Position : SV_POSITION, float2 Coord : TEXCOORD, out float4 OutputColor0 : SV_TARGET0)
+    void Store_Frame_3_PS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD, out float4 OutputColor0 : SV_TARGET0)
     {
-        OutputColor0 = tex2D(Sample_Frame_2, Coord);
+        OutputColor0 = tex2D(Sample_Frame_2, TexCoord);
     }
 
-    void Store_Frame_2_PS(float4 Position : SV_POSITION, float2 Coord : TEXCOORD, out float4 OutputColor0 : SV_TARGET0)
+    void Store_Frame_2_PS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD, out float4 OutputColor0 : SV_TARGET0)
     {
-        OutputColor0 = tex2D(Sample_Frame_1, Coord);
+        OutputColor0 = tex2D(Sample_Frame_1, TexCoord);
     }
 
-    void Current_Frame_1_PS(float4 Position : SV_POSITION, float2 Coord : TEXCOORD, out float4 OutputColor0 : SV_TARGET0)
+    void Current_Frame_1_PS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD, out float4 OutputColor0 : SV_TARGET0)
     {
-        OutputColor0 = tex2D(Sample_Color, Coord);
+        OutputColor0 = tex2D(Sample_Color, TexCoord);
     }
 
     /*
