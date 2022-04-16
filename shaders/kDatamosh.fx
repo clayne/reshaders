@@ -109,72 +109,15 @@ namespace Datamosh
 
     uniform float _Time < source = "timer"; >;
 
-    uniform int _Block_Size <
-        ui_category = "Datamosh";
-        ui_type = "slider";
-        ui_label = "Block Size";
-        ui_min = 4;
-        ui_max = 32;
-    > = 16;
+    OPTION(int, _Block_Size, "slider", "Datamosh", "Block Size", 4, 32, 16)
+    OPTION(float, _Entropy, "slider", "Datamosh", "Entropy", 0.0, 1.0, 0.5)
+    OPTION(float, _Contrast, "slider", "Datamosh", "Contrast of stripe-shaped noise", 0.0, 4.0, 2.0)
+    OPTION(float, _Scale, "slider", "Datamosh", "Scale factor for velocity vectors", 0.0, 4.0, 2.0)
+    OPTION(float, _Diffusion, "slider", "Datamosh", "Amount of random displacement", 0.0, 4.0, 2.0)
 
-    uniform float _Entropy <
-        ui_category = "Datamosh";
-        ui_type = "slider";
-        ui_label = "Entropy";
-        ui_tooltip = "The larger value stronger noise and makes mosh last longer.";
-        ui_min = 0.0;
-        ui_max = 1.0;
-    > = 0.5;
-
-    uniform float _Contrast <
-        ui_category = "Datamosh";
-        ui_type = "slider";
-        ui_label = "Contrast";
-        ui_tooltip = "Contrast of stripe-shaped noise.";
-        ui_min = 0.0;
-        ui_max = 4.0;
-    > = 2.0;
-
-    uniform float _Scale <
-        ui_category = "Datamosh";
-        ui_type = "slider";
-        ui_label = "Scale";
-        ui_tooltip = "Scale factor for velocity vectors.";
-        ui_min = 0.0;
-        ui_max = 4.0;
-    > = 2.0;
-
-    uniform float _Diffusion <
-        ui_category = "Datamosh";
-        ui_type = "slider";
-        ui_label = "Diffusion";
-        ui_tooltip = "Amount of random displacement.";
-        ui_min = 0.0;
-        ui_max = 4.0;
-    > = 2.0;
-
-    uniform float _Constraint <
-        ui_type = "slider";
-        ui_category = "Optical flow";
-        ui_label = "Motion Threshold";
-        ui_min = 0.0;
-        ui_max = 2.0;
-    > = 1.0;
-
-    uniform float _MipBias <
-        ui_type = "drag";
-        ui_category = "Optical flow";
-        ui_label = "Optical flow mipmap bias";
-        ui_min = 0.0;
-    > = 0.0;
-
-    uniform float _BlendFactor <
-        ui_type = "slider";
-        ui_category = "Optical flow";
-        ui_label = "Temporal Blending Factor";
-        ui_min = 0.0;
-        ui_Max = 0.9;
-    > = 0.1;
+    OPTION(float, _Constraint, "slider", "Optical flow", "Motion threshold", 0.0, 2.0, 1.0)
+    OPTION(float, _MipBias, "slider", "Optical flow", "Optical flow mipmap bias", 0.0, 7.0, 0.0)
+    OPTION(float, _BlendFactor, "slider", "Optical flow", "Temporal blending factor", 0.0, 0.9, 0.1)
 
     #ifndef LINEAR_SAMPLING
         #define LINEAR_SAMPLING 0
@@ -754,9 +697,9 @@ namespace Datamosh
         PASS(Derivatives_VS, Derivatives_PS, Shared_Resources_Datamosh::Render_Common_1_B)
 
         // Trilinear Optical Flow, calculate 2 levels at a time
-        PASS(Basic_VS, Level_4_PS, Shared_Resources_Flow::Render_Common_4)
-        PASS(Sample_3x3_4_VS, Level_3_PS, Shared_Resources_Flow::Render_Common_3)
-        PASS(Sample_3x3_3_VS, Level_2_PS, Shared_Resources_Flow::Render_Common_2)
+        PASS(Basic_VS, Level_4_PS, Shared_Resources_Datamosh::Render_Common_4)
+        PASS(Sample_3x3_4_VS, Level_3_PS, Shared_Resources_Datamosh::Render_Common_3)
+        PASS(Sample_3x3_3_VS, Level_2_PS, Shared_Resources_Datamosh::Render_Common_2)
 
         pass
         {
