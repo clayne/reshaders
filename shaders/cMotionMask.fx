@@ -42,28 +42,28 @@ namespace Motion_Mask
         ui_max = 1.0;
     > = 0.5;
 
-    uniform float _Min_Threshold <
+    uniform float _MinThreshold <
         ui_type = "slider";
         ui_label = "Min threshold";
         ui_min = 0.0;
         ui_max = 1.0;
     > = 0.0;
 
-    uniform float _Max_Threshold <
+    uniform float _MaxThreshold <
         ui_type = "slider";
         ui_label = "Max threshold";
         ui_min = 0.0;
         ui_max = 1.0;
     > = 0.5;
 
-    uniform float _Difference_Weight <
+    uniform float _DifferenceWeight <
         ui_type = "slider";
         ui_label = "Difference Weight";
         ui_min = 0.0;
         ui_max = 2.0;
     > = 1.0;
 
-    uniform bool _Normalize_Input <
+    uniform bool _NormalizeInput <
         ui_type = "radio";
         ui_label = "Normalize Input";
     > = false;
@@ -140,39 +140,28 @@ namespace Motion_Mask
     void Blit_0_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
         float3 Color = max(tex2D(Sample_Color, TexCoord).rgb, exp2(-10.0));
-        OutputColor0 = (_Normalize_Input) ? saturate(Color.xy / dot(Color, 1.0)) : max(max(Color.r, Color.g), Color.b);
+        OutputColor0 = (_NormalizeInput) ? saturate(Color.xy / dot(Color, 1.0)) : max(max(Color.r, Color.g), Color.b);
     }
 
     void Difference_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
         float Difference = 0.0;
 
-        if(_Normalize_Input)
+        if(_NormalizeInput)
         {
             float2 Current = tex2D(Sample_Current, TexCoord).rg;
             float2 Previous = tex2D(Sample_Previous, TexCoord).rg;
-            Difference = abs(dot(Current - Previous, 1.0)) * _Difference_Weight;
+            Difference = abs(dot(Current - Previous, 1.0)) * _DifferenceWeight;
         }
         else
         {
             float Current = tex2D(Sample_Current, TexCoord).r;
             float Previous = tex2D(Sample_Previous, TexCoord).r;
-            Difference = abs(Current - Previous) * _Difference_Weight;
+            Difference = abs(Current - Previous) * _DifferenceWeight;
         }
 
-        if (Difference <= _Min_Threshold)
-        {
-            OutputColor0 = 0.0;
-        }
-        else if (Difference > _Max_Threshold)
-        {
-            OutputColor0 = 1.0;
-        }
-        else
-        {
-            OutputColor0 = Difference;
-        }
-
+        OutputColor0 = (Difference < _MinThreshold) ? 0.0 : Difference;
+        OutputColor0 = (Difference > _MaxThreshold) ? 1.0 : Difference;
         OutputColor0.a = _BlendFactor;
     }
 

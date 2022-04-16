@@ -99,9 +99,9 @@ void Overlay_PS(in float4 Position : SV_POSITION, in float4 TexCoord : TEXCOORD0
     float4 Color = tex2D(Sample_Color, TexCoord.zw);
 
     // Output a rectangle
-    float2 Mask_Coord = TexCoord.xy;
+    float2 MaskCoord = TexCoord.xy;
     float2 Scale = -_MaskScale * 0.5 + 0.5;
-    float2 Shaper = step(Scale, Mask_Coord.xy) * step(Scale, 1.0 - Mask_Coord.xy);
+    float2 Shaper = step(Scale, MaskCoord.xy) * step(Scale, 1.0 - MaskCoord.xy);
     float Crop = Shaper.x * Shaper.y;
 
     OutputColor0.rgb = Color.rgb;

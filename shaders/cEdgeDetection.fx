@@ -55,7 +55,7 @@ uniform bool _Normal <
     ui_type = "radio";
 > = true;
 
-uniform float _Normalize_Weight <
+uniform float _NormalizeWeight <
     ui_label = "Normalize Weight";
     ui_type = "drag";
     ui_min = 0.0;
@@ -290,8 +290,8 @@ void Edge_Detection_PS(in float4 Position : SV_POSITION, in float4 TexCoords[3] 
     Ix = (_Scale) ? Ix / ScaleWeight : Ix;
     Iy = (_Scale) ? Iy / ScaleWeight : Iy;
 
-    Ix = (_Normalize) ? Ix / sqrt(dot(Ix.rgb, Ix.rgb) + _Normalize_Weight) : Ix;
-    Iy = (_Normalize) ? Iy / sqrt(dot(Iy.rgb, Iy.rgb) + _Normalize_Weight) : Iy;
+    Ix = (_Normalize) ? Ix / sqrt(dot(Ix.rgb, Ix.rgb) + _NormalizeWeight) : Ix;
+    Iy = (_Normalize) ? Iy / sqrt(dot(Iy.rgb, Iy.rgb) + _NormalizeWeight) : Iy;
 
     // Output Results
 

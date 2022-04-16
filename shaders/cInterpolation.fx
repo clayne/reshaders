@@ -116,14 +116,14 @@ namespace cInterpolation
 
     // Three-point backbuffer storage for interpolation
 
-    TEXTURE(Render_Frame_3, int2(BUFFER_WIDTH, BUFFER_HEIGHT), RGBA8, 4)
-    SAMPLER(Sample_Frame_3, Render_Frame_3)
+    TEXTURE(Render_Frame3, int2(BUFFER_WIDTH, BUFFER_HEIGHT), RGBA8, 4)
+    SAMPLER(Sample_Frame3, Render_Frame3)
 
     TEXTURE(Render_Frame_2, int2(BUFFER_WIDTH, BUFFER_HEIGHT), RGBA8, 1)
     SAMPLER(Sample_Frame_2, Render_Frame_2)
 
-    TEXTURE(Render_Frame_1, int2(BUFFER_WIDTH, BUFFER_HEIGHT), RGBA8, 4)
-    SAMPLER(Sample_Frame_1, Render_Frame_1)
+    TEXTURE(Render_Frame1, int2(BUFFER_WIDTH, BUFFER_HEIGHT), RGBA8, 4)
+    SAMPLER(Sample_Frame1, Render_Frame1)
 
     // Normalized, prefiltered frames for processing
 
@@ -223,26 +223,26 @@ namespace cInterpolation
     /*
         BlueSkyDefender's three-frame storage
 
-        [Frame_1] [Frame_2] [Frame_3]
+        [Frame1] [Frame_2] [Frame3]
 
         Scenario: Three Frames
-        Frame 0: [Frame_1 (new back buffer data)] [Frame_2 (no data yet)] [Frame_3 (no data yet)]
-        Frame 1: [Frame_1 (new back buffer data)] [Frame_2 (sample Frame_1 data)] [Frame_3 (no data yet)]
-        Frame 2: [Frame_1 (new back buffer data)] [Frame_2 (sample Frame_1 data)] [Frame_3 (sample Frame_2 data)]
+        Frame 0: [Frame1 (new back buffer data)] [Frame_2 (no data yet)] [Frame3 (no data yet)]
+        Frame 1: [Frame1 (new back buffer data)] [Frame_2 (sample Frame1 data)] [Frame3 (no data yet)]
+        Frame 2: [Frame1 (new back buffer data)] [Frame_2 (sample Frame1 data)] [Frame3 (sample Frame_2 data)]
         ... and so forth
     */
 
-    void Store_Frame_3_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD, out float4 OutputColor0 : SV_TARGET0)
+    void Store_Frame3_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD, out float4 OutputColor0 : SV_TARGET0)
     {
         OutputColor0 = tex2D(Sample_Frame_2, TexCoord);
     }
 
     void Store_Frame_2_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD, out float4 OutputColor0 : SV_TARGET0)
     {
-        OutputColor0 = tex2D(Sample_Frame_1, TexCoord);
+        OutputColor0 = tex2D(Sample_Frame1, TexCoord);
     }
 
-    void Current_Frame_1_PS(float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD, out float4 OutputColor0 : SV_TARGET0)
+    void Current_Frame1_PS(float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD, out float4 OutputColor0 : SV_TARGET0)
     {
         OutputColor0 = tex2D(Sample_Color, TexCoord);
     }
@@ -254,10 +254,10 @@ namespace cInterpolation
 
     void Normalize_Frame_PS(in float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD, out float4 OutputColor0 : SV_TARGET0)
     {
-        float4 Frame_1 = tex2D(Sample_Frame_1, TexCoord);
-        float4 Frame_3 = tex2D(Sample_Frame_3, TexCoord);
-        OutputColor0.xy = saturate(Frame_1.xy / dot(Frame_1.rgb, 1.0));
-        OutputColor0.zw = saturate(Frame_3.xy / dot(Frame_3.rgb, 1.0));
+        float4 Frame1 = tex2D(Sample_Frame1, TexCoord);
+        float4 Frame3 = tex2D(Sample_Frame3, TexCoord);
+        OutputColor0.xy = saturate(Frame1.xy / dot(Frame1.rgb, 1.0));
+        OutputColor0.zw = saturate(Frame3.xy / dot(Frame3.rgb, 1.0));
     }
 
     static const float BlurWeights[8] =
@@ -274,17 +274,17 @@ namespace cInterpolation
 
     void Gaussian_Blur(in sampler2D Source, in float4 TexCoords[8], out float4 OutputColor0)
     {
-        float Total_Weights = BlurWeights[0];
+        float TotalWeights = BlurWeights[0];
         OutputColor0 = (tex2D(Source, TexCoords[0].xy) * BlurWeights[0]);
 
         for(int i = 1; i < 8; i++)
         {
             OutputColor0 += (tex2D(Source, TexCoords[i].xy) * BlurWeights[i]);
             OutputColor0 += (tex2D(Source, TexCoords[i].zw) * BlurWeights[i]);
-            Total_Weights += (BlurWeights[i] * 2.0);
+            TotalWeights += (BlurWeights[i] * 2.0);
         }
 
-        OutputColor0 = OutputColor0 / Total_Weights;
+        OutputColor0 = OutputColor0 / TotalWeights;
     }
 
     void Pre_Blur_0_PS(in float4 Position : SV_POSITION, in float4 TexCoords[8] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
@@ -330,13 +330,13 @@ namespace cInterpolation
         OutputColor0.yw *= rsqrt(dot(OutputColor0.yw, OutputColor0.yw) + 1.0);
     }
 
-    #define Max_Level 7
+    #define MaxLevel 7
     #define E 1e-4
 
     void Coarse_Optical_Flow_TV(in float2 TexCoord, in float Level, in float2 UV, out float2 OpticalFlow)
     {
         OpticalFlow = 0.0;
-        const float Alpha = max(ldexp(_Constraint * 1e-4, Level - Max_Level), 1e-7);
+        const float Alpha = max(ldexp(_Constraint * 1e-4, Level - MaxLevel), 1e-7);
 
         float4 Frames = tex2Dlod(Sample_Normalized_Frame, float4(TexCoord, 0.0, Level));
 
@@ -442,7 +442,7 @@ namespace cInterpolation
     void Optical_Flow_TV(in sampler2D SourceUV, in float4 TexCoords[3], in float Level, out float2 OpticalFlow)
     {
         OpticalFlow = 0.0;
-        const float Alpha = max(ldexp(_Constraint * 1e-4, Level - Max_Level), 1e-7);
+        const float Alpha = max(ldexp(_Constraint * 1e-4, Level - MaxLevel), 1e-7);
 
         // Load textures
 
@@ -550,10 +550,10 @@ namespace cInterpolation
         float2 TexelSize = 1.0 / BUFFER_SIZE_1;
         float2 MotionVectors = tex2Dlod(Shared_Resources::Sample_Common_1, float4(TexCoord, 0.0, _MipBias)).xy * TexelSize.xy;
 
-        float4 StaticLeft = tex2D(Sample_Frame_3, TexCoord);
-        float4 StaticRight = tex2D(Sample_Frame_1, TexCoord);
-        float4 DynamicLeft = tex2D(Sample_Frame_3, TexCoord + MotionVectors);
-        float4 DynamicRight = tex2D(Sample_Frame_1, TexCoord - MotionVectors);
+        float4 StaticLeft = tex2D(Sample_Frame3, TexCoord);
+        float4 StaticRight = tex2D(Sample_Frame1, TexCoord);
+        float4 DynamicLeft = tex2D(Sample_Frame3, TexCoord + MotionVectors);
+        float4 DynamicRight = tex2D(Sample_Frame1, TexCoord - MotionVectors);
 
         float4 StaticAverage = lerp(StaticLeft, StaticRight, 0.5);
         float4 DynamicAverage = lerp(DynamicLeft, DynamicRight, 0.5);
@@ -577,9 +577,9 @@ namespace cInterpolation
     technique cInterpolation
     {
         // Store frames
-        PASS(Basic_VS, Store_Frame_3_PS, Render_Frame_3)
+        PASS(Basic_VS, Store_Frame3_PS, Render_Frame3)
         PASS(Basic_VS, Store_Frame_2_PS, Render_Frame_2)
-        PASS(Basic_VS, Current_Frame_1_PS, Render_Frame_1)
+        PASS(Basic_VS, Current_Frame1_PS, Render_Frame1)
 
         // Store previous frames, normalize current
         PASS(Basic_VS, Normalize_Frame_PS, Render_Normalized_Frame)

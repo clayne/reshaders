@@ -134,7 +134,7 @@ namespace Motion_Blur
     OPTION(bool, _FrameRateScaling, "radio", "Other", "Enable frame-rate scaling", 0.0, 1.0, false)
     OPTION(float, _TargetFrameRate, "drag", "Other", "Target frame-rate", 0.0, 144.0, 60.0)
 
-    uniform int _Debug_Display <
+    uniform int _DebugDisplay <
         ui_type = "combo";
         ui_category = "Debug";
         ui_items = " None\0 Display input color\0 Display velocity\0";
@@ -142,7 +142,7 @@ namespace Motion_Blur
         ui_tooltip = "Method Edge Detection";
     > = 0;
 
-    uniform float _Frame_Time < source = "frametime"; >;
+    uniform float _FrameTime < source = "frametime"; >;
 
     texture2D Render_Color : COLOR;
 
@@ -174,7 +174,7 @@ namespace Motion_Blur
         Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
     }
 
-    static const float2 Blur_Offsets[8] =
+    static const float2 BlurOffsets[8] =
     {
         float2(0.0, 0.0),
         float2(0.0, 1.4850045),
@@ -194,8 +194,8 @@ namespace Motion_Blur
 
         for(int i = 1; i < 8; i++)
         {
-            TexCoords[i].xy = CoordVS.xy - (Blur_Offsets[i].yx / BUFFER_SIZE_1);
-            TexCoords[i].zw = CoordVS.xy + (Blur_Offsets[i].yx / BUFFER_SIZE_1);
+            TexCoords[i].xy = CoordVS.xy - (BlurOffsets[i].yx / BUFFER_SIZE_1);
+            TexCoords[i].zw = CoordVS.xy + (BlurOffsets[i].yx / BUFFER_SIZE_1);
         }
     }
 
@@ -207,8 +207,8 @@ namespace Motion_Blur
 
         for(int i = 1; i < 8; i++)
         {
-            TexCoords[i].xy = CoordVS.xy - (Blur_Offsets[i].xy / BUFFER_SIZE_1);
-            TexCoords[i].zw = CoordVS.xy + (Blur_Offsets[i].xy / BUFFER_SIZE_1);
+            TexCoords[i].xy = CoordVS.xy - (BlurOffsets[i].xy / BUFFER_SIZE_1);
+            TexCoords[i].zw = CoordVS.xy + (BlurOffsets[i].xy / BUFFER_SIZE_1);
         }
     }
 
@@ -315,7 +315,7 @@ namespace Motion_Blur
         OutputColor0 = tex2D(Shared_Resources_Motion_Blur::Sample_Common_0, TexCoord);
     }
 
-    static const float Blur_Weights[8] =
+    static const float BlurWeights[8] =
     {
         0.079788454,
         0.15186256,
@@ -329,17 +329,17 @@ namespace Motion_Blur
 
     void Gaussian_Blur(in sampler2D Source, in float4 TexCoords[8], out float4 OutputColor0)
     {
-        float Total_Weights = Blur_Weights[0];
-        OutputColor0 = (tex2D(Source, TexCoords[0].xy) * Blur_Weights[0]);
+        float TotalWeights = BlurWeights[0];
+        OutputColor0 = (tex2D(Source, TexCoords[0].xy) * BlurWeights[0]);
 
         for(int i = 1; i < 8; i++)
         {
-            OutputColor0 += (tex2D(Source, TexCoords[i].xy) * Blur_Weights[i]);
-            OutputColor0 += (tex2D(Source, TexCoords[i].zw) * Blur_Weights[i]);
-            Total_Weights += (Blur_Weights[i] * 2.0);
+            OutputColor0 += (tex2D(Source, TexCoords[i].xy) * BlurWeights[i]);
+            OutputColor0 += (tex2D(Source, TexCoords[i].zw) * BlurWeights[i]);
+            TotalWeights += (BlurWeights[i] * 2.0);
         }
 
-        OutputColor0  = OutputColor0 / Total_Weights;
+        OutputColor0  = OutputColor0 / TotalWeights;
     }
 
     void Pre_Blur_0_PS(in float4 Position : SV_POSITION, in float4 TexCoords[8] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
@@ -385,13 +385,13 @@ namespace Motion_Blur
         OutputColor0.yw *= rsqrt(dot(OutputColor0.yw, OutputColor0.yw) + 1.0);
     }
 
-    #define Max_Level 7
+    #define MaxLevel 7
     #define E 2e-2 * _Smoothness
 
     void Coarse_Optical_Flow_TV(in float2 TexCoord, in float Level, in float2 UV, out float2 OpticalFlow)
     {
         OpticalFlow = 0.0;
-        const float Alpha = max(ldexp(_Constraint * 1e-4, Level - Max_Level), 1e-7);
+        const float Alpha = max(ldexp(_Constraint * 1e-4, Level - MaxLevel), 1e-7);
 
         // Load textures
         float2 Current = tex2Dlod(Shared_Resources_Motion_Blur::Sample_Common_1_A, float4(TexCoord, 0.0, Level)).xy;
@@ -499,7 +499,7 @@ namespace Motion_Blur
     void Optical_Flow_TV(in sampler2D SourceUV, in float4 TexCoords[3], in float Level, out float2 OpticalFlow)
     {
         OpticalFlow = 0.0;
-        const float Alpha = max(ldexp(_Constraint * 1e-4, Level - Max_Level), 1e-7);
+        const float Alpha = max(ldexp(_Constraint * 1e-4, Level - MaxLevel), 1e-7);
 
         // Load textures
         float2 Current = tex2Dlod(Shared_Resources_Motion_Blur::Sample_Common_1_A, float4(TexCoords[1].xz, 0.0, Level)).xy;
@@ -601,22 +601,22 @@ namespace Motion_Blur
         const int Samples = 4;
         float Noise = frac(52.9829189 * frac(dot(Position.xy, float2(0.06711056, 0.00583715))));
 
-        float Frame_Rate = 1e+3 / _Frame_Time;
-        float Frame_Time_Ratio = _TargetFrameRate / Frame_Rate;
+        float FrameRate = 1e+3 / _FrameTime;
+        float FrameTimeRatio = _TargetFrameRate / FrameRate;
 
         float2 Velocity = tex2Dlod(Shared_Resources_Motion_Blur::Sample_Common_1_B, float4(TexCoord, 0.0, _MipBias)).xy;
 
-        float2 Scaled_Velocity = (Velocity / BUFFER_SIZE_1) * _Scale;
-        Scaled_Velocity = (_FrameRateScaling) ?  Scaled_Velocity / Frame_Time_Ratio : Scaled_Velocity;
+        float2 ScaledVelocity = (Velocity / BUFFER_SIZE_1) * _Scale;
+        ScaledVelocity = (_FrameRateScaling) ?  ScaledVelocity / FrameTimeRatio : ScaledVelocity;
 
         for(int k = 0; k < Samples; ++k)
         {
-            float2 Offset = Scaled_Velocity * (Noise + k);
+            float2 Offset = ScaledVelocity * (Noise + k);
             OutputColor0 += tex2D(Sample_Color, (TexCoord + Offset));
             OutputColor0 += tex2D(Sample_Color, (TexCoord - Offset));
         }
 
-        switch(_Debug_Display)
+        switch(_DebugDisplay)
         {
             case 0: // No debug
                 OutputColor0 /= (Samples * 2.0);

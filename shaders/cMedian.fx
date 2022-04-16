@@ -46,15 +46,15 @@ sampler2D Sample_Color
     #endif
 };
 
-void Median_Offsets(in float2 TexCoord, in float2 PixelSize, out float4 Sample_Offsets[3])
+void Median_Offsets(in float2 TexCoord, in float2 PixelSize, out float4 SampleOffsets[3])
 {
     // Sample locations:
     // [0].xy [1].xy [2].xy
     // [0].xz [1].xz [2].xz
     // [0].xw [1].xw [2].xw
-    Sample_Offsets[0] = TexCoord.xyyy + (float4(-1.0, 1.0, 0.0, -1.0) * PixelSize.xyyy);
-    Sample_Offsets[1] = TexCoord.xyyy + (float4(0.0, 1.0, 0.0, -1.0) * PixelSize.xyyy);
-    Sample_Offsets[2] = TexCoord.xyyy + (float4(1.0, 1.0, 0.0, -1.0) * PixelSize.xyyy);
+    SampleOffsets[0] = TexCoord.xyyy + (float4(-1.0, 1.0, 0.0, -1.0) * PixelSize.xyyy);
+    SampleOffsets[1] = TexCoord.xyyy + (float4(0.0, 1.0, 0.0, -1.0) * PixelSize.xyyy);
+    SampleOffsets[2] = TexCoord.xyyy + (float4(1.0, 1.0, 0.0, -1.0) * PixelSize.xyyy);
 }
 
 void Basic_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float2 TexCoord : TEXCOORD0)

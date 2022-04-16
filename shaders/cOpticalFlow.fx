@@ -332,17 +332,17 @@ namespace OpticalFlow
 
     void Gaussian_Blur(in sampler2D Source, in float4 TexCoords[8], out float4 OutputColor0)
     {
-        float Total_Weights = BlurWeights[0];
+        float TotalWeights = BlurWeights[0];
         OutputColor0 = (tex2D(Source, TexCoords[0].xy) * BlurWeights[0]);
 
         for(int i = 1; i < 8; i++)
         {
             OutputColor0 += (tex2D(Source, TexCoords[i].xy) * BlurWeights[i]);
             OutputColor0 += (tex2D(Source, TexCoords[i].zw) * BlurWeights[i]);
-            Total_Weights += (BlurWeights[i] * 2.0);
+            TotalWeights += (BlurWeights[i] * 2.0);
         }
 
-        OutputColor0 = OutputColor0 / Total_Weights;
+        OutputColor0 = OutputColor0 / TotalWeights;
     }
 
     void Pre_Blur_0_PS(in float4 Position : SV_POSITION, in float4 TexCoords[8] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
@@ -388,13 +388,13 @@ namespace OpticalFlow
         OutputColor0.yw *= rsqrt(dot(OutputColor0.yw, OutputColor0.yw) + 1.0);
     }
 
-    #define Max_Level 7
+    #define MaxLevel 7
     #define E 1e-4
 
     void Coarse_Optical_Flow_TV(in float2 TexCoord, in float Level, in float2 UV, out float2 OpticalFlow)
     {
         OpticalFlow = 0.0;
-        const float Alpha = max(ldexp(_Constraint * 1e-4, Level - Max_Level), 1e-7);
+        const float Alpha = max(ldexp(_Constraint * 1e-4, Level - MaxLevel), 1e-7);
 
         // Load textures
         float2 Current = tex2Dlod(Shared_Resources_Flow::Sample_Common_1_A, float4(TexCoord, 0.0, Level)).xy;
@@ -502,7 +502,7 @@ namespace OpticalFlow
     void Optical_Flow_TV(in sampler2D SourceUV, in float4 TexCoords[3], in float Level, out float2 OpticalFlow)
     {
         OpticalFlow = 0.0;
-        const float Alpha = max(ldexp(_Constraint * 1e-4, Level - Max_Level), 1e-7);
+        const float Alpha = max(ldexp(_Constraint * 1e-4, Level - MaxLevel), 1e-7);
 
         // Load textures
         float2 Current = tex2Dlod(Shared_Resources_Flow::Sample_Common_1_A, float4(TexCoords[1].xz, 0.0, Level)).xy;

@@ -75,8 +75,8 @@ void Mirror_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0,
     Phi += _Roll - _Offset;
 
     // Convert back to the texture coordinate.
-    float2 Phi_Sin_Cos; sincos(Phi, Phi_Sin_Cos.x, Phi_Sin_Cos.y);
-    TexCoord = (Phi_Sin_Cos.yx * Radius) * 0.5 + 0.5;
+    float2 PhiSinCos; sincos(Phi, PhiSinCos.x, PhiSinCos.y);
+    TexCoord = (PhiSinCos.yx * Radius) * 0.5 + 0.5;
 
     // Reflection at the border of the screen.
     TexCoord = max(min(TexCoord, 2.0 - TexCoord), -TexCoord);

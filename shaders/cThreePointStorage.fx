@@ -47,7 +47,7 @@ namespace Three_Point_Storage
         MipFilter = LINEAR;
     };
 
-    texture2D Render_Frame_3
+    texture2D Render_Frame3
     {
         Width = BUFFER_WIDTH;
         Height = BUFFER_HEIGHT;
@@ -55,9 +55,9 @@ namespace Three_Point_Storage
         MipLevels = 9;
     };
 
-    sampler2D Sample_Frame_3
+    sampler2D Sample_Frame3
     {
-        Texture = Render_Frame_3;
+        Texture = Render_Frame3;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
@@ -79,7 +79,7 @@ namespace Three_Point_Storage
         MipFilter = LINEAR;
     };
 
-    texture2D Render_Frame_1
+    texture2D Render_Frame1
     {
         Width = BUFFER_WIDTH;
         Height = BUFFER_HEIGHT;
@@ -87,9 +87,9 @@ namespace Three_Point_Storage
         MipLevels = 9;
     };
 
-    sampler2D Sample_Frame_1
+    sampler2D Sample_Frame1
     {
-        Texture = Render_Frame_1;
+        Texture = Render_Frame1;
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
@@ -105,26 +105,26 @@ namespace Three_Point_Storage
     /*
         BlueSkyDefender's three-frame storage
         
-        [Frame_1] [Frame_2] [Frame_3]
+        [Frame1] [Frame_2] [Frame3]
         
         Scenario: Three Frames
-        Frame 0: [Frame_1 (new back buffer data)] [Frame_2 (no data yet)] [Frame_3 (no data yet)]
-        Frame 1: [Frame_1 (new back buffer data)] [Frame_2 (sample Frame_1 data)] [Frame_3 (no data yet)]
-        Frame 2: [Frame_1 (new back buffer data)] [Frame_2 (sample Frame_1 data)] [Frame_3 (sample Frame_2 data)]
+        Frame 0: [Frame1 (new back buffer data)] [Frame_2 (no data yet)] [Frame3 (no data yet)]
+        Frame 1: [Frame1 (new back buffer data)] [Frame_2 (sample Frame1 data)] [Frame3 (no data yet)]
+        Frame 2: [Frame1 (new back buffer data)] [Frame_2 (sample Frame1 data)] [Frame3 (sample Frame_2 data)]
         ... and so forth
     */
 
-    void Store_Frame_3_PS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD, out float4 OutputColor0 : SV_TARGET0)
+    void Store_Frame3_PS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD, out float4 OutputColor0 : SV_TARGET0)
     {
         OutputColor0 = tex2D(Sample_Frame_2, TexCoord);
     }
 
     void Store_Frame_2_PS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD, out float4 OutputColor0 : SV_TARGET0)
     {
-        OutputColor0 = tex2D(Sample_Frame_1, TexCoord);
+        OutputColor0 = tex2D(Sample_Frame1, TexCoord);
     }
 
-    void Current_Frame_1_PS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD, out float4 OutputColor0 : SV_TARGET0)
+    void Current_Frame1_PS(float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD, out float4 OutputColor0 : SV_TARGET0)
     {
         OutputColor0 = tex2D(Sample_Color, TexCoord);
     }
@@ -137,11 +137,11 @@ namespace Three_Point_Storage
 
     technique cThreePointStorage
     {
-        pass Store_Frame_3
+        pass Store_Frame3
         {
             VertexShader = Basic_VS;
-            PixelShader = Store_Frame_3_PS;
-            RenderTarget = Render_Frame_3;
+            PixelShader = Store_Frame3_PS;
+            RenderTarget = Render_Frame3;
         }
 
         pass Store_Frame_2
@@ -151,11 +151,11 @@ namespace Three_Point_Storage
             RenderTarget = Render_Frame_2;
         }
 
-        pass Store_Frame_1
+        pass Store_Frame1
         {
             VertexShader = Basic_VS;
-            PixelShader = Current_Frame_1_PS;
-            RenderTarget = Render_Frame_1;
+            PixelShader = Current_Frame1_PS;
+            RenderTarget = Render_Frame1;
         }
     }
 }

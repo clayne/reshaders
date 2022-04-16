@@ -66,25 +66,25 @@ uniform float _Threshold <
     ui_min = 0.0; ui_max = 1.0;
 > = 0.05f;
 
-uniform float _Inverse_Range <
+uniform float _InverseRange <
     ui_label = "Inverse Range";
     ui_type = "slider";
     ui_min = 0.0; ui_max = 1.0;
 > = 0.05f;
 
-uniform float _Color_Sensitivity <
+uniform float _ColorSensitivity <
     ui_label = "Color Sensitivity";
     ui_type = "slider";
     ui_min = 0.0; ui_max = 1.0;
 > = 0.0f;
 
-uniform float4 _Front_Color <
+uniform float4 _FrontColor <
     ui_label = "Front Color";
     ui_type = "color";
     ui_min = 0.0; ui_max = 1.0;
 > = float4(1.0, 1.0, 1.0, 1.0);
 
-uniform float4 _Back_Color <
+uniform float4 _BackColor <
     ui_label = "Back Color";
     ui_type = "color";
     ui_min = 0.0; ui_max = 1.0;
@@ -97,17 +97,17 @@ uniform int _Method <
     ui_tooltip = "Method Edge Detection";
 > = 0;
 
-uniform bool _Scale_Derivatives <
+uniform bool _ScaleDerivatives <
     ui_label = "Scale Derivatives to [-1, 1] range";
     ui_type = "radio";
 > = true;
 
-uniform bool _Normalize_Output <
+uniform bool _NormalizeOutput <
     ui_label = "Normalize Output";
     ui_type = "radio";
 > = true;
 
-uniform float _Normalize_Weight <
+uniform float _NormalizeWeight <
     ui_label = "Normal Weight";
     ui_type = "drag";
     ui_min = 0.0;
@@ -207,8 +207,8 @@ float3 Get_Screen_Space_Normal(float2 TexCoord)
     float2 PosEast = PosCenter + Offset.xz;
 
     float3 VertCenter = float3(PosCenter - 0.5, 1.0) * ReShade::GetLinearizedDepth(PosCenter);
-    float3 VertNorth  = float3(PosNorth - 0.5,  1.0) * ReShade::GetLinearizedDepth(PosNorth);
-    float3 VertEast   = float3(PosEast - 0.5,   1.0) * ReShade::GetLinearizedDepth(PosEast);
+    float3 VertNorth = float3(PosNorth - 0.5,  1.0) * ReShade::GetLinearizedDepth(PosNorth);
+    float3 VertEast = float3(PosEast - 0.5,   1.0) * ReShade::GetLinearizedDepth(PosEast);
 
     return normalize(cross(VertCenter - VertNorth, VertCenter - VertEast));
 }
@@ -266,8 +266,8 @@ float3 SampleTexture(float2 TexCoord, int Mode)
 
 float Magnitude(float3 X, float3 Y)
 {
-    X = (_Normalize_Output) ?  X * rsqrt(dot(X, X) + _Normalize_Weight) : X;
-    Y = (_Normalize_Output) ?  Y * rsqrt(dot(Y, Y) + _Normalize_Weight) : Y;
+    X = (_NormalizeOutput) ?  X * rsqrt(dot(X, X) + _NormalizeWeight) : X;
+    Y = (_NormalizeOutput) ?  Y * rsqrt(dot(Y, Y) + _NormalizeWeight) : Y;
     return sqrt(dot(X, X) + dot(Y, Y));
 }
 
@@ -303,7 +303,7 @@ float4 Scale_Derivative(float4 Input)
             break;
     }
 
-    Input = (_Scale_Derivatives) ? Input / ScaleWeight : Input;
+    Input = (_ScaleDerivatives) ? Input / ScaleWeight : Input;
     return Input;
 }
 
@@ -440,8 +440,8 @@ void Contour(in float4 TexCoords[3], in int Mode, out float4 OutputColor0)
     }
 
     // Thresholding
-    Gradient = Gradient * _Color_Sensitivity;
-    Gradient = saturate((Gradient - _Threshold) * _Inverse_Range);
+    Gradient = Gradient * _ColorSensitivity;
+    Gradient = saturate((Gradient - _Threshold) * _InverseRange);
 
     float3 Base = 0.0;
 
@@ -454,8 +454,8 @@ void Contour(in float4 TexCoords[3], in int Mode, out float4 OutputColor0)
         Base = tex2D(Sample_Color, TexCoords[1].xz).rgb;
     }
 
-    float3 Color_Background = lerp(Base, _Back_Color.rgb, _Back_Color.a);
-    OutputColor0 = lerp(Color_Background, _Front_Color.rgb, Gradient.a * _Front_Color.a);
+    float3 Color_Background = lerp(Base, _BackColor.rgb, _BackColor.a);
+    OutputColor0 = lerp(Color_Background, _FrontColor.rgb, Gradient.a * _FrontColor.a);
 }
 
 void Contour_Color_PS(in float4 Position : SV_POSITION, in float4 TexCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
