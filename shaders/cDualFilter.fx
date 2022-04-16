@@ -57,27 +57,27 @@
         MipFilter = LINEAR;    \
     };
 
-#define DOWNSAMPLE_VS(NAME, TEXEL_SIZE)                                                                          \
+#define DOWNSAMPLE_VS(NAME, TEXEL_SIZE)                                                                             \
     void NAME(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float4 TexCoords[4] : TEXCOORD0) \
-    {                                                                                                            \
+    {                                                                                                               \
         Downsample_VS(ID, Position, TexCoords, TEXEL_SIZE);                                                         \
     }
 
-#define UPSAMPLE_VS(NAME, TEXEL_SIZE)                                                                            \
+#define UPSAMPLE_VS(NAME, TEXEL_SIZE)                                                                               \
     void NAME(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float4 TexCoords[3] : TEXCOORD0) \
-    {                                                                                                            \
+    {                                                                                                               \
         Upsample_VS(ID, Position, TexCoords, TEXEL_SIZE);                                                           \
     }
 
-#define DOWNSAMPLE_PS(NAME, SAMPLER)                                                                                   \
+#define DOWNSAMPLE_PS(NAME, SAMPLER)                                                                                      \
     void NAME(in float4 Position : SV_POSITION, in float4 TexCoords[4] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0) \
-    {                                                                                                                  \
+    {                                                                                                                     \
         Downsample_PS(SAMPLER, TexCoords, OutputColor0);                                                                  \
     }
 
-#define UPSAMPLE_PS(NAME, SAMPLER)                                                                                     \
+#define UPSAMPLE_PS(NAME, SAMPLER)                                                                                        \
     void NAME(in float4 Position : SV_POSITION, in float4 TexCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0) \
-    {                                                                                                                  \
+    {                                                                                                                     \
         Upsample_PS(SAMPLER, TexCoords, OutputColor0);                                                                    \
     }
 
