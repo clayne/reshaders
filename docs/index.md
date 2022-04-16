@@ -1,37 +1,70 @@
-## Welcome to GitHub Pages
+## brimsonFX
 
-You can use the [editor on GitHub](https://github.com/brimson/brimsonFX/edit/master/docs/index.md) to maintain and preview the content for your website in Markdown files.
+### ...Why?
 
-Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
++ Fun
++ New developers can learn
++ Coping mechanism
 
-### Markdown
+### Goals
 
-Markdown is a lightweight and easy-to-use syntax for styling your writing. It includes conventions for
++ More mosiac shapes
++ Cascade multigrid fluid simulation
 
-```markdown
-Syntax highlighted code block
+### Shaders
 
-# Header 1
-## Header 2
-### Header 3
+> Visit [my gist](https://gist.github.com/brimson) if you want ShaderToy ports
 
-- Bulleted
-- List
+Name|Description
+----|-----------
+buggyassshaderlmao  | Shader that seems to cause problems on ReShade
+cAbberation         | Chromatic abberation using vertex shader offset
+cAutoExposure       | 2-pass automatic exposure
+cBloom              | Dual-filtering bloom
+cBlur               | Convolution using Vogel spiral sampling
+cCheckerBoard       | Customizable 2-pattern checkerboard
+cColorBlendOp       | Blend to backbuffer without copying textures
+cColorNormalization | Various color normalization algoritms
+cDefault            | Initialize graphics pipeline (useful for comparing effects)
+cDualFilter         | Pyramidal convolutions (box, Jorge Jimenez, and Kawase)
+cEdgeDetection      | Edge detection kernels (4 bilinear, 2 discrete)
+cFilmGrain          | Film grain without copying texture
+cFrameBlending      | Frame blending using the previous result
+cGaussianBlur       | HLSL implementation of RasterGrid's linear Gaussian blur
+cInterpolation      | Optical flow frame blending
+cLetterBox          | LetterBox without copying textures
+cLuminance          | Various grayscale algoritms
+cMedian             | 3x3 median filter
+cMotionBlur         | Color motion blur
+cMotionMask         | Frame masking based on temporal derivative
+cNoiseConvolution   | Convolution using rotated gradient noise sampling
+cOpticalFlow        | HLSL implementation of pyramidal Horn Schunck with visualization
+cOverlay            | Simple backbuffer overlay
+cPingPong           | Gaussian blur approximation using ping-pong box blurs
+cScale              | Buffer scaling using vertex shaders
+cShard              | Simple unmask sharpening
+cSimplexNoise       | Simple noise and noise warp shader
+cSMAA               | Minimalist version of SMAA, medium setting
+cSrcDestBlend       | Backbuffer blending
+cThreshold          | Quadratic color thresholding
+kContour            | Contour line effect
+kDatamosh           | Simulates video compression artifacts
+kMirror             | Mirroring and kaleidoscope effect
+kVignette           | Natural vignetting effect
 
-1. Numbered
-2. List
+### Coding Convention
 
-**Bold** and _Italic_ and `Code` text
+Practice | Variable
+-------- | --------
+**ALLCAPS**     | System-Value semantics, state parameters
+**ALL_CAPS**    | Preprocessor macros and parameters
+**SnakeCase**   | Discrete local and global data
+**Snake_Case**  | Namespace, structs, functions, textures, sampler, and packed data (i.e. `float4 TexCoord_Base_Water` stores 2 UVs for 2 textures, base and water)
+**_Snake_Case** | Uniform data
+Suffix `VS` and `PS` | `PixelShader` and `VertexShader`
 
-[Link](url) and ![Image](src)
-```
+### Acknowledgements
 
-For more details see [Basic writing and formatting syntax](https://docs.github.com/en/github/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax).
-
-### Jekyll Themes
-
-Your Pages site will use the layout and styles from the Jekyll theme you have selected in your [repository settings](https://github.com/brimson/brimsonFX/settings/pages). The name of this theme is saved in the Jekyll `_config.yml` configuration file.
-
-### Support or Contact
-
-Having trouble with Pages? Check out our [documentation](https://docs.github.com/categories/github-pages-basics/) or [contact support](https://support.github.com/contact) and we’ll help you sort it out.
++ MartinBFFan and Pao on Discord for reporting bugs
++ BSD for bug propaganda and helping to solve my issue
++ TheGordinho for listening ear and funnies
