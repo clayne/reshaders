@@ -62,7 +62,7 @@ Practice | Variable
 **SnakeCase**   | Discrete local and global data
 **Snake_Case**  | Namespace, structs, functions, textures, sampler, and packed data (i.e. `float4 TexCoord_Base_Water` stores 2 UVs for 2 textures, base and water)
 **_Snake_Case** | Uniform data
-Suffix `VS` and `PS` | `PixelShader` and `VertexShader`
+**Suffix `VS` and `PS`** | `PixelShader` and `VertexShader`
 
 ## Acknowledgements
 
