@@ -16,8 +16,8 @@
 
 > Visit [my gist](https://gist.github.com/brimson) if you want ShaderToy ports
 
-Name|Description
-----|-----------
+Name | Description
+-----|------------
 buggyassshaderlmao  | Shader that seems to cause problems on ReShade
 cAbberation         | Chromatic abberation using vertex shader offset
 cAutoExposure       | 2-pass automatic exposure
