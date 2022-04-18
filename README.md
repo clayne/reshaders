@@ -16,7 +16,7 @@ Shaders and More
 
 ## Shaders
 
-**Note**: Some shaders require [ReShade.fxh](/shaders/ReShade.fxh), ReShade's official helper file.
+> Some shaders require [ReShade.fxh](/shaders/ReShade.fxh), ReShade's official helper file.
 
 [Download package](https://github.com/brimson/brimsonFX/archive/refs/heads/master.zip)
 
