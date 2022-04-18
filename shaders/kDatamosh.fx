@@ -393,6 +393,33 @@ namespace Datamosh
         OpticalFlow.y = Aii.y * ((Alpha * UV.y) - (Aij * OpticalFlow.x) - Bi.y);
     }
 
+    // Math functions: https://github.com/microsoft/DirectX-Graphics-Samples/blob/master/MiniEngine/Core/Shaders/DoFMedianFilterCS.hlsl
+
+    float2 Max_3(float2 A, float2 B, float2 C)
+    {
+        return max(max(A, B), C);
+    }
+
+    float2 Min_3(float2 A, float2 B, float2 C)
+    {
+        return min(min(A, B), C);
+    }
+
+    float2 Median_3(float2 A, float2 B, float2 C)
+    {
+        return clamp(A, min(B, C), max(B, C));
+    }
+
+    float2 Median_9(float2 X0, float2 X1, float2 X2,
+                    float2 X3, float2 X4, float2 X5,
+                    float2 X6, float2 X7, float2 X8)
+    {
+        float2 A = Max_3(Min_3(X0, X1, X2), Min_3(X3, X4, X5), Min_3(X6, X7, X8));
+        float2 B = Min_3(Max_3(X0, X1, X2), Max_3(X3, X4, X5), Max_3(X6, X7, X8));
+        float2 C = Median_3(Median_3(X0, X1, X2), Median_3(X3, X4, X5), Median_3(X6, X7, X8));
+        return Median_3(A, B, C);
+    }
+
     void Gradient_Average(in float2 SampleNW,
                           in float2 SampleNE,
                           in float2 SampleSW,
@@ -421,7 +448,7 @@ namespace Datamosh
         float4 GradientUV = 0.0;
         float SqGradientUV = 0.0;
 
-        // Center smoothness gradient and average
+        // Center smoothness gradient and median
         // 0 3 6
         // 1 4 7
         // 2 5 8
@@ -429,11 +456,9 @@ namespace Datamosh
         GradientUV.zw = (SampleUV[0] + (SampleUV[3] * 2.0) + SampleUV[6]) - (SampleUV[2] + (SampleUV[5] * 2.0) + SampleUV[8]); // <IxU, IxV>
         SqGradientUV = dot(GradientUV.xzyw / 4.0, GradientUV.xzyw / 4.0) * 0.25;
         CenterGradient = rsqrt(SqGradientUV + (E * E));
-
-        CenterAverage += ((SampleUV[0] + SampleUV[6] + SampleUV[2] + SampleUV[8]) * 1.0);
-        CenterAverage += ((SampleUV[3] + SampleUV[1] + SampleUV[7] + SampleUV[5]) * 2.0);
-        CenterAverage += (SampleUV[4] * 4.0);
-        CenterAverage = CenterAverage / 16.0;
+        CenterAverage = Median_9(SampleUV[0], SampleUV[3], SampleUV[6],
+                                 SampleUV[1], SampleUV[4], SampleUV[7],
+                                 SampleUV[2], SampleUV[5], SampleUV[8]);
 
         // North-west gradient and average
         // 0 3 .
