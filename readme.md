@@ -18,8 +18,8 @@ Shaders and More
 
 [Download package](https://github.com/brimson/brimsonFX/archive/refs/heads/master.zip)
 
-Name | Description
------|------------
+Shader (click to download) | Description
+---------------------------|------------
 [buggyassshaderlmao](/shaders/buggyassshaderlmao.fx)    | Shader that seems to cause problems on ReShade
 [cAbberation](/shaders/cAbberation.fx)                  | Chromatic abberation using vertex shader offset
 [cAutoExposure](/shaders/cAutoExposure.fx)              | 2-pass automatic exposure
