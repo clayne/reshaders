@@ -517,7 +517,6 @@ namespace cInterpolation
     void Level_1_PS(in float4 Position : SV_POSITION, in float4 TexCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
         Optical_Flow_TV(Shared_Resources::Sample_Common_2, TexCoords, 0.5, OutputColor0.rg);
-        OutputColor0.y *= -1.0;
         OutputColor0.ba = float2(0.0, 1.0);
     }
 
