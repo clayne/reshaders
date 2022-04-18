@@ -1,5 +1,7 @@
 
-# Shaders and More
+# brimsonFX
+
+Shaders and More
 
 ## ...Why?
 
@@ -14,44 +16,44 @@
 
 ## Shaders
 
-> Visit [my gist](https://gist.github.com/brimson) if you want ShaderToy ports
+[Download package](https://github.com/brimson/brimsonFX/archive/refs/heads/master.zip)
 
 Name | Description
 -----|------------
-buggyassshaderlmao  | Shader that seems to cause problems on ReShade
-cAbberation         | Chromatic abberation using vertex shader offset
-cAutoExposure       | 2-pass automatic exposure
-cBloom              | Dual-filtering bloom
-cBlur               | Convolution using Vogel spiral sampling
-cCheckerBoard       | Customizable 2-pattern checkerboard
-cColorBlendOp       | Blend to backbuffer without copying textures
-cColorNormalization | Various color normalization algoritms
-cDefault            | Initialize graphics pipeline (useful for comparing effects)
-cDualFilter         | Pyramidal convolutions (box, Jorge Jimenez, and Kawase)
-cEdgeDetection      | Edge detection kernels (4 bilinear, 2 discrete)
-cFilmGrain          | Film grain without copying texture
-cFrameBlending      | Frame blending using the previous result
-cGaussianBlur       | HLSL implementation of RasterGrid's linear Gaussian blur
-cInterpolation      | Optical flow frame blending
-cLetterBox          | LetterBox without copying textures
-cLuminance          | Various grayscale algoritms
-cMedian             | 3x3 median filter
-cMotionBlur         | Color motion blur
-cMotionMask         | Frame masking based on temporal derivative
-cNoiseConvolution   | Convolution using rotated gradient noise sampling
-cOpticalFlow        | HLSL implementation of pyramidal Horn Schunck with visualization
-cOverlay            | Simple backbuffer overlay
-cPingPong           | Gaussian blur approximation using ping-pong box blurs
-cScale              | Buffer scaling using vertex shaders
-cShard              | Simple unmask sharpening
-cSimplexNoise       | Simple noise and noise warp shader
-cSMAA               | Minimalist version of SMAA, medium setting
-cSrcDestBlend       | Backbuffer blending
-cThreshold          | Quadratic color thresholding
-kContour            | Contour line effect
-kDatamosh           | Simulates video compression artifacts
-kMirror             | Mirroring and kaleidoscope effect
-kVignette           | Natural vignetting effect
+[buggyassshaderlmao](/shaders/buggyassshaderlmao.fx)    | Shader that seems to cause problems on ReShade
+[cAbberation](/shaders/cAbberation.fx)                  | Chromatic abberation using vertex shader offset
+[cAutoExposure](/shaders/cAutoExposure.fx)              | 2-pass automatic exposure
+[cBloom](/shaders/cBloom.fx)                            | Dual-filtering bloom
+[cBlur](/shaders/cBlur.fx)                              | Convolution using Vogel spiral sampling
+[cCheckerBoard](/shaders/cCheckerBoard.fx)              | Customizable 2-pattern checkerboard
+[cColorBlendOp](/shaders/cColorBlendOp.fx)              | Blend to backbuffer without copying textures
+[cColorNormalization](/shaders/cColorNormalization.fx)  | Various color normalization algoritms
+[cDefault](/shaders/cDefault.fx)                        | Initialize graphics pipeline (useful for comparing effects)
+[cDualFilter](/shaders/cDualFilter.fx)                  | Pyramidal convolutions (box, Jorge Jimenez, and Kawase)
+[cEdgeDetection](/shaders/cEdgeDetection.fx)            | Edge detection kernels (4 bilinear, 2 discrete)
+[cFilmGrain](/shaders/cFilmGrain.fx)                    | Film grain without copying texture
+[cFrameBlending](/shaders/cFrameBlending.fx)            | Frame blending using the previous result
+[cGaussianBlur](/shaders/cGaussianBlur.fx)              | HLSL implementation of RasterGrid's linear Gaussian blur
+[cInterpolation](/shaders/cInterpolation.fx)            | Optical flow frame blending
+[cLetterBox](/shaders/cLetterBox.fx)                    | LetterBox without copying textures
+[cLuminance](/shaders/cLuminance.fx)                    | Various grayscale algoritms
+[cMedian](/shaders/cMedian.fx)                          | 3x3 median filter
+[cMotionBlur](/shaders/cMotionBlur.fx)                  | Color motion blur
+[cMotionMask](/shaders/cMotionMask.fx)                  | Frame masking based on temporal derivative
+[cNoiseConvolution](/shaders/cNoiseConvolution.fx)      | Convolution using rotated gradient noise sampling
+[cOpticalFlow](/shaders/cOpticalFlow.fx)                | HLSL implementation of pyramidal Horn Schunck with visualization
+[cOverlay](/shaders/cOverlay.fx)                        | Simple backbuffer overlay
+[cPingPong](/shaders/cPingPong.fx)                      | Gaussian blur approximation using ping-pong box blurs
+[cScale](/shaders/cScale.fx)                            | Buffer scaling using vertex shaders
+[cShard](/shaders/cShard.fx)                            | Simple unmask sharpening
+[cSimplexNoise](/shaders/cSimplexNoise.fx)              | Simple noise and noise warp shader
+[cSMAA](/shaders/cSMAA.fx)                              | Minimalist version of SMAA, medium setting
+[cSrcDestBlend](/shaders/cSrcDestBlend.fx)              | Backbuffer blending
+[cThreshold](/shaders/cThreshold.fx)                    | Quadratic color thresholding
+[kContour](/shaders/kContour.fx)                        | Contour line effect
+[kDatamosh](/shaders/kDatamosh.fx)                      | Simulates video compression artifacts
+[kMirror](/shaders/kMirror.fx)                          | Mirroring and kaleidoscope effect
+[kVignette](/shaders/kVignette.fx)                      | Natural vignetting effect
 
 ## Coding Convention
 
