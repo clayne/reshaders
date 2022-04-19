@@ -93,13 +93,13 @@ namespace Shared_Resources_Datamosh
 
     // Estimation levels
 
-    TEXTURE(Render_Common_2, BUFFER_SIZE_2, RG16F, 1)
+    TEXTURE(Render_Common_2, BUFFER_SIZE_2, RGBA16F, 1)
     SAMPLER(Sample_Common_2, Render_Common_2)
 
-    TEXTURE(Render_Common_3, BUFFER_SIZE_3, RG16F, 1)
+    TEXTURE(Render_Common_3, BUFFER_SIZE_3, RGBA16F, 1)
     SAMPLER(Sample_Common_3, Render_Common_3)
 
-    TEXTURE(Render_Common_4, BUFFER_SIZE_4, RG16F, 1)
+    TEXTURE(Render_Common_4, BUFFER_SIZE_4, RGBA16F, 1)
     SAMPLER(Sample_Common_4, Render_Common_4)
 }
 
@@ -340,22 +340,23 @@ namespace Datamosh
         // -2 -2 0 +2 +2
         // -1 -2 0 +2 +1
         //    -1 0 +1
-        OutputColor0.xy = ((B2 + A1 + B0 + C1) - (B1 + A0 + A2 + C0)) / 12.0;
+        float2 Ix = ((B2 + A1 + B0 + C1) - (B1 + A0 + A2 + C0)) / 12.0;
 
         //    +1 +2 +1
         // +1 +2 +2 +2 +1
         //  0  0  0  0  0
         // -1 -2 -2 -2 -1
         //    -1 -2 -1
-        OutputColor0.zw = ((A0 + B1 + B2 + A1) - (A2 + C0 + C1 + B0)) / 12.0;
-        OutputColor0.xz *= rsqrt(dot(OutputColor0.xz, OutputColor0.xz) + 1.0);
-        OutputColor0.yw *= rsqrt(dot(OutputColor0.yw, OutputColor0.yw) + 1.0);
+        float2 Iy = ((A0 + B1 + B2 + A1) - (A2 + C0 + C1 + B0)) / 12.0;
+
+        OutputColor0.xz = Ix;
+        OutputColor0.yw = Iy;
     }
 
     #define MaxLevel 7
     #define E 1e-4
 
-    void Coarse_Optical_Flow_TV(in float2 TexCoord, in float Level, in float2 UV, out float2 OpticalFlow)
+    void Coarse_Optical_Flow_TV(in float2 TexCoord, in float Level, in float4 UV, out float4 OpticalFlow)
     {
         OpticalFlow = 0.0;
         const float Alpha = max(ldexp(_Constraint * 1e-4, Level - MaxLevel), 1e-7);
@@ -371,61 +372,22 @@ namespace Datamosh
         float2 TD = Current - Previous;
 
         // Calculate constancy term
-        float C = 0.0;
-        float2 Aii = 0.0;
-        float Aij = 0.0;
-        float2 Bi = 0.0;
+        float2 C = 0.0;
+        float4 Aii = 0.0;
+        float2 Aij = 0.0;
+        float4 Bi = 0.0;
 
         // Calculate forward motion vectors
+        C = rsqrt(TD.rg * TD.rg + (E * E));
+        Aii = 1.0 / (C.rrgg * (SD.xyzw * SD.xyzw) + Alpha);
+        Aij = C.rg * (SD.xz * SD.yw);
+        Bi = C.rrgg * (SD.xyzw * TD.rrgg);
 
-        C = dot(TD, 1.0);
-        C = rsqrt(C * C + (E * E));
-
-        Aii.x = 1.0 / (C * dot(SD.xy, SD.xy) + Alpha);
-        Aii.y = 1.0 / (C * dot(SD.zw, SD.zw) + Alpha);
-
-        Aij = C * dot(SD.xy, SD.zw);
-
-        Bi.x = C * dot(SD.xy, TD);
-        Bi.y = C * dot(SD.zw, TD);
-
-        OpticalFlow.x = Aii.x * ((Alpha * UV.x) - (Aij * UV.y) - Bi.x);
-        OpticalFlow.y = Aii.y * ((Alpha * UV.y) - (Aij * OpticalFlow.x) - Bi.y);
+        OpticalFlow.xz = Aii.xz * ((Alpha * UV.xz) - (Aij.rg * UV.yw) - Bi.xz);
+        OpticalFlow.yw = Aii.yw * ((Alpha * UV.yw) - (Aij.rg * OpticalFlow.xz) - Bi.yw);
     }
 
-    // Math functions: https://github.com/microsoft/DirectX-Graphics-Samples/blob/master/MiniEngine/Core/Shaders/DoFMedianFilterCS.hlsl
-
-    float2 Max_3(float2 A, float2 B, float2 C)
-    {
-        return max(max(A, B), C);
-    }
-
-    float2 Min_3(float2 A, float2 B, float2 C)
-    {
-        return min(min(A, B), C);
-    }
-
-    float2 Median_3(float2 A, float2 B, float2 C)
-    {
-        return clamp(A, min(B, C), max(B, C));
-    }
-
-    float2 Median_9(float2 X0, float2 X1, float2 X2,
-                    float2 X3, float2 X4, float2 X5,
-                    float2 X6, float2 X7, float2 X8)
-    {
-        float2 A = Max_3(Min_3(X0, X1, X2), Min_3(X3, X4, X5), Min_3(X6, X7, X8));
-        float2 B = Min_3(Max_3(X0, X1, X2), Max_3(X3, X4, X5), Max_3(X6, X7, X8));
-        float2 C = Median_3(Median_3(X0, X1, X2), Median_3(X3, X4, X5), Median_3(X6, X7, X8));
-        return Median_3(A, B, C);
-    }
-
-    void Gradient_Average(in float2 SampleNW,
-                          in float2 SampleNE,
-                          in float2 SampleSW,
-                          in float2 SampleSE,
-                          out float Gradient,
-                          out float2 Average)
+    void Gradient(in float2 SampleNW, in float2 SampleNE, in float2 SampleSW, in float2 SampleSE, out float Gradient)
     {
         // NW NE
         // SW SE
@@ -434,61 +396,38 @@ namespace Datamosh
         SqGradientUV.zw = (SampleNW + SampleNE) - (SampleSW + SampleSE); // <IyU, IyV>
         SqGradientUV = SqGradientUV * 0.5;
         Gradient = rsqrt((dot(SqGradientUV.xzyw, SqGradientUV.xzyw) * 0.25) + (E * E));
-        Average = (SampleNW + SampleNE + SampleSW + SampleSE) * 0.25;
     }
 
-    void Process_Area(in float2 SampleUV[9],
-                      inout float4 UVGradient,
-                      inout float2 CenterAverage,
-                      inout float2 UVAverage)
+    void Area_Average(in float4 SampleNW, in float4 SampleNE, in float4 SampleSW, in float4 SampleSE, out float4 Color)
     {
-        float CenterGradient = 0.0;
-        float4 AreaGradient = 0.0;
-        float2 AreaAverage[4];
-        float4 GradientUV = 0.0;
-        float SqGradientUV = 0.0;
+        Color = (SampleNW + SampleNE + SampleSW + SampleSE) * 0.25;
+    }
 
+    void Process_Gradients(in float2 SampleUV[9], inout float4 AreaGrad, inout float4 UVGradient)
+    {
         // Center smoothness gradient and median
         // 0 3 6
         // 1 4 7
         // 2 5 8
+        float4 GradientUV = 0.0;
         GradientUV.xy = (SampleUV[0] + (SampleUV[1] * 2.0) + SampleUV[2]) - (SampleUV[6] + (SampleUV[7] * 2.0) + SampleUV[8]); // <IxU, IxV>
         GradientUV.zw = (SampleUV[0] + (SampleUV[3] * 2.0) + SampleUV[6]) - (SampleUV[2] + (SampleUV[5] * 2.0) + SampleUV[8]); // <IxU, IxV>
-        SqGradientUV = dot(GradientUV.xzyw / 4.0, GradientUV.xzyw / 4.0) * 0.25;
-        CenterGradient = rsqrt(SqGradientUV + (E * E));
-        CenterAverage = Median_9(SampleUV[0], SampleUV[3], SampleUV[6],
-                                 SampleUV[1], SampleUV[4], SampleUV[7],
-                                 SampleUV[2], SampleUV[5], SampleUV[8]);
+        float SqGradientUV = dot(GradientUV.xzyw / 4.0, GradientUV.xzyw / 4.0) * 0.25;
+        float CenterGradient = rsqrt(SqGradientUV + (E * E));
 
-        // North-west gradient and average
-        // 0 3 .
-        // 1 4 .
-        // . . .
-        Gradient_Average(SampleUV[0], SampleUV[3], SampleUV[1], SampleUV[4], AreaGradient[0], AreaAverage[0]);
-
-        // North-east gradient and average
-        // . 3 6
-        // . 4 7
-        // . . .
-        Gradient_Average(SampleUV[3], SampleUV[6], SampleUV[4], SampleUV[7], AreaGradient[1], AreaAverage[1]);
-
-        // South-west gradient and average
-        // . . .
-        // 1 4 .
-        // 2 5 .
-        Gradient_Average(SampleUV[1], SampleUV[4], SampleUV[2], SampleUV[5], AreaGradient[2], AreaAverage[2]);
-
-        // South-east and average
-        // . . .
-        // . 4 7
-        // . 5 8
-        Gradient_Average(SampleUV[4], SampleUV[7], SampleUV[5], SampleUV[8], AreaGradient[3], AreaAverage[3]);
-
-        UVGradient = 0.5 * (CenterGradient + AreaGradient);
-        UVAverage = (AreaGradient[0] * AreaAverage[0]) + (AreaGradient[1] * AreaAverage[1]) + (AreaGradient[2] * AreaAverage[2]) + (AreaGradient[3] * AreaAverage[3]);
+        // Area smoothness gradients
+        //  [0]     [1]     [2]     [3]
+        // 0 3 . | . 3 6 | . . . | . . .
+        // 1 4 . | . 4 7 | 1 4 . | . 4 7
+        // . . . | . . . | 2 5 . | . 5 8
+        Gradient(SampleUV[0], SampleUV[3], SampleUV[1], SampleUV[4], AreaGrad[0]);
+        Gradient(SampleUV[3], SampleUV[6], SampleUV[4], SampleUV[7], AreaGrad[1]);
+        Gradient(SampleUV[1], SampleUV[4], SampleUV[2], SampleUV[5], AreaGrad[2]);
+        Gradient(SampleUV[4], SampleUV[7], SampleUV[5], SampleUV[8], AreaGrad[3]);
+        UVGradient = 0.5 * (CenterGradient + AreaGrad);
     }
 
-    void Optical_Flow_TV(in sampler2D SourceUV, in float4 TexCoords[3], in float Level, out float2 OpticalFlow)
+    void Optical_Flow_TV(in sampler2D SourceUV, in float4 TexCoords[3], in float Level, out float4 OpticalFlow)
     {
         OpticalFlow = 0.0;
         const float Alpha = max(ldexp(_Constraint * 1e-4, Level - MaxLevel), 1e-7);
@@ -505,67 +444,101 @@ namespace Datamosh
 
         // Optical flow calculation
 
-        float2 SampleUV[9];
-        float4 UVGradient = 0.0;
-        float2 CenterAverage = 0.0;
-        float2 UVAverage = 0.0;
+        // <Ru, Rv, Gu, Gv>
+        float4 SampleUV[9];
+        float2 SampleUVR[9];
+        float2 SampleUVG[9];
+
+        // [0] = Red, [1] = Green
+        float4 AreaGrad[2];
+        float4 UVGradient[2];
+
+        // <Ru, Rv, Gu, Gv>
+        float4 AreaAvg[4];
+        float4 CenterAverage;
+        float4 UVAverage;
 
         // SampleUV[i]
         // 0 3 6
         // 1 4 7
         // 2 5 8
-        SampleUV[0] = tex2D(SourceUV, TexCoords[0].xy).xy;
-        SampleUV[1] = tex2D(SourceUV, TexCoords[0].xz).xy;
-        SampleUV[2] = tex2D(SourceUV, TexCoords[0].xw).xy;
-        SampleUV[3] = tex2D(SourceUV, TexCoords[1].xy).xy;
-        SampleUV[4] = tex2D(SourceUV, TexCoords[1].xz).xy;
-        SampleUV[5] = tex2D(SourceUV, TexCoords[1].xw).xy;
-        SampleUV[6] = tex2D(SourceUV, TexCoords[2].xy).xy;
-        SampleUV[7] = tex2D(SourceUV, TexCoords[2].xz).xy;
-        SampleUV[8] = tex2D(SourceUV, TexCoords[2].xw).xy;
+        SampleUV[0] = tex2D(SourceUV, TexCoords[0].xy);
+        SampleUV[1] = tex2D(SourceUV, TexCoords[0].xz);
+        SampleUV[2] = tex2D(SourceUV, TexCoords[0].xw);
+        SampleUV[3] = tex2D(SourceUV, TexCoords[1].xy);
+        SampleUV[4] = tex2D(SourceUV, TexCoords[1].xz);
+        SampleUV[5] = tex2D(SourceUV, TexCoords[1].xw);
+        SampleUV[6] = tex2D(SourceUV, TexCoords[2].xy);
+        SampleUV[7] = tex2D(SourceUV, TexCoords[2].xz);
+        SampleUV[8] = tex2D(SourceUV, TexCoords[2].xw);
 
-        Process_Area(SampleUV, UVGradient, CenterAverage, UVAverage);
+        [unroll]for(int i = 0; i < 9; i++)
+        {
+            SampleUVR[i] = SampleUV[i].xy;
+            SampleUVG[i] = SampleUV[i].zw;
+        }
 
-        float C = 0.0;
-        float2 Aii = 0.0;
-        float Aij = 0.0;
-        float2 Bi = 0.0;
+        // Process area gradients in each patch, per plane
 
-        // Calculate forward motion vectors
+        Process_Gradients(SampleUVR, AreaGrad[0], UVGradient[0]);
+        Process_Gradients(SampleUVG, AreaGrad[1], UVGradient[1]);
 
-        C = dot(SD.xyzw, CenterAverage.xyxy) + dot(TD, 1.0);
-        C = rsqrt(C * C + (E * E));
+        // Calculate area + center averages of estimated vectors
 
-        Aii.x = 1.0 / (dot(UVGradient, 1.0) * Alpha + (C * dot(SD.xy, SD.xy)));
-        Aii.y = 1.0 / (dot(UVGradient, 1.0) * Alpha + (C * dot(SD.zw, SD.zw)));
+        Area_Average(SampleUV[0], SampleUV[3], SampleUV[1], SampleUV[4], AreaAvg[0]);
+        Area_Average(SampleUV[3], SampleUV[6], SampleUV[4], SampleUV[7], AreaAvg[1]);
+        Area_Average(SampleUV[1], SampleUV[4], SampleUV[2], SampleUV[5], AreaAvg[2]);
+        Area_Average(SampleUV[4], SampleUV[7], SampleUV[5], SampleUV[8], AreaAvg[3]);
 
-        Aij = C * dot(SD.xy, SD.zw);
+        CenterAverage += ((SampleUV[0] + SampleUV[6] + SampleUV[2] + SampleUV[8]) * 1.0);
+        CenterAverage += ((SampleUV[3] + SampleUV[1] + SampleUV[7] + SampleUV[5]) * 2.0);
+        CenterAverage += (SampleUV[4] * 4.0);
+        CenterAverage = CenterAverage / 16.0;
 
-        Bi.x = C * dot(SD.xy, TD);
-        Bi.y = C * dot(SD.zw, TD);
+        // Calculate motion vectors
 
-        OpticalFlow.x = Aii.x * ((Alpha * UVAverage.x) - (Aij * CenterAverage.y) - Bi.x);
-        OpticalFlow.y = Aii.y * ((Alpha * UVAverage.y) - (Aij * OpticalFlow.x) - Bi.y);
+        float2 C = 0.0;
+        float4 Aii = 0.0;
+        float2 Aij = 0.0;
+        float4 Bi = 0.0;
+
+        C.r = dot(SD.xy, CenterAverage[0]) + TD.r;
+        C.g = dot(SD.zw, CenterAverage[1]) + TD.g;
+        C.rg = rsqrt(C.rg * C.rg + (E * E));
+
+        Aii.xy = 1.0 / (dot(UVGradient[0], 1.0) * Alpha + (C.rr * (SD.xy * SD.xy)));
+        Aii.zw = 1.0 / (dot(UVGradient[1], 1.0) * Alpha + (C.gg * (SD.zw * SD.zw)));
+
+        Aij.xy = C.rg * (SD.xz * SD.yw);
+        Bi = C.rrgg * (SD.xyzw * TD.rrgg);
+
+        UVAverage.xy = (AreaGrad[0].xx * AreaAvg[0].xy) + (AreaGrad[0].yy * AreaAvg[1].xy) + (AreaGrad[0].zz * AreaAvg[2].xy) + (AreaGrad[0].ww * AreaAvg[3].xy);
+        UVAverage.zw = (AreaGrad[1].xx * AreaAvg[0].zw) + (AreaGrad[1].yy * AreaAvg[1].zw) + (AreaGrad[1].zz * AreaAvg[2].zw) + (AreaGrad[1].ww * AreaAvg[3].zw);
+
+        OpticalFlow.xz = Aii.xz * ((Alpha * UVAverage.xz) - (Aij.rg * CenterAverage.yw) - Bi.xz);
+        OpticalFlow.yw = Aii.yw * ((Alpha * UVAverage.yw) - (Aij.rg * OpticalFlow.xz) - Bi.yw);
     }
 
-    void Level_4_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float2 Color : SV_TARGET0)
+    void Level_4_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
-        Coarse_Optical_Flow_TV(TexCoord, 6.5, 0.0, Color);
+        Coarse_Optical_Flow_TV(TexCoord, 6.5, 0.0, OutputColor0);
     }
 
-    void Level_3_PS(in float4 Position : SV_POSITION, in float4 TexCoords[3] : TEXCOORD0, out float2 Color : SV_TARGET0)
+    void Level_3_PS(in float4 Position : SV_POSITION, in float4 TexCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
-        Optical_Flow_TV(Shared_Resources_Datamosh::Sample_Common_4, TexCoords, 4.5, Color);
+        Optical_Flow_TV(Shared_Resources_Datamosh::Sample_Common_4, TexCoords, 4.5, OutputColor0);
     }
 
-    void Level_2_PS(in float4 Position : SV_POSITION, in float4 TexCoords[3] : TEXCOORD0, out float2 Color : SV_TARGET0)
+    void Level_2_PS(in float4 Position : SV_POSITION, in float4 TexCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
-        Optical_Flow_TV(Shared_Resources_Datamosh::Sample_Common_3, TexCoords, 2.5, Color);
+        Optical_Flow_TV(Shared_Resources_Datamosh::Sample_Common_3, TexCoords, 2.5, OutputColor0);
     }
 
     void Level_1_PS(in float4 Position : SV_POSITION, in float4 TexCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
-        Optical_Flow_TV(Shared_Resources_Datamosh::Sample_Common_2, TexCoords, 0.5, OutputColor0.rg);
+        float4 OpticalFlow = 0.0;
+        Optical_Flow_TV(Shared_Resources_Datamosh::Sample_Common_2, TexCoords, 0.5, OpticalFlow);
+        OutputColor0.rg = OpticalFlow.xy + OpticalFlow.zw;
         OutputColor0.ba = float2(0.0, _BlendFactor);
     }
 

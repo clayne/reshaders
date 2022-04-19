@@ -275,7 +275,7 @@ namespace Motion_Blur
 
     float2 OctWrap(float2 V)
     {
-    return (1.0 - abs(V.yx)) * (V.xy >= 0.0 ? 1.0 : -1.0);
+        return (1.0 - abs(V.yx)) * (V.xy >= 0.0 ? 1.0 : -1.0);
     }
 
     float2 Encode(float3 Normal)
