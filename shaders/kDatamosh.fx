@@ -502,8 +502,8 @@ namespace Datamosh
         float2 Aij = 0.0;
         float4 Bi = 0.0;
 
-        C.r = dot(SD.xy, CenterAverage[0]) + TD.r;
-        C.g = dot(SD.zw, CenterAverage[1]) + TD.g;
+        C.r = dot(SD.xy, CenterAverage.xy) + TD.r;
+        C.g = dot(SD.zw, CenterAverage.zw) + TD.g;
         C.rg = rsqrt(C.rg * C.rg + (E * E));
 
         Aii.xy = 1.0 / (dot(UVGradient[0], 1.0) * Alpha + (C.rr * (SD.xy * SD.xy)));
