@@ -495,7 +495,6 @@ namespace Motion_Blur
         // 0 3 6
         // 1 4 7
         // 2 5 8
-
         SampleUV[0] = tex2D(SourceUV, TexCoords[0].xy);
         SampleUV[1] = tex2D(SourceUV, TexCoords[0].xz);
         SampleUV[2] = tex2D(SourceUV, TexCoords[0].xw);
