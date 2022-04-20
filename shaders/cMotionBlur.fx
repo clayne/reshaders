@@ -440,25 +440,42 @@ namespace Motion_Blur
 
     void Process_Gradients(in float2 SampleUV[9], inout float4 AreaGrad, inout float4 UVGradient)
     {
-        // Center smoothness gradient
-        // 0.xy  | 0.zw  | 1.xy  | 1.zw
-        // .............................
-        // 0 3 6 | - 3 6 | 0 - 6 | 0 3 -
-        // - - - | 1 - 7 | 1 - 7 | 1 - 7
-        // 2 5 8 | 2 5 - | 2 - 8 | - 5 8
+        // Center smoothness gradient using compass
+        // 0.xy  | 0.zw  | 1.xy  | 1.zw  | 2.xy  | 2.zw  | 3.xy  | 3.zw
+        // .............................................................
+        // 0 3 6 | - 3 6 | 0 - 6 | 0 3 - | 0 3 6 | - 3 6 | 0 - 6 | 0 3 -
+        // - - - | 1 - 7 | 1 - 7 | 1 - 7 | - - - | 1 - 7 | 1 - 7 | 1 - 7
+        // 2 5 8 | 2 5 - | 2 - 8 | - 5 8 | 2 5 8 | 2 5 - | 2 - 8 | - 5 8
 
-        float4 GradientUV[2];
-        GradientUV[0].xy = (SampleUV[0] + SampleUV[3] + SampleUV[6]) - (SampleUV[2] + SampleUV[5] + SampleUV[8]);
-        GradientUV[0].zw = (SampleUV[3] + SampleUV[6] + SampleUV[7]) - (SampleUV[1] + SampleUV[2] + SampleUV[5]);
-        GradientUV[1].xy = (SampleUV[0] + SampleUV[1] + SampleUV[2]) - (SampleUV[6] + SampleUV[7] + SampleUV[8]);
-        GradientUV[1].zw = (SampleUV[0] + SampleUV[3] + SampleUV[1]) - (SampleUV[7] + SampleUV[5] + SampleUV[8]);
-        GradientUV[0] = GradientUV[0] / 3.0;
-        GradientUV[1] = GradientUV[1] / 3.0;
+        float4 PrewittUV[4];
+        PrewittUV[0].xy = (SampleUV[0] + SampleUV[3] + SampleUV[6]) - (SampleUV[2] + SampleUV[5] + SampleUV[8]);
+        PrewittUV[0].zw = (SampleUV[3] + SampleUV[6] + SampleUV[7]) - (SampleUV[1] + SampleUV[2] + SampleUV[5]);
+        PrewittUV[1].xy = (SampleUV[0] + SampleUV[1] + SampleUV[2]) - (SampleUV[6] + SampleUV[7] + SampleUV[8]);
+        PrewittUV[1].zw = (SampleUV[0] + SampleUV[3] + SampleUV[1]) - (SampleUV[7] + SampleUV[5] + SampleUV[8]);
+        PrewittUV[2].xy = (SampleUV[2] + SampleUV[5] + SampleUV[8]) - (SampleUV[0] + SampleUV[3] + SampleUV[6]);
+        PrewittUV[2].zw = (SampleUV[1] + SampleUV[2] + SampleUV[5]) - (SampleUV[3] + SampleUV[6] + SampleUV[7]);
+        PrewittUV[3].xy = (SampleUV[6] + SampleUV[7] + SampleUV[8]) - (SampleUV[0] + SampleUV[1] + SampleUV[2]);
+        PrewittUV[3].zw = (SampleUV[7] + SampleUV[5] + SampleUV[8]) - (SampleUV[0] + SampleUV[3] + SampleUV[1]);
 
-        float2 SqGradientUV = 0.0;
-        SqGradientUV.x = dot(GradientUV[0], GradientUV[0]) * 0.25;
-        SqGradientUV.y = dot(GradientUV[1], GradientUV[1]) * 0.25;
-        float CenterGradient = rsqrt(dot(SqGradientUV, 0.5) + (E * E));
+        PrewittUV[0] = PrewittUV[0] / 3.0;
+        PrewittUV[1] = PrewittUV[1] / 3.0;
+        PrewittUV[2] = PrewittUV[2] / 3.0;
+        PrewittUV[3] = PrewittUV[3] / 3.0;
+
+        float SqGradientUV[8];
+        SqGradientUV[0] = sqrt((dot(PrewittUV[0].xy, PrewittUV[0].xy)) * 0.25 + (E * E));
+        SqGradientUV[1] = sqrt((dot(PrewittUV[0].zw, PrewittUV[0].zw)) * 0.25 + (E * E));
+        SqGradientUV[2] = sqrt((dot(PrewittUV[1].xy, PrewittUV[1].xy)) * 0.25 + (E * E));
+        SqGradientUV[3] = sqrt((dot(PrewittUV[1].zw, PrewittUV[1].zw)) * 0.25 + (E * E));
+		SqGradientUV[4] = sqrt((dot(PrewittUV[2].xy, PrewittUV[2].xy)) * 0.25 + (E * E));
+        SqGradientUV[5] = sqrt((dot(PrewittUV[2].zw, PrewittUV[2].zw)) * 0.25 + (E * E));
+        SqGradientUV[6] = sqrt((dot(PrewittUV[3].xy, PrewittUV[3].xy)) * 0.25 + (E * E));
+        SqGradientUV[7] = sqrt((dot(PrewittUV[3].zw, PrewittUV[3].zw)) * 0.25 + (E * E));
+        
+        float MaxGradient[2];
+        MaxGradient[0] = max(max(SqGradientUV[0], SqGradientUV[1]), max(SqGradientUV[2], SqGradientUV[3]));
+        MaxGradient[1] = max(max(SqGradientUV[4], SqGradientUV[5]), max(SqGradientUV[6], SqGradientUV[7]));
+        float CenterGradient = 1.0 / max(MaxGradient[0], MaxGradient[1]);
 
         // Area smoothness gradients
         // .............................
