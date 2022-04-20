@@ -123,8 +123,8 @@ namespace Motion_Blur
 {
     // Shader properties
 
-    OPTION(float, _Constraint, "slider", "Optical flow", "Motion threshold", 0.0, 1.0, 0.5)
-    OPTION(float, _Smoothness, "slider", "Optical flow", "Motion smoothness", 0.0, 1.0, 0.5)
+    OPTION(float, _Constraint, "slider", "Optical flow", "Motion threshold", 0.0, 2.0, 1.0)
+    OPTION(float, _Smoothness, "slider", "Optical flow", "Motion smoothness", 0.0, 2.0, 1.0)
     OPTION(float, _MipBias, "slider", "Optical flow", "Optical flow mipmap bias", 0.0, 7.0, 3.5)
     OPTION(float, _BlendFactor, "slider", "Optical flow", "Temporal blending factor", 0.0, 0.9, 0.1)
 
@@ -403,7 +403,7 @@ namespace Motion_Blur
     */
 
     #define MaxLevel 7
-    #define E 1e-4 * _Smoothness
+    #define E 1e-3 * _Smoothness
 
     void Coarse_Optical_Flow_TV(in float2 TexCoord, in float Level, in float4 UV, out float4 OpticalFlow)
     {
@@ -457,33 +457,30 @@ namespace Motion_Blur
         // Center smoothness gradient using compass
         // 0.xy  | 0.zw  | 1.xy  | 1.zw  | 2.xy  | 2.zw  | 3.xy  | 3.zw
         // .............................................................
-        // 0 3 6 | 0 - 6 | - 3 6 | 0 3 - | 0 3 6 | 0 - 6 | - 3 6 | 0 3 - |
-        // - - - | 1 - 7 | 1 - 7 | 1 - 7 | - - - | 1 - 7 | 1 - 7 | 1 - 7 |
-        // 2 5 8 | 2 - 8 | 2 5 - | - 5 8 | 2 5 8 | 2 - 8 | 2 5 - | - 5 8 |
+        // 0 3 6 | - 3 6 | 0 - 6 | 0 3 - | 0 3 6 | - 3 6 | 0 - 6 | 0 3 -
+        // - - - | 1 - 7 | 1 - 7 | 1 - 7 | - - - | 1 - 7 | 1 - 7 | 1 - 7
+        // 2 5 8 | 2 5 - | 2 - 8 | - 5 8 | 2 5 8 | 2 5 - | 2 - 8 | - 5 8
 
         float4 PrewittUV[4];
         PrewittUV[0].xy = (SampleUV[0] + SampleUV[3] + SampleUV[6]) - (SampleUV[2] + SampleUV[5] + SampleUV[8]);
-        PrewittUV[0].zw = (SampleUV[6] + SampleUV[7] + SampleUV[8]) - (SampleUV[0] + SampleUV[1] + SampleUV[2]);
-        PrewittUV[1].xy = (SampleUV[3] + SampleUV[6] + SampleUV[7]) - (SampleUV[1] + SampleUV[2] + SampleUV[5]);
+        PrewittUV[0].zw = (SampleUV[3] + SampleUV[6] + SampleUV[7]) - (SampleUV[1] + SampleUV[2] + SampleUV[5]);
+        PrewittUV[1].xy = (SampleUV[0] + SampleUV[1] + SampleUV[2]) - (SampleUV[6] + SampleUV[7] + SampleUV[8]);
         PrewittUV[1].zw = (SampleUV[0] + SampleUV[3] + SampleUV[1]) - (SampleUV[7] + SampleUV[5] + SampleUV[8]);
         PrewittUV[2].xy = (SampleUV[2] + SampleUV[5] + SampleUV[8]) - (SampleUV[0] + SampleUV[3] + SampleUV[6]);
-        PrewittUV[2].zw = (SampleUV[0] + SampleUV[1] + SampleUV[2]) - (SampleUV[6] + SampleUV[7] + SampleUV[8]);
-        PrewittUV[3].xy = (SampleUV[1] + SampleUV[2] + SampleUV[5]) - (SampleUV[3] + SampleUV[6] + SampleUV[7]);
+        PrewittUV[2].zw = (SampleUV[1] + SampleUV[2] + SampleUV[5]) - (SampleUV[3] + SampleUV[6] + SampleUV[7]);
+        PrewittUV[3].xy = (SampleUV[6] + SampleUV[7] + SampleUV[8]) - (SampleUV[0] + SampleUV[1] + SampleUV[2]);
         PrewittUV[3].zw = (SampleUV[7] + SampleUV[5] + SampleUV[8]) - (SampleUV[0] + SampleUV[3] + SampleUV[1]);
 
         PrewittUV[0] = PrewittUV[0] / 3.0;
         PrewittUV[1] = PrewittUV[1] / 3.0;
         PrewittUV[2] = PrewittUV[2] / 3.0;
         PrewittUV[3] = PrewittUV[3] / 3.0;
-
-        float SqGradientUV[4];
-        SqGradientUV[0] = sqrt((dot(PrewittUV[0], PrewittUV[0]) * 0.25) + (E * E));
-        SqGradientUV[1] = sqrt((dot(PrewittUV[1], PrewittUV[1]) * 0.25) + (E * E));
-        SqGradientUV[2] = sqrt((dot(PrewittUV[2], PrewittUV[2]) * 0.25) + (E * E));
-        SqGradientUV[3] = sqrt((dot(PrewittUV[3], PrewittUV[3]) * 0.25) + (E * E));
-
-        float MaxGradient = max(max(SqGradientUV[0], SqGradientUV[1]), max(SqGradientUV[2], SqGradientUV[3]));
-        float CenterGradient = 1.0 / MaxGradient;
+        
+        float2 MaxGradient[3];
+        MaxGradient[0] = max(max(PrewittUV[0].xy, PrewittUV[0].zw), max(PrewittUV[1].xy, PrewittUV[1].zw));
+        MaxGradient[1] = max(max(PrewittUV[2].xy, PrewittUV[2].zw), max(PrewittUV[3].xy, PrewittUV[3].zw));
+        MaxGradient[2] = max(MaxGradient[0], MaxGradient[1]);
+        float CenterGradient = 1.0 / sqrt(dot(MaxGradient[2], MaxGradient[2]) + (E * E));
 
         // Area smoothness gradients
         // .............................
