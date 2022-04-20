@@ -388,6 +388,20 @@ namespace Motion_Blur
         OutputColor0.zw = OutputColor0.zw * rsqrt(dot(OutputColor0.zw, OutputColor0.zw) + 1.0);
     }
 
+    /*
+        https://github.com/Dtananaev/cv_opticalFlow
+
+        Copyright (c) 2014-2015, Denis Tananaev All rights reserved.
+        
+        Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+        
+        Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+        
+        Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+        
+        THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+    */
+
     #define MaxLevel 7
     #define E 1e-4 * _Smoothness
 
@@ -426,11 +440,11 @@ namespace Motion_Blur
     {
         // NW NE
         // SW SE
-        float4 SqGradientUV = 0.0;
-        SqGradientUV.xy = (SampleNW + SampleSW) - (SampleNE + SampleSE); // <IxU, IxV>
-        SqGradientUV.zw = (SampleNW + SampleNE) - (SampleSW + SampleSE); // <IyU, IyV>
-        SqGradientUV = SqGradientUV * 0.5;
-        Gradient = rsqrt((dot(SqGradientUV, SqGradientUV) * 0.25) + (E * E));
+        float4 SqGradientUV[2];
+        SqGradientUV[0].xy = (SampleNW + SampleSW) - (SampleNE + SampleSE); // <IxU, IxV>
+        SqGradientUV[0].zw = (SampleNW + SampleNE) - (SampleSW + SampleSE); // <IyU, IyV>
+        SqGradientUV[0] = SqGradientUV[0] * 0.5;
+        Gradient = rsqrt((dot(SqGradientUV[0], SqGradientUV[0]) * 0.25) + (E * E));
     }
 
     void Area_Average(in float4 SampleNW, in float4 SampleNE, in float4 SampleSW, in float4 SampleSE, out float4 Color)
@@ -443,18 +457,18 @@ namespace Motion_Blur
         // Center smoothness gradient using compass
         // 0.xy  | 0.zw  | 1.xy  | 1.zw  | 2.xy  | 2.zw  | 3.xy  | 3.zw
         // .............................................................
-        // 0 3 6 | - 3 6 | 0 - 6 | 0 3 - | 0 3 6 | - 3 6 | 0 - 6 | 0 3 -
-        // - - - | 1 - 7 | 1 - 7 | 1 - 7 | - - - | 1 - 7 | 1 - 7 | 1 - 7
-        // 2 5 8 | 2 5 - | 2 - 8 | - 5 8 | 2 5 8 | 2 5 - | 2 - 8 | - 5 8
+        // 0 3 6 | 0 - 6 | - 3 6 | 0 3 - | 0 3 6 | 0 - 6 | - 3 6 | 0 3 - |
+        // - - - | 1 - 7 | 1 - 7 | 1 - 7 | - - - | 1 - 7 | 1 - 7 | 1 - 7 |
+        // 2 5 8 | 2 - 8 | 2 5 - | - 5 8 | 2 5 8 | 2 - 8 | 2 5 - | - 5 8 |
 
         float4 PrewittUV[4];
         PrewittUV[0].xy = (SampleUV[0] + SampleUV[3] + SampleUV[6]) - (SampleUV[2] + SampleUV[5] + SampleUV[8]);
-        PrewittUV[0].zw = (SampleUV[3] + SampleUV[6] + SampleUV[7]) - (SampleUV[1] + SampleUV[2] + SampleUV[5]);
-        PrewittUV[1].xy = (SampleUV[0] + SampleUV[1] + SampleUV[2]) - (SampleUV[6] + SampleUV[7] + SampleUV[8]);
+        PrewittUV[0].zw = (SampleUV[6] + SampleUV[7] + SampleUV[8]) - (SampleUV[0] + SampleUV[1] + SampleUV[2]);
+        PrewittUV[1].xy = (SampleUV[3] + SampleUV[6] + SampleUV[7]) - (SampleUV[1] + SampleUV[2] + SampleUV[5]);
         PrewittUV[1].zw = (SampleUV[0] + SampleUV[3] + SampleUV[1]) - (SampleUV[7] + SampleUV[5] + SampleUV[8]);
         PrewittUV[2].xy = (SampleUV[2] + SampleUV[5] + SampleUV[8]) - (SampleUV[0] + SampleUV[3] + SampleUV[6]);
-        PrewittUV[2].zw = (SampleUV[1] + SampleUV[2] + SampleUV[5]) - (SampleUV[3] + SampleUV[6] + SampleUV[7]);
-        PrewittUV[3].xy = (SampleUV[6] + SampleUV[7] + SampleUV[8]) - (SampleUV[0] + SampleUV[1] + SampleUV[2]);
+        PrewittUV[2].zw = (SampleUV[0] + SampleUV[1] + SampleUV[2]) - (SampleUV[6] + SampleUV[7] + SampleUV[8]);
+        PrewittUV[3].xy = (SampleUV[1] + SampleUV[2] + SampleUV[5]) - (SampleUV[3] + SampleUV[6] + SampleUV[7]);
         PrewittUV[3].zw = (SampleUV[7] + SampleUV[5] + SampleUV[8]) - (SampleUV[0] + SampleUV[3] + SampleUV[1]);
 
         PrewittUV[0] = PrewittUV[0] / 3.0;
@@ -462,20 +476,14 @@ namespace Motion_Blur
         PrewittUV[2] = PrewittUV[2] / 3.0;
         PrewittUV[3] = PrewittUV[3] / 3.0;
 
-        float SqGradientUV[8];
-        SqGradientUV[0] = sqrt((dot(PrewittUV[0].xy, PrewittUV[0].xy) * 0.25) + (E * E));
-        SqGradientUV[1] = sqrt((dot(PrewittUV[0].zw, PrewittUV[0].zw) * 0.25) + (E * E));
-        SqGradientUV[2] = sqrt((dot(PrewittUV[1].xy, PrewittUV[1].xy) * 0.25) + (E * E));
-        SqGradientUV[3] = sqrt((dot(PrewittUV[1].zw, PrewittUV[1].zw) * 0.25) + (E * E));
-        SqGradientUV[4] = sqrt((dot(PrewittUV[2].xy, PrewittUV[2].xy) * 0.25) + (E * E));
-        SqGradientUV[5] = sqrt((dot(PrewittUV[2].zw, PrewittUV[2].zw) * 0.25) + (E * E));
-        SqGradientUV[6] = sqrt((dot(PrewittUV[3].xy, PrewittUV[3].xy) * 0.25) + (E * E));
-        SqGradientUV[7] = sqrt((dot(PrewittUV[3].zw, PrewittUV[3].zw) * 0.25) + (E * E));
-        
-        float MaxGradient[2];
-        MaxGradient[0] = max(max(SqGradientUV[0], SqGradientUV[1]), max(SqGradientUV[2], SqGradientUV[3]));
-        MaxGradient[1] = max(max(SqGradientUV[4], SqGradientUV[5]), max(SqGradientUV[6], SqGradientUV[7]));
-        float CenterGradient = 1.0 / max(MaxGradient[0], MaxGradient[1]);
+        float SqGradientUV[4];
+        SqGradientUV[0] = sqrt((dot(PrewittUV[0], PrewittUV[0]) * 0.25) + (E * E));
+        SqGradientUV[1] = sqrt((dot(PrewittUV[1], PrewittUV[1]) * 0.25) + (E * E));
+        SqGradientUV[2] = sqrt((dot(PrewittUV[2], PrewittUV[2]) * 0.25) + (E * E));
+        SqGradientUV[3] = sqrt((dot(PrewittUV[3], PrewittUV[3]) * 0.25) + (E * E));
+
+        float MaxGradient = max(max(SqGradientUV[0], SqGradientUV[1]), max(SqGradientUV[2], SqGradientUV[3]));
+        float CenterGradient = 1.0 / MaxGradient;
 
         // Area smoothness gradients
         // .............................
