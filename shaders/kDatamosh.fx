@@ -398,7 +398,7 @@ namespace Datamosh
         SqGradientUV.xy = (SampleNW + SampleSW) - (SampleNE + SampleSE); // <IxU, IxV>
         SqGradientUV.zw = (SampleNW + SampleNE) - (SampleSW + SampleSE); // <IyU, IyV>
         SqGradientUV = SqGradientUV * 0.5;
-        Gradient = rsqrt((dot(SqGradientUV.xzyw, SqGradientUV.xzyw) * 0.25) + (E * E));
+        Gradient = rsqrt((dot(SqGradientUV, SqGradientUV) * 0.25) + (E * E));
     }
 
     void Area_Average(in float4 SampleNW, in float4 SampleNE, in float4 SampleSW, in float4 SampleSE, out float4 Color)
@@ -408,17 +408,28 @@ namespace Datamosh
 
     void Process_Gradients(in float2 SampleUV[9], inout float4 AreaGrad, inout float4 UVGradient)
     {
-        // Center smoothness gradient and median
-        // 0 3 6
-        // 1 4 7
-        // 2 5 8
-        float4 GradientUV = 0.0;
-        GradientUV.xy = (SampleUV[0] + (SampleUV[1] * 2.0) + SampleUV[2]) - (SampleUV[6] + (SampleUV[7] * 2.0) + SampleUV[8]); // <IxU, IxV>
-        GradientUV.zw = (SampleUV[0] + (SampleUV[3] * 2.0) + SampleUV[6]) - (SampleUV[2] + (SampleUV[5] * 2.0) + SampleUV[8]); // <IxU, IxV>
-        float SqGradientUV = dot(GradientUV.xzyw / 4.0, GradientUV.xzyw / 4.0) * 0.25;
-        float CenterGradient = rsqrt(SqGradientUV + (E * E));
+        // Center smoothness gradient
+        // 0.xy  | 0.zw  | 1.xy  | 1.zw
+        // .............................
+        // 0 3 6 | - 3 6 | 0 - 6 | 0 3 -
+        // - - - | 1 - 7 | 1 - 7 | 1 - 7
+        // 2 5 8 | 2 5 - | 2 - 8 | - 5 8
+
+        float4 GradientUV[2];
+        GradientUV[0].xy = (SampleUV[0] + SampleUV[3] + SampleUV[6]) - (SampleUV[2] + SampleUV[5] + SampleUV[8]);
+        GradientUV[0].zw = (SampleUV[3] + SampleUV[6] + SampleUV[7]) - (SampleUV[1] + SampleUV[2] + SampleUV[5]);
+        GradientUV[1].xy = (SampleUV[0] + SampleUV[1] + SampleUV[2]) - (SampleUV[6] + SampleUV[7] + SampleUV[8]);
+        GradientUV[1].zw = (SampleUV[0] + SampleUV[3] + SampleUV[1]) - (SampleUV[7] + SampleUV[5] + SampleUV[8]);
+        GradientUV[0] = GradientUV[0] / 3.0;
+        GradientUV[1] = GradientUV[1] / 3.0;
+
+        float2 SqGradientUV = 0.0;
+        SqGradientUV.x = dot(GradientUV[0], GradientUV[0]) * 0.25;
+        SqGradientUV.y = dot(GradientUV[1], GradientUV[1]) * 0.25;
+        float CenterGradient = rsqrt(dot(SqGradientUV, 0.5) + (E * E));
 
         // Area smoothness gradients
+        // .............................
         //  [0]     [1]     [2]     [3]
         // 0 3 . | . 3 6 | . . . | . . .
         // 1 4 . | . 4 7 | 1 4 . | . 4 7
