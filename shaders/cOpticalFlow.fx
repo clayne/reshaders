@@ -106,6 +106,7 @@ namespace Shared_Resources_Flow
 namespace OpticalFlow
 {
     // Shader properties
+
     OPTION(float, _Constraint, "slider", "Optical flow", "Motion threshold", 0.0, 1.0, 0.5)
     OPTION(float, _Smoothness, "slider", "Optical flow", "Motion smoothness", 0.0, 1.0, 0.5)
     OPTION(float, _MipBias, "drag", "Optical flow", "Optical flow mipmap bias", 0.0, 7.0, 0.0)
@@ -150,6 +151,9 @@ namespace OpticalFlow
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
+        #if BUFFER_COLOR_BIT_DEPTH == 8
+            SRGBTexture = TRUE;
+        #endif
     };
 
     TEXTURE(Render_Common_1_P, BUFFER_SIZE_1, RG16F, 8)

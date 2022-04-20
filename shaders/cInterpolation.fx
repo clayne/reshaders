@@ -110,6 +110,9 @@ namespace cInterpolation
         MagFilter = LINEAR;
         MinFilter = LINEAR;
         MipFilter = LINEAR;
+        #if BUFFER_COLOR_BIT_DEPTH == 8
+            SRGBTexture = TRUE;
+        #endif
     };
 
     // Three-point backbuffer storage for interpolation
