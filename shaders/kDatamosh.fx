@@ -431,14 +431,14 @@ namespace Datamosh
         PrewittUV[3] = PrewittUV[3] / 3.0;
 
         float SqGradientUV[8];
-        SqGradientUV[0] = sqrt((dot(PrewittUV[0].xy, PrewittUV[0].xy)) * 0.25 + (E * E));
-        SqGradientUV[1] = sqrt((dot(PrewittUV[0].zw, PrewittUV[0].zw)) * 0.25 + (E * E));
-        SqGradientUV[2] = sqrt((dot(PrewittUV[1].xy, PrewittUV[1].xy)) * 0.25 + (E * E));
-        SqGradientUV[3] = sqrt((dot(PrewittUV[1].zw, PrewittUV[1].zw)) * 0.25 + (E * E));
-		SqGradientUV[4] = sqrt((dot(PrewittUV[2].xy, PrewittUV[2].xy)) * 0.25 + (E * E));
-        SqGradientUV[5] = sqrt((dot(PrewittUV[2].zw, PrewittUV[2].zw)) * 0.25 + (E * E));
-        SqGradientUV[6] = sqrt((dot(PrewittUV[3].xy, PrewittUV[3].xy)) * 0.25 + (E * E));
-        SqGradientUV[7] = sqrt((dot(PrewittUV[3].zw, PrewittUV[3].zw)) * 0.25 + (E * E));
+        SqGradientUV[0] = sqrt((dot(PrewittUV[0].xy, PrewittUV[0].xy) * 0.25) + (E * E));
+        SqGradientUV[1] = sqrt((dot(PrewittUV[0].zw, PrewittUV[0].zw) * 0.25) + (E * E));
+        SqGradientUV[2] = sqrt((dot(PrewittUV[1].xy, PrewittUV[1].xy) * 0.25) + (E * E));
+        SqGradientUV[3] = sqrt((dot(PrewittUV[1].zw, PrewittUV[1].zw) * 0.25) + (E * E));
+        SqGradientUV[4] = sqrt((dot(PrewittUV[2].xy, PrewittUV[2].xy) * 0.25) + (E * E));
+        SqGradientUV[5] = sqrt((dot(PrewittUV[2].zw, PrewittUV[2].zw) * 0.25) + (E * E));
+        SqGradientUV[6] = sqrt((dot(PrewittUV[3].xy, PrewittUV[3].xy) * 0.25) + (E * E));
+        SqGradientUV[7] = sqrt((dot(PrewittUV[3].zw, PrewittUV[3].zw) * 0.25) + (E * E));
         
         float MaxGradient[2];
         MaxGradient[0] = max(max(SqGradientUV[0], SqGradientUV[1]), max(SqGradientUV[2], SqGradientUV[3]));
