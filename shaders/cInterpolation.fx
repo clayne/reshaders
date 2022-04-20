@@ -335,7 +335,7 @@ namespace cInterpolation
     }
 
     #define MaxLevel 7
-    #define E 1e-3 *_Smoothness
+    #define E 1e-4 *_Smoothness
 
     void Coarse_Optical_Flow_TV(in float2 TexCoord, in float Level, in float4 UV, out float4 OpticalFlow)
     {
