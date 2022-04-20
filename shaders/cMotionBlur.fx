@@ -403,7 +403,7 @@ namespace Motion_Blur
     */
 
     #define MaxLevel 7
-    #define E 1e-3 * _Smoothness
+    #define E 1e-4 * _Smoothness
 
     void Coarse_Optical_Flow_TV(in float2 TexCoord, in float Level, in float4 UV, out float4 OpticalFlow)
     {
@@ -480,7 +480,7 @@ namespace Motion_Blur
         MaxGradient[0] = max(max(PrewittUV[0].xy, PrewittUV[0].zw), max(PrewittUV[1].xy, PrewittUV[1].zw));
         MaxGradient[1] = max(max(PrewittUV[2].xy, PrewittUV[2].zw), max(PrewittUV[3].xy, PrewittUV[3].zw));
         MaxGradient[2] = max(MaxGradient[0], MaxGradient[1]);
-        float CenterGradient = 1.0 / sqrt(dot(MaxGradient[2], MaxGradient[2]) + (E * E));
+        float CenterGradient = rsqrt((dot(MaxGradient[2], MaxGradient[2]) * 0.25) + (E * E));
 
         // Area smoothness gradients
         // .............................
