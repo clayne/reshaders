@@ -59,6 +59,15 @@
         MipFilter = LINEAR;    \
     };
 
+#define OPTION(DATA_TYPE, NAME, TYPE, CATEGORY, LABEL, MINIMUM, MAXIMUM, DEFAULT) \
+    uniform DATA_TYPE NAME <                                                      \
+        ui_type = TYPE;                                                           \
+        ui_category = CATEGORY;                                                   \
+        ui_label = LABEL;                                                         \
+        ui_min = MINIMUM;                                                         \
+        ui_max = MAXIMUM;                                                         \
+    > = DEFAULT;
+
 #define PASS(VERTEX_SHADER, PIXEL_SHADER, RENDER_TARGET) \
     pass                                                 \
     {                                                    \
@@ -87,20 +96,9 @@ namespace cInterpolation
 {
     // Shader properties
 
-    uniform float _Constraint <
-        ui_type = "slider";
-        ui_category = "Optical flow";
-        ui_label = "Motion Threshold";
-        ui_min = 0.0;
-        ui_max = 2.0;
-    > = 1.0;
-
-    uniform float _MipBias  <
-        ui_type = "drag";
-        ui_category = "Optical flow";
-        ui_label = "Optical flow mipmap bias";
-        ui_min = 0.0;
-    > = 0.0;
+    OPTION(float, _Constraint, "slider", "Optical flow", "Motion threshold", 0.0, 1.0, 0.5)
+    OPTION(float, _Smoothness, "slider", "Optical flow", "Motion smoothness", 0.0, 1.0, 0.5)
+    OPTION(float, _MipBias, "drag", "Optical flow", "Optical flow mipmap bias", 0.0, 7.0, 0.0)
 
     // Consideration: Use A8 channel for difference requirement (normalize BW image)
 
@@ -329,10 +327,12 @@ namespace cInterpolation
 
         OutputColor0.xz = Ix;
         OutputColor0.yw = Iy;
+        OutputColor0.xy = OutputColor0.xy * rsqrt(dot(OutputColor0.xy, OutputColor0.xy) + 1.0);
+        OutputColor0.zw = OutputColor0.zw * rsqrt(dot(OutputColor0.zw, OutputColor0.zw) + 1.0);
     }
 
     #define MaxLevel 7
-    #define E 1e-3
+    #define E 1e-3 *_Smoothness
 
     void Coarse_Optical_Flow_TV(in float2 TexCoord, in float Level, in float4 UV, out float4 OpticalFlow)
     {

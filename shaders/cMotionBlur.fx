@@ -36,11 +36,11 @@
 #include "ReShade.fxh"
 
 #ifndef USER_BUFFER_WIDTH
-    #define USER_BUFFER_WIDTH 128
+    #define USER_BUFFER_WIDTH 256
 #endif
 
 #ifndef USER_BUFFER_HEIGHT
-    #define USER_BUFFER_HEIGHT 128
+    #define USER_BUFFER_HEIGHT 256
 #endif
 
 #if USER_BUFFER_WIDTH > (BUFFER_WIDTH >> 1)
@@ -125,7 +125,7 @@ namespace Motion_Blur
 
     OPTION(float, _Constraint, "slider", "Optical flow", "Motion threshold", 0.0, 2.0, 1.0)
     OPTION(float, _Smoothness, "slider", "Optical flow", "Motion smoothness", 0.0, 2.0, 1.0)
-    OPTION(float, _MipBias, "slider", "Optical flow", "Optical flow mipmap bias", 0.0, 7.0, 2.5)
+    OPTION(float, _MipBias, "slider", "Optical flow", "Optical flow mipmap bias", 0.0, 7.0, 3.5)
     OPTION(float, _BlendFactor, "slider", "Optical flow", "Temporal blending factor", 0.0, 0.9, 0.1)
 
     OPTION(bool, _NormalMode, "radio", "Main", "Estimate normals", 0.0, 1.0, false)
@@ -384,15 +384,17 @@ namespace Motion_Blur
 
         OutputColor0.xz = Ix;
         OutputColor0.yw = Iy;
+        OutputColor0.xy = OutputColor0.xy * rsqrt(dot(OutputColor0.xy, OutputColor0.xy) + 1.0);
+        OutputColor0.zw = OutputColor0.zw * rsqrt(dot(OutputColor0.zw, OutputColor0.zw) + 1.0);
     }
 
     #define MaxLevel 7
-    #define E 1e-3 * _Smoothness
+    #define E 2e-2 * _Smoothness
 
     void Coarse_Optical_Flow_TV(in float2 TexCoord, in float Level, in float4 UV, out float4 OpticalFlow)
     {
         OpticalFlow = 0.0;
-        const float Alpha = max(ldexp(_Constraint * 1e-3, Level - MaxLevel), 1e-7);
+        const float Alpha = max(ldexp(_Constraint * 1e-4, Level - MaxLevel), 1e-7);
 
         // Load textures
         float2 Current = tex2Dlod(Shared_Resources_Motion_Blur::Sample_Common_1_A, float4(TexCoord, 0.0, Level)).xy;
@@ -463,7 +465,7 @@ namespace Motion_Blur
     void Optical_Flow_TV(in sampler2D SourceUV, in float4 TexCoords[3], in float Level, out float4 OpticalFlow)
     {
         OpticalFlow = 0.0;
-        const float Alpha = max(ldexp(_Constraint * 1e-3, Level - MaxLevel), 1e-7);
+        const float Alpha = max(ldexp(_Constraint * 1e-4, Level - MaxLevel), 1e-7);
 
         // Load textures
         float2 Current = tex2Dlod(Shared_Resources_Motion_Blur::Sample_Common_1_A, float4(TexCoords[1].xz, 0.0, Level)).xy;
