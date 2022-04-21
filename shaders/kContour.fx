@@ -264,46 +264,20 @@ float3 SampleTexture(float2 TexCoord, int Mode)
     return Texture;
 }
 
-float Magnitude(float3 X, float3 Y)
-{
-    X = (_NormalizeOutput) ?  X * rsqrt(dot(X, X) + _NormalizeWeight) : X;
-    Y = (_NormalizeOutput) ?  Y * rsqrt(dot(Y, Y) + _NormalizeWeight) : Y;
-    return sqrt(dot(X, X) + dot(Y, Y));
-}
-
 float4 Scale_Derivative(float4 Input)
 {
-    float ScaleWeight = 0.0;
-
-    switch(_Method)
+    float ScaleWeight[7] = 
     {
-        case 0: // Fwidth
-            ScaleWeight = 1.0;
-            break;
-        case 1: // Bilinear 3x3 Laplacian
-            ScaleWeight = 1.0;
-            break;
-        case 2: // Bilinear 3x3 Sobel
-            ScaleWeight = 4.0;
-            break;
-        case 3: // Bilinear 5x5 Prewitt
-            ScaleWeight = 10.0;
-            break;
-        case 4: // Bilinear 5x5 Sobel by CeeJayDK
-            ScaleWeight = 12.0;
-            break;
-        case 5: // 3x3 Prewitt
-            ScaleWeight = 3.0;
-            break;
-        case 6: // 3x3 Scharr
-            ScaleWeight = 16.0;
-            break;
-        default:
-            ScaleWeight = 1.0;
-            break;
-    }
+        1.0, // Fwidth
+        1.0, // Bilinear 3x3 Laplacian
+        4.0, // Bilinear 3x3 Sobel
+        10.0, // Bilinear 5x5 Prewitt
+        12.0, // Bilinear 5x5 Sobel by CeeJayDK
+        3.0, // 3x3 Prewitt
+        16.0, // 3x3 Scharr
+    };
 
-    Input = (_ScaleDerivatives) ? Input / ScaleWeight : Input;
+    Input = (_ScaleDerivatives) ? Input / ScaleWeight[_Method] : Input;
     return Input;
 }
 
@@ -320,7 +294,6 @@ void Contour(in float4 TexCoords[3], in int Mode, out float4 OutputColor0)
             A0 = SampleTexture(TexCoords[0].xy, Mode);
             Ix = ddx(A0);
             Iy = ddy(A0);
-            Gradient = Magnitude(Ix.rgb, Iy.rgb);
             break;
         case 1: // Bilinear 3x3 Laplacian
             // A0    C0
@@ -331,9 +304,7 @@ void Contour(in float4 TexCoords[3], in int Mode, out float4 OutputColor0)
             B1 = SampleTexture(TexCoords[0].xy, Mode); // < 0.0,  0.0>
             A2 = SampleTexture(TexCoords[1].xy, Mode); // <-0.5, -0.5>
             C2 = SampleTexture(TexCoords[1].zy, Mode); // <+0.5, -0.5>
-
             Gradient = (A0 + C0 + A2 + C2) - (B1 * 4.0);
-            Gradient = length(Gradient) * rsqrt(3.0);
             break;
         case 2: // Bilinear 3x3 Sobel
             A0 = SampleTexture(TexCoords[0].xw, Mode).rgb * 4.0; // <-0.5, +0.5>
@@ -343,7 +314,6 @@ void Contour(in float4 TexCoords[3], in int Mode, out float4 OutputColor0)
 
             Ix = Scale_Derivative((C0 + C2) - (A0 + A2));
             Iy = Scale_Derivative((A0 + C0) - (A2 + C2));
-            Gradient = Magnitude(Ix.rgb, Iy.rgb);
             break;
         case 3: // Bilinear 5x5 Prewitt
             // A0 B0 C0
@@ -371,8 +341,6 @@ void Contour(in float4 TexCoords[3], in int Mode, out float4 OutputColor0)
             // -1 -1 -1 -1 -1
             // -1 -1 -1 -1 -1
             Iy = Scale_Derivative((A0 + B0 + C0) - (A2 + B2 + C2));
-
-            Gradient = Magnitude(Ix.rgb, Iy.rgb);
             break;
         case 4: // Bilinear 5x5 Sobel by CeeJayDK
             //   B1 B2
@@ -401,8 +369,6 @@ void Contour(in float4 TexCoords[3], in int Mode, out float4 OutputColor0)
             // -1 -2 -2 -2 -1
             //    -1 -2 -1
             Iy = Scale_Derivative((A0 + B1 + B2 + A1) - (A2 + C0 + C1 + B0));
-
-            Gradient = Magnitude(Ix.rgb, Iy.rgb);
             break;
         case 5: // 3x3 Prewitt
             // A0 B0 C0
@@ -419,7 +385,6 @@ void Contour(in float4 TexCoords[3], in int Mode, out float4 OutputColor0)
 
             Ix = Scale_Derivative((C0 + C1 + C2) - (A0 + A1 + A2));
             Iy = Scale_Derivative((A0 + B0 + C0) - (A2 + B2 + C2));
-            Gradient = Magnitude(Ix.rgb, Iy.rgb);
             break;
         case 6: // 3x3 Scharr
         {
@@ -434,14 +399,23 @@ void Contour(in float4 TexCoords[3], in int Mode, out float4 OutputColor0)
 
             Ix = Scale_Derivative((C0 + C1 + C2) - (A0 + A1 + A2));
             Iy = Scale_Derivative((A0 + B0 + C0) - (A2 + B2 + C2));
-            Gradient = Magnitude(Ix.rgb, Iy.rgb);
             break;
         }
     }
 
+    if(_Method == 1)
+    {
+        Gradient = length(Gradient) * rsqrt(3.0);
+    }
+    else
+    {
+        Ix.rgb = (_NormalizeOutput) ?  Ix.rgb * rsqrt(dot(Ix.rgb, Ix.rgb) + _NormalizeWeight) : Ix.rgb;
+        Iy.rgb = (_NormalizeOutput) ?  Iy.rgb * rsqrt(dot(Iy.rgb, Iy.rgb) + _NormalizeWeight) : Iy.rgb;
+        Gradient = sqrt(dot(Ix.rgb, Ix.rgb) + dot(Iy.rgb, Iy.rgb));
+    }
+
     // Thresholding
     Gradient = Gradient * _ColorSensitivity;
-    Gradient = saturate((Gradient - _Threshold) * _InverseRange);
 
     float3 Base = 0.0;
 
@@ -454,6 +428,7 @@ void Contour(in float4 TexCoords[3], in int Mode, out float4 OutputColor0)
         Base = tex2D(Sample_Color, TexCoords[1].xz).rgb;
     }
 
+    Gradient = saturate((Gradient - _Threshold) * _InverseRange);
     float3 Color_Background = lerp(Base, _BackColor.rgb, _BackColor.a);
     OutputColor0 = lerp(Color_Background, _FrontColor.rgb, Gradient.a * _FrontColor.a);
 }

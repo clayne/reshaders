@@ -137,7 +137,6 @@ void Edge_Operator(in sampler2D Source, in float4 TexCoords[3], inout float4 Ix,
     {
         case 0: // Fwidth
             A0 = tex2D(Source, TexCoords[0].xy);
-
             Ix = ddx(A0);
             Iy = ddy(A0);
             break;
@@ -150,7 +149,6 @@ void Edge_Operator(in sampler2D Source, in float4 TexCoords[3], inout float4 Ix,
             B1 = tex2D(Source, TexCoords[0].xy); // < 0.0,  0.0>
             A2 = tex2D(Source, TexCoords[1].xy); // <-0.5, -0.5>
             C2 = tex2D(Source, TexCoords[1].zy); // <+0.5, -0.5>
-
             Gradient = (A0 + C0 + A2 + C2) - (B1 * 4.0);
             break;
         case 2: // Bilinear 3x3 Sobel
@@ -158,7 +156,6 @@ void Edge_Operator(in sampler2D Source, in float4 TexCoords[3], inout float4 Ix,
             C0 = tex2D(Source, TexCoords[0].zw).rgb; // <+0.5, +0.5>
             A2 = tex2D(Source, TexCoords[0].xy).rgb; // <-0.5, -0.5>
             C2 = tex2D(Source, TexCoords[0].zy).rgb; // <+0.5, -0.5>
-
             Ix = ((C0 + C2) - (A0 + A2)) * 4.0;
             Iy = ((A0 + C0) - (A2 + C2)) * 4.0;
             break;
@@ -257,38 +254,19 @@ void Edge_Detection_PS(in float4 Position : SV_POSITION, in float4 TexCoords[3] 
     float4 Ix, Iy, Gradient;
     Edge_Operator(Sample_Color, TexCoords, Ix, Iy, Gradient);
 
-    float ScaleWeight = 0.0;
-
-    switch(_Method)
+    float ScaleWeight[7] = 
     {
-        case 0:
-            ScaleWeight = 1.0;
-            break;
-        case 1:
-            ScaleWeight = 1.0;
-            break;
-        case 2:
-            ScaleWeight = 4.0;
-            break;
-        case 3:
-            ScaleWeight = 10.0;
-            break;
-        case 4:
-            ScaleWeight = 12.0;
-            break;
-        case 5:
-            ScaleWeight = 3.0;
-            break;
-        case 6:
-            ScaleWeight = 16.0;
-            break;
-        default:
-            ScaleWeight = 1.0;
-            break;
-    }
+        1.0, // Fwidth
+        1.0, // Bilinear 3x3 Laplacian
+        4.0, // Bilinear 3x3 Sobel
+        10.0, // Bilinear 5x5 Prewitt
+        12.0, // Bilinear 5x5 Sobel by CeeJayDK
+        3.0, // 3x3 Prewitt
+        16.0, // 3x3 Scharr
+    };
 
-    Ix = (_Scale) ? Ix / ScaleWeight : Ix;
-    Iy = (_Scale) ? Iy / ScaleWeight : Iy;
+    Ix = (_Scale) ? Ix / ScaleWeight[_Method] : Ix;
+    Iy = (_Scale) ? Iy / ScaleWeight[_Method] : Iy;
 
     Ix = (_Normalize) ? Ix / sqrt(dot(Ix.rgb, Ix.rgb) + _NormalizeWeight) : Ix;
     Iy = (_Normalize) ? Iy / sqrt(dot(Iy.rgb, Iy.rgb) + _NormalizeWeight) : Iy;
