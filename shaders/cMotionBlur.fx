@@ -123,8 +123,8 @@ namespace Motion_Blur
 {
     // Shader properties
 
-    OPTION(float, _Constraint, "slider", "Optical flow", "Motion threshold", 0.0, 2.0, 1.0)
-    OPTION(float, _Smoothness, "slider", "Optical flow", "Motion smoothness", 0.0, 2.0, 1.0)
+    OPTION(float, _Constraint, "slider", "Optical flow", "Motion threshold", 0.0, 1.0, 0.5)
+    OPTION(float, _Smoothness, "slider", "Optical flow", "Motion smoothness", 0.0, 1.0, 0.5)
     OPTION(float, _MipBias, "slider", "Optical flow", "Optical flow mipmap bias", 0.0, 7.0, 3.5)
     OPTION(float, _BlendFactor, "slider", "Optical flow", "Temporal blending factor", 0.0, 0.9, 0.1)
 
@@ -392,18 +392,18 @@ namespace Motion_Blur
         https://github.com/Dtananaev/cv_opticalFlow
 
         Copyright (c) 2014-2015, Denis Tananaev All rights reserved.
-        
+
         Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
-        
+
         Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
-        
+
         Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
-        
+
         THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     */
 
     #define MaxLevel 7
-    #define E 1e-4 * _Smoothness
+    #define E 1e-3 * _Smoothness
 
     void Coarse_Optical_Flow_TV(in float2 TexCoord, in float Level, in float4 UV, out float4 OpticalFlow)
     {
@@ -452,34 +452,52 @@ namespace Motion_Blur
         Color = (SampleNW + SampleNE + SampleSW + SampleSE) * 0.25;
     }
 
+    float2 Kirsch(float2 SampleUV[9],
+                  float3 RowA,
+                  float2 RowB,
+                  float3 RowC)
+    {
+        // 0 3 6
+        // 1 4 7
+        // 2 5 8
+        float2 Output;
+        Output += (SampleUV[0] * RowA[0]);
+        Output += (SampleUV[1] * RowA[1]);
+        Output += (SampleUV[2] * RowA[2]);
+        Output += (SampleUV[3] * RowB[0]);
+        Output += (SampleUV[5] * RowB[1]);
+        Output += (SampleUV[6] * RowC[0]);
+        Output += (SampleUV[7] * RowC[1]);
+        Output += (SampleUV[8] * RowC[2]);
+        return Output;
+    }
+
     void Process_Gradients(in float2 SampleUV[9], inout float4 AreaGrad, inout float4 UVGradient)
     {
-        // Center smoothness gradient using compass
-        // 0.xy  | 0.zw  | 1.xy  | 1.zw  | 2.xy  | 2.zw  | 3.xy  | 3.zw
-        // .............................................................
-        // 0 3 6 | - 3 6 | 0 - 6 | 0 3 - | 0 3 6 | - 3 6 | 0 - 6 | 0 3 -
-        // - - - | 1 - 7 | 1 - 7 | 1 - 7 | - - - | 1 - 7 | 1 - 7 | 1 - 7
-        // 2 5 8 | 2 5 - | 2 - 8 | - 5 8 | 2 5 8 | 2 5 - | 2 - 8 | - 5 8
+        // Center smoothness gradient using Kirsch compass
+        // https://homepages.inf.ed.ac.uk/rbf/HIPR2/prewitt.htm
+        // 0.xy           | 0.zw           | 1.xy           | 1.zw           | 2.xy           | 2.zw           | 3.xy           | 3.zw
+        // .....................................................................................................................................
+        // +5.0 +5.0 +5.0 | +5.0 +5.0 -3.0 | +5.0 -3.0 -3.0 | -3.0 -3.0 -3.0 | -3.0 -3.0 -3.0 | -3.0 -3.0 -3.0 | -3.0 -3.0 +5.0 | -3.0 +5.0 +5.0
+        // -3.0  0.0 -3.0 | +5.0  0.0 -3.0 | +5.0  0.0 -3.0 | +5.0  0.0 -3.0 | -3.0  0.0 -3.0 | -3.0  0.0 +5.0 | -3.0  0.0 +5.0 | -3.0  0.0 +5.0
+        // -3.0 -3.0 -3.0 | -3.0 -3.0 -3.0 | +5.0 -3.0 -3.0 | +5.0 +5.0 -3.0 | +5.0 +5.0 +5.0 | -3.0 +5.0 +5.0 | -3.0 -3.0 +5.0 | -3.0 -3.0 -3.0
 
-        float4 PrewittUV[4];
-        PrewittUV[0].xy = (SampleUV[0] + SampleUV[3] + SampleUV[6]) - (SampleUV[2] + SampleUV[5] + SampleUV[8]);
-        PrewittUV[0].zw = (SampleUV[3] + SampleUV[6] + SampleUV[7]) - (SampleUV[1] + SampleUV[2] + SampleUV[5]);
-        PrewittUV[1].xy = (SampleUV[0] + SampleUV[1] + SampleUV[2]) - (SampleUV[6] + SampleUV[7] + SampleUV[8]);
-        PrewittUV[1].zw = (SampleUV[0] + SampleUV[3] + SampleUV[1]) - (SampleUV[7] + SampleUV[5] + SampleUV[8]);
-        PrewittUV[2].xy = (SampleUV[2] + SampleUV[5] + SampleUV[8]) - (SampleUV[0] + SampleUV[3] + SampleUV[6]);
-        PrewittUV[2].zw = (SampleUV[1] + SampleUV[2] + SampleUV[5]) - (SampleUV[3] + SampleUV[6] + SampleUV[7]);
-        PrewittUV[3].xy = (SampleUV[6] + SampleUV[7] + SampleUV[8]) - (SampleUV[0] + SampleUV[1] + SampleUV[2]);
-        PrewittUV[3].zw = (SampleUV[7] + SampleUV[5] + SampleUV[8]) - (SampleUV[0] + SampleUV[3] + SampleUV[1]);
+        float4 KirschUV[4];
+        KirschUV[0].xy = Kirsch(SampleUV, float3(+5.0, -3.0, -3.0), float2(+5.0, -3.0), float3(+5.0, -3.0, -3.0));
+        KirschUV[0].zw = Kirsch(SampleUV, float3(+5.0, +5.0, -3.0), float2(+5.0, -3.0), float3(-3.0, -3.0, -3.0));
+        KirschUV[1].xy = Kirsch(SampleUV, float3(+5.0, +5.0, +5.0), float2(-3.0, -3.0), float3(-3.0, -3.0, -3.0));
+        KirschUV[1].zw = Kirsch(SampleUV, float3(-3.0, +5.0, +5.0), float2(-3.0, +5.0), float3(-3.0, -3.0, -3.0));
+        KirschUV[2].xy = Kirsch(SampleUV, float3(-3.0, -3.0, +5.0), float2(-3.0, +5.0), float3(-3.0, -3.0, +5.0));
+        KirschUV[2].zw = Kirsch(SampleUV, float3(-3.0, -3.0, -3.0), float2(-3.0, +5.0), float3(-3.0, +5.0, +5.0));
+        KirschUV[3].xy = Kirsch(SampleUV, float3(-3.0, -3.0, -3.0), float2(-3.0, -3.0), float3(+5.0, +5.0, +5.0));
+        KirschUV[3].zw = Kirsch(SampleUV, float3(-3.0, -3.0, -3.0), float2(+5.0, -3.0), float3(+5.0, +5.0, -3.0));
 
-        PrewittUV[0] = PrewittUV[0] / 3.0;
-        PrewittUV[1] = PrewittUV[1] / 3.0;
-        PrewittUV[2] = PrewittUV[2] / 3.0;
-        PrewittUV[3] = PrewittUV[3] / 3.0;
-        
         float2 MaxGradient[3];
-        MaxGradient[0] = max(max(PrewittUV[0].xy, PrewittUV[0].zw), max(PrewittUV[1].xy, PrewittUV[1].zw));
-        MaxGradient[1] = max(max(PrewittUV[2].xy, PrewittUV[2].zw), max(PrewittUV[3].xy, PrewittUV[3].zw));
-        MaxGradient[2] = max(MaxGradient[0], MaxGradient[1]);
+        MaxGradient[0] = max(max(abs(KirschUV[0].xy), abs(KirschUV[0].zw)), max(abs(KirschUV[1].xy), abs(KirschUV[1].zw)));
+        MaxGradient[1] = max(max(abs(KirschUV[2].xy), abs(KirschUV[2].zw)), max(abs(KirschUV[3].xy), abs(KirschUV[3].zw)));
+
+        const float Weight = 1.0 / 15.0;
+        MaxGradient[2] = max(MaxGradient[0], MaxGradient[1]) * Weight;
         float CenterGradient = rsqrt((dot(MaxGradient[2], MaxGradient[2]) * 0.25) + (E * E));
 
         // Area smoothness gradients
