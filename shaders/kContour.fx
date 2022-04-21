@@ -266,18 +266,18 @@ float3 SampleTexture(float2 TexCoord, int Mode)
 
 float4 Scale_Derivative(float4 Input)
 {
-    float ScaleWeight[7] = 
+    const float Weights[7] = 
     {
-        1.0, // Fwidth
-        1.0, // Bilinear 3x3 Laplacian
-        4.0, // Bilinear 3x3 Sobel
-        10.0, // Bilinear 5x5 Prewitt
-        12.0, // Bilinear 5x5 Sobel by CeeJayDK
-        3.0, // 3x3 Prewitt
-        16.0, // 3x3 Scharr
+        1.0 / 1.0, // Fwidth
+        1.0 / 1.0, // Bilinear 3x3 Laplacian
+        1.0 / 4.0, // Bilinear 3x3 Sobel
+        1.0 / 10.0, // Bilinear 5x5 Prewitt
+        1.0 / 12.0, // Bilinear 5x5 Sobel by CeeJayDK
+        1.0 / 3.0, // 3x3 Prewitt
+        1.0 / 16.0, // 3x3 Scharr
     };
 
-    Input = (_ScaleDerivatives) ? Input / ScaleWeight[_Method] : Input;
+    Input = (_ScaleDerivatives) ? Input * Weights[_Method] : Input;
     return Input;
 }
 

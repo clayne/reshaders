@@ -254,19 +254,19 @@ void Edge_Detection_PS(in float4 Position : SV_POSITION, in float4 TexCoords[3] 
     float4 Ix, Iy, Gradient;
     Edge_Operator(Sample_Color, TexCoords, Ix, Iy, Gradient);
 
-    float ScaleWeight[7] = 
+    const float Weights[7] = 
     {
-        1.0, // Fwidth
-        1.0, // Bilinear 3x3 Laplacian
-        4.0, // Bilinear 3x3 Sobel
-        10.0, // Bilinear 5x5 Prewitt
-        12.0, // Bilinear 5x5 Sobel by CeeJayDK
-        3.0, // 3x3 Prewitt
-        16.0, // 3x3 Scharr
+        1.0 / 1.0, // Fwidth
+        1.0 / 1.0, // Bilinear 3x3 Laplacian
+        1.0 / 4.0, // Bilinear 3x3 Sobel
+        1.0 / 10.0, // Bilinear 5x5 Prewitt
+        1.0 / 12.0, // Bilinear 5x5 Sobel by CeeJayDK
+        1.0 / 3.0, // 3x3 Prewitt
+        1.0 / 16.0, // 3x3 Scharr
     };
 
-    Ix = (_Scale) ? Ix / ScaleWeight[_Method] : Ix;
-    Iy = (_Scale) ? Iy / ScaleWeight[_Method] : Iy;
+    Ix = (_Scale) ? Ix * Weights[_Method] : Ix;
+    Iy = (_Scale) ? Iy * Weights[_Method] : Iy;
 
     Ix = (_Normalize) ? Ix / sqrt(dot(Ix.rgb, Ix.rgb) + _NormalizeWeight) : Ix;
     Iy = (_Normalize) ? Iy / sqrt(dot(Iy.rgb, Iy.rgb) + _NormalizeWeight) : Iy;
