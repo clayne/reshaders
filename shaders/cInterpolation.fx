@@ -96,7 +96,7 @@ namespace cInterpolation
 {
     // Shader properties
 
-    OPTION(float, _Constraint, "slider", "Optical flow", "Motion threshold", 0.0, 2.0, 1.0)
+    OPTION(float, _Constraint, "slider", "Optical flow", "Motion threshold", 0.0, 1.0, 0.5)
     OPTION(float, _Smoothness, "slider", "Optical flow", "Motion smoothness", 0.0, 2.0, 1.0)
     OPTION(float, _MipBias, "drag", "Optical flow", "Optical flow mipmap bias", 0.0, 7.0, 0.0)
 
