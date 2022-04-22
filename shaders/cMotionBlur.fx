@@ -35,20 +35,10 @@
 
 #include "ReShade.fxh"
 
-#ifndef RENDER_DOWNSAMPLE_FACTOR
-    #define RENDER_DOWNSAMPLE_FACTOR 6
-#endif
-
-#define RENDER_BUFFER_WIDTH (BUFFER_WIDTH / RENDER_DOWNSAMPLE_FACTOR)
-#define RENDER_BUFFER_HEIGHT (BUFFER_HEIGHT / RENDER_DOWNSAMPLE_FACTOR)
-
-#if RENDER_BUFFER_WIDTH > (BUFFER_WIDTH >> 1) || RENDER_BUFFER_HEIGHT > (BUFFER_HEIGHT >> 1)
-    #error
-#endif
-
-#if RENDER_BUFFER_WIDTH < (BUFFER_WIDTH >> 4) || RENDER_BUFFER_HEIGHT < (BUFFER_HEIGHT >> 4)
-    #error
-#endif
+#define RCP_HEIGHT (1.0 / BUFFER_HEIGHT)
+#define ASPECT_RATIO (BUFFER_WIDTH * RCP_HEIGHT)
+#define RENDER_BUFFER_WIDTH int(256.0 * ASPECT_RATIO)
+#define RENDER_BUFFER_HEIGHT int(256.0)
 
 #define SIZE int2(RENDER_BUFFER_WIDTH, RENDER_BUFFER_HEIGHT)
 #define BUFFER_SIZE_1 int2(SIZE >> 0)
@@ -124,11 +114,11 @@ namespace Motion_Blur
 
     OPTION(float, _Constraint, "slider", "Optical flow", "Motion threshold", 0.0, 1.0, 0.5)
     OPTION(float, _Smoothness, "slider", "Optical flow", "Motion smoothness", 0.0, 1.0, 0.5)
-    OPTION(float, _MipBias, "slider", "Optical flow", "Optical flow mipmap bias", 0.0, 7.0, 3.5)
+    OPTION(float, _MipBias, "slider", "Optical flow", "Optical flow mipmap bias", 0.0, 7.0, 4.5)
     OPTION(float, _BlendFactor, "slider", "Optical flow", "Temporal blending factor", 0.0, 0.9, 0.1)
 
     OPTION(bool, _NormalMode, "radio", "Main", "Estimate normals", 0.0, 1.0, false)
-    OPTION(float, _Scale, "slider", "Main", "Higher = more motion blur", 0.0, 1.0, 0.5)
+    OPTION(float, _Scale, "slider", "Main", "Blur scale", 0.0, 1.0, 0.75)
 
     OPTION(bool, _FrameRateScaling, "radio", "Other", "Enable frame-rate scaling", 0.0, 1.0, false)
     OPTION(float, _TargetFrameRate, "drag", "Other", "Target frame-rate", 0.0, 144.0, 60.0)
