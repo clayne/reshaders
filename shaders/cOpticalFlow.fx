@@ -446,12 +446,13 @@ namespace OpticalFlow
 
     void Gradient(in float2 SampleNW, in float2 SampleNE, in float2 SampleSW, in float2 SampleSE, out float Gradient)
     {
+        // Robert's cross
+        // https://homepages.inf.ed.ac.uk/rbf/HIPR2/roberts.htm
         // NW NE
         // SW SE
         float4 SqGradientUV = 0.0;
-        SqGradientUV.xy = (SampleNW + SampleSW) - (SampleNE + SampleSE); // <IxU, IxV>
-        SqGradientUV.zw = (SampleNW + SampleNE) - (SampleSW + SampleSE); // <IyU, IyV>
-        SqGradientUV = SqGradientUV * 0.5;
+        SqGradientUV.xy = SampleNW - SampleSE; // <IxU, IxV>
+        SqGradientUV.zw = SampleNE - SampleSW; // <IyU, IyV>
         Gradient = rsqrt((dot(SqGradientUV, SqGradientUV) * 0.25) + (E * E));
     }
 
