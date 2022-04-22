@@ -36,11 +36,11 @@
 #include "ReShade.fxh"
 
 #ifndef USER_BUFFER_WIDTH
-    #define USER_BUFFER_WIDTH 256
+    #define USER_BUFFER_WIDTH BUFFER_WIDTH / 4
 #endif
 
 #ifndef USER_BUFFER_HEIGHT
-    #define USER_BUFFER_HEIGHT 256
+    #define USER_BUFFER_HEIGHT BUFFER_HEIGHT / 4
 #endif
 
 #if USER_BUFFER_WIDTH > (BUFFER_WIDTH >> 1)
