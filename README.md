@@ -1,7 +1,7 @@
 
 # brimsonFX
 
-Shaders and More
+ReShade shaders and more
 
 ## ...Why?
 
