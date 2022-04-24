@@ -112,8 +112,7 @@ namespace Motion_Blur
 {
     // Shader properties
 
-    OPTION(float, _Constraint, "slider", "Optical flow", "Motion threshold", 0.0, 1.0, 0.5)
-    OPTION(float, _Smoothness, "slider", "Optical flow", "Motion smoothness", 0.0, 1.0, 0.5)
+    OPTION(float, _Constraint, "slider", "Optical flow", "Motion constraint", 0.0, 1.0, 0.5)
     OPTION(float, _MipBias, "slider", "Optical flow", "Optical flow mipmap bias", 0.0, 7.0, 4.5)
     OPTION(float, _BlendFactor, "slider", "Optical flow", "Temporal blending factor", 0.0, 0.9, 0.1)
 
@@ -392,7 +391,6 @@ namespace Motion_Blur
     */
 
     #define MaxLevel 7
-    #define E 1e-6 * _Smoothness
 
     void Coarse_Optical_Flow_TV(in float2 TexCoord, in float Level, in float4 UV, out float4 OpticalFlow)
     {
@@ -409,18 +407,24 @@ namespace Motion_Blur
         // <Rz, Gz>
         float2 TD = Current - Previous;
 
-        // Calculate constancy term
         float2 C = 0.0;
         float4 Aii = 0.0;
         float2 Aij = 0.0;
         float4 Bi = 0.0;
 
-        // Calculate forward motion vectors
-        C = rsqrt(TD.rg * TD.rg + (E * E));
+        // Calculate constancy assumption nonlinearity
+        C = rsqrt(TD.rg * TD.rg + 1e-7);
+
+        // Build linear equation
+        // [Aii Aij] [X] = [Bi]
+        // [Aij Aii] [Y] = [Bi]
         Aii = 1.0 / (C.rrgg * (SD.xyzw * SD.xyzw) + Alpha);
         Aij = C.rg * (SD.xz * SD.yw);
         Bi = C.rrgg * (SD.xyzw * TD.rrgg);
 
+        // Solve linear equation for [U, V]
+        // [Ix^2+A IxIy] [U] = -[IxIt]
+        // [IxIy Iy^2+A] [V] = -[IyIt]
         OpticalFlow.xz = Aii.xz * ((Alpha * UV.xz) - (Aij.rg * UV.yw) - Bi.xz);
         OpticalFlow.yw = Aii.yw * ((Alpha * UV.yw) - (Aij.rg * OpticalFlow.xz) - Bi.yw);
     }
@@ -434,7 +438,7 @@ namespace Motion_Blur
         float4 SqGradientUV = 0.0;
         SqGradientUV.xy = SampleNW - SampleSE; // <IxU, IxV>
         SqGradientUV.zw = SampleNE - SampleSW; // <IyU, IyV>
-        Gradient = rsqrt((dot(SqGradientUV, SqGradientUV) * 0.25) + (E * E));
+        Gradient = rsqrt((dot(SqGradientUV, SqGradientUV) * 0.25) + 1e-7);
     }
 
     void Area_Average(in float4 SampleNW, in float4 SampleNE, in float4 SampleSW, in float4 SampleSE, out float4 Color)
@@ -488,7 +492,7 @@ namespace Motion_Blur
 
         const float Weight = 1.0 / 15.0;
         MaxGradient[2] = max(MaxGradient[0], MaxGradient[1]) * Weight;
-        float CenterGradient = rsqrt((dot(MaxGradient[2], MaxGradient[2]) * 0.25) + (E * E));
+        float CenterGradient = rsqrt((dot(MaxGradient[2], MaxGradient[2]) * 0.25) + 1e-7);
 
         // Area smoothness gradients
         // .............................
@@ -571,26 +575,30 @@ namespace Motion_Blur
         CenterAverage += (SampleUV[4] * 4.0);
         CenterAverage = CenterAverage / 16.0;
 
-        // Calculate motion vectors
-
         float2 C = 0.0;
         float4 Aii = 0.0;
         float2 Aij = 0.0;
         float4 Bi = 0.0;
 
+        // Calculate constancy assumption nonlinearity
+        // Dot-product increases when the current gradient + previous estimation are parallel
         C.r = dot(SD.xy, CenterAverage.xy) + TD.r;
         C.g = dot(SD.zw, CenterAverage.zw) + TD.g;
-        C.rg = rsqrt(C.rg * C.rg + (E * E));
+        C.rg = rsqrt(C.rg * C.rg + 1e-7);
 
+        // Build linear equation
+        // [Aii Aij] [X] = [Bi]
+        // [Aij Aii] [Y] = [Bi]
         Aii.xy = 1.0 / (dot(UVGradient[0], 1.0) * Alpha + (C.rr * (SD.xy * SD.xy)));
         Aii.zw = 1.0 / (dot(UVGradient[1], 1.0) * Alpha + (C.gg * (SD.zw * SD.zw)));
-
         Aij.xy = C.rg * (SD.xz * SD.yw);
         Bi = C.rrgg * (SD.xyzw * TD.rrgg);
 
+        // Solve linear equation for [U, V]
+        // [Ix^2+A IxIy] [U] = -[IxIt]
+        // [IxIy Iy^2+A] [V] = -[IyIt]
         UVAverage.xy = (AreaGrad[0].xx * AreaAvg[0].xy) + (AreaGrad[0].yy * AreaAvg[1].xy) + (AreaGrad[0].zz * AreaAvg[2].xy) + (AreaGrad[0].ww * AreaAvg[3].xy);
         UVAverage.zw = (AreaGrad[1].xx * AreaAvg[0].zw) + (AreaGrad[1].yy * AreaAvg[1].zw) + (AreaGrad[1].zz * AreaAvg[2].zw) + (AreaGrad[1].ww * AreaAvg[3].zw);
-
         OpticalFlow.xz = Aii.xz * ((Alpha * UVAverage.xz) - (Aij.rg * CenterAverage.yw) - Bi.xz);
         OpticalFlow.yw = Aii.yw * ((Alpha * UVAverage.yw) - (Aij.rg * OpticalFlow.xz) - Bi.yw);
     }
