@@ -118,7 +118,7 @@ namespace Motion_Blur
     OPTION(float, _BlendFactor, "slider", "Optical flow", "Temporal blending factor", 0.0, 0.9, 0.1)
 
     OPTION(bool, _NormalMode, "radio", "Main", "Estimate normals", 0.0, 1.0, false)
-    OPTION(float, _Scale, "slider", "Main", "Blur scale", 0.0, 1.0, 0.75)
+    OPTION(float, _Scale, "slider", "Main", "Blur scale", 0.0, 1.0, 0.5)
 
     OPTION(bool, _FrameRateScaling, "radio", "Other", "Enable frame-rate scaling", 0.0, 1.0, false)
     OPTION(float, _TargetFrameRate, "drag", "Other", "Target frame-rate", 0.0, 144.0, 60.0)
@@ -392,7 +392,7 @@ namespace Motion_Blur
     */
 
     #define MaxLevel 7
-    #define E 1e-4 * _Smoothness
+    #define E 1e-6 * _Smoothness
 
     void Coarse_Optical_Flow_TV(in float2 TexCoord, in float Level, in float4 UV, out float4 OpticalFlow)
     {

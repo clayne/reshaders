@@ -33,7 +33,12 @@
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#define SIZE int2(BUFFER_WIDTH >> 2, BUFFER_HEIGHT >> 2)
+#define RCP_HEIGHT (1.0 / BUFFER_HEIGHT)
+#define ASPECT_RATIO (BUFFER_WIDTH * RCP_HEIGHT)
+#define RENDER_BUFFER_WIDTH int(256.0 * ASPECT_RATIO)
+#define RENDER_BUFFER_HEIGHT int(256.0)
+
+#define SIZE int2(RENDER_BUFFER_WIDTH, RENDER_BUFFER_HEIGHT)
 #define BUFFER_SIZE_1 int2(SIZE >> 0)
 #define BUFFER_SIZE_2 int2(SIZE >> 2)
 #define BUFFER_SIZE_3 int2(SIZE >> 4)
@@ -411,7 +416,7 @@ namespace OpticalFlow
     */
 
     #define MaxLevel 7
-    #define E 1e-4 * _Smoothness
+    #define E 1e-6 * _Smoothness
 
     void Coarse_Optical_Flow_TV(in float2 TexCoord, in float Level, in float4 UV, out float4 OpticalFlow)
     {
