@@ -465,15 +465,7 @@ namespace OpticalFlow
         Gradient = rsqrt((dot(SqGradientUV, SqGradientUV) * 0.25) + 1e-7);
     }
 
-    void Area_Average(in float4 SampleNW, in float4 SampleNE, in float4 SampleSW, in float4 SampleSE, out float4 Color)
-    {
-        Color = (SampleNW + SampleNE + SampleSW + SampleSE) * 0.25;
-    }
-
-    float2 Kirsch(float2 SampleUV[9],
-                  float3 RowA,
-                  float2 RowB,
-                  float3 RowC)
+    float2 Kirsch(float2 SampleUV[9], float3 RowA, float2 RowB, float3 RowC)
     {
         // 0 3 6
         // 1 4 7
@@ -529,6 +521,11 @@ namespace OpticalFlow
         Gradient(SampleUV[1], SampleUV[4], SampleUV[2], SampleUV[5], AreaGrad[2]);
         Gradient(SampleUV[4], SampleUV[7], SampleUV[5], SampleUV[8], AreaGrad[3]);
         UVGradient = 0.5 * (CenterGradient + AreaGrad);
+    }
+
+    void Area_Average(in float4 SampleNW, in float4 SampleNE, in float4 SampleSW, in float4 SampleSE, out float4 Color)
+    {
+        Color = (SampleNW + SampleNE + SampleSW + SampleSE) * 0.25;
     }
 
     void Optical_Flow_TV(in sampler2D SourceUV, in float4 TexCoords[3], in float Level, out float4 OpticalFlow)
