@@ -101,7 +101,7 @@ namespace cInterpolation
 {
     // Shader properties
 
-    OPTION(float, _Constraint, "slider", "Optical flow", "Motion constraint", 0.0, 1.0, 0.5)
+    OPTION(float, _Constraint, "slider", "Optical flow", "Motion constraint", 0.0, 1.0, 0.25)
     OPTION(float, _MipBias, "drag", "Optical flow", "Optical flow mipmap bias", 0.0, 7.0, 0.0)
 
     // Consideration: Use A8 channel for difference requirement (normalize BW image)
@@ -401,48 +401,49 @@ namespace cInterpolation
         Gradient = rsqrt((dot(SqGradientUV, SqGradientUV) * 0.25) + 1e-7);
     }
 
-    float2 Kirsch(float2 SampleUV[9], float3 RowA, float2 RowB, float3 RowC)
+    float2 Prewitt(float2 SampleUV[9], float3x3 Weights)
     {
         // 0 3 6
         // 1 4 7
         // 2 5 8
         float2 Output;
-        Output += (SampleUV[0] * RowA[0]);
-        Output += (SampleUV[1] * RowA[1]);
-        Output += (SampleUV[2] * RowA[2]);
-        Output += (SampleUV[3] * RowB[0]);
-        Output += (SampleUV[5] * RowB[1]);
-        Output += (SampleUV[6] * RowC[0]);
-        Output += (SampleUV[7] * RowC[1]);
-        Output += (SampleUV[8] * RowC[2]);
+        Output += (SampleUV[0] * Weights[0][0]);
+        Output += (SampleUV[1] * Weights[0][1]);
+        Output += (SampleUV[2] * Weights[0][2]);
+        Output += (SampleUV[3] * Weights[1][0]);
+        Output += (SampleUV[4] * Weights[1][1]);
+        Output += (SampleUV[5] * Weights[1][2]);
+        Output += (SampleUV[6] * Weights[2][0]);
+        Output += (SampleUV[7] * Weights[2][1]);
+        Output += (SampleUV[8] * Weights[2][2]);
         return Output;
     }
 
     void Process_Gradients(in float2 SampleUV[9], inout float4 AreaGrad, inout float4 UVGradient)
     {
-        // Center smoothness gradient using Kirsch compass
+        // Center smoothness gradient using Prewitt compass
         // https://homepages.inf.ed.ac.uk/rbf/HIPR2/prewitt.htm
         // 0.xy           | 0.zw           | 1.xy           | 1.zw           | 2.xy           | 2.zw           | 3.xy           | 3.zw
-        // .....................................................................................................................................
-        // +5.0 +5.0 +5.0 | +5.0 +5.0 -3.0 | +5.0 -3.0 -3.0 | -3.0 -3.0 -3.0 | -3.0 -3.0 -3.0 | -3.0 -3.0 -3.0 | -3.0 -3.0 +5.0 | -3.0 +5.0 +5.0
-        // -3.0  0.0 -3.0 | +5.0  0.0 -3.0 | +5.0  0.0 -3.0 | +5.0  0.0 -3.0 | -3.0  0.0 -3.0 | -3.0  0.0 +5.0 | -3.0  0.0 +5.0 | -3.0  0.0 +5.0
-        // -3.0 -3.0 -3.0 | -3.0 -3.0 -3.0 | +5.0 -3.0 -3.0 | +5.0 +5.0 -3.0 | +5.0 +5.0 +5.0 | -3.0 +5.0 +5.0 | -3.0 -3.0 +5.0 | -3.0 -3.0 -3.0
+        // .......................................................................................................................................
+        // -1.0 +1.0 +1.0 | +1.0 +1.0 +1.0 | +1.0 +1.0 +1.0 | +1.0 +1.0 +1.0 | +1.0 +1.0 -1.0 | +1.0 -1.0 -1.0 | -1.0 -1.0 -1.0 | -1.0 -1.0 +1.0 |
+        // -1.0 -2.0 +1.0 | -1.0 -2.0 +1.0 | +1.0 -2.0 +1.0 | +1.0 -2.0 -1.0 | +1.0 -2.0 -1.0 | +1.0 -2.0 -1.0 | +1.0 -2.0 +1.0 | -1.0 -2.0 +1.0 |
+        // -1.0 +1.0 +1.0 | -1.0 -1.0 +1.0 | -1.0 -1.0 -1.0 | +1.0 -1.0 -1.0 | +1.0 +1.0 -1.0 | +1.0 +1.0 +1.0 | +1.0 +1.0 +1.0 | +1.0 +1.0 +1.0 |
 
         float4 KirschUV[4];
-        KirschUV[0].xy = Kirsch(SampleUV, float3(+5.0, -3.0, -3.0), float2(+5.0, -3.0), float3(+5.0, -3.0, -3.0));
-        KirschUV[0].zw = Kirsch(SampleUV, float3(+5.0, +5.0, -3.0), float2(+5.0, -3.0), float3(-3.0, -3.0, -3.0));
-        KirschUV[1].xy = Kirsch(SampleUV, float3(+5.0, +5.0, +5.0), float2(-3.0, -3.0), float3(-3.0, -3.0, -3.0));
-        KirschUV[1].zw = Kirsch(SampleUV, float3(-3.0, +5.0, +5.0), float2(-3.0, +5.0), float3(-3.0, -3.0, -3.0));
-        KirschUV[2].xy = Kirsch(SampleUV, float3(-3.0, -3.0, +5.0), float2(-3.0, +5.0), float3(-3.0, -3.0, +5.0));
-        KirschUV[2].zw = Kirsch(SampleUV, float3(-3.0, -3.0, -3.0), float2(-3.0, +5.0), float3(-3.0, +5.0, +5.0));
-        KirschUV[3].xy = Kirsch(SampleUV, float3(-3.0, -3.0, -3.0), float2(-3.0, -3.0), float3(+5.0, +5.0, +5.0));
-        KirschUV[3].zw = Kirsch(SampleUV, float3(-3.0, -3.0, -3.0), float2(+5.0, -3.0), float3(+5.0, +5.0, -3.0));
+        KirschUV[0].xy = Prewitt(SampleUV, float3x3(-1.0, -1.0, -1.0, +1.0, -2.0, +1.0, +1.0, +1.0, +1.0));
+        KirschUV[0].zw = Prewitt(SampleUV, float3x3(+1.0, -1.0, -1.0, +1.0, -2.0, -1.0, +1.0, +1.0, +1.0));
+        KirschUV[1].xy = Prewitt(SampleUV, float3x3(+1.0, +1.0, -1.0, +1.0, -2.0, -1.0, +1.0, +1.0, -1.0));
+        KirschUV[1].zw = Prewitt(SampleUV, float3x3(+1.0, +1.0, +1.0, +1.0, -2.0, -1.0, +1.0, -1.0, -1.0));
+        KirschUV[2].xy = Prewitt(SampleUV, float3x3(+1.0, +1.0, +1.0, +1.0, -2.0, +1.0, -1.0, -1.0, -1.0));
+        KirschUV[2].zw = Prewitt(SampleUV, float3x3(+1.0, +1.0, +1.0, -1.0, -2.0, +1.0, -1.0, -1.0, +1.0));
+        KirschUV[3].xy = Prewitt(SampleUV, float3x3(-1.0, +1.0, +1.0, -1.0, -2.0, +1.0, -1.0, +1.0, +1.0));
+        KirschUV[3].zw = Prewitt(SampleUV, float3x3(-1.0, -1.0, +1.0, -1.0, -2.0, +1.0, +1.0, +1.0, +1.0));
 
         float2 MaxGradient[3];
         MaxGradient[0] = max(max(abs(KirschUV[0].xy), abs(KirschUV[0].zw)), max(abs(KirschUV[1].xy), abs(KirschUV[1].zw)));
         MaxGradient[1] = max(max(abs(KirschUV[2].xy), abs(KirschUV[2].zw)), max(abs(KirschUV[3].xy), abs(KirschUV[3].zw)));
 
-        const float Weight = 1.0 / 15.0;
+        const float Weight = 1.0 / 5.0;
         MaxGradient[2] = max(MaxGradient[0], MaxGradient[1]) * Weight;
         float CenterGradient = rsqrt((dot(MaxGradient[2], MaxGradient[2]) * 0.25) + 1e-7);
 
