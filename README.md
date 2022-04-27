@@ -20,7 +20,6 @@ ReShade shaders and more
 
 Shader (click to download) | Description
 ---------------------------|------------
-[buggyassshaderlmao](/shaders/buggyassshaderlmao.fx)    | Shader that seems to cause problems on ReShade
 [cAbberation](/shaders/cAbberation.fx)                  | Chromatic abberation using vertex shader offset
 [cAutoExposure](/shaders/cAutoExposure.fx)              | 2-pass automatic exposure
 [cBloom](/shaders/cBloom.fx)                            | Dual-filtering bloom
