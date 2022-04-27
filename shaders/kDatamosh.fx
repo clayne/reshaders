@@ -120,7 +120,7 @@ namespace Datamosh
     OPTION(float, _Scale, "slider", "Datamosh", "Scale factor for velocity vectors", 0.0, 4.0, 2.0)
     OPTION(float, _Diffusion, "slider", "Datamosh", "Amount of random displacement", 0.0, 4.0, 2.0)
 
-    OPTION(float, _Constraint, "slider", "Optical flow", "Motion constraint", 0.0, 1.0, 0.25)
+    OPTION(float, _Constraint, "slider", "Optical flow", "Motion constraint", 0.0, 2.0, 1.0)
     OPTION(float, _MipBias, "slider", "Optical flow", "Optical flow mipmap bias", 0.0, 7.0, 0.0)
     OPTION(float, _BlendFactor, "slider", "Optical flow", "Temporal blending factor", 0.0, 0.9, 0.1)
 
@@ -279,7 +279,8 @@ namespace Datamosh
     void Normalize_Frame_PS(in float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD, out float2 Color : SV_TARGET0)
     {
         float4 Frame = max(tex2D(Sample_Color, TexCoord), exp2(-10.0));
-        Color.xy = saturate(Frame.xy / dot(Frame.rgb, 1.0));
+        float2 NFrame = saturate(Frame.xy / dot(Frame.rgb, 1.0));
+        Color.xy = saturate(NFrame.xy / max(max(NFrame.r, NFrame.g), 1.0 - NFrame.r - NFrame.g));
     }
 
     void Blit_Frame_PS(in float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD, out float4 OutputColor0 : SV_TARGET0)

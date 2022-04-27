@@ -101,7 +101,7 @@ namespace cInterpolation
 {
     // Shader properties
 
-    OPTION(float, _Constraint, "slider", "Optical flow", "Motion constraint", 0.0, 1.0, 0.25)
+    OPTION(float, _Constraint, "slider", "Optical flow", "Motion constraint", 0.0, 2.0, 1.0)
     OPTION(float, _MipBias, "drag", "Optical flow", "Optical flow mipmap bias", 0.0, 7.0, 0.0)
 
     // Consideration: Use A8 channel for difference requirement (normalize BW image)
@@ -261,8 +261,10 @@ namespace cInterpolation
     {
         float4 Frame1 = tex2D(Sample_Frame1, TexCoord);
         float4 Frame3 = tex2D(Sample_Frame3, TexCoord);
-        OutputColor0.xy = saturate(Frame1.xy / dot(Frame1.rgb, 1.0));
-        OutputColor0.zw = saturate(Frame3.xy / dot(Frame3.rgb, 1.0));
+        float2 NFrame1 = saturate(Frame1.xy / dot(Frame1.rgb, 1.0));
+        float2 NFrame3 = saturate(Frame3.xy / dot(Frame3.rgb, 1.0));
+        OutputColor0.xy = saturate(NFrame1.xy / max(max(NFrame1.r, NFrame1.g), 1.0 - NFrame1.r - NFrame1.g));
+        OutputColor0.zw = saturate(NFrame3.xy / max(max(NFrame3.r, NFrame3.g), 1.0 - NFrame3.r - NFrame3.g));
     }
 
     static const float BlurWeights[8] =
