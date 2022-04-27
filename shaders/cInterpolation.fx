@@ -400,7 +400,7 @@ namespace cInterpolation
         float4 SqGradientUV = 0.0;
         SqGradientUV.xy = SampleNW - SampleSE; // <IxU, IxV>
         SqGradientUV.zw = SampleNE - SampleSW; // <IyU, IyV>
-        Gradient = rsqrt((dot(SqGradientUV, SqGradientUV) * 0.25) + 1e-7);
+        Gradient = saturate(rsqrt(dot(SqGradientUV, SqGradientUV) * 0.25));
     }
 
     float2 Prewitt(float2 SampleUV[9], float3x3 Weights)
@@ -447,7 +447,7 @@ namespace cInterpolation
 
         const float Weight = 1.0 / 5.0;
         MaxGradient[2] = max(MaxGradient[0], MaxGradient[1]) * Weight;
-        float CenterGradient = rsqrt((dot(MaxGradient[2], MaxGradient[2]) * 0.25) + 1e-7);
+        float CenterGradient = saturate(rsqrt(dot(MaxGradient[2], MaxGradient[2]) * 0.25));
 
         // Area smoothness gradients
         // .............................
