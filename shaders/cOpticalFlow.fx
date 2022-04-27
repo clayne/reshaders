@@ -640,17 +640,16 @@ namespace OpticalFlow
         Optical_Flow_TV(Shared_Resources_Flow::Sample_Common_3, TexCoords, 2.5, OutputColor0);
     }
 
-    void Level_1_PS(in float4 Position : SV_POSITION, in float4 TexCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+    void Level_1_PS(in float4 Position : SV_POSITION, in float4 TexCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0, out float4 OutputColor1 : SV_TARGET1)
     {
         float4 OpticalFlow = 0.0;
         Optical_Flow_TV(Shared_Resources_Flow::Sample_Common_2, TexCoords, 0.5, OpticalFlow);
         OutputColor0.rg = OpticalFlow.xy + OpticalFlow.zw;
         OutputColor0.ba = float2(0.0, _BlendFactor);
-    }
 
-    void Blit_Previous_PS(in float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD, out float4 OutputColor0 : SV_TARGET0)
-    {
-        OutputColor0 = tex2D(Shared_Resources_Flow::Sample_Common_1_A, TexCoord);
+        // Copy prefiltered frame to use in next frame
+        OutputColor1 = tex2D(Shared_Resources_Flow::Sample_Common_1_A, TexCoords[1].xz);
+        OutputColor1.a = 0.0;
     }
 
     void Post_Blur_0_PS(in float4 Position : SV_POSITION, in float4 TexCoords[8] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
@@ -721,20 +720,19 @@ namespace OpticalFlow
         PASS(Sample_3x3_4_VS, Level_3_PS, Shared_Resources_Flow::Render_Common_3)
         PASS(Sample_3x3_3_VS, Level_2_PS, Shared_Resources_Flow::Render_Common_2)
 
+        // Calculate final level flow and store current convolved frame for next frame
         pass
         {
             VertexShader = Sample_3x3_2_VS;
             PixelShader = Level_1_PS;
             RenderTarget0 = Render_Optical_Flow;
+            RenderTarget1 = Render_Common_1_P;
             ClearRenderTargets = FALSE;
             BlendEnable = TRUE;
             BlendOp = ADD;
             SrcBlend = INVSRCALPHA;
             DestBlend = SRCALPHA;
         }
-
-        // Store current convolved frame for next frame
-        PASS(Basic_VS, Blit_Previous_PS, Render_Common_1_P)
 
         // Gaussian blur
         PASS(Blur_0_VS, Post_Blur_0_PS, Shared_Resources_Flow::Render_Common_1_A)
