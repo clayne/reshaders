@@ -642,7 +642,7 @@ namespace OpticalFlow
 
     void Post_Blur_1_PS(in float4 Position : SV_POSITION, in float4 TexCoords[8] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
-        Gaussian_Blur(Shared_Resources_Flow::Sample_Common_1_A, TexCoords, OutputColor0);
+        Gaussian_Blur(Shared_Resources_Flow::Sample_Common_1_B, TexCoords, OutputColor0);
         OutputColor0.a = 1.0;
     }
 
