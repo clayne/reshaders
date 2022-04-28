@@ -112,7 +112,7 @@ namespace Motion_Blur
 {
     // Shader properties
 
-    OPTION(float, _Constraint, "slider", "Optical flow", "Motion constraint", 0.0, 1.0, 0.5))
+    OPTION(float, _Constraint, "slider", "Optical flow", "Motion constraint", 0.0, 1.0, 0.25)
     OPTION(float, _MipBias, "slider", "Optical flow", "Optical flow mipmap bias", 0.0, 7.0, 4.5)
     OPTION(float, _BlendFactor, "slider", "Optical flow", "Temporal blending factor", 0.0, 0.9, 0.1)
 
@@ -357,8 +357,8 @@ namespace Motion_Blur
         float2 C1 = tex2D(Shared_Resources_Motion_Blur::Sample_Common_1_A, TexCoords[1].yz).xy * 4.0; // <+0.5, -1.5>
 
         OutputColor0 = 0.0;
-        OutputColor0.xy = ((B2 + A1 + B0 + C1) - (B1 + A0 + A2 + C0)) / 12.0;
-        OutputColor0.zw = ((A0 + B1 + B2 + A1) - (A2 + C0 + C1 + B0)) / 12.0;
+        OutputColor0.xz = ((B2 + A1 + B0 + C1) - (B1 + A0 + A2 + C0)) / 12.0;
+        OutputColor0.yw = ((A0 + B1 + B2 + A1) - (A2 + C0 + C1 + B0)) / 12.0;
     }
 
     /*
@@ -398,7 +398,7 @@ namespace Motion_Blur
         float4 Bi = 0.0;
 
         // Calculate constancy assumption nonlinearity
-        C = rsqrt(TD.rg * TD.rg + 1e-7);
+        C = rsqrt((TD.rg * TD.rg) + 1e-7);
 
         // Build linear equation
         // [Aii Aij] [X] = [Bi]
@@ -423,7 +423,7 @@ namespace Motion_Blur
         float4 SqGradientUV = 0.0;
         SqGradientUV.xy = SampleNW - SampleSE; // <IxU, IxV>
         SqGradientUV.zw = SampleNE - SampleSW; // <IyU, IyV>
-        Gradient = rsqrt(dot(SqGradientUV, SqGradientUV) * 0.25 + 1e-7);
+        Gradient = rsqrt((dot(SqGradientUV, SqGradientUV) * 0.25) + 1e-7);
     }
 
     float2 Prewitt(float2 SampleUV[9], float3x3 Weights)
@@ -470,7 +470,7 @@ namespace Motion_Blur
 
         const float Weight = 1.0 / 5.0;
         MaxGradient[2] = max(MaxGradient[0], MaxGradient[1]) * Weight;
-        float CenterGradient = rsqrt(dot(MaxGradient[2], MaxGradient[2]) * 0.25 + 1e-7);
+        float CenterGradient = rsqrt((dot(MaxGradient[2], MaxGradient[2]) * 0.25) + 1e-7);
 
         // Area smoothness gradients
         // .............................
@@ -567,7 +567,7 @@ namespace Motion_Blur
         // Dot-product increases when the current gradient + previous estimation are parallel
         C.r = dot(SD.xy, CenterAverage.xy) + TD.r;
         C.g = dot(SD.zw, CenterAverage.zw) + TD.g;
-        C.rg = rsqrt(C.rg * C.rg + 1e-7);
+        C.rg = rsqrt((C.rg * C.rg) + 1e-7);
 
         // Build linear equation
         // [Aii Aij] [X] = [Bi]

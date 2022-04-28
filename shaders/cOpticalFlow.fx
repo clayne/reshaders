@@ -112,7 +112,7 @@ namespace OpticalFlow
 {
     // Shader properties
 
-    OPTION(float, _Constraint, "slider", "Optical flow", "Motion constraint", 0.0, 1.0, 0.5))
+    OPTION(float, _Constraint, "slider", "Optical flow", "Motion constraint", 0.0, 1.0, 0.25)
     OPTION(float, _MipBias, "drag", "Optical flow", "Optical flow mipmap bias", 0.0, 7.0, 0.0)
     OPTION(float, _BlendFactor, "slider", "Optical flow", "Temporal blending factor", 0.0, 0.9, 0.1)
 
@@ -422,7 +422,7 @@ namespace OpticalFlow
         float4 Bi = 0.0;
 
         // Calculate constancy assumption nonlinearity
-        C = rsqrt(TD.rg * TD.rg + 1e-7);
+        C = rsqrt((TD.rg * TD.rg) + 1e-7);
 
         // Build linear equation
         // [Aii Aij] [X] = [Bi]
@@ -447,7 +447,7 @@ namespace OpticalFlow
         float4 SqGradientUV = 0.0;
         SqGradientUV.xy = SampleNW - SampleSE; // <IxU, IxV>
         SqGradientUV.zw = SampleNE - SampleSW; // <IyU, IyV>
-        Gradient = rsqrt(dot(SqGradientUV, SqGradientUV) * 0.25 + 1e-7);
+        Gradient = rsqrt((dot(SqGradientUV, SqGradientUV) * 0.25) + 1e-7);
     }
 
     float2 Prewitt(float2 SampleUV[9], float3x3 Weights)
@@ -494,7 +494,7 @@ namespace OpticalFlow
 
         const float Weight = 1.0 / 5.0;
         MaxGradient[2] = max(MaxGradient[0], MaxGradient[1]) * Weight;
-        float CenterGradient = rsqrt(dot(MaxGradient[2], MaxGradient[2]) * 0.25 + 1e-7);
+        float CenterGradient = rsqrt((dot(MaxGradient[2], MaxGradient[2]) * 0.25) + 1e-7);
 
         // Area smoothness gradients
         // .............................
@@ -591,7 +591,7 @@ namespace OpticalFlow
         // Dot-product increases when the current gradient + previous estimation are parallel
         C.r = dot(SD.xy, CenterAverage.xy) + TD.r;
         C.g = dot(SD.zw, CenterAverage.zw) + TD.g;
-        C.rg = rsqrt(C.rg * C.rg + 1e-7);
+        C.rg = rsqrt((C.rg * C.rg) + 1e-7);
 
         // Build linear equation
         // [Aii Aij] [X] = [Bi]
