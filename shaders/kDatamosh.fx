@@ -120,7 +120,7 @@ namespace Datamosh
     OPTION(float, _Scale, "slider", "Datamosh", "Scale factor for velocity vectors", 0.0, 4.0, 2.0)
     OPTION(float, _Diffusion, "slider", "Datamosh", "Amount of random displacement", 0.0, 4.0, 2.0)
 
-    OPTION(float, _Constraint, "slider", "Optical flow", "Motion constraint", 0.0, 2.0, 1.0)
+    OPTION(float, _Constraint, "slider", "Optical flow", "Motion constraint", 0.0, 1.0, 0.25)
     OPTION(float, _MipBias, "slider", "Optical flow", "Optical flow mipmap bias", 0.0, 7.0, 0.0)
     OPTION(float, _BlendFactor, "slider", "Optical flow", "Temporal blending factor", 0.0, 0.9, 0.1)
 
@@ -157,7 +157,7 @@ namespace Datamosh
 
     sampler2D Sample_Optical_Flow_Post
     {
-        Texture = Shared_Resources_Datamosh::Render_Common_1_B;
+        Texture = Shared_Resources_Datamosh::Render_Common_1_A;
         MagFilter = _FILTER;
         MinFilter = _FILTER;
     };
@@ -340,24 +340,9 @@ namespace Datamosh
         float2 C0 = tex2D(Shared_Resources_Datamosh::Sample_Common_1_A, TexCoords[1].xz).xy * 4.0; // <-0.5, -1.5>
         float2 C1 = tex2D(Shared_Resources_Datamosh::Sample_Common_1_A, TexCoords[1].yz).xy * 4.0; // <+0.5, -1.5>
 
-        //    -1 0 +1
-        // -1 -2 0 +2 +1
-        // -2 -2 0 +2 +2
-        // -1 -2 0 +2 +1
-        //    -1 0 +1
-        float2 Ix = ((B2 + A1 + B0 + C1) - (B1 + A0 + A2 + C0)) / 12.0;
-
-        //    +1 +2 +1
-        // +1 +2 +2 +2 +1
-        //  0  0  0  0  0
-        // -1 -2 -2 -2 -1
-        //    -1 -2 -1
-        float2 Iy = ((A0 + B1 + B2 + A1) - (A2 + C0 + C1 + B0)) / 12.0;
-
-        OutputColor0.xz = Ix;
-        OutputColor0.yw = Iy;
-        OutputColor0.xy = OutputColor0.xy * rsqrt(dot(OutputColor0.xy, OutputColor0.xy) + 1.0);
-        OutputColor0.zw = OutputColor0.zw * rsqrt(dot(OutputColor0.zw, OutputColor0.zw) + 1.0);
+        OutputColor0 = 0.0;
+        OutputColor0.xz = ((B2 + A1 + B0 + C1) - (B1 + A0 + A2 + C0)) / 12.0;
+        OutputColor0.yw = ((A0 + B1 + B2 + A1) - (A2 + C0 + C1 + B0)) / 12.0;
     }
 
     /*
@@ -397,7 +382,7 @@ namespace Datamosh
         float4 Bi = 0.0;
 
         // Calculate constancy assumption nonlinearity
-        C = rsqrt(TD.rg * TD.rg + 1e-7);
+        C = rsqrt((TD.rg * TD.rg) + 1e-7);
 
         // Build linear equation
         // [Aii Aij] [X] = [Bi]
@@ -422,7 +407,7 @@ namespace Datamosh
         float4 SqGradientUV = 0.0;
         SqGradientUV.xy = SampleNW - SampleSE; // <IxU, IxV>
         SqGradientUV.zw = SampleNE - SampleSW; // <IyU, IyV>
-        Gradient = saturate(rsqrt(dot(SqGradientUV, SqGradientUV) * 0.25));
+        Gradient = rsqrt((dot(SqGradientUV, SqGradientUV) * 0.25) + 1e-7);
     }
 
     float2 Prewitt(float2 SampleUV[9], float3x3 Weights)
@@ -469,7 +454,7 @@ namespace Datamosh
 
         const float Weight = 1.0 / 5.0;
         MaxGradient[2] = max(MaxGradient[0], MaxGradient[1]) * Weight;
-        float CenterGradient = saturate(rsqrt(dot(MaxGradient[2], MaxGradient[2]) * 0.25));
+        float CenterGradient = rsqrt((dot(MaxGradient[2], MaxGradient[2]) * 0.25) + 1e-7);
 
         // Area smoothness gradients
         // .............................
@@ -608,20 +593,16 @@ namespace Datamosh
         OutputColor0.ba = float2(0.0, _BlendFactor);
     }
 
-    void Blit_Previous_PS(in float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD, out float4 OutputColor0 : SV_TARGET0)
-    {
-        OutputColor0 = tex2D(Shared_Resources_Datamosh::Sample_Common_1_A, TexCoord);
-    }
-
-    void Post_Blur_0_PS(in float4 Position : SV_POSITION, in float4 TexCoords[8] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+    void Post_Blur_0_PS(in float4 Position : SV_POSITION, in float4 TexCoords[8] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0, out float4 OutputColor1 : SV_TARGET1)
     {
         Gaussian_Blur(Sample_Optical_Flow, TexCoords, OutputColor0);
         OutputColor0.a = 1.0;
+        OutputColor1 = tex2D(Shared_Resources_Datamosh::Sample_Common_1_A, TexCoords[0].xy);
     }
 
     void Post_Blur_1_PS(in float4 Position : SV_POSITION, in float4 TexCoords[8] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
-        Gaussian_Blur(Shared_Resources_Datamosh::Sample_Common_1_A, TexCoords, OutputColor0);
+        Gaussian_Blur(Shared_Resources_Datamosh::Sample_Common_1_B, TexCoords, OutputColor0);
         OutputColor0.a = 1.0;
     }
 
@@ -776,12 +757,21 @@ namespace Datamosh
             DestBlend = SRCALPHA;
         }
 
-        // Store current convolved frame for next frame
-        PASS(Basic_VS, Blit_Previous_PS, Render_Common_1_P)
-
         // Gaussian blur
-        PASS(Blur_0_VS, Post_Blur_0_PS, Shared_Resources_Datamosh::Render_Common_1_A)
-        PASS(Blur_1_VS, Post_Blur_1_PS, Shared_Resources_Datamosh::Render_Common_1_B)
+        pass // Do gaussian blur 0 and copy current convolved frame for next frame
+        {
+            VertexShader = Blur_0_VS;
+            PixelShader = Post_Blur_0_PS;
+            RenderTarget0 = Shared_Resources_Datamosh::Render_Common_1_B;
+            RenderTarget1 = Render_Common_1_P;
+        }
+
+        pass
+        {
+            VertexShader = Blur_1_VS;
+            PixelShader = Post_Blur_1_PS;
+            RenderTarget0 = Shared_Resources_Datamosh::Render_Common_1_A;
+        }
 
         // Datamoshing
 
