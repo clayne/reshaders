@@ -112,7 +112,7 @@ namespace Motion_Blur
 {
     // Shader properties
 
-    OPTION(float, _Constraint, "slider", "Optical flow", "Motion constraint", 0.0, 1.0, 0.25)
+    OPTION(float, _Constraint, "slider", "Optical flow", "Motion constraint", 0.0, 2.0, 1.0)
     OPTION(float, _MipBias, "slider", "Optical flow", "Optical flow mipmap bias", 0.0, 7.0, 4.5)
     OPTION(float, _BlendFactor, "slider", "Optical flow", "Temporal blending factor", 0.0, 0.9, 0.1)
 
@@ -356,9 +356,24 @@ namespace Motion_Blur
         float2 C0 = tex2D(Shared_Resources_Motion_Blur::Sample_Common_1_A, TexCoords[1].xz).xy * 4.0; // <-0.5, -1.5>
         float2 C1 = tex2D(Shared_Resources_Motion_Blur::Sample_Common_1_A, TexCoords[1].yz).xy * 4.0; // <+0.5, -1.5>
 
-        OutputColor0 = 0.0;
-        OutputColor0.xz = ((B2 + A1 + B0 + C1) - (B1 + A0 + A2 + C0)) / 12.0;
-        OutputColor0.yw = ((A0 + B1 + B2 + A1) - (A2 + C0 + C1 + B0)) / 12.0;
+        //    -1 0 +1
+        // -1 -2 0 +2 +1
+        // -2 -2 0 +2 +2
+        // -1 -2 0 +2 +1
+        //    -1 0 +1
+        float2 Ix = ((B2 + A1 + B0 + C1) - (B1 + A0 + A2 + C0)) / 12.0;
+
+        //    +1 +2 +1
+        // +1 +2 +2 +2 +1
+        //  0  0  0  0  0
+        // -1 -2 -2 -2 -1
+        //    -1 -2 -1
+        float2 Iy = ((A0 + B1 + B2 + A1) - (A2 + C0 + C1 + B0)) / 12.0;
+
+        OutputColor0.xz = Ix;
+        OutputColor0.yw = Iy;
+        OutputColor0.xy = OutputColor0.xy * rsqrt(dot(OutputColor0.xy, OutputColor0.xy) + 1.0);
+        OutputColor0.zw = OutputColor0.zw * rsqrt(dot(OutputColor0.zw, OutputColor0.zw) + 1.0);
     }
 
     /*
@@ -398,7 +413,7 @@ namespace Motion_Blur
         float4 Bi = 0.0;
 
         // Calculate constancy assumption nonlinearity
-        C = rsqrt((TD.rg * TD.rg) + 1e-7);
+        C = rsqrt(TD.rg * TD.rg + 1e-7);
 
         // Build linear equation
         // [Aii Aij] [X] = [Bi]
@@ -423,7 +438,7 @@ namespace Motion_Blur
         float4 SqGradientUV = 0.0;
         SqGradientUV.xy = SampleNW - SampleSE; // <IxU, IxV>
         SqGradientUV.zw = SampleNE - SampleSW; // <IyU, IyV>
-        Gradient = rsqrt((dot(SqGradientUV, SqGradientUV) * 0.25) + 1e-7);
+        Gradient = saturate(rsqrt(dot(SqGradientUV, SqGradientUV) * 0.25));
     }
 
     float2 Prewitt(float2 SampleUV[9], float3x3 Weights)
@@ -470,7 +485,7 @@ namespace Motion_Blur
 
         const float Weight = 1.0 / 5.0;
         MaxGradient[2] = max(MaxGradient[0], MaxGradient[1]) * Weight;
-        float CenterGradient = rsqrt((dot(MaxGradient[2], MaxGradient[2]) * 0.25) + 1e-7);
+        float CenterGradient = saturate(rsqrt(dot(MaxGradient[2], MaxGradient[2]) * 0.25));
 
         // Area smoothness gradients
         // .............................
@@ -567,7 +582,7 @@ namespace Motion_Blur
         // Dot-product increases when the current gradient + previous estimation are parallel
         C.r = dot(SD.xy, CenterAverage.xy) + TD.r;
         C.g = dot(SD.zw, CenterAverage.zw) + TD.g;
-        C.rg = rsqrt((C.rg * C.rg) + 1e-7);
+        C.rg = rsqrt(C.rg * C.rg + 1e-7);
 
         // Build linear equation
         // [Aii Aij] [X] = [Bi]
@@ -601,16 +616,17 @@ namespace Motion_Blur
         Optical_Flow_TV(Shared_Resources_Motion_Blur::Sample_Common_3, TexCoords, 2.5, Color);
     }
 
-    void Level_1_PS(in float4 Position : SV_POSITION, in float4 TexCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0, out float4 OutputColor1 : SV_TARGET1)
+    void Level_1_PS(in float4 Position : SV_POSITION, in float4 TexCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
         float4 OpticalFlow = 0.0;
         Optical_Flow_TV(Shared_Resources_Motion_Blur::Sample_Common_2, TexCoords, 0.5, OpticalFlow);
         OutputColor0.rg = OpticalFlow.xy + OpticalFlow.zw;
         OutputColor0.ba = float2(0.0, _BlendFactor);
+    }
 
-        // Copy prefiltered frame to use in next frame
-        OutputColor1 = tex2D(Shared_Resources_Motion_Blur::Sample_Common_1_A, TexCoords[1].xz);
-        OutputColor1.a = 0.0;
+    void Blit_Previous_PS(in float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD, out float4 OutputColor0 : SV_TARGET0)
+    {
+        OutputColor0 = tex2D(Shared_Resources_Motion_Blur::Sample_Common_1_A, TexCoord);
     }
 
     void Post_Blur_0_PS(in float4 Position : SV_POSITION, in float4 TexCoords[8] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
@@ -680,19 +696,20 @@ namespace Motion_Blur
         PASS(Sample_3x3_4_VS, Level_3_PS, Shared_Resources_Motion_Blur::Render_Common_3)
         PASS(Sample_3x3_3_VS, Level_2_PS, Shared_Resources_Motion_Blur::Render_Common_2)
 
-        // Calculate final level flow and store current convolved frame for next frame
         pass
         {
             VertexShader = Sample_3x3_2_VS;
             PixelShader = Level_1_PS;
             RenderTarget0 = Render_Optical_Flow;
-            RenderTarget1 = Render_Common_1_P;
             ClearRenderTargets = FALSE;
             BlendEnable = TRUE;
             BlendOp = ADD;
             SrcBlend = INVSRCALPHA;
             DestBlend = SRCALPHA;
         }
+
+        // Store current convolved frame for next frame
+        PASS(Basic_VS, Blit_Previous_PS, Render_Common_1_P)
 
         // Gaussian blur
         PASS(Blur_0_VS, Post_Blur_0_PS, Shared_Resources_Motion_Blur::Render_Common_1_A)
