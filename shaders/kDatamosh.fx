@@ -120,7 +120,7 @@ namespace Datamosh
     OPTION(float, _Scale, "slider", "Datamosh", "Scale factor for velocity vectors", 0.0, 4.0, 2.0)
     OPTION(float, _Diffusion, "slider", "Datamosh", "Amount of random displacement", 0.0, 4.0, 2.0)
 
-    OPTION(float, _Constraint, "slider", "Optical flow", "Motion constraint", 0.0, 2.0, 1.0)
+    OPTION(float, _Constraint, "slider", "Optical flow", "Motion constraint", 0.0, 1.0, 0.5))
     OPTION(float, _MipBias, "slider", "Optical flow", "Optical flow mipmap bias", 0.0, 7.0, 0.0)
     OPTION(float, _BlendFactor, "slider", "Optical flow", "Temporal blending factor", 0.0, 0.9, 0.1)
 
@@ -340,24 +340,9 @@ namespace Datamosh
         float2 C0 = tex2D(Shared_Resources_Datamosh::Sample_Common_1_A, TexCoords[1].xz).xy * 4.0; // <-0.5, -1.5>
         float2 C1 = tex2D(Shared_Resources_Datamosh::Sample_Common_1_A, TexCoords[1].yz).xy * 4.0; // <+0.5, -1.5>
 
-        //    -1 0 +1
-        // -1 -2 0 +2 +1
-        // -2 -2 0 +2 +2
-        // -1 -2 0 +2 +1
-        //    -1 0 +1
-        float2 Ix = ((B2 + A1 + B0 + C1) - (B1 + A0 + A2 + C0)) / 12.0;
-
-        //    +1 +2 +1
-        // +1 +2 +2 +2 +1
-        //  0  0  0  0  0
-        // -1 -2 -2 -2 -1
-        //    -1 -2 -1
-        float2 Iy = ((A0 + B1 + B2 + A1) - (A2 + C0 + C1 + B0)) / 12.0;
-
-        OutputColor0.xz = Ix;
-        OutputColor0.yw = Iy;
-        OutputColor0.xy = OutputColor0.xy * rsqrt(dot(OutputColor0.xy, OutputColor0.xy) + 1.0);
-        OutputColor0.zw = OutputColor0.zw * rsqrt(dot(OutputColor0.zw, OutputColor0.zw) + 1.0);
+        OutputColor0 = 0.0;
+        OutputColor0.xy = ((B2 + A1 + B0 + C1) - (B1 + A0 + A2 + C0)) / 12.0;
+        OutputColor0.zw = ((A0 + B1 + B2 + A1) - (A2 + C0 + C1 + B0)) / 12.0;
     }
 
     /*
@@ -422,7 +407,7 @@ namespace Datamosh
         float4 SqGradientUV = 0.0;
         SqGradientUV.xy = SampleNW - SampleSE; // <IxU, IxV>
         SqGradientUV.zw = SampleNE - SampleSW; // <IyU, IyV>
-        Gradient = saturate(rsqrt(dot(SqGradientUV, SqGradientUV) * 0.25));
+        Gradient = rsqrt(dot(SqGradientUV, SqGradientUV) * 0.25 + 1e-7);
     }
 
     float2 Prewitt(float2 SampleUV[9], float3x3 Weights)
@@ -469,7 +454,7 @@ namespace Datamosh
 
         const float Weight = 1.0 / 5.0;
         MaxGradient[2] = max(MaxGradient[0], MaxGradient[1]) * Weight;
-        float CenterGradient = saturate(rsqrt(dot(MaxGradient[2], MaxGradient[2]) * 0.25));
+        float CenterGradient = rsqrt(dot(MaxGradient[2], MaxGradient[2]) * 0.25 + 1e-7);
 
         // Area smoothness gradients
         // .............................
