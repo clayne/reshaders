@@ -470,7 +470,7 @@ namespace Motion_Blur
 
         const float Weight = 1.0 / 5.0;
         MaxGradient[2] = max(MaxGradient[0], MaxGradient[1]) * Weight;
-        float CenterGradient = rsqrt((dot(MaxGradient[2], MaxGradient[2]) * 0.25) + 1e-7);
+        float CenterGradient = rsqrt((dot(MaxGradient[2], MaxGradient[2]) * 0.5) + 1e-7);
 
         // Area smoothness gradients
         // .............................
