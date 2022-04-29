@@ -591,7 +591,7 @@ namespace OpticalFlow
         // Dot-product increases when the current gradient + previous estimation are parallel
         C.r = dot(SD.xy, CenterAverage.xy) + TD.r;
         C.g = dot(SD.zw, CenterAverage.zw) + TD.g;
-        C.rg = rsqrt(C.rg * C.rg + 1e-7);
+        C.rg = rsqrt((C.rg * C.rg) + 1e-7);
 
         // Build linear equation
         // [Aii Aij] [X] = [Bi]
