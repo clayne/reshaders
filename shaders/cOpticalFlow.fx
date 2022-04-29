@@ -488,13 +488,10 @@ namespace OpticalFlow
         PrewittUV[3].xy = Prewitt(SampleUV, float3x3(-1.0, +1.0, +1.0, -1.0, -2.0, +1.0, -1.0, +1.0, +1.0));
         PrewittUV[3].zw = Prewitt(SampleUV, float3x3(-1.0, -1.0, +1.0, -1.0, -2.0, +1.0, +1.0, +1.0, +1.0));
 
-        float2 MaxGradient[3];
-        MaxGradient[0] = max(max(abs(PrewittUV[0].xy), abs(PrewittUV[0].zw)), max(abs(PrewittUV[1].xy), abs(PrewittUV[1].zw)));
-        MaxGradient[1] = max(max(abs(PrewittUV[2].xy), abs(PrewittUV[2].zw)), max(abs(PrewittUV[3].xy), abs(PrewittUV[3].zw)));
-
         const float Weight = 1.0 / 5.0;
-        MaxGradient[2] = max(MaxGradient[0], MaxGradient[1]) * Weight;
-        float CenterGradient = rsqrt((dot(MaxGradient[2], MaxGradient[2]) * 0.5) + 1e-7);
+        float4 MaxGradient4 = max(max(abs(PrewittUV[0]), abs(PrewittUV[1])), max(abs(PrewittUV[2]), abs(PrewittUV[3])));
+        float2 MaxGradient2 = max(abs(MaxGradient4.xy), abs(MaxGradient4.zw)) * Weight;
+        float CenterGradient = rsqrt((dot(MaxGradient2, MaxGradient2) * 0.5) + 1e-7);
 
         // Area smoothness gradients
         // .............................
