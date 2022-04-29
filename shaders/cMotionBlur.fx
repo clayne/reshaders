@@ -414,23 +414,23 @@ namespace Motion_Blur
         OpticalFlow.yw = Aii.yw * ((Alpha * UV.yw) - (Aij.rg * OpticalFlow.xz) - Bi.yw);
     }
 
-    void Gradient(in float2 SampleNW, in float2 SampleNE, in float2 SampleSW, in float2 SampleSE, out float Gradient)
+    void Gradient(in float4x2 Samples, out float Gradient)
     {
-        // Robert's cross
-        // https://homepages.inf.ed.ac.uk/rbf/HIPR2/roberts.htm
-        // NW NE
-        // SW SE
+        // 2x2 Prewitt
+        // [0] [2]
+        // [1] [3]
         float4 SqGradientUV = 0.0;
-        SqGradientUV.xy = SampleNW - SampleSE; // <IxU, IxV>
-        SqGradientUV.zw = SampleNE - SampleSW; // <IyU, IyV>
+        SqGradientUV.xy = (Samples[2] + Samples[3]) - (Samples[0] + Samples[1]); // <IxU, IxV>
+        SqGradientUV.zw = (Samples[0] + Samples[2]) - (Samples[1] + Samples[3]); // <IyU, IyV>
+        SqGradientUV = SqGradientUV * 0.5;
         Gradient = rsqrt((dot(SqGradientUV, SqGradientUV) * 0.25) + 1e-7);
     }
 
     float2 Prewitt(float2 SampleUV[9], float3x3 Weights)
     {
-        // 0 3 6
-        // 1 4 7
-        // 2 5 8
+        // [0] [3] [6]
+        // [1] [4] [7]
+        // [2] [5] [8]
         float2 Output;
         Output += (SampleUV[0] * Weights[0][0]);
         Output += (SampleUV[1] * Weights[0][1]);
@@ -478,10 +478,10 @@ namespace Motion_Blur
         // 0 3 . | . 3 6 | . . . | . . .
         // 1 4 . | . 4 7 | 1 4 . | . 4 7
         // . . . | . . . | 2 5 . | . 5 8
-        Gradient(SampleUV[0], SampleUV[3], SampleUV[1], SampleUV[4], AreaGrad[0]);
-        Gradient(SampleUV[3], SampleUV[6], SampleUV[4], SampleUV[7], AreaGrad[1]);
-        Gradient(SampleUV[1], SampleUV[4], SampleUV[2], SampleUV[5], AreaGrad[2]);
-        Gradient(SampleUV[4], SampleUV[7], SampleUV[5], SampleUV[8], AreaGrad[3]);
+        Gradient(float4x2(SampleUV[0], SampleUV[3], SampleUV[1], SampleUV[4]), AreaGrad[0]);
+        Gradient(float4x2(SampleUV[3], SampleUV[6], SampleUV[4], SampleUV[7]), AreaGrad[1]);
+        Gradient(float4x2(SampleUV[1], SampleUV[4], SampleUV[2], SampleUV[5]), AreaGrad[2]);
+        Gradient(float4x2(SampleUV[4], SampleUV[7], SampleUV[5], SampleUV[8]), AreaGrad[3]);
         UVGradient = 0.5 * (CenterGradient + AreaGrad);
     }
 
