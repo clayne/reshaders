@@ -42,9 +42,13 @@
 
 #define SIZE int2(RENDER_BUFFER_WIDTH, RENDER_BUFFER_HEIGHT)
 #define BUFFER_SIZE_1 int2(SIZE >> 0)
-#define BUFFER_SIZE_2 int2(SIZE >> 2)
-#define BUFFER_SIZE_3 int2(SIZE >> 4)
-#define BUFFER_SIZE_4 int2(SIZE >> 6)
+#define BUFFER_SIZE_2 int2(SIZE >> 1)
+#define BUFFER_SIZE_3 int2(SIZE >> 2)
+#define BUFFER_SIZE_4 int2(SIZE >> 3)
+#define BUFFER_SIZE_5 int2(SIZE >> 4)
+#define BUFFER_SIZE_6 int2(SIZE >> 5)
+#define BUFFER_SIZE_7 int2(SIZE >> 6)
+#define BUFFER_SIZE_8 int2(SIZE >> 7)
 
 #define TEXTURE(NAME, SIZE, FORMAT, LEVELS) \
     texture2D NAME                          \
@@ -65,23 +69,6 @@
         MinFilter = LINEAR;    \
         MipFilter = LINEAR;    \
     };
-
-#define OPTION(DATA_TYPE, NAME, TYPE, CATEGORY, LABEL, MINIMUM, MAXIMUM, DEFAULT) \
-    uniform DATA_TYPE NAME <                                                      \
-        ui_type = TYPE;                                                           \
-        ui_category = CATEGORY;                                                   \
-        ui_label = LABEL;                                                         \
-        ui_min = MINIMUM;                                                         \
-        ui_max = MAXIMUM;                                                         \
-    > = DEFAULT;
-
-#define PASS(VERTEX_SHADER, PIXEL_SHADER, RENDER_TARGET) \
-    pass                                                 \
-    {                                                    \
-        VertexShader = VERTEX_SHADER;                    \
-        PixelShader = PIXEL_SHADER;                      \
-        RenderTarget0 = RENDER_TARGET;                   \
-    }
 
 namespace Shared_Resources_Motion_Blur
 {
@@ -106,13 +93,34 @@ namespace Shared_Resources_Motion_Blur
 
     TEXTURE(Render_Common_4, BUFFER_SIZE_4, RGBA16F, 1)
     SAMPLER(Sample_Common_4, Render_Common_4)
+
+    TEXTURE(Render_Common_5, BUFFER_SIZE_5, RGBA16F, 1)
+    SAMPLER(Sample_Common_5, Render_Common_5)
+
+    TEXTURE(Render_Common_6, BUFFER_SIZE_6, RGBA16F, 1)
+    SAMPLER(Sample_Common_6, Render_Common_6)
+
+    TEXTURE(Render_Common_7, BUFFER_SIZE_7, RGBA16F, 1)
+    SAMPLER(Sample_Common_7, Render_Common_7)
+
+    TEXTURE(Render_Common_8, BUFFER_SIZE_8, RGBA16F, 1)
+    SAMPLER(Sample_Common_8, Render_Common_8)
 }
 
 namespace Motion_Blur
 {
     // Shader properties
 
-    OPTION(float, _Constraint, "slider", "Optical flow", "Motion constraint", 0.0, 1.0, 0.25)
+    #define OPTION(DATA_TYPE, NAME, TYPE, CATEGORY, LABEL, MINIMUM, MAXIMUM, DEFAULT) \
+        uniform DATA_TYPE NAME <                                                      \
+            ui_type = TYPE;                                                           \
+            ui_category = CATEGORY;                                                   \
+            ui_label = LABEL;                                                         \
+            ui_min = MINIMUM;                                                         \
+            ui_max = MAXIMUM;                                                         \
+        > = DEFAULT;
+
+    OPTION(float, _Constraint, "slider", "Optical flow", "Motion constraint", 0.0, 2.0, 1.0)
     OPTION(float, _Smoothness, "slider", "Optical flow", "Motion smoothness", 0.0, 2.0, 1.0)
     OPTION(float, _MipBias, "slider", "Optical flow", "Optical flow mipmap bias", 0.0, 7.0, 4.5)
     OPTION(float, _BlendFactor, "slider", "Optical flow", "Temporal blending factor", 0.0, 0.9, 0.1)
@@ -214,25 +222,20 @@ namespace Motion_Blur
         TexCoords[2] = CoordVS.xyyy + (float4(1.0, 1.0, 0.0, -1.0) / TexelSize.xyyy);
     }
 
-    void Sample_3x3_1_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 TexCoords[3] : TEXCOORD0)
-    {
-        Sample_3x3_VS(ID, BUFFER_SIZE_1, Position, TexCoords);
-    }
+    #define SAMPLE_3X3_VS(NAME, BUFFER_SIZE)                                                                        \
+        void NAME(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 TexCoords[3] : TEXCOORD0) \
+        {                                                                                                           \
+            Sample_3x3_VS(ID, BUFFER_SIZE, Position, TexCoords);                                                    \
+        }
 
-    void Sample_3x3_2_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 TexCoords[3] : TEXCOORD0)
-    {
-        Sample_3x3_VS(ID, BUFFER_SIZE_2, Position, TexCoords);
-    }
-
-    void Sample_3x3_3_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 TexCoords[3] : TEXCOORD0)
-    {
-        Sample_3x3_VS(ID, BUFFER_SIZE_3, Position, TexCoords);
-    }
-
-    void Sample_3x3_4_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 TexCoords[3] : TEXCOORD0)
-    {
-        Sample_3x3_VS(ID, BUFFER_SIZE_4, Position, TexCoords);
-    }
+    SAMPLE_3X3_VS(Sample_3x3_1_VS, BUFFER_SIZE_1)
+    SAMPLE_3X3_VS(Sample_3x3_2_VS, BUFFER_SIZE_2)
+    SAMPLE_3X3_VS(Sample_3x3_3_VS, BUFFER_SIZE_3)
+    SAMPLE_3X3_VS(Sample_3x3_4_VS, BUFFER_SIZE_4)
+    SAMPLE_3X3_VS(Sample_3x3_5_VS, BUFFER_SIZE_5)
+    SAMPLE_3X3_VS(Sample_3x3_6_VS, BUFFER_SIZE_6)
+    SAMPLE_3X3_VS(Sample_3x3_7_VS, BUFFER_SIZE_7)
+    SAMPLE_3X3_VS(Sample_3x3_8_VS, BUFFER_SIZE_8)
 
     void Derivatives_VS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float4 TexCoords[2] : TEXCOORD0)
     {
@@ -384,11 +387,11 @@ namespace Motion_Blur
         const float Alpha = max(ldexp(_Constraint * 1e-3, Level - MaxLevel), 1e-7);
 
         // Load textures
-        float2 Current = tex2Dlod(Shared_Resources_Motion_Blur::Sample_Common_1_A, float4(TexCoord, 0.0, Level)).xy;
-        float2 Previous = tex2Dlod(Sample_Common_1_P, float4(TexCoord, 0.0, Level)).xy;
+        float2 Current = tex2D(Shared_Resources_Motion_Blur::Sample_Common_1_A, TexCoord).xy;
+        float2 Previous = tex2D(Sample_Common_1_P, TexCoord).xy;
 
         // <Rx, Gx, Ry, Gy>
-        float4 SD = tex2Dlod(Shared_Resources_Motion_Blur::Sample_Common_1_B, float4(TexCoord, 0.0, Level));
+        float4 SD = tex2D(Shared_Resources_Motion_Blur::Sample_Common_1_B, TexCoord);
 
         // <Rz, Gz>
         float2 TD = Current - Previous;
@@ -424,7 +427,7 @@ namespace Motion_Blur
         SqGradientUV.xy = (Samples[2] + Samples[3]) - (Samples[0] + Samples[1]); // <IxU, IxV>
         SqGradientUV.zw = (Samples[0] + Samples[2]) - (Samples[1] + Samples[3]); // <IyU, IyV>
         SqGradientUV = SqGradientUV * 0.5;
-        Gradient = rsqrt((dot(SqGradientUV, SqGradientUV) * 0.25) + 1e-7);
+        Gradient = rsqrt((dot(SqGradientUV, SqGradientUV)) + 1e-7);
     }
 
     float2 Prewitt(float2 SampleUV[9], float3x3 Weights)
@@ -471,7 +474,7 @@ namespace Motion_Blur
 
         const float Weight = 1.0 / 5.0;
         MaxGradient[2] = max(MaxGradient[0], MaxGradient[1]) * Weight;
-        float CenterGradient = rsqrt((dot(MaxGradient[2], MaxGradient[2]) * 0.5) + 1e-7);
+        float CenterGradient = rsqrt((dot(MaxGradient[2], MaxGradient[2])) + 1e-7);
 
         // Area smoothness gradients
         // .............................
@@ -497,11 +500,11 @@ namespace Motion_Blur
         const float Alpha = max(ldexp(_Constraint * 1e-3, Level - MaxLevel), 1e-7);
 
         // Load textures
-        float2 Current = tex2Dlod(Shared_Resources_Motion_Blur::Sample_Common_1_A, float4(TexCoords[1].xz, 0.0, Level)).xy;
-        float2 Previous = tex2Dlod(Sample_Common_1_P, float4(TexCoords[1].xz, 0.0, Level)).xy;
+        float2 Current = tex2D(Shared_Resources_Motion_Blur::Sample_Common_1_A, TexCoords[1].xz).xy;
+        float2 Previous = tex2D(Sample_Common_1_P, TexCoords[1].xz).xy;
 
         // <Rx, Ry, Gx, Gy>
-        float4 SD = tex2Dlod(Shared_Resources_Motion_Blur::Sample_Common_1_B, float4(TexCoords[1].xz, 0.0, Level));
+        float4 SD = tex2D(Shared_Resources_Motion_Blur::Sample_Common_1_B, TexCoords[1].xz);
 
         // <Rz, Gz>
         float2 TD = Current - Previous;
@@ -566,6 +569,7 @@ namespace Motion_Blur
 
         // Calculate constancy assumption nonlinearity
         // Dot-product increases when the current gradient + previous estimation are parallel
+        // IxU + IyV = -It -> IxU + IyV + It = 0.0
         C.r = dot(SD.xy, CenterAverage.xy) + TD.r;
         C.g = dot(SD.zw, CenterAverage.zw) + TD.g;
         C.rg = rsqrt((C.rg * C.rg) + (1e-7 * _Smoothness));
@@ -587,25 +591,28 @@ namespace Motion_Blur
         OpticalFlow.yw = Aii.yw * ((Alpha * UVAverage.yw) - (Aij.rg * OpticalFlow.xz) - Bi.yw);
     }
 
-    void Level_4_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float4 Color : SV_TARGET0)
+    #define LEVEL_PS(NAME, SAMPLER, LEVEL)                                                                             \
+        void NAME(in float4 Position : SV_POSITION, in float4 TexCoords[3] : TEXCOORD0, out float4 Color : SV_TARGET0) \
+        {                                                                                                              \
+            Optical_Flow_TV(SAMPLER, TexCoords, LEVEL, Color);                                                         \
+        }
+
+    void Level_8_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float4 Color : SV_TARGET0)
     {
-        Coarse_Optical_Flow_TV(TexCoord, 6.5, 0.0, Color);
+        Coarse_Optical_Flow_TV(TexCoord, 7.0, 0.0, Color);
     }
 
-    void Level_3_PS(in float4 Position : SV_POSITION, in float4 TexCoords[3] : TEXCOORD0, out float4 Color : SV_TARGET0)
-    {
-        Optical_Flow_TV(Shared_Resources_Motion_Blur::Sample_Common_4, TexCoords, 4.5, Color);
-    }
-
-    void Level_2_PS(in float4 Position : SV_POSITION, in float4 TexCoords[3] : TEXCOORD0, out float4 Color : SV_TARGET0)
-    {
-        Optical_Flow_TV(Shared_Resources_Motion_Blur::Sample_Common_3, TexCoords, 2.5, Color);
-    }
+    LEVEL_PS(Level_7_PS, Shared_Resources_Motion_Blur::Sample_Common_8, 6.0)
+    LEVEL_PS(Level_6_PS, Shared_Resources_Motion_Blur::Sample_Common_7, 5.0)
+    LEVEL_PS(Level_5_PS, Shared_Resources_Motion_Blur::Sample_Common_6, 4.0)
+    LEVEL_PS(Level_4_PS, Shared_Resources_Motion_Blur::Sample_Common_5, 3.0)
+    LEVEL_PS(Level_3_PS, Shared_Resources_Motion_Blur::Sample_Common_4, 2.0)
+    LEVEL_PS(Level_2_PS, Shared_Resources_Motion_Blur::Sample_Common_3, 1.0)
 
     void Level_1_PS(in float4 Position : SV_POSITION, in float4 TexCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
         float4 OpticalFlow = 0.0;
-        Optical_Flow_TV(Shared_Resources_Motion_Blur::Sample_Common_2, TexCoords, 0.5, OpticalFlow);
+        Optical_Flow_TV(Shared_Resources_Motion_Blur::Sample_Common_2, TexCoords, 0.0, OpticalFlow);
         OutputColor0.rg = OpticalFlow.xy + OpticalFlow.zw;
         OutputColor0.ba = float2(0.0, _BlendFactor);
     }
@@ -658,6 +665,14 @@ namespace Motion_Blur
         }
     }
 
+    #define PASS(VERTEX_SHADER, PIXEL_SHADER, RENDER_TARGET) \
+        pass                                                 \
+        {                                                    \
+            VertexShader = VERTEX_SHADER;                    \
+            PixelShader = PIXEL_SHADER;                      \
+            RenderTarget0 = RENDER_TARGET;                   \
+        }
+
     technique cMotionBlur
     {
         // Normalize current frame
@@ -673,8 +688,12 @@ namespace Motion_Blur
         // Calculate spatial derivative pyramid
         PASS(Derivatives_VS, Derivatives_PS, Shared_Resources_Motion_Blur::Render_Common_1_B)
 
-        // Trilinear Optical Flow, calculate 2 levels at a time
-        PASS(Basic_VS, Level_4_PS, Shared_Resources_Motion_Blur::Render_Common_4)
+        // Bilinear Optical Flow
+        PASS(Basic_VS, Level_8_PS, Shared_Resources_Motion_Blur::Render_Common_8)
+        PASS(Sample_3x3_8_VS, Level_7_PS, Shared_Resources_Motion_Blur::Render_Common_7)
+        PASS(Sample_3x3_7_VS, Level_6_PS, Shared_Resources_Motion_Blur::Render_Common_6)
+        PASS(Sample_3x3_6_VS, Level_5_PS, Shared_Resources_Motion_Blur::Render_Common_5)
+        PASS(Sample_3x3_5_VS, Level_4_PS, Shared_Resources_Motion_Blur::Render_Common_4)
         PASS(Sample_3x3_4_VS, Level_3_PS, Shared_Resources_Motion_Blur::Render_Common_3)
         PASS(Sample_3x3_3_VS, Level_2_PS, Shared_Resources_Motion_Blur::Render_Common_2)
 
