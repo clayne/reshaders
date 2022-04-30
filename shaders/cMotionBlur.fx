@@ -427,7 +427,7 @@ namespace Motion_Blur
         SqGradientUV.xy = (Samples[2] + Samples[3]) - (Samples[0] + Samples[1]); // <IxU, IxV>
         SqGradientUV.zw = (Samples[0] + Samples[2]) - (Samples[1] + Samples[3]); // <IyU, IyV>
         SqGradientUV = SqGradientUV * 0.5;
-        Gradient = rsqrt((dot(SqGradientUV, SqGradientUV)) + 1e-7);
+        Gradient = rsqrt((dot(SqGradientUV, SqGradientUV) * 0.25) + 1e-7);
     }
 
     float2 Prewitt(float2 SampleUV[9], float3x3 Weights)
@@ -474,7 +474,7 @@ namespace Motion_Blur
 
         const float Weight = 1.0 / 5.0;
         MaxGradient[2] = max(MaxGradient[0], MaxGradient[1]) * Weight;
-        float CenterGradient = rsqrt((dot(MaxGradient[2], MaxGradient[2])) + 1e-7);
+        float CenterGradient = rsqrt((dot(MaxGradient[2], MaxGradient[2]) * 0.5) + 1e-7);
 
         // Area smoothness gradients
         // .............................
