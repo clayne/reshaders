@@ -113,6 +113,7 @@ namespace OpticalFlow
     // Shader properties
 
     OPTION(float, _Constraint, "slider", "Optical flow", "Motion constraint", 0.0, 1.0, 0.25)
+    OPTION(float, _Smoothness, "slider", "Optical flow", "Motion smoothness", 0.0, 2.0, 1.0)
     OPTION(float, _MipBias, "drag", "Optical flow", "Optical flow mipmap bias", 0.0, 7.0, 0.0)
     OPTION(float, _BlendFactor, "slider", "Optical flow", "Temporal blending factor", 0.0, 0.9, 0.1)
 
@@ -422,7 +423,7 @@ namespace OpticalFlow
         float4 Bi = 0.0;
 
         // Calculate constancy assumption nonlinearity
-        C = rsqrt((TD.rg * TD.rg) + 1e-7);
+        C = rsqrt((TD.rg * TD.rg) + (1e-7 * _Smoothness));
 
         // Build linear equation
         // [Aii Aij] [X] = [Bi]
@@ -566,10 +567,12 @@ namespace OpticalFlow
         }
 
         // Process area gradients in each patch, per plane
+
         Process_Gradients(SampleUVR, AreaGrad[0], UVGradient[0]);
         Process_Gradients(SampleUVG, AreaGrad[1], UVGradient[1]);
 
         // Calculate area + center averages of estimated vectors
+
         Area_Average(SampleUV[0], SampleUV[3], SampleUV[1], SampleUV[4], AreaAvg[0]);
         Area_Average(SampleUV[3], SampleUV[6], SampleUV[4], SampleUV[7], AreaAvg[1]);
         Area_Average(SampleUV[1], SampleUV[4], SampleUV[2], SampleUV[5], AreaAvg[2]);
@@ -577,7 +580,8 @@ namespace OpticalFlow
 
         CenterAverage += ((SampleUV[0] + SampleUV[6] + SampleUV[2] + SampleUV[8]) * 1.0);
         CenterAverage += ((SampleUV[3] + SampleUV[1] + SampleUV[7] + SampleUV[5]) * 2.0);
-        CenterAverage = CenterAverage / 12.0;
+        CenterAverage += (SampleUV[4] * 4.0);
+        CenterAverage = CenterAverage / 16.0;
 
         float2 C = 0.0;
         float4 Aii = 0.0;
@@ -588,7 +592,7 @@ namespace OpticalFlow
         // Dot-product increases when the current gradient + previous estimation are parallel
         C.r = dot(SD.xy, CenterAverage.xy) + TD.r;
         C.g = dot(SD.zw, CenterAverage.zw) + TD.g;
-        C.rg = rsqrt((C.rg * C.rg) + 1e-7);
+        C.rg = rsqrt((C.rg * C.rg) + (1e-7 * _Smoothness));
 
         // Build linear equation
         // [Aii Aij] [X] = [Bi]
