@@ -112,7 +112,7 @@ namespace OpticalFlow
 {
     // Shader properties
 
-    OPTION(float, _Constraint, "slider", "Optical flow", "Motion constraint", 0.0, 1.0, 0.25)
+    OPTION(float, _Constraint, "slider", "Optical flow", "Motion constraint", 0.0, 2.0, 1.0)
     OPTION(float, _MipBias, "drag", "Optical flow", "Optical flow mipmap bias", 0.0, 7.0, 0.0)
     OPTION(float, _BlendFactor, "slider", "Optical flow", "Temporal blending factor", 0.0, 0.9, 0.1)
 
@@ -468,7 +468,7 @@ namespace OpticalFlow
         return Output;
     }
 
-    void Process_Gradients(in float2 SampleUV[9], inout float4 AreaGrad, inout float4 UVGradient)
+    void Process_Gradients(in float2 SampleUV[9], inout float4 UVGradient)
     {
         // Center smoothness gradient using Prewitt compass
         // https://homepages.inf.ed.ac.uk/rbf/HIPR2/prewitt.htm
@@ -502,16 +502,12 @@ namespace OpticalFlow
         // 0 3 . | . 3 6 | . . . | . . .
         // 1 4 . | . 4 7 | 1 4 . | . 4 7
         // . . . | . . . | 2 5 . | . 5 8
+        float4 AreaGrad = 0.0;
         Gradient(float4x2(SampleUV[0], SampleUV[3], SampleUV[1], SampleUV[4]), AreaGrad[0]);
         Gradient(float4x2(SampleUV[3], SampleUV[6], SampleUV[4], SampleUV[7]), AreaGrad[1]);
         Gradient(float4x2(SampleUV[1], SampleUV[4], SampleUV[2], SampleUV[5]), AreaGrad[2]);
         Gradient(float4x2(SampleUV[4], SampleUV[7], SampleUV[5], SampleUV[8]), AreaGrad[3]);
         UVGradient = 0.5 * (CenterGradient + AreaGrad);
-    }
-
-    void Area_Average(in float4 SampleNW, in float4 SampleNE, in float4 SampleSW, in float4 SampleSE, out float4 Color)
-    {
-        Color = (SampleNW + SampleNE + SampleSW + SampleSE) * 0.25;
     }
 
     void Optical_Flow_TV(in sampler2D SourceUV, in float4 TexCoords[3], in float Level, out float4 OpticalFlow)
@@ -523,7 +519,7 @@ namespace OpticalFlow
         float2 Current = tex2Dlod(Shared_Resources_Flow::Sample_Common_1_A, float4(TexCoords[1].xz, 0.0, Level)).xy;
         float2 Previous = tex2Dlod(Sample_Common_1_P, float4(TexCoords[1].xz, 0.0, Level)).xy;
 
-        // <Rx, Gx, Ry, Gy>
+        // <Rx, Ry, Gx, Gy>
         float4 SD = tex2Dlod(Shared_Resources_Flow::Sample_Common_1_B, float4(TexCoords[1].xz, 0.0, Level));
 
         // <Rz, Gz>
@@ -537,12 +533,9 @@ namespace OpticalFlow
         float2 SampleUVG[9];
 
         // [0] = Red, [1] = Green
-        float4 AreaGrad[2];
         float4 UVGradient[2];
 
         // <Ru, Rv, Gu, Gv>
-        float4 AreaAvg[4];
-        float4 CenterAverage;
         float4 UVAverage;
 
         // SampleUV[i]
@@ -566,21 +559,14 @@ namespace OpticalFlow
         }
 
         // Process area gradients in each patch, per plane
-
-        Process_Gradients(SampleUVR, AreaGrad[0], UVGradient[0]);
-        Process_Gradients(SampleUVG, AreaGrad[1], UVGradient[1]);
+        Process_Gradients(SampleUVR, UVGradient[0]);
+        Process_Gradients(SampleUVG, UVGradient[1]);
 
         // Calculate area + center averages of estimated vectors
-
-        Area_Average(SampleUV[0], SampleUV[3], SampleUV[1], SampleUV[4], AreaAvg[0]);
-        Area_Average(SampleUV[3], SampleUV[6], SampleUV[4], SampleUV[7], AreaAvg[1]);
-        Area_Average(SampleUV[1], SampleUV[4], SampleUV[2], SampleUV[5], AreaAvg[2]);
-        Area_Average(SampleUV[4], SampleUV[7], SampleUV[5], SampleUV[8], AreaAvg[3]);
-
-        CenterAverage += ((SampleUV[0] + SampleUV[6] + SampleUV[2] + SampleUV[8]) * 1.0);
-        CenterAverage += ((SampleUV[3] + SampleUV[1] + SampleUV[7] + SampleUV[5]) * 2.0);
-        CenterAverage += (SampleUV[4] * 4.0);
-        CenterAverage = CenterAverage / 16.0;
+        UVAverage += ((SampleUV[0] + SampleUV[6] + SampleUV[2] + SampleUV[8]) * 1.0);
+        UVAverage += ((SampleUV[3] + SampleUV[1] + SampleUV[7] + SampleUV[5]) * 2.0);
+        UVAverage += (SampleUV[4] * 4.0);
+        UVAverage = UVAverage / 16.0;
 
         float2 C = 0.0;
         float4 Aii = 0.0;
@@ -589,24 +575,22 @@ namespace OpticalFlow
 
         // Calculate constancy assumption nonlinearity
         // Dot-product increases when the current gradient + previous estimation are parallel
-        C.r = dot(SD.xy, CenterAverage.xy) + TD.r;
-        C.g = dot(SD.zw, CenterAverage.zw) + TD.g;
+        C.r = dot(SD.xy, UVAverage.xy) + TD.r;
+        C.g = dot(SD.zw, UVAverage.zw) + TD.g;
         C.rg = rsqrt((C.rg * C.rg) + 1e-7);
 
         // Build linear equation
         // [Aii Aij] [X] = [Bi]
         // [Aij Aii] [Y] = [Bi]
-        Aii.xy = 1.0 / (dot(UVGradient[0], 1.0) * Alpha + (C.rr * (SD.xy * SD.xy)));
-        Aii.zw = 1.0 / (dot(UVGradient[1], 1.0) * Alpha + (C.gg * (SD.zw * SD.zw)));
+        Aii.xy = 1.0 / (dot(UVGradient[0], 0.25) * Alpha + (C.rr * (SD.xy * SD.xy)));
+        Aii.zw = 1.0 / (dot(UVGradient[1], 0.25) * Alpha + (C.gg * (SD.zw * SD.zw)));
         Aij.xy = C.rg * (SD.xz * SD.yw);
         Bi = C.rrgg * (SD.xyzw * TD.rrgg);
 
         // Solve linear equation for [U, V]
         // [Ix^2+A IxIy] [U] = -[IxIt]
         // [IxIy Iy^2+A] [V] = -[IyIt]
-        UVAverage.xy = (AreaGrad[0].xx * AreaAvg[0].xy) + (AreaGrad[0].yy * AreaAvg[1].xy) + (AreaGrad[0].zz * AreaAvg[2].xy) + (AreaGrad[0].ww * AreaAvg[3].xy);
-        UVAverage.zw = (AreaGrad[1].xx * AreaAvg[0].zw) + (AreaGrad[1].yy * AreaAvg[1].zw) + (AreaGrad[1].zz * AreaAvg[2].zw) + (AreaGrad[1].ww * AreaAvg[3].zw);
-        OpticalFlow.xz = Aii.xz * ((Alpha * UVAverage.xz) - (Aij.rg * CenterAverage.yw) - Bi.xz);
+        OpticalFlow.xz = Aii.xz * ((Alpha * UVAverage.xz) - (Aij.rg * UVAverage.yw) - Bi.xz);
         OpticalFlow.yw = Aii.yw * ((Alpha * UVAverage.yw) - (Aij.rg * OpticalFlow.xz) - Bi.yw);
     }
 
