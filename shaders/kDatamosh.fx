@@ -35,8 +35,8 @@
 
 #define RCP_HEIGHT (1.0 / BUFFER_HEIGHT)
 #define ASPECT_RATIO (BUFFER_WIDTH * RCP_HEIGHT)
-#define RENDER_BUFFER_WIDTH int(256.0 * ASPECT_RATIO)
-#define RENDER_BUFFER_HEIGHT int(256.0)
+#define RENDER_BUFFER_WIDTH int(128.0 * ASPECT_RATIO)
+#define RENDER_BUFFER_HEIGHT int(128.0)
 
 #define SIZE int2(RENDER_BUFFER_WIDTH, RENDER_BUFFER_HEIGHT)
 #define BUFFER_SIZE_1 int2(SIZE >> 0)
@@ -45,8 +45,6 @@
 #define BUFFER_SIZE_4 int2(SIZE >> 3)
 #define BUFFER_SIZE_5 int2(SIZE >> 4)
 #define BUFFER_SIZE_6 int2(SIZE >> 5)
-#define BUFFER_SIZE_7 int2(SIZE >> 6)
-#define BUFFER_SIZE_8 int2(SIZE >> 7)
 
 #define TEXTURE(NAME, SIZE, FORMAT, LEVELS) \
     texture2D NAME                          \
@@ -99,12 +97,6 @@ namespace Shared_Resources_Datamosh
 
     TEXTURE(Render_Common_6, BUFFER_SIZE_6, RGBA16F, 1)
     SAMPLER(Sample_Common_6, Render_Common_6)
-
-    TEXTURE(Render_Common_7, BUFFER_SIZE_7, RGBA16F, 1)
-    SAMPLER(Sample_Common_7, Render_Common_7)
-
-    TEXTURE(Render_Common_8, BUFFER_SIZE_8, RGBA16F, 1)
-    SAMPLER(Sample_Common_8, Render_Common_8)
 }
 
 namespace Datamosh
@@ -128,7 +120,7 @@ namespace Datamosh
     OPTION(float, _Scale, "slider", "Datamosh", "Scale factor for velocity vectors", 0.0, 4.0, 2.0)
     OPTION(float, _Diffusion, "slider", "Datamosh", "Amount of random displacement", 0.0, 4.0, 2.0)
 
-    OPTION(float, _Constraint, "slider", "Optical flow", "Motion constraint", 0.0, 2.0, 1.0)
+    OPTION(float, _Constraint, "slider", "Optical flow", "Motion constraint", 0.0, 1.0, 0.5)
     OPTION(float, _Smoothness, "slider", "Optical flow", "Motion smoothness", 0.0, 2.0, 1.0)
     OPTION(float, _MipBias, "slider", "Optical flow", "Optical flow mipmap bias", 0.0, 7.0, 0.0)
     OPTION(float, _BlendFactor, "slider", "Optical flow", "Temporal blending factor", 0.0, 0.9, 0.1)
@@ -267,8 +259,6 @@ namespace Datamosh
     SAMPLE_3X3_VS(Sample_3x3_4_VS, BUFFER_SIZE_4)
     SAMPLE_3X3_VS(Sample_3x3_5_VS, BUFFER_SIZE_5)
     SAMPLE_3X3_VS(Sample_3x3_6_VS, BUFFER_SIZE_6)
-    SAMPLE_3X3_VS(Sample_3x3_7_VS, BUFFER_SIZE_7)
-    SAMPLE_3X3_VS(Sample_3x3_8_VS, BUFFER_SIZE_8)
 
     void Derivatives_VS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float4 TexCoords[2] : TEXCOORD0)
     {
@@ -580,13 +570,11 @@ namespace Datamosh
             Optical_Flow_TV(SAMPLER, TexCoords, LEVEL, Color);                                                         \
         }
 
-    void Level_8_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float4 Color : SV_TARGET0)
+    void Level_6_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float4 Color : SV_TARGET0)
     {
-        Coarse_Optical_Flow_TV(TexCoord, 7.0, 0.0, Color);
+        Coarse_Optical_Flow_TV(TexCoord, 5.0, 0.0, Color);
     }
 
-    LEVEL_PS(Level_7_PS, Shared_Resources_Datamosh::Sample_Common_8, 6.0)
-    LEVEL_PS(Level_6_PS, Shared_Resources_Datamosh::Sample_Common_7, 5.0)
     LEVEL_PS(Level_5_PS, Shared_Resources_Datamosh::Sample_Common_6, 4.0)
     LEVEL_PS(Level_4_PS, Shared_Resources_Datamosh::Sample_Common_5, 3.0)
     LEVEL_PS(Level_3_PS, Shared_Resources_Datamosh::Sample_Common_4, 2.0)
@@ -756,9 +744,7 @@ namespace Datamosh
         PASS(Derivatives_VS, Derivatives_PS, Shared_Resources_Datamosh::Render_Common_1_B)
 
         // Bilinear Optical Flow
-        PASS(Basic_VS, Level_8_PS, Shared_Resources_Datamosh::Render_Common_8)
-        PASS(Sample_3x3_8_VS, Level_7_PS, Shared_Resources_Datamosh::Render_Common_7)
-        PASS(Sample_3x3_7_VS, Level_6_PS, Shared_Resources_Datamosh::Render_Common_6)
+        PASS(Basic_VS, Level_6_PS, Shared_Resources_Datamosh::Render_Common_6)
         PASS(Sample_3x3_6_VS, Level_5_PS, Shared_Resources_Datamosh::Render_Common_5)
         PASS(Sample_3x3_5_VS, Level_4_PS, Shared_Resources_Datamosh::Render_Common_4)
         PASS(Sample_3x3_4_VS, Level_3_PS, Shared_Resources_Datamosh::Render_Common_3)
