@@ -42,12 +42,12 @@
 #define RENDER_BUFFER_HEIGHT int(128.0)
 
 #define SIZE int2(RENDER_BUFFER_WIDTH, RENDER_BUFFER_HEIGHT)
-#define BUFFER_SIZE_1 int2(SIZE >> 0)
-#define BUFFER_SIZE_2 int2(SIZE >> 1)
-#define BUFFER_SIZE_3 int2(SIZE >> 2)
-#define BUFFER_SIZE_4 int2(SIZE >> 3)
-#define BUFFER_SIZE_5 int2(SIZE >> 4)
-#define BUFFER_SIZE_6 int2(SIZE >> 5)
+#define BUFFER_SIZE_1 int2(ROUND_UP_EVEN(SIZE.x >> 0), ROUND_UP_EVEN(SIZE.y >> 0))
+#define BUFFER_SIZE_2 int2(ROUND_UP_EVEN(SIZE.x >> 1), ROUND_UP_EVEN(SIZE.y >> 1))
+#define BUFFER_SIZE_3 int2(ROUND_UP_EVEN(SIZE.x >> 2), ROUND_UP_EVEN(SIZE.y >> 2))
+#define BUFFER_SIZE_4 int2(ROUND_UP_EVEN(SIZE.x >> 3), ROUND_UP_EVEN(SIZE.y >> 3))
+#define BUFFER_SIZE_5 int2(ROUND_UP_EVEN(SIZE.x >> 4), ROUND_UP_EVEN(SIZE.y >> 4))
+#define BUFFER_SIZE_6 int2(ROUND_UP_EVEN(SIZE.x >> 5), ROUND_UP_EVEN(SIZE.y >> 5))
 
 #define TEXTURE(NAME, SIZE, FORMAT, LEVELS) \
     texture2D NAME                          \
