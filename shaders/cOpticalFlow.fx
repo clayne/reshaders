@@ -435,13 +435,12 @@ namespace OpticalFlow
 
     void Gradient(in float4x2 Samples, out float Gradient)
     {
-        // 2x2 Prewitt
+        // 2x2 Robert's cross
         // [0] [2]
         // [1] [3]
         float4 SqGradientUV = 0.0;
-        SqGradientUV.xy = (Samples[2] + Samples[3]) - (Samples[0] + Samples[1]); // <IxU, IxV>
-        SqGradientUV.zw = (Samples[0] + Samples[2]) - (Samples[1] + Samples[3]); // <IyU, IyV>
-        SqGradientUV = SqGradientUV * 0.5;
+        SqGradientUV.xy = (Samples[0] - Samples[3]); // <IxU, IxV>
+        SqGradientUV.zw = (Samples[2] - Samples[1]); // <IyU, IyV>
         Gradient = rsqrt((dot(SqGradientUV, SqGradientUV) * 0.25) + 1e-7);
     }
 
