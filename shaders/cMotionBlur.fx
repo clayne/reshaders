@@ -202,7 +202,7 @@ namespace Motion_Blur
         }
     }
 
-    void Sample_3x3_VS(in uint ID : SV_VERTEXID, in float2 TexelSize, out float4 Position : SV_POSITION, out float4 TexCoords[3] : TEXCOORD0)
+    void Sample_3x3_VS(in uint ID, in float2 TexelSize, out float4 Position, out float4 TexCoords[3])
     {
         float2 CoordVS = 0.0;
         Basic_VS(ID, Position, CoordVS);
@@ -463,7 +463,7 @@ namespace Motion_Blur
         MaxGradient[1] = max(max(abs(PrewittUV[2].xy), abs(PrewittUV[2].zw)), max(abs(PrewittUV[3].xy), abs(PrewittUV[3].zw)));
 
         const float Weight = 1.0 / 5.0;
-        MaxGradient[2] = max(MaxGradient[0], MaxGradient[1]) * Weight;
+        MaxGradient[2] = max(abs(MaxGradient[0]), abs(MaxGradient[1])) * Weight;
         float CenterGradient = rsqrt((dot(MaxGradient[2], MaxGradient[2])) + 1e-7);
 
         // Area smoothness gradients
