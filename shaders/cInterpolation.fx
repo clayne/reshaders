@@ -33,7 +33,7 @@
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#define FP16_MINIMUM float(1.0 / float(1 << 14)) * (0.0 + (1.0 / 1024.0))
+#define FP16_MINIMUM float((1.0 / float(1 << 14)) * (0.0 + (1.0 / 1024.0)))
 
 #define RCP_HEIGHT (1.0 / BUFFER_HEIGHT)
 #define ASPECT_RATIO (BUFFER_WIDTH * RCP_HEIGHT)
