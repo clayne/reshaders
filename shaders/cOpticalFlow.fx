@@ -114,7 +114,6 @@ namespace OpticalFlow
         > = DEFAULT;
 
     OPTION(float, _Constraint, "slider", "Optical flow", "Motion constraint", 0.0, 1.0, 0.5)
-    OPTION(float, _Smoothness, "slider", "Optical flow", "Motion smoothness", 0.0, 2.0, 1.0)
     OPTION(float, _MipBias, "drag", "Optical flow", "Optical flow mipmap bias", 0.0, 7.0, 0.0)
     OPTION(float, _BlendFactor, "slider", "Optical flow", "Temporal blending factor", 0.0, 0.9, 0.1)
 
@@ -419,7 +418,7 @@ namespace OpticalFlow
         float2 Bi = 0.0;
 
         // Calculate constancy assumption nonlinearity
-        C = rsqrt((TD * TD) + (1e-7 * _Smoothness));
+        C = rsqrt((TD * TD) + FP16_MINIMUM);
 
         // Build linear equation
         // [Aii Aij] [X] = [Bi]
@@ -576,7 +575,7 @@ namespace OpticalFlow
         // Dot-product increases when the current gradient + previous estimation are parallel
         // IxU + IyV = -It -> IxU + IyV + It = 0.0
         C.r = dot(SD.xy, CenterAverage.xy) + TD;
-        C = rsqrt((C * C) + (1e-7 * _Smoothness));
+        C = rsqrt((C * C) + FP16_MINIMUM);
 
         // Build linear equation
         // [Aii Aij] [X] = [Bi]
