@@ -354,10 +354,10 @@ namespace Motion_Blur
         float2 C1 = tex2D(Shared_Resources_Motion_Blur::Sample_Common_1_A, TexCoords[1].yz).xy * 4.0; // <+0.5, -1.5>
 
         OutputColor0 = 0.0;
-        float4 I = 0.0;
-        I.xz = ((B2 + A1 + B0 + C1) - (B1 + A0 + A2 + C0)) / 12.0;
-        I.yw = ((A0 + B1 + B2 + A1) - (A2 + C0 + C1 + B0)) / 12.0;
-        OutputColor0 = I.xy + I.zw;
+        float2 Ix = ((B2 + A1 + B0 + C1) - (B1 + A0 + A2 + C0)) / 12.0;
+        float2 Iy = ((A0 + B1 + B2 + A1) - (A2 + C0 + C1 + B0)) / 12.0;
+        OutputColor0.x = dot(Ix, 1.0);
+        OutputColor0.y = dot(Iy, 1.0);
     }
 
     /*
