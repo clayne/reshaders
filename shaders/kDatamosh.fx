@@ -360,7 +360,7 @@ namespace Datamosh
     void Coarse_Optical_Flow_TV(in float2 TexCoord, in float Level, in float4 UV, out float2 OpticalFlow)
     {
         OpticalFlow = 0.0;
-        const float Alpha = max((_Constraint * 1e-2) / pow(4.0, COARSEST_LEVEL - Level), FP16_MINIMUM);
+        const float Alpha = max((_Constraint * 1e-3) / exp2(COARSEST_LEVEL - Level), FP16_MINIMUM);
 
         // Load textures
         float2 Current = tex2D(Shared_Resources_Datamosh::Sample_Common_1_A, TexCoord).xy;
@@ -472,7 +472,7 @@ namespace Datamosh
     void Optical_Flow_TV(in sampler2D SourceUV, in float4 TexCoords[3], in float Level, out float2 OpticalFlow)
     {
         OpticalFlow = 0.0;
-        const float Alpha = max((_Constraint * 1e-2) / pow(4.0, COARSEST_LEVEL - Level), FP16_MINIMUM);
+        const float Alpha = max((_Constraint * 1e-3) / exp2(COARSEST_LEVEL - Level), FP16_MINIMUM);
 
         // Load textures
         float2 Current = tex2D(Shared_Resources_Datamosh::Sample_Common_1_A, TexCoords[1].xz).xy;
