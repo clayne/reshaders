@@ -35,6 +35,8 @@
 
 #include "ReShade.fxh"
 
+#define FP16_MINIMUM float(1.0 / float(1 << 14)) * (0.0 + (1.0 / 1024.0))
+
 #define RCP_HEIGHT (1.0 / BUFFER_HEIGHT)
 #define ASPECT_RATIO (BUFFER_WIDTH * RCP_HEIGHT)
 #define ROUND_UP_EVEN(x) int(x) + (int(x) % 2)
@@ -375,7 +377,7 @@ namespace Motion_Blur
     void Coarse_Optical_Flow_TV(in float2 TexCoord, in float Level, in float4 UV, out float4 OpticalFlow)
     {
         OpticalFlow = 0.0;
-        const float Alpha = max((_Constraint * 1e-3) / exp2(COARSEST_LEVEL - Level), 1e-7);
+        const float Alpha = max((_Constraint * 1e-3) / exp2(COARSEST_LEVEL - Level), FP16_MINIMUM);
 
         // Load textures
         float2 Current = tex2D(Shared_Resources_Motion_Blur::Sample_Common_1_A, TexCoord).xy;
@@ -417,7 +419,7 @@ namespace Motion_Blur
         float4 SqGradientUV = 0.0;
         SqGradientUV.xy = (Samples[0] - Samples[3]); // <IxU, IxV>
         SqGradientUV.zw = (Samples[2] - Samples[1]); // <IyU, IyV>
-        Gradient = rsqrt((dot(SqGradientUV, SqGradientUV) * 0.25) + 1e-7);
+        Gradient = rsqrt((dot(SqGradientUV, SqGradientUV) * 0.25) + FP16_MINIMUM);
     }
 
     float2 Prewitt(float2 SampleUV[9], float3x3 Weights)
@@ -464,7 +466,7 @@ namespace Motion_Blur
 
         const float Weight = 1.0 / 5.0;
         MaxGradient[2] = max(abs(MaxGradient[0]), abs(MaxGradient[1])) * Weight;
-        float CenterGradient = rsqrt((dot(MaxGradient[2], MaxGradient[2])) + 1e-7);
+        float CenterGradient = rsqrt((dot(MaxGradient[2], MaxGradient[2])) + FP16_MINIMUM);
 
         // Area smoothness gradients
         // .............................
@@ -487,7 +489,7 @@ namespace Motion_Blur
     void Optical_Flow_TV(in sampler2D SourceUV, in float4 TexCoords[3], in float Level, out float4 OpticalFlow)
     {
         OpticalFlow = 0.0;
-        const float Alpha = max((_Constraint * 1e-3) / exp2(COARSEST_LEVEL - Level), 1e-7);
+        const float Alpha = max((_Constraint * 1e-3) / exp2(COARSEST_LEVEL - Level), FP16_MINIMUM);
 
         // Load textures
         float2 Current = tex2D(Shared_Resources_Motion_Blur::Sample_Common_1_A, TexCoords[1].xz).xy;
