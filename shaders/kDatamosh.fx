@@ -81,22 +81,24 @@ namespace Shared_Resources_Datamosh
     TEXTURE(Render_Common_1_A, BUFFER_SIZE_1, RG16F, 8)
     SAMPLER(Sample_Common_1_A, Render_Common_1_A)
 
-    TEXTURE(Render_Common_1_B, BUFFER_SIZE_1, RG16F, 8)
+    TEXTURE(Render_Common_1_B, BUFFER_SIZE_1, RGBA16F, 8)
     SAMPLER(Sample_Common_1_B, Render_Common_1_B)
 
-    TEXTURE(Render_Common_2, BUFFER_SIZE_2, RG16F, 1)
+    // Levels
+
+    TEXTURE(Render_Common_2, BUFFER_SIZE_2, RGBA16F, 1)
     SAMPLER(Sample_Common_2, Render_Common_2)
 
-    TEXTURE(Render_Common_3, BUFFER_SIZE_3, RG16F, 1)
+    TEXTURE(Render_Common_3, BUFFER_SIZE_3, RGBA16F, 1)
     SAMPLER(Sample_Common_3, Render_Common_3)
 
-    TEXTURE(Render_Common_4, BUFFER_SIZE_4, RG16F, 1)
+    TEXTURE(Render_Common_4, BUFFER_SIZE_4, RGBA16F, 1)
     SAMPLER(Sample_Common_4, Render_Common_4)
 
-    TEXTURE(Render_Common_5, BUFFER_SIZE_5, RG16F, 1)
+    TEXTURE(Render_Common_5, BUFFER_SIZE_5, RGBA16F, 1)
     SAMPLER(Sample_Common_5, Render_Common_5)
 
-    TEXTURE(Render_Common_6, BUFFER_SIZE_6, RG16F, 1)
+    TEXTURE(Render_Common_6, BUFFER_SIZE_6, RGBA16F, 1)
     SAMPLER(Sample_Common_6, Render_Common_6)
 }
 
@@ -122,6 +124,7 @@ namespace Datamosh
     OPTION(float, _Diffusion, "slider", "Datamosh", "Amount of random displacement", 0.0, 4.0, 2.0)
 
     OPTION(float, _Constraint, "slider", "Optical flow", "Motion constraint", 0.0, 1.0, 0.5)
+    OPTION(float, _Smoothness, "slider", "Optical flow", "Motion smoothness", 0.0, 2.0, 1.0)
     OPTION(float, _MipBias, "slider", "Optical flow", "Optical flow mipmap bias", 0.0, 7.0, 0.0)
     OPTION(float, _BlendFactor, "slider", "Optical flow", "Temporal blending factor", 0.0, 0.9, 0.1)
 
@@ -318,7 +321,7 @@ namespace Datamosh
         Gaussian_Blur(Shared_Resources_Datamosh::Sample_Common_1_B, TexCoords, OutputColor0);
     }
 
-    void Derivatives_PS(in float4 Position : SV_POSITION, in float4 TexCoords[2] : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0)
+    void Derivatives_PS(in float4 Position : SV_POSITION, in float4 TexCoords[2] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
         // Bilinear 5x5 Sobel by CeeJayDK
         //   B1 B2
@@ -335,10 +338,8 @@ namespace Datamosh
         float2 C1 = tex2D(Shared_Resources_Datamosh::Sample_Common_1_A, TexCoords[1].yz).xy * 4.0; // <+0.5, -1.5>
 
         OutputColor0 = 0.0;
-        float2 Ix = ((B2 + A1 + B0 + C1) - (B1 + A0 + A2 + C0)) / 12.0;
-        float2 Iy = ((A0 + B1 + B2 + A1) - (A2 + C0 + C1 + B0)) / 12.0;
-        OutputColor0.x = dot(Ix, 1.0);
-        OutputColor0.y = dot(Iy, 1.0);
+        OutputColor0.xz = ((B2 + A1 + B0 + C1) - (B1 + A0 + A2 + C0)) / 12.0;
+        OutputColor0.yw = ((A0 + B1 + B2 + A1) - (A2 + C0 + C1 + B0)) / 12.0;
     }
 
     /*
@@ -357,41 +358,41 @@ namespace Datamosh
 
     #define COARSEST_LEVEL 5
 
-    void Coarse_Optical_Flow_TV(in float2 TexCoord, in float Level, in float4 UV, out float2 OpticalFlow)
+    void Coarse_Optical_Flow_TV(in float2 TexCoord, in float Level, in float4 UV, out float4 OpticalFlow)
     {
         OpticalFlow = 0.0;
         const float Alpha = max((_Constraint * 1e-3) / exp2(COARSEST_LEVEL - Level), FP16_MINIMUM);
 
         // Load textures
-        float2 Current = tex2D(Shared_Resources_Datamosh::Sample_Common_1_A, TexCoord).xy;
-        float2 Previous = tex2D(Sample_Common_1_P, TexCoord).xy;
+        float2 Current = tex2Dlod(Shared_Resources_Datamosh::Sample_Common_1_A, float4(TexCoord, 0.0, Level)).xy;
+        float2 Previous = tex2Dlod(Sample_Common_1_P, float4(TexCoord, 0.0, Level)).xy;
 
         // <Rx, Gx, Ry, Gy>
-        float2 SD = tex2D(Shared_Resources_Datamosh::Sample_Common_1_B, TexCoord).xy;
+        float4 SD = tex2Dlod(Shared_Resources_Datamosh::Sample_Common_1_B, float4(TexCoord, 0.0, Level));
 
         // <Rz, Gz>
-        float TD = dot(Current - Previous, 1.0);
+        float2 TD = Current - Previous;
 
-        float C = 0.0;
-        float2 Aii = 0.0;
-        float Aij = 0.0;
-        float2 Bi = 0.0;
+        float2 C = 0.0;
+        float4 Aii = 0.0;
+        float2 Aij = 0.0;
+        float4 Bi = 0.0;
 
         // Calculate constancy assumption nonlinearity
-        C = rsqrt((TD * TD) + FP16_MINIMUM);
+        C = rsqrt((TD.rg * TD.rg) + (1e-7 * _Smoothness));
 
         // Build linear equation
         // [Aii Aij] [X] = [Bi]
         // [Aij Aii] [Y] = [Bi]
-        Aii = 1.0 / (C * (SD.xy * SD.xy) + Alpha);
-        Aij = C * (SD.x * SD.y);
-        Bi = C * (SD.xy * TD);
+        Aii = 1.0 / (C.rrgg * (SD.xyzw * SD.xyzw) + Alpha);
+        Aij = C.rg * (SD.xz * SD.yw);
+        Bi = C.rrgg * (SD.xyzw * TD.rrgg);
 
         // Solve linear equation for [U, V]
         // [Ix^2+A IxIy] [U] = -[IxIt]
         // [IxIy Iy^2+A] [V] = -[IyIt]
-        OpticalFlow.x = Aii.x * ((Alpha * UV.x) - (Aij * UV.y) - Bi.x);
-        OpticalFlow.y = Aii.y * ((Alpha * UV.y) - (Aij * OpticalFlow.x) - Bi.y);
+        OpticalFlow.xz = Aii.xz * ((Alpha * UV.xz) - (Aij.rg * UV.yw) - Bi.xz);
+        OpticalFlow.yw = Aii.yw * ((Alpha * UV.yw) - (Aij.rg * OpticalFlow.xz) - Bi.yw);
     }
 
     void Gradient(in float4x2 Samples, out float Gradient)
@@ -464,37 +465,39 @@ namespace Datamosh
         UVGradient = 0.5 * (CenterGradient + AreaGrad);
     }
 
-    void Area_Average(in float2 SampleNW, in float2 SampleNE, in float2 SampleSW, in float2 SampleSE, out float2 Color)
+    void Area_Average(in float4 SampleNW, in float4 SampleNE, in float4 SampleSW, in float4 SampleSE, out float4 Color)
     {
         Color = (SampleNW + SampleNE + SampleSW + SampleSE) * 0.25;
     }
 
-    void Optical_Flow_TV(in sampler2D SourceUV, in float4 TexCoords[3], in float Level, out float2 OpticalFlow)
+    void Optical_Flow_TV(in sampler2D SourceUV, in float4 TexCoords[3], in float Level, out float4 OpticalFlow)
     {
         OpticalFlow = 0.0;
         const float Alpha = max((_Constraint * 1e-3) / exp2(COARSEST_LEVEL - Level), FP16_MINIMUM);
 
         // Load textures
-        float2 Current = tex2D(Shared_Resources_Datamosh::Sample_Common_1_A, TexCoords[1].xz).xy;
-        float2 Previous = tex2D(Sample_Common_1_P, TexCoords[1].xz).xy;
+        float2 Current = tex2Dlod(Shared_Resources_Datamosh::Sample_Common_1_A, float4(TexCoords[1].xz, 0.0, Level)).xy;
+        float2 Previous = tex2Dlod(Sample_Common_1_P, float4(TexCoords[1].xz, 0.0, Level)).xy;
 
-        // <Rx, Ry, Gx, Gy>
-        float2 SD = tex2D(Shared_Resources_Datamosh::Sample_Common_1_B, TexCoords[1].xz).xy;
+        // <Rx, Gx, Ry, Gy>
+        float4 SD = tex2Dlod(Shared_Resources_Datamosh::Sample_Common_1_B, float4(TexCoords[1].xz, 0.0, Level));
 
         // <Rz, Gz>
-        float TD = dot(Current - Previous, 1.0);
+        float2 TD = Current - Previous;
 
         // Optical flow calculation
 
         // <Ru, Rv, Gu, Gv>
-        float2 SampleUV[9];
+        float4 SampleUV[9];
+        float2 SampleUVR[9];
+        float2 SampleUVG[9];
 
         // [0] = Red, [1] = Green
-        float4 AreaGrad;
-        float4 UVGradient;
+        float4 AreaGrad[2];
+        float4 UVGradient[2];
 
         // <Ru, Rv, Gu, Gv>
-        float2 AreaAvg[4];
+        float4 AreaAvg[4];
         float4 CenterAverage;
         float4 UVAverage;
 
@@ -502,20 +505,29 @@ namespace Datamosh
         // 0 3 6
         // 1 4 7
         // 2 5 8
-        SampleUV[0] = tex2D(SourceUV, TexCoords[0].xy).xy;
-        SampleUV[1] = tex2D(SourceUV, TexCoords[0].xz).xy;
-        SampleUV[2] = tex2D(SourceUV, TexCoords[0].xw).xy;
-        SampleUV[3] = tex2D(SourceUV, TexCoords[1].xy).xy;
-        SampleUV[4] = tex2D(SourceUV, TexCoords[1].xz).xy;
-        SampleUV[5] = tex2D(SourceUV, TexCoords[1].xw).xy;
-        SampleUV[6] = tex2D(SourceUV, TexCoords[2].xy).xy;
-        SampleUV[7] = tex2D(SourceUV, TexCoords[2].xz).xy;
-        SampleUV[8] = tex2D(SourceUV, TexCoords[2].xw).xy;
+        SampleUV[0] = tex2D(SourceUV, TexCoords[0].xy);
+        SampleUV[1] = tex2D(SourceUV, TexCoords[0].xz);
+        SampleUV[2] = tex2D(SourceUV, TexCoords[0].xw);
+        SampleUV[3] = tex2D(SourceUV, TexCoords[1].xy);
+        SampleUV[4] = tex2D(SourceUV, TexCoords[1].xz);
+        SampleUV[5] = tex2D(SourceUV, TexCoords[1].xw);
+        SampleUV[6] = tex2D(SourceUV, TexCoords[2].xy);
+        SampleUV[7] = tex2D(SourceUV, TexCoords[2].xz);
+        SampleUV[8] = tex2D(SourceUV, TexCoords[2].xw);
+
+        [unroll]for(int i = 0; i < 9; i++)
+        {
+            SampleUVR[i] = SampleUV[i].xy;
+            SampleUVG[i] = SampleUV[i].zw;
+        }
 
         // Process area gradients in each patch, per plane
-        Process_Gradients(SampleUV, AreaGrad, UVGradient);
+
+        Process_Gradients(SampleUVR, AreaGrad[0], UVGradient[0]);
+        Process_Gradients(SampleUVG, AreaGrad[1], UVGradient[1]);
 
         // Calculate area + center averages of estimated vectors
+
         Area_Average(SampleUV[0], SampleUV[3], SampleUV[1], SampleUV[4], AreaAvg[0]);
         Area_Average(SampleUV[3], SampleUV[6], SampleUV[4], SampleUV[7], AreaAvg[1]);
         Area_Average(SampleUV[1], SampleUV[4], SampleUV[2], SampleUV[5], AreaAvg[2]);
@@ -526,41 +538,43 @@ namespace Datamosh
         CenterAverage += (SampleUV[4] * 4.0);
         CenterAverage = CenterAverage / 16.0;
 
-        float C = 0.0;
-        float2 Aii = 0.0;
-        float Aij = 0.0;
-        float2 Bi = 0.0;
+        float2 C = 0.0;
+        float4 Aii = 0.0;
+        float2 Aij = 0.0;
+        float4 Bi = 0.0;
 
         // Calculate constancy assumption nonlinearity
         // Dot-product increases when the current gradient + previous estimation are parallel
-        // IxU + IyV = -It -> IxU + IyV + It = 0.0
-        C.r = dot(SD.xy, CenterAverage.xy) + TD;
-        C = rsqrt((C * C) + FP16_MINIMUM);
+        C.r = dot(SD.xy, CenterAverage.xy) + TD.r;
+        C.g = dot(SD.zw, CenterAverage.zw) + TD.g;
+        C.rg = rsqrt((C.rg * C.rg) + (1e-7 * _Smoothness));
 
         // Build linear equation
         // [Aii Aij] [X] = [Bi]
         // [Aij Aii] [Y] = [Bi]
-        Aii = 1.0 / (dot(UVGradient, 1.0) * Alpha + (C * (SD.xy * SD.xy)));
-        Aij = C * (SD.x * SD.y);
-        Bi = C * (SD.xy * TD);
+        Aii.xy = 1.0 / (dot(UVGradient[0], 1.0) * Alpha + (C.rr * (SD.xy * SD.xy)));
+        Aii.zw = 1.0 / (dot(UVGradient[1], 1.0) * Alpha + (C.gg * (SD.zw * SD.zw)));
+        Aij.xy = C.rg * (SD.xz * SD.yw);
+        Bi = C.rrgg * (SD.xyzw * TD.rrgg);
 
         // Solve linear equation for [U, V]
         // [Ix^2+A IxIy] [U] = -[IxIt]
         // [IxIy Iy^2+A] [V] = -[IyIt]
-        UVAverage.xy = (AreaGrad.xx * AreaAvg[0]) + (AreaGrad.yy * AreaAvg[1]) + (AreaGrad.zz * AreaAvg[2]) + (AreaGrad.ww * AreaAvg[3]);
-        OpticalFlow.x = Aii.x * ((Alpha * UVAverage.x) - (Aij * CenterAverage.y) - Bi.x);
-        OpticalFlow.y = Aii.y * ((Alpha * UVAverage.y) - (Aij * OpticalFlow.x) - Bi.y);
+        UVAverage.xy = (AreaGrad[0].xx * AreaAvg[0].xy) + (AreaGrad[0].yy * AreaAvg[1].xy) + (AreaGrad[0].zz * AreaAvg[2].xy) + (AreaGrad[0].ww * AreaAvg[3].xy);
+        UVAverage.zw = (AreaGrad[1].xx * AreaAvg[0].zw) + (AreaGrad[1].yy * AreaAvg[1].zw) + (AreaGrad[1].zz * AreaAvg[2].zw) + (AreaGrad[1].ww * AreaAvg[3].zw);
+        OpticalFlow.xz = Aii.xz * ((Alpha * UVAverage.xz) - (Aij.rg * CenterAverage.yw) - Bi.xz);
+        OpticalFlow.yw = Aii.yw * ((Alpha * UVAverage.yw) - (Aij.rg * OpticalFlow.xz) - Bi.yw);
     }
 
-    #define LEVEL_PS(NAME, SAMPLER, LEVEL)                                                                                    \
-        void NAME(in float4 Position : SV_POSITION, in float4 TexCoords[3] : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0) \
-        {                                                                                                                     \
-            Optical_Flow_TV(SAMPLER, TexCoords, LEVEL, OutputColor0);                                                         \
+    #define LEVEL_PS(NAME, SAMPLER, LEVEL)                                                                             \
+        void NAME(in float4 Position : SV_POSITION, in float4 TexCoords[3] : TEXCOORD0, out float4 Color : SV_TARGET0) \
+        {                                                                                                              \
+            Optical_Flow_TV(SAMPLER, TexCoords, LEVEL, Color);                                                         \
         }
 
-    void Level_6_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0)
+    void Level_6_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float4 Color : SV_TARGET0)
     {
-        Coarse_Optical_Flow_TV(TexCoord, 5.0, 0.0, OutputColor0);
+        Coarse_Optical_Flow_TV(TexCoord, 5.0, 0.0, Color);
     }
 
     LEVEL_PS(Level_5_PS, Shared_Resources_Datamosh::Sample_Common_6, 4.0)
@@ -570,8 +584,9 @@ namespace Datamosh
 
     void Level_1_PS(in float4 Position : SV_POSITION, in float4 TexCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
-        OutputColor0 = 0.0;
-        Optical_Flow_TV(Shared_Resources_Datamosh::Sample_Common_2, TexCoords, 0.0, OutputColor0.xy);
+        float4 OpticalFlow = 0.0;
+        Optical_Flow_TV(Shared_Resources_Datamosh::Sample_Common_2, TexCoords, 0.0, OpticalFlow);
+        OutputColor0.rg = OpticalFlow.xy + OpticalFlow.zw;
         OutputColor0.ba = float2(0.0, _BlendFactor);
     }
 
