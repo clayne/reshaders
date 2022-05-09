@@ -40,8 +40,8 @@
 #define RCP_HEIGHT (1.0 / BUFFER_HEIGHT)
 #define ASPECT_RATIO (BUFFER_WIDTH * RCP_HEIGHT)
 #define ROUND_UP_EVEN(x) int(x) + (int(x) % 2)
-#define RENDER_BUFFER_WIDTH int(ROUND_UP_EVEN(128.0 * ASPECT_RATIO))
-#define RENDER_BUFFER_HEIGHT int(128.0)
+#define RENDER_BUFFER_WIDTH int(ROUND_UP_EVEN(256.0 * ASPECT_RATIO))
+#define RENDER_BUFFER_HEIGHT int(256.0)
 
 #define SIZE int2(RENDER_BUFFER_WIDTH, RENDER_BUFFER_HEIGHT)
 #define BUFFER_SIZE_1 int2(ROUND_UP_EVEN(SIZE.x >> 0), ROUND_UP_EVEN(SIZE.y >> 0))
@@ -80,10 +80,10 @@ namespace Shared_Resources_Motion_Blur
 
     // Normalized, prefiltered frames for processing
 
-    TEXTURE(Render_Common_1_A, BUFFER_SIZE_1, RG16F, 8)
+    TEXTURE(Render_Common_1_A, BUFFER_SIZE_1, RG16F, 9)
     SAMPLER(Sample_Common_1_A, Render_Common_1_A)
 
-    TEXTURE(Render_Common_1_B, BUFFER_SIZE_1, RGBA16F, 8)
+    TEXTURE(Render_Common_1_B, BUFFER_SIZE_1, RGBA16F, 9)
     SAMPLER(Sample_Common_1_B, Render_Common_1_B)
 
     TEXTURE(Render_Common_2, BUFFER_SIZE_2, RGBA16F, 1)
@@ -117,11 +117,11 @@ namespace Motion_Blur
 
     OPTION(float, _Constraint, "slider", "Optical flow", "Motion constraint", 0.0, 1.0, 0.5)
     OPTION(float, _Smoothness, "slider", "Optical flow", "Motion smoothness", 0.0, 2.0, 1.0)
-    OPTION(float, _MipBias, "slider", "Optical flow", "Optical flow mipmap bias", 0.0, 7.0, 4.5)
+    OPTION(float, _MipBias, "slider", "Optical flow", "Optical flow mipmap bias", 0.0, 8.0, 5.5)
     OPTION(float, _BlendFactor, "slider", "Optical flow", "Temporal blending factor", 0.0, 0.9, 0.1)
 
     OPTION(bool, _NormalMode, "radio", "Main", "Estimate normals", 0.0, 1.0, false)
-    OPTION(float, _Scale, "slider", "Main", "Blur scale", 0.0, 1.0, 0.5)
+    OPTION(float, _Scale, "slider", "Main", "Blur scale", 0.0, 2.0, 1.0)
 
     OPTION(bool, _FrameRateScaling, "radio", "Other", "Enable frame-rate scaling", 0.0, 1.0, false)
     OPTION(float, _TargetFrameRate, "drag", "Other", "Target frame-rate", 0.0, 144.0, 60.0)
