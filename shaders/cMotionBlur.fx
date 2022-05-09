@@ -121,7 +121,7 @@ namespace Motion_Blur
     OPTION(float, _BlendFactor, "slider", "Optical flow", "Temporal blending factor", 0.0, 0.9, 0.1)
 
     OPTION(bool, _NormalMode, "radio", "Main", "Estimate normals", 0.0, 1.0, false)
-    OPTION(float, _Scale, "slider", "Main", "Blur scale", 0.0, 2.0, 1.0)
+    OPTION(float, _Scale, "slider", "Main", "Blur scale", 0.0, 1.0, 0.8)
 
     OPTION(bool, _FrameRateScaling, "radio", "Other", "Enable frame-rate scaling", 0.0, 1.0, false)
     OPTION(float, _TargetFrameRate, "drag", "Other", "Target frame-rate", 0.0, 144.0, 60.0)
