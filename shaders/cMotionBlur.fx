@@ -121,7 +121,7 @@ namespace Motion_Blur
     OPTION(float, _BlendFactor, "slider", "Optical flow", "Temporal blending factor", 0.0, 0.9, 0.1)
 
     OPTION(bool, _NormalMode, "radio", "Main", "Estimate normals", 0.0, 1.0, false)
-    OPTION(float, _Scale, "slider", "Main", "Blur scale", 0.0, 1.0, 0.8)
+    OPTION(float, _Scale, "slider", "Main", "Blur scale", 0.0, 1.0, 0.5)
 
     OPTION(bool, _FrameRateScaling, "radio", "Other", "Enable frame-rate scaling", 0.0, 1.0, false)
     OPTION(float, _TargetFrameRate, "drag", "Other", "Target frame-rate", 0.0, 144.0, 60.0)
@@ -492,11 +492,11 @@ namespace Motion_Blur
         const float Alpha = max((_Constraint * 1e-3) / exp2(COARSEST_LEVEL - Level), FP16_MINIMUM);
 
         // Load textures
-        float2 Current = tex2Dlod(Shared_Resources_Motion_Blur::Sample_Common_1_A, float4(TexCoords[1].xz, Level + 0.5)).xy;
-        float2 Previous = tex2Dlod(Sample_Common_1_P, float4(TexCoords[1].xz, Level + 0.5)).xy;
+        float2 Current = tex2Dlod(Shared_Resources_Motion_Blur::Sample_Common_1_A, float4(TexCoords[1].xz, 0.0, Level + 0.5)).xy;
+        float2 Previous = tex2Dlod(Sample_Common_1_P, float4(TexCoords[1].xz, 0.0, Level + 0.5)).xy;
 
         // <Rx, Ry, Gx, Gy>
-        float4 SD = tex2Dlod(Shared_Resources_Motion_Blur::Sample_Common_1_B, float4(TexCoords[1].xz, Level + 0.5));
+        float4 SD = tex2Dlod(Shared_Resources_Motion_Blur::Sample_Common_1_B, float4(TexCoords[1].xz, 0.0, Level + 0.5));
 
         // <Rz, Gz>
         float2 TD = Current - Previous;
