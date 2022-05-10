@@ -72,7 +72,7 @@
 namespace Shared_Resources
 {
     // Store convoluted normalized frame 1 and 3
-    TEXTURE(Render_Common_1, BUFFER_SIZE_1, RGBA16F, 8)
+    TEXTURE(Render_Common_1, BUFFER_SIZE_1, RGBA16F, 9)
     SAMPLER(Sample_Common_1, Render_Common_1)
 
     TEXTURE(Render_Common_2, BUFFER_SIZE_2, RGBA16F, 1)
@@ -105,7 +105,6 @@ namespace cInterpolation
         > = DEFAULT;
 
     OPTION(float, _Constraint, "slider", "Optical flow", "Motion constraint", 0.0, 1.0, 0.5)
-    OPTION(float, _Smoothness, "slider", "Optical flow", "Motion smoothness", 0.0, 2.0, 1.0)
     OPTION(float, _MipBias, "drag", "Optical flow", "Optical flow mipmap bias", 0.0, 7.0, 0.0)
 
     // Consideration: Use A8 channel for difference requirement (normalize BW image)
@@ -124,7 +123,6 @@ namespace cInterpolation
     };
 
     // Three-point backbuffer storage for interpolation
-
     TEXTURE(Render_Frame3, int2(BUFFER_WIDTH, BUFFER_HEIGHT), RGBA8, 4)
     SAMPLER(Sample_Frame3, Render_Frame3)
 
@@ -135,8 +133,7 @@ namespace cInterpolation
     SAMPLER(Sample_Frame1, Render_Frame1)
 
     // Normalized, prefiltered frames for processing
-
-    TEXTURE(Render_Normalized_Frame, BUFFER_SIZE_1, RGBA16F, 8)
+    TEXTURE(Render_Normalized_Frame, BUFFER_SIZE_1, RGBA16F, 9)
     SAMPLER(Sample_Normalized_Frame, Render_Normalized_Frame)
 
     // Vertex Shaders
@@ -343,10 +340,10 @@ namespace cInterpolation
         OpticalFlow = 0.0;
         const float Alpha = max((_Constraint * 1e-3) / exp2(COARSEST_LEVEL - Level), FP16_MINIMUM);
 
-        float4 Frames = tex2D(Sample_Normalized_Frame, TexCoord);
+        float4 Frames = tex2Dlod(Sample_Normalized_Frame, float4(TexCoord, 0.0, Level + 0.5));
 
         // <Rx, Gx, Ry, Gy>
-        float4 SD = tex2D(Shared_Resources::Sample_Common_1, TexCoord);
+        float4 SD = tex2Dlod(Shared_Resources::Sample_Common_1, float4(TexCoord, 0.0, Level + 0.5));
 
         // <Rz, Gz>
         float2 TD = Frames.xy - Frames.zw;
@@ -357,7 +354,7 @@ namespace cInterpolation
         float4 Bi = 0.0;
 
         // Calculate constancy assumption nonlinearity
-        C = rsqrt((TD.rg * TD.rg) + (1e-7 * _Smoothness));
+        C = rsqrt((TD.rg * TD.rg) + FP16_MINIMUM);
 
         // Build linear equation
         // [Aii Aij] [X] = [Bi]
@@ -455,10 +452,10 @@ namespace cInterpolation
 
         // Load textures
 
-        float4 Frames = tex2D(Sample_Normalized_Frame, TexCoords[1].xz);
+        float4 Frames = tex2Dlod(Sample_Normalized_Frame, float4(TexCoords[1].xz, 0.0, Level + 0.5));
 
         // <Rx, Gx, Ry, Gy>
-        float4 SD = tex2D(Shared_Resources::Sample_Common_1, TexCoords[1].xz);
+        float4 SD = tex2Dlod(Shared_Resources::Sample_Common_1, float4(TexCoords[1].xz, 0.0, Level + 0.5));
 
         // <Rz, Gz>
         float2 TD = Frames.xy - Frames.zw;
@@ -525,7 +522,7 @@ namespace cInterpolation
         // Dot-product increases when the current gradient + previous estimation are parallel
         C.r = dot(SD.xy, CenterAverage.xy) + TD.r;
         C.g = dot(SD.zw, CenterAverage.zw) + TD.g;
-        C.rg = rsqrt((C.rg * C.rg) + (1e-7 * _Smoothness));
+        C.rg = rsqrt((C.rg * C.rg) + FP16_MINIMUM);
 
         // Build linear equation
         // [Aii Aij] [X] = [Bi]

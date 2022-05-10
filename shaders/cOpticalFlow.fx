@@ -78,10 +78,10 @@ namespace Shared_Resources_Flow
 
     // Normalized, prefiltered frames for processing
 
-    TEXTURE(Render_Common_1_A, BUFFER_SIZE_1, RG16F, 8)
+    TEXTURE(Render_Common_1_A, BUFFER_SIZE_1, RG16F, 9)
     SAMPLER(Sample_Common_1_A, Render_Common_1_A)
 
-    TEXTURE(Render_Common_1_B, BUFFER_SIZE_1, RGBA16F, 8)
+    TEXTURE(Render_Common_1_B, BUFFER_SIZE_1, RGBA16F, 9)
     SAMPLER(Sample_Common_1_B, Render_Common_1_B)
 
     // Levels
@@ -116,7 +116,6 @@ namespace OpticalFlow
         > = DEFAULT;
 
     OPTION(float, _Constraint, "slider", "Optical flow", "Motion constraint", 0.0, 1.0, 0.5)
-    OPTION(float, _Smoothness, "slider", "Optical flow", "Motion smoothness", 0.0, 2.0, 1.0)
     OPTION(float, _MipBias, "drag", "Optical flow", "Optical flow mipmap bias", 0.0, 7.0, 0.0)
     OPTION(float, _BlendFactor, "slider", "Optical flow", "Temporal blending factor", 0.0, 0.9, 0.1)
 
@@ -164,7 +163,7 @@ namespace OpticalFlow
         #endif
     };
 
-    TEXTURE(Render_Common_1_P, BUFFER_SIZE_1, RG16F, 8)
+    TEXTURE(Render_Common_1_P, BUFFER_SIZE_1, RG16F, 9)
     SAMPLER(Sample_Common_1_P, Render_Common_1_P)
 
     TEXTURE(Render_Optical_Flow, BUFFER_SIZE_1, RG16F, 1)
@@ -419,7 +418,7 @@ namespace OpticalFlow
         float4 Bi = 0.0;
 
         // Calculate constancy assumption nonlinearity
-        C = rsqrt((TD.rg * TD.rg) + (1e-7 * _Smoothness));
+        C = rsqrt((TD.rg * TD.rg) + FP16_MINIMUM);
 
         // Build linear equation
         // [Aii Aij] [X] = [Bi]
@@ -587,7 +586,7 @@ namespace OpticalFlow
         // Dot-product increases when the current gradient + previous estimation are parallel
         C.r = dot(SD.xy, CenterAverage.xy) + TD.r;
         C.g = dot(SD.zw, CenterAverage.zw) + TD.g;
-        C.rg = rsqrt((C.rg * C.rg) + (1e-7 * _Smoothness));
+        C.rg = rsqrt((C.rg * C.rg) + FP16_MINIMUM);
 
         // Build linear equation
         // [Aii Aij] [X] = [Bi]
