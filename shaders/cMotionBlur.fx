@@ -116,12 +116,11 @@ namespace Motion_Blur
         > = DEFAULT;
 
     OPTION(float, _Constraint, "slider", "Optical flow", "Motion constraint", 0.0, 1.0, 0.5)
-    OPTION(float, _Smoothness, "slider", "Optical flow", "Motion smoothness", 0.0, 2.0, 1.0)
     OPTION(float, _MipBias, "slider", "Optical flow", "Optical flow mipmap bias", 0.0, 8.0, 5.5)
     OPTION(float, _BlendFactor, "slider", "Optical flow", "Temporal blending factor", 0.0, 0.9, 0.1)
 
     OPTION(bool, _NormalMode, "radio", "Main", "Estimate normals", 0.0, 1.0, false)
-    OPTION(float, _Scale, "slider", "Main", "Blur scale", 0.0, 1.0, 0.8)
+    OPTION(float, _Scale, "slider", "Main", "Blur scale", 0.0, 1.0, 0.5)
 
     OPTION(bool, _FrameRateScaling, "radio", "Other", "Enable frame-rate scaling", 0.0, 1.0, false)
     OPTION(float, _TargetFrameRate, "drag", "Other", "Target frame-rate", 0.0, 144.0, 60.0)
@@ -151,7 +150,7 @@ namespace Motion_Blur
         #endif
     };
 
-    TEXTURE(Render_Common_1_P, BUFFER_SIZE_1, RG16F, 8)
+    TEXTURE(Render_Common_1_P, BUFFER_SIZE_1, RG16F, 9)
     SAMPLER(Sample_Common_1_P, Render_Common_1_P)
 
     TEXTURE(Render_Optical_Flow, BUFFER_SIZE_1, RG16F, 1)
@@ -380,11 +379,11 @@ namespace Motion_Blur
         const float Alpha = max((_Constraint * 1e-3) / exp2(COARSEST_LEVEL - Level), FP16_MINIMUM);
 
         // Load textures
-        float2 Current = tex2D(Shared_Resources_Motion_Blur::Sample_Common_1_A, TexCoord).xy;
-        float2 Previous = tex2D(Sample_Common_1_P, TexCoord).xy;
+        float2 Current = tex2Dlod(Shared_Resources_Motion_Blur::Sample_Common_1_A, float4(TexCoord, 0.0, Level + 0.5)).xy;
+        float2 Previous = tex2Dlod(Sample_Common_1_P, float4(TexCoord, 0.0, Level + 0.5)).xy;
 
         // <Rx, Gx, Ry, Gy>
-        float4 SD = tex2D(Shared_Resources_Motion_Blur::Sample_Common_1_B, TexCoord);
+        float4 SD = tex2Dlod(Shared_Resources_Motion_Blur::Sample_Common_1_B, float4(TexCoord, 0.0, Level + 0.5));
 
         // <Rz, Gz>
         float2 TD = Current - Previous;
@@ -395,7 +394,7 @@ namespace Motion_Blur
         float4 Bi = 0.0;
 
         // Calculate constancy assumption nonlinearity
-        C = rsqrt((TD.rg * TD.rg) + (1e-7 * _Smoothness));
+        C = rsqrt((TD.rg * TD.rg) + FP16_MINIMUM);
 
         // Build linear equation
         // [Aii Aij] [X] = [Bi]
@@ -492,11 +491,11 @@ namespace Motion_Blur
         const float Alpha = max((_Constraint * 1e-3) / exp2(COARSEST_LEVEL - Level), FP16_MINIMUM);
 
         // Load textures
-        float2 Current = tex2D(Shared_Resources_Motion_Blur::Sample_Common_1_A, TexCoords[1].xz).xy;
-        float2 Previous = tex2D(Sample_Common_1_P, TexCoords[1].xz).xy;
+        float2 Current = tex2Dlod(Shared_Resources_Motion_Blur::Sample_Common_1_A, float4(TexCoords[1].xz, 0.0, Level + 0.5)).xy;
+        float2 Previous = tex2Dlod(Sample_Common_1_P, float4(TexCoords[1].xz, 0.0, Level + 0.5)).xy;
 
         // <Rx, Ry, Gx, Gy>
-        float4 SD = tex2D(Shared_Resources_Motion_Blur::Sample_Common_1_B, TexCoords[1].xz);
+        float4 SD = tex2Dlod(Shared_Resources_Motion_Blur::Sample_Common_1_B, float4(TexCoords[1].xz, 0.0, Level + 0.5));
 
         // <Rz, Gz>
         float2 TD = Current - Previous;
@@ -564,7 +563,7 @@ namespace Motion_Blur
         // IxU + IyV = -It -> IxU + IyV + It = 0.0
         C.r = dot(SD.xy, CenterAverage.xy) + TD.r;
         C.g = dot(SD.zw, CenterAverage.zw) + TD.g;
-        C.rg = rsqrt((C.rg * C.rg) + (1e-7 * _Smoothness));
+        C.rg = rsqrt((C.rg * C.rg) + FP16_MINIMUM);
 
         // Build linear equation
         // [Aii Aij] [X] = [Bi]
