@@ -380,11 +380,11 @@ namespace Motion_Blur
         const float Alpha = max((_Constraint * 1e-3) / exp2(COARSEST_LEVEL - Level), FP16_MINIMUM);
 
         // Load textures
-        float2 Current = tex2D(Shared_Resources_Motion_Blur::Sample_Common_1_A, TexCoord).xy;
-        float2 Previous = tex2D(Sample_Common_1_P, TexCoord).xy;
+        float2 Current = tex2Dlod(Shared_Resources_Motion_Blur::Sample_Common_1_A, float4(TexCoord, 0.0, Level + 0.5)).xy;
+        float2 Previous = tex2Dlod(Sample_Common_1_P, float4(TexCoord, 0.0, Level + 0.5)).xy;
 
         // <Rx, Gx, Ry, Gy>
-        float4 SD = tex2D(Shared_Resources_Motion_Blur::Sample_Common_1_B, TexCoord);
+        float4 SD = tex2Dlod(Shared_Resources_Motion_Blur::Sample_Common_1_B, float4(TexCoord, 0.0, Level + 0.5));
 
         // <Rz, Gz>
         float2 TD = Current - Previous;
@@ -492,11 +492,11 @@ namespace Motion_Blur
         const float Alpha = max((_Constraint * 1e-3) / exp2(COARSEST_LEVEL - Level), FP16_MINIMUM);
 
         // Load textures
-        float2 Current = tex2D(Shared_Resources_Motion_Blur::Sample_Common_1_A, TexCoords[1].xz).xy;
-        float2 Previous = tex2D(Sample_Common_1_P, TexCoords[1].xz).xy;
+        float2 Current = tex2Dlod(Shared_Resources_Motion_Blur::Sample_Common_1_A, float4(TexCoords[1].xz, Level + 0.5)).xy;
+        float2 Previous = tex2Dlod(Sample_Common_1_P, float4(TexCoords[1].xz, Level + 0.5)).xy;
 
         // <Rx, Ry, Gx, Gy>
-        float4 SD = tex2D(Shared_Resources_Motion_Blur::Sample_Common_1_B, TexCoords[1].xz);
+        float4 SD = tex2Dlod(Shared_Resources_Motion_Blur::Sample_Common_1_B, float4(TexCoords[1].xz, Level + 0.5));
 
         // <Rz, Gz>
         float2 TD = Current - Previous;

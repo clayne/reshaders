@@ -364,11 +364,11 @@ namespace Datamosh
         const float Alpha = max((_Constraint * 1e-3) / exp2(COARSEST_LEVEL - Level), FP16_MINIMUM);
 
         // Load textures
-        float2 Current = tex2Dlod(Shared_Resources_Datamosh::Sample_Common_1_A, float4(TexCoord, 0.0, Level)).xy;
-        float2 Previous = tex2Dlod(Sample_Common_1_P, float4(TexCoord, 0.0, Level)).xy;
+        float2 Current = tex2Dlod(Shared_Resources_Datamosh::Sample_Common_1_A, float4(TexCoord, 0.0, Level + 0.5)).xy;
+        float2 Previous = tex2Dlod(Sample_Common_1_P, float4(TexCoord, 0.0, Level + 0.5)).xy;
 
         // <Rx, Gx, Ry, Gy>
-        float4 SD = tex2Dlod(Shared_Resources_Datamosh::Sample_Common_1_B, float4(TexCoord, 0.0, Level));
+        float4 SD = tex2Dlod(Shared_Resources_Datamosh::Sample_Common_1_B, float4(TexCoord, 0.0, Level + 0.5));
 
         // <Rz, Gz>
         float2 TD = Current - Previous;
@@ -476,11 +476,11 @@ namespace Datamosh
         const float Alpha = max((_Constraint * 1e-3) / exp2(COARSEST_LEVEL - Level), FP16_MINIMUM);
 
         // Load textures
-        float2 Current = tex2Dlod(Shared_Resources_Datamosh::Sample_Common_1_A, float4(TexCoords[1].xz, 0.0, Level)).xy;
-        float2 Previous = tex2Dlod(Sample_Common_1_P, float4(TexCoords[1].xz, 0.0, Level)).xy;
+        float2 Current = tex2Dlod(Shared_Resources_Datamosh::Sample_Common_1_A, float4(TexCoords[1].xz, 0.0, Level + 0.5)).xy;
+        float2 Previous = tex2Dlod(Sample_Common_1_P, float4(TexCoords[1].xz, 0.0, Level + 0.5)).xy;
 
         // <Rx, Gx, Ry, Gy>
-        float4 SD = tex2Dlod(Shared_Resources_Datamosh::Sample_Common_1_B, float4(TexCoords[1].xz, 0.0, Level));
+        float4 SD = tex2Dlod(Shared_Resources_Datamosh::Sample_Common_1_B, float4(TexCoords[1].xz, 0.0, Level + 0.5));
 
         // <Rz, Gz>
         float2 TD = Current - Previous;
