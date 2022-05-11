@@ -125,7 +125,7 @@ namespace Datamosh
 
     OPTION(float, _Constraint, "slider", "Optical flow", "Motion constraint", 0.0, 1.0, 0.5)
     OPTION(float, _MipBias, "slider", "Optical flow", "Optical flow mipmap bias", 0.0, 7.0, 0.0)
-    OPTION(float, _BlendFactor, "slider", "Optical flow", "Temporal blending factor", 0.0, 0.9, 0.1)
+    OPTION(float, _BlendFactor, "slider", "Optical flow", "Temporal blending factor", 0.0, 0.9, 0.5)
 
     #ifndef LINEAR_SAMPLING
         #define LINEAR_SAMPLING 0
@@ -198,41 +198,37 @@ namespace Datamosh
         Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
     }
 
-    static const float2 BlurOffsets[8] =
+    static const float4 BlurOffsets[4] =
     {
-        float2(0.0, 0.0),
-        float2(0.0, 1.4850045),
-        float2(0.0, 3.4650571),
-        float2(0.0, 5.445221),
-        float2(0.0, 7.4255576),
-        float2(0.0, 9.406127),
-        float2(0.0, 11.386987),
-        float2(0.0, 13.368189)
+        float4(0.0, 0.0, 0.0, 0.0),
+        float4(0.0, 1.490652, 3.4781995, 5.465774),
+        float4(0.0, 7.45339, 9.441065, 11.42881),
+        float4(0.0, 13.416645, 15.404578, 17.392626)
     };
 
-    void Blur_0_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 TexCoords[8] : TEXCOORD0)
+    void Blur_0_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 TexCoords[7] : TEXCOORD0)
     {
         float2 CoordVS = 0.0;
         Basic_VS(ID, Position, CoordVS);
         TexCoords[0] = CoordVS.xyxy;
 
-        for(int i = 1; i < 8; i++)
+        for(int i = 1; i < 4; i++)
         {
-            TexCoords[i].xy = CoordVS.xy - (BlurOffsets[i].yx / BUFFER_SIZE_1);
-            TexCoords[i].zw = CoordVS.xy + (BlurOffsets[i].yx / BUFFER_SIZE_1);
+            TexCoords[i] = CoordVS.xyyy + (BlurOffsets[i].xyzw / BUFFER_SIZE_1.xyyy);
+            TexCoords[i + 3] = CoordVS.xyyy - (BlurOffsets[i].xyzw / BUFFER_SIZE_1.xyyy);
         }
     }
 
-    void Blur_1_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 TexCoords[8] : TEXCOORD0)
+    void Blur_1_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 TexCoords[7] : TEXCOORD0)
     {
         float2 CoordVS = 0.0;
         Basic_VS(ID, Position, CoordVS);
         TexCoords[0] = CoordVS.xyxy;
 
-        for(int i = 1; i < 8; i++)
+        for(int i = 1; i < 4; i++)
         {
-            TexCoords[i].xy = CoordVS.xy - (BlurOffsets[i].xy / BUFFER_SIZE_1);
-            TexCoords[i].zw = CoordVS.xy + (BlurOffsets[i].xy / BUFFER_SIZE_1);
+            TexCoords[i] = CoordVS.xxxy + (BlurOffsets[i].yzwx / BUFFER_SIZE_1.xxxy);
+            TexCoords[i + 3] = CoordVS.xxxy - (BlurOffsets[i].yzwx / BUFFER_SIZE_1.xxxy);
         }
     }
 
@@ -283,41 +279,69 @@ namespace Datamosh
         OutputColor0 = tex2D(Shared_Resources_Datamosh::Sample_Common_0, TexCoord);
     }
 
-    static const float BlurWeights[8] =
+    static const float BlurWeights[10] =
     {
-        0.079788454,
-        0.15186256,
-        0.12458323,
-        0.08723135,
-        0.05212966,
-        0.026588224,
-        0.011573823,
-        0.0042996835
+        0.06299088,
+        0.122137636,
+        0.10790718,
+        0.08633988,
+        0.062565096,
+        0.04105926,
+        0.024403222,
+        0.013135255,
+        0.006402994,
+        0.002826693
     };
 
-    void Gaussian_Blur(in sampler2D Source, in float4 TexCoords[8], out float4 OutputColor0)
+    void Gaussian_Blur(in sampler2D Source, in float4 TexCoords[7], bool Alt, out float4 OutputColor0)
     {
         float TotalWeights = BlurWeights[0];
         OutputColor0 = (tex2D(Source, TexCoords[0].xy) * BlurWeights[0]);
 
-        for(int i = 1; i < 8; i++)
+        int CoordIndex = 1;
+        int WeightIndex = 1;
+
+        while(CoordIndex < 4) // for(int i = 1; i < 4; i++)
         {
-            OutputColor0 += (tex2D(Source, TexCoords[i].xy) * BlurWeights[i]);
-            OutputColor0 += (tex2D(Source, TexCoords[i].zw) * BlurWeights[i]);
+            if(!Alt)
+            {
+                OutputColor0 += (tex2D(Source, TexCoords[CoordIndex].xy) * BlurWeights[WeightIndex + 0]);
+                OutputColor0 += (tex2D(Source, TexCoords[CoordIndex].xz) * BlurWeights[WeightIndex + 1]);
+                OutputColor0 += (tex2D(Source, TexCoords[CoordIndex].xw) * BlurWeights[WeightIndex + 2]);
+                OutputColor0 += (tex2D(Source, TexCoords[CoordIndex + 3].xy) * BlurWeights[WeightIndex + 0]);
+                OutputColor0 += (tex2D(Source, TexCoords[CoordIndex + 3].xz) * BlurWeights[WeightIndex + 1]);
+                OutputColor0 += (tex2D(Source, TexCoords[CoordIndex + 3].xw) * BlurWeights[WeightIndex + 2]);
+            }
+            else
+            {
+                OutputColor0 += (tex2D(Source, TexCoords[CoordIndex].xw) * BlurWeights[WeightIndex + 0]);
+                OutputColor0 += (tex2D(Source, TexCoords[CoordIndex].yw) * BlurWeights[WeightIndex + 1]);
+                OutputColor0 += (tex2D(Source, TexCoords[CoordIndex].zw) * BlurWeights[WeightIndex + 2]);
+                OutputColor0 += (tex2D(Source, TexCoords[CoordIndex + 3].xw) * BlurWeights[WeightIndex + 0]);
+                OutputColor0 += (tex2D(Source, TexCoords[CoordIndex + 3].yw) * BlurWeights[WeightIndex + 1]);
+                OutputColor0 += (tex2D(Source, TexCoords[CoordIndex + 3].zw) * BlurWeights[WeightIndex + 2]);
+            }
+
+            CoordIndex = CoordIndex + 1;
+            WeightIndex = WeightIndex + 3;
+        }
+
+        for(int i = 1; i < 10; i++)
+        {
             TotalWeights += (BlurWeights[i] * 2.0);
         }
 
         OutputColor0 = OutputColor0 / TotalWeights;
     }
 
-    void Pre_Blur_0_PS(in float4 Position : SV_POSITION, in float4 TexCoords[8] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+    void Pre_Blur_0_PS(in float4 Position : SV_POSITION, in float4 TexCoords[7] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
-        Gaussian_Blur(Shared_Resources_Datamosh::Sample_Common_1_A, TexCoords, OutputColor0);
+        Gaussian_Blur(Shared_Resources_Datamosh::Sample_Common_1_A, TexCoords, false, OutputColor0);
     }
 
-    void Pre_Blur_1_PS(in float4 Position : SV_POSITION, in float4 TexCoords[8] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+    void Pre_Blur_1_PS(in float4 Position : SV_POSITION, in float4 TexCoords[7] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
-        Gaussian_Blur(Shared_Resources_Datamosh::Sample_Common_1_B, TexCoords, OutputColor0);
+        Gaussian_Blur(Shared_Resources_Datamosh::Sample_Common_1_B, TexCoords, true, OutputColor0);
     }
 
     void Derivatives_PS(in float4 Position : SV_POSITION, in float4 TexCoords[2] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
@@ -589,16 +613,16 @@ namespace Datamosh
         OutputColor0.ba = float2(0.0, _BlendFactor);
     }
 
-    void Post_Blur_0_PS(in float4 Position : SV_POSITION, in float4 TexCoords[8] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0, out float4 OutputColor1 : SV_TARGET1)
+    void Post_Blur_0_PS(in float4 Position : SV_POSITION, in float4 TexCoords[7] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0, out float4 OutputColor1 : SV_TARGET1)
     {
-        Gaussian_Blur(Sample_Optical_Flow, TexCoords, OutputColor0);
+        Gaussian_Blur(Sample_Optical_Flow, TexCoords, false, OutputColor0);
         OutputColor0.a = 1.0;
         OutputColor1 = tex2D(Shared_Resources_Datamosh::Sample_Common_1_A, TexCoords[0].xy);
     }
 
-    void Post_Blur_1_PS(in float4 Position : SV_POSITION, in float4 TexCoords[8] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+    void Post_Blur_1_PS(in float4 Position : SV_POSITION, in float4 TexCoords[7] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
-        Gaussian_Blur(Shared_Resources_Datamosh::Sample_Common_1_B, TexCoords, OutputColor0);
+        Gaussian_Blur(Shared_Resources_Datamosh::Sample_Common_1_B, TexCoords, true, OutputColor0);
         OutputColor0.a = 1.0;
     }
 
