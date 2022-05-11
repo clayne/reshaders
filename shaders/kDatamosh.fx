@@ -301,7 +301,7 @@ namespace Datamosh
         int CoordIndex = 1;
         int WeightIndex = 1;
 
-        while(CoordIndex < 4) // for(int i = 1; i < 4; i++)
+        while(CoordIndex < 4)
         {
             if(!Alt)
             {
