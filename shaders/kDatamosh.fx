@@ -146,8 +146,8 @@ namespace Datamosh
         #endif
     };
 
-    TEXTURE(Render_Common_1_P, BUFFER_SIZE_1, RG16F, 9)
-    SAMPLER(Sample_Common_1_P, Render_Common_1_P)
+    TEXTURE(Render_Common_1_C, BUFFER_SIZE_1, RG16F, 9)
+    SAMPLER(Sample_Common_1_C, Render_Common_1_C)
 
     TEXTURE(Render_Optical_Flow, BUFFER_SIZE_1, RG16F, 1)
     SAMPLER(Sample_Optical_Flow, Render_Optical_Flow)
@@ -338,7 +338,14 @@ namespace Datamosh
         Gaussian_Blur(Shared_Resources_Datamosh::Sample_Common_1_B, TexCoords, true, OutputColor0);
     }
 
-    void Derivatives_PS(in float4 Position : SV_POSITION, in float4 TexCoords[2] : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0)
+    void Derivatives_Z_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0)
+    {
+        float2 Current = tex2D(Shared_Resources_Datamosh::Sample_Common_1_A, TexCoord).xy;
+        float2 Previous = tex2D(Sample_Common_1_C, TexCoord).xy;
+        OutputColor0 = dot(Current - Previous, 1.0);
+    }
+
+    void Derivatives_XY_PS(in float4 Position : SV_POSITION, in float4 TexCoords[2] : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0)
     {
         // Bilinear 5x5 Sobel by CeeJayDK
         //   B1 B2
@@ -383,14 +390,8 @@ namespace Datamosh
         const float Alpha = max((_Constraint * 3e-3) / pow(4.0, COARSEST_LEVEL - Level), FP16_MINIMUM);
 
         // Load textures
-        float2 Current = tex2Dlod(Shared_Resources_Datamosh::Sample_Common_1_A, float4(TexCoord, 0.0, Level + 0.5)).xy;
-        float2 Previous = tex2Dlod(Sample_Common_1_P, float4(TexCoord, 0.0, Level + 0.5)).xy;
-
-        // <Rx, Gx, Ry, Gy>
-        float2 SD = tex2Dlod(Shared_Resources_Datamosh::Sample_Common_1_B, float4(TexCoord, 0.0, Level + 0.5)).xy;
-
-        // <Rz, Gz>
-        float TD = dot(Current - Previous, 1.0);
+        float2 SD = tex2Dlod(Sample_Common_1_C, float4(TexCoord, 0.0, Level + 0.5)).xy;
+        float TD = tex2Dlod(Shared_Resources_Datamosh::Sample_Common_1_B, float4(TexCoord, 0.0, Level + 0.5)).x;
 
         float C = 0.0;
         float2 Aii = 0.0;
@@ -495,14 +496,8 @@ namespace Datamosh
         const float Alpha = max((_Constraint * 3e-3) / pow(4.0, COARSEST_LEVEL - Level), FP16_MINIMUM);
 
         // Load textures
-        float2 Current = tex2Dlod(Shared_Resources_Datamosh::Sample_Common_1_A, float4(TexCoords[1].xz, 0.0, Level + 0.5)).xy;
-        float2 Previous = tex2Dlod(Sample_Common_1_P, float4(TexCoords[1].xz, 0.0, Level + 0.5)).xy;
-
-        // <Rx, Ry, Gx, Gy>
-        float2 SD = tex2Dlod(Shared_Resources_Datamosh::Sample_Common_1_B, float4(TexCoords[1].xz, 0.0, Level + 0.5)).xy;
-
-        // <Rz, Gz>
-        float TD = dot(Current - Previous, 1.0);
+        float2 SD = tex2Dlod(Sample_Common_1_C, float4(TexCoords[1].xz, 0.0, Level + 0.5)).xy;
+        float TD = tex2Dlod(Shared_Resources_Datamosh::Sample_Common_1_B, float4(TexCoords[1].xz, 0.0, Level + 0.5)).x;
 
         // Optical flow calculation
 
@@ -747,8 +742,9 @@ namespace Datamosh
         PASS(Blur_0_VS, Pre_Blur_0_PS, Shared_Resources_Datamosh::Render_Common_1_B)
         PASS(Blur_1_VS, Pre_Blur_1_PS, Shared_Resources_Datamosh::Render_Common_1_A) // Save this to store later
 
-        // Calculate spatial derivative pyramid
-        PASS(Derivatives_VS, Derivatives_PS, Shared_Resources_Datamosh::Render_Common_1_B)
+        // Calculate spatial and temporal derivative pyramid
+        PASS(Basic_VS, Derivatives_Z_PS, Shared_Resources_Datamosh::Render_Common_1_B)
+        PASS(Derivatives_VS, Derivatives_XY_PS, Render_Common_1_C)
 
         // Bilinear Optical Flow
         PASS(Basic_VS, Level_6_PS, Shared_Resources_Datamosh::Render_Common_6)
@@ -775,7 +771,7 @@ namespace Datamosh
             VertexShader = Blur_0_VS;
             PixelShader = Post_Blur_0_PS;
             RenderTarget0 = Shared_Resources_Datamosh::Render_Common_1_B;
-            RenderTarget1 = Render_Common_1_P;
+            RenderTarget1 = Render_Common_1_C;
         }
 
         pass
