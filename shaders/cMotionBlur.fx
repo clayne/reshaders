@@ -52,23 +52,23 @@
 #define BUFFER_SIZE_6 int2(ROUND_UP_EVEN(SIZE.x >> 5), ROUND_UP_EVEN(SIZE.y >> 5))
 
 #define TEXTURE(NAME, SIZE, FORMAT, LEVELS) \
-    texture2D NAME                          \
-    {                                       \
-        Width = SIZE.x;                     \
-        Height = SIZE.y;                    \
-        Format = FORMAT;                    \
-        MipLevels = LEVELS;                 \
+    texture2D NAME \
+    { \
+        Width = SIZE.x; \
+        Height = SIZE.y; \
+        Format = FORMAT; \
+        MipLevels = LEVELS; \
     };
 
 #define SAMPLER(NAME, TEXTURE) \
-    sampler2D NAME             \
-    {                          \
-        Texture = TEXTURE;     \
-        AddressU = MIRROR;     \
-        AddressV = MIRROR;     \
-        MagFilter = LINEAR;    \
-        MinFilter = LINEAR;    \
-        MipFilter = LINEAR;    \
+    sampler2D NAME \
+    { \
+        Texture = TEXTURE; \
+        AddressU = MIRROR; \
+        AddressV = MIRROR; \
+        MagFilter = LINEAR; \
+        MinFilter = LINEAR; \
+        MipFilter = LINEAR; \
     };
 
 namespace Shared_Resources_Motion_Blur
@@ -85,7 +85,7 @@ namespace Shared_Resources_Motion_Blur
     TEXTURE(Render_Common_2, BUFFER_SIZE_2, RG16F, 1)
     SAMPLER(Sample_Common_2, Render_Common_2)
 
-    TEXTURE(Render_Common_3_A, BUFFER_SIZE_3, RG16F, 1)
+    TEXTURE(Render_Common_3_A, BUFFER_SIZE_3, RG16F, 7)
     SAMPLER(Sample_Common_3_A, Render_Common_3_A)
 
     TEXTURE(Render_Common_3_B, BUFFER_SIZE_3, RG16F, 1)
@@ -106,20 +106,20 @@ namespace Motion_Blur
     // Shader properties
 
     #define OPTION(DATA_TYPE, NAME, TYPE, CATEGORY, LABEL, MINIMUM, MAXIMUM, DEFAULT) \
-        uniform DATA_TYPE NAME <                                                      \
-            ui_type = TYPE;                                                           \
-            ui_category = CATEGORY;                                                   \
-            ui_label = LABEL;                                                         \
-            ui_min = MINIMUM;                                                         \
-            ui_max = MAXIMUM;                                                         \
+        uniform DATA_TYPE NAME < \
+            ui_type = TYPE; \
+            ui_category = CATEGORY; \
+            ui_label = LABEL; \
+            ui_min = MINIMUM; \
+            ui_max = MAXIMUM; \
         > = DEFAULT;
 
     OPTION(float, _Constraint, "slider", "Optical flow", "Motion constraint", 0.0, 1.0, 0.5)
-    OPTION(float, _MipBias, "slider", "Optical flow", "Optical flow mipmap bias", 0.0, 8.0, 0.0)
+    OPTION(float, _MipBias, "slider", "Optical flow", "Optical flow mipmap bias", 0.0, 6.0, 0.0)
     OPTION(float, _BlendFactor, "slider", "Optical flow", "Temporal blending factor", 0.0, 0.9, 0.1)
 
     OPTION(bool, _NormalMode, "radio", "Main", "Estimate normals", 0.0, 1.0, false)
-    OPTION(float, _Scale, "slider", "Main", "Blur scale", 0.0, 2.0, 1.0)
+    OPTION(float, _Scale, "slider", "Main", "Blur scale", 0.0, 1.0, 0.3)
 
     OPTION(bool, _FrameRateScaling, "radio", "Other", "Enable frame-rate scaling", 0.0, 1.0, false)
     OPTION(float, _TargetFrameRate, "drag", "Other", "Target frame-rate", 0.0, 144.0, 60.0)
@@ -159,72 +159,55 @@ namespace Motion_Blur
         [Vertex Shaders]
     */
 
-    void Basic_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float2 TexCoord : TEXCOORD0)
+    void Basic_VS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float2 TexCoord : TEXCOORD0)
     {
         TexCoord.x = (ID == 2) ? 2.0 : 0.0;
         TexCoord.y = (ID == 1) ? 2.0 : 0.0;
         Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
     }
 
-    static const float4 BlurOffsets[4] =
+    static const float4 BlurOffsets[3] =
     {
-        float4(0.0, 0.0, 0.0, 0.0),
         float4(0.0, 1.490652, 3.4781995, 5.465774),
         float4(0.0, 7.45339, 9.441065, 11.42881),
         float4(0.0, 13.416645, 15.404578, 17.392626)
     };
 
-    void Blur_0_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 TexCoords[7] : TEXCOORD0)
+    void Blur_VS(in bool IsAlt, in float2 PixelSize, in uint ID, inout float4 Position, inout float4 TexCoords[7])
     {
-        float2 CoordVS = 0.0;
-        Basic_VS(ID, Position, CoordVS);
-        TexCoords[0] = CoordVS.xyxy;
+        Basic_VS(ID, Position, TexCoords[0].xy);
 
-        for(int i = 1; i < 4; i++)
+        if (!IsAlt)
         {
-            TexCoords[i] = CoordVS.xyyy + (BlurOffsets[i].xyzw / BUFFER_SIZE_1.xyyy);
-            TexCoords[i + 3] = CoordVS.xyyy - (BlurOffsets[i].xyzw / BUFFER_SIZE_1.xyyy);
+            TexCoords[1] = TexCoords[0].xyyy + (BlurOffsets[0].xyzw / PixelSize.xyyy);
+            TexCoords[2] = TexCoords[0].xyyy + (BlurOffsets[1].xyzw / PixelSize.xyyy);
+            TexCoords[3] = TexCoords[0].xyyy + (BlurOffsets[2].xyzw / PixelSize.xyyy);
+            TexCoords[4] = TexCoords[0].xyyy - (BlurOffsets[0].xyzw / PixelSize.xyyy);
+            TexCoords[5] = TexCoords[0].xyyy - (BlurOffsets[1].xyzw / PixelSize.xyyy);
+            TexCoords[6] = TexCoords[0].xyyy - (BlurOffsets[2].xyzw / PixelSize.xyyy);
         }
+        else
+        {
+            TexCoords[1] = TexCoords[0].xxxy + (BlurOffsets[0].yzwx / PixelSize.xxxy);
+            TexCoords[2] = TexCoords[0].xxxy + (BlurOffsets[1].yzwx / PixelSize.xxxy);
+            TexCoords[3] = TexCoords[0].xxxy + (BlurOffsets[2].yzwx / PixelSize.xxxy);
+            TexCoords[4] = TexCoords[0].xxxy - (BlurOffsets[0].yzwx / PixelSize.xxxy);
+            TexCoords[5] = TexCoords[0].xxxy - (BlurOffsets[1].yzwx / PixelSize.xxxy);
+            TexCoords[6] = TexCoords[0].xxxy - (BlurOffsets[2].yzwx / PixelSize.xxxy);
+        }
+
     }
 
-    void Blur_1_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 TexCoords[7] : TEXCOORD0)
-    {
-        float2 CoordVS = 0.0;
-        Basic_VS(ID, Position, CoordVS);
-        TexCoords[0] = CoordVS.xyxy;
-
-        for(int i = 1; i < 4; i++)
-        {
-            TexCoords[i] = CoordVS.xxxy + (BlurOffsets[i].yzwx / BUFFER_SIZE_1.xxxy);
-            TexCoords[i + 3] = CoordVS.xxxy - (BlurOffsets[i].yzwx / BUFFER_SIZE_1.xxxy);
+    #define BLUR_VS(NAME, IS_ALT, PIXEL_SIZE) \
+        void NAME(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float4 TexCoords[7] : TEXCOORD0) \
+        { \
+            Blur_VS(IS_ALT, PIXEL_SIZE, ID, Position, TexCoords); \
         }
-    }
 
-    void Blur_0_P_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 TexCoords[7] : TEXCOORD0)
-    {
-        float2 CoordVS = 0.0;
-        Basic_VS(ID, Position, CoordVS);
-        TexCoords[0] = CoordVS.xyxy;
-
-        for(int i = 1; i < 4; i++)
-        {
-            TexCoords[i] = CoordVS.xyyy + (BlurOffsets[i].xyzw / BUFFER_SIZE_3.xyyy);
-            TexCoords[i + 3] = CoordVS.xyyy - (BlurOffsets[i].xyzw / BUFFER_SIZE_3.xyyy);
-        }
-    }
-
-    void Blur_1_P_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 TexCoords[7] : TEXCOORD0)
-    {
-        float2 CoordVS = 0.0;
-        Basic_VS(ID, Position, CoordVS);
-        TexCoords[0] = CoordVS.xyxy;
-
-        for(int i = 1; i < 4; i++)
-        {
-            TexCoords[i] = CoordVS.xxxy + (BlurOffsets[i].yzwx / BUFFER_SIZE_3.xxxy);
-            TexCoords[i + 3] = CoordVS.xxxy - (BlurOffsets[i].yzwx / BUFFER_SIZE_3.xxxy);
-        }
-    }
+    BLUR_VS(Pre_Blur_0_VS, false, BUFFER_SIZE_1)
+    BLUR_VS(Pre_Blur_1_VS, true, BUFFER_SIZE_1)
+    BLUR_VS(Post_Blur_0_VS, false, BUFFER_SIZE_3)
+    BLUR_VS(Post_Blur_1_VS, true, BUFFER_SIZE_3)
 
     void Sample_3x3_VS(in uint ID, in float2 TexelSize, out float4 Position, out float4 TexCoords[3])
     {
@@ -706,7 +689,7 @@ namespace Motion_Blur
 
         float2 Velocity = tex2Dlod(Shared_Resources_Motion_Blur::Sample_Common_3_A, float4(TexCoord, 0.0, _MipBias)).xy;
 
-        float2 ScaledVelocity = (Velocity / BUFFER_SIZE_1) * _Scale;
+        float2 ScaledVelocity = (Velocity / BUFFER_SIZE_3) * _Scale;
         ScaledVelocity = (_FrameRateScaling) ?  ScaledVelocity / FrameTimeRatio : ScaledVelocity;
 
         for(int k = 0; k < Samples; ++k)
@@ -731,11 +714,11 @@ namespace Motion_Blur
     }
 
     #define PASS(VERTEX_SHADER, PIXEL_SHADER, RENDER_TARGET) \
-        pass                                                 \
-        {                                                    \
-            VertexShader = VERTEX_SHADER;                    \
-            PixelShader = PIXEL_SHADER;                      \
-            RenderTarget0 = RENDER_TARGET;                   \
+        pass \
+        { \
+            VertexShader = VERTEX_SHADER; \
+            PixelShader = PIXEL_SHADER; \
+            RenderTarget0 = RENDER_TARGET; \
         }
 
     technique cMotionBlur
@@ -747,8 +730,8 @@ namespace Motion_Blur
         PASS(Basic_VS, Blit_Frame_PS, Shared_Resources_Motion_Blur::Render_Common_1_A)
 
         // Gaussian blur
-        PASS(Blur_0_VS, Pre_Blur_0_PS, Shared_Resources_Motion_Blur::Render_Common_1_B)
-        PASS(Blur_1_VS, Pre_Blur_1_PS, Shared_Resources_Motion_Blur::Render_Common_1_A) // Save this to store later
+        PASS(Pre_Blur_0_VS, Pre_Blur_0_PS, Shared_Resources_Motion_Blur::Render_Common_1_B)
+        PASS(Pre_Blur_1_VS, Pre_Blur_1_PS, Shared_Resources_Motion_Blur::Render_Common_1_A) // Save this to store later
 
         // Calculate spatial and temporal derivative pyramid
         PASS(Basic_VS, Derivatives_Z_PS, Shared_Resources_Motion_Blur::Render_Common_1_B)
@@ -778,8 +761,8 @@ namespace Motion_Blur
         PASS(Basic_VS, Copy_PS, Render_Common_1_C)
 
         // Gaussian blur
-        PASS(Blur_0_P_VS, Post_Blur_0_PS, Shared_Resources_Motion_Blur::Render_Common_3_B)
-        PASS(Blur_1_P_VS, Post_Blur_1_PS, Shared_Resources_Motion_Blur::Render_Common_3_A)
+        PASS(Post_Blur_0_VS, Post_Blur_0_PS, Shared_Resources_Motion_Blur::Render_Common_3_B)
+        PASS(Post_Blur_1_VS, Post_Blur_1_PS, Shared_Resources_Motion_Blur::Render_Common_3_A)
 
         // Motion blur
         pass

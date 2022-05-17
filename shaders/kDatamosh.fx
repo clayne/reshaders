@@ -50,23 +50,23 @@
 #define BUFFER_SIZE_6 int2(ROUND_UP_EVEN(SIZE.x >> 5), ROUND_UP_EVEN(SIZE.y >> 5))
 
 #define TEXTURE(NAME, SIZE, FORMAT, LEVELS) \
-    texture2D NAME                          \
-    {                                       \
-        Width = SIZE.x;                     \
-        Height = SIZE.y;                    \
-        Format = FORMAT;                    \
-        MipLevels = LEVELS;                 \
+    texture2D NAME \
+    { \
+        Width = SIZE.x; \
+        Height = SIZE.y; \
+        Format = FORMAT; \
+        MipLevels = LEVELS; \
     };
 
 #define SAMPLER(NAME, TEXTURE) \
-    sampler2D NAME             \
-    {                          \
-        Texture = TEXTURE;     \
-        AddressU = MIRROR;     \
-        AddressV = MIRROR;     \
-        MagFilter = LINEAR;    \
-        MinFilter = LINEAR;    \
-        MipFilter = LINEAR;    \
+    sampler2D NAME \
+    { \
+        Texture = TEXTURE; \
+        AddressU = MIRROR; \
+        AddressV = MIRROR; \
+        MagFilter = LINEAR; \
+        MinFilter = LINEAR; \
+        MipFilter = LINEAR; \
     };
 
 namespace Shared_Resources_Datamosh
@@ -80,7 +80,7 @@ namespace Shared_Resources_Datamosh
     TEXTURE(Render_Common_1_B, BUFFER_SIZE_1, RG16F, 9)
     SAMPLER(Sample_Common_1_B, Render_Common_1_B)
 
-    TEXTURE(Render_Common_2_A, BUFFER_SIZE_2, RG16F, 8)
+    TEXTURE(Render_Common_2_A, BUFFER_SIZE_2, RG16F, 7)
     SAMPLER(Sample_Common_2_A, Render_Common_2_A)
 
     TEXTURE(Render_Common_2_B, BUFFER_SIZE_2, RG16F, 1)
@@ -117,11 +117,11 @@ namespace Datamosh
     OPTION(int, _BlockSize, "slider", "Datamosh", "Block Size", 4, 32, 16)
     OPTION(float, _Entropy, "slider", "Datamosh", "Entropy", 0.0, 1.0, 0.5)
     OPTION(float, _Contrast, "slider", "Datamosh", "Contrast of stripe-shaped noise", 0.0, 4.0, 2.0)
-    OPTION(float, _Scale, "slider", "Datamosh", "Scale factor for velocity vectors", 0.0, 4.0, 2.0)
+    OPTION(float, _Scale, "slider", "Datamosh", "Scale factor for velocity vectors", 0.0, 2.0, 1.0)
     OPTION(float, _Diffusion, "slider", "Datamosh", "Amount of random displacement", 0.0, 4.0, 2.0)
 
     OPTION(float, _Constraint, "slider", "Optical flow", "Motion constraint", 0.0, 1.0, 0.5)
-    OPTION(float, _MipBias, "slider", "Optical flow", "Optical flow mipmap bias", 0.0, 7.0, 0.0)
+    OPTION(float, _MipBias, "slider", "Optical flow", "Optical flow mipmap bias", 0.0, 6.0, 0.0)
     OPTION(float, _BlendFactor, "slider", "Optical flow", "Temporal blending factor", 0.0, 0.9, 0.5)
 
     #ifndef LINEAR_SAMPLING
@@ -197,65 +197,48 @@ namespace Datamosh
         Position = float4(TexCoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
     }
 
-    static const float4 BlurOffsets[4] =
+    static const float4 BlurOffsets[3] =
     {
-        float4(0.0, 0.0, 0.0, 0.0),
         float4(0.0, 1.490652, 3.4781995, 5.465774),
         float4(0.0, 7.45339, 9.441065, 11.42881),
         float4(0.0, 13.416645, 15.404578, 17.392626)
     };
 
-    void Blur_0_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 TexCoords[7] : TEXCOORD0)
+    void Blur_VS(in bool IsAlt, in float2 PixelSize, in uint ID, inout float4 Position, inout float4 TexCoords[7])
     {
-        float2 CoordVS = 0.0;
-        Basic_VS(ID, Position, CoordVS);
-        TexCoords[0] = CoordVS.xyxy;
+        Basic_VS(ID, Position, TexCoords[0].xy);
 
-        for(int i = 1; i < 4; i++)
+        if (!IsAlt)
         {
-            TexCoords[i] = CoordVS.xyyy + (BlurOffsets[i].xyzw / BUFFER_SIZE_1.xyyy);
-            TexCoords[i + 3] = CoordVS.xyyy - (BlurOffsets[i].xyzw / BUFFER_SIZE_1.xyyy);
+            TexCoords[1] = TexCoords[0].xyyy + (BlurOffsets[0].xyzw / PixelSize.xyyy);
+            TexCoords[2] = TexCoords[0].xyyy + (BlurOffsets[1].xyzw / PixelSize.xyyy);
+            TexCoords[3] = TexCoords[0].xyyy + (BlurOffsets[2].xyzw / PixelSize.xyyy);
+            TexCoords[4] = TexCoords[0].xyyy - (BlurOffsets[0].xyzw / PixelSize.xyyy);
+            TexCoords[5] = TexCoords[0].xyyy - (BlurOffsets[1].xyzw / PixelSize.xyyy);
+            TexCoords[6] = TexCoords[0].xyyy - (BlurOffsets[2].xyzw / PixelSize.xyyy);
         }
+        else
+        {
+            TexCoords[1] = TexCoords[0].xxxy + (BlurOffsets[0].yzwx / PixelSize.xxxy);
+            TexCoords[2] = TexCoords[0].xxxy + (BlurOffsets[1].yzwx / PixelSize.xxxy);
+            TexCoords[3] = TexCoords[0].xxxy + (BlurOffsets[2].yzwx / PixelSize.xxxy);
+            TexCoords[4] = TexCoords[0].xxxy - (BlurOffsets[0].yzwx / PixelSize.xxxy);
+            TexCoords[5] = TexCoords[0].xxxy - (BlurOffsets[1].yzwx / PixelSize.xxxy);
+            TexCoords[6] = TexCoords[0].xxxy - (BlurOffsets[2].yzwx / PixelSize.xxxy);
+        }
+
     }
 
-    void Blur_1_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 TexCoords[7] : TEXCOORD0)
-    {
-        float2 CoordVS = 0.0;
-        Basic_VS(ID, Position, CoordVS);
-        TexCoords[0] = CoordVS.xyxy;
-
-        for(int i = 1; i < 4; i++)
-        {
-            TexCoords[i] = CoordVS.xxxy + (BlurOffsets[i].yzwx / BUFFER_SIZE_1.xxxy);
-            TexCoords[i + 3] = CoordVS.xxxy - (BlurOffsets[i].yzwx / BUFFER_SIZE_1.xxxy);
+    #define BLUR_VS(NAME, IS_ALT, PIXEL_SIZE) \
+        void NAME(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float4 TexCoords[7] : TEXCOORD0) \
+        { \
+            Blur_VS(IS_ALT, PIXEL_SIZE, ID, Position, TexCoords); \
         }
-    }
 
-    void Blur_0_P_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 TexCoords[7] : TEXCOORD0)
-    {
-        float2 CoordVS = 0.0;
-        Basic_VS(ID, Position, CoordVS);
-        TexCoords[0] = CoordVS.xyxy;
-
-        for(int i = 1; i < 4; i++)
-        {
-            TexCoords[i] = CoordVS.xyyy + (BlurOffsets[i].xyzw / BUFFER_SIZE_2.xyyy);
-            TexCoords[i + 3] = CoordVS.xyyy - (BlurOffsets[i].xyzw / BUFFER_SIZE_2.xyyy);
-        }
-    }
-
-    void Blur_1_P_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 TexCoords[7] : TEXCOORD0)
-    {
-        float2 CoordVS = 0.0;
-        Basic_VS(ID, Position, CoordVS);
-        TexCoords[0] = CoordVS.xyxy;
-
-        for(int i = 1; i < 4; i++)
-        {
-            TexCoords[i] = CoordVS.xxxy + (BlurOffsets[i].yzwx / BUFFER_SIZE_2.xxxy);
-            TexCoords[i + 3] = CoordVS.xxxy - (BlurOffsets[i].yzwx / BUFFER_SIZE_2.xxxy);
-        }
-    }
+    BLUR_VS(Pre_Blur_0_VS, false, BUFFER_SIZE_1)
+    BLUR_VS(Pre_Blur_1_VS, true, BUFFER_SIZE_1)
+    BLUR_VS(Post_Blur_0_VS, false, BUFFER_SIZE_2)
+    BLUR_VS(Post_Blur_1_VS, true, BUFFER_SIZE_2)
 
     void Sample_3x3_VS(in uint ID, in float2 TexelSize, out float4 Position, out float4 TexCoords[3])
     {
@@ -729,7 +712,7 @@ namespace Datamosh
 
         // Motion vector
         float2 MotionVectors = tex2Dlod(Sample_Optical_Flow_Post, float4(TexCoord, 0.0, _MipBias)).xy;
-        MotionVectors = MotionVectors * BUFFER_SIZE_1; // Normalized screen space -> Pixel coordinates
+        MotionVectors = MotionVectors * BUFFER_SIZE_2; // Normalized screen space -> Pixel coordinates
         MotionVectors *= _Scale;
         MotionVectors += (Random.xy - 0.5)  * _Diffusion; // Small random displacement (diffusion)
         MotionVectors = round(MotionVectors); // Pixel perfect snapping
@@ -751,7 +734,7 @@ namespace Datamosh
 
     void Datamosh_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
-        const float2 DisplacementTexel = 1.0 / BUFFER_SIZE_1;
+        const float2 DisplacementTexel = 1.0 / BUFFER_SIZE_2;
         const float Quality = 1.0 - _Entropy;
 
         // Random numbers
@@ -801,11 +784,11 @@ namespace Datamosh
     }
 
     #define PASS(VERTEX_SHADER, PIXEL_SHADER, RENDER_TARGET) \
-        pass                                                 \
-        {                                                    \
-            VertexShader = VERTEX_SHADER;                    \
-            PixelShader = PIXEL_SHADER;                      \
-            RenderTarget0 = RENDER_TARGET;                   \
+        pass \
+        { \
+            VertexShader = VERTEX_SHADER; \
+            PixelShader = PIXEL_SHADER; \
+            RenderTarget0 = RENDER_TARGET; \
         }
 
     technique KinoDatamosh
@@ -817,8 +800,8 @@ namespace Datamosh
         PASS(Basic_VS, Blit_Frame_PS, Shared_Resources_Datamosh::Render_Common_1_A)
 
         // Gaussian blur
-        PASS(Blur_0_VS, Pre_Blur_0_PS, Shared_Resources_Datamosh::Render_Common_1_B)
-        PASS(Blur_1_VS, Pre_Blur_1_PS, Shared_Resources_Datamosh::Render_Common_1_A) // Save this to store later
+        PASS(Pre_Blur_0_VS, Pre_Blur_0_PS, Shared_Resources_Datamosh::Render_Common_1_B)
+        PASS(Pre_Blur_1_VS, Pre_Blur_1_PS, Shared_Resources_Datamosh::Render_Common_1_A) // Save this to store later
 
         // Calculate spatial and temporal derivative pyramid
         PASS(Basic_VS, Derivatives_Z_PS, Shared_Resources_Datamosh::Render_Common_1_B)
@@ -847,8 +830,8 @@ namespace Datamosh
         PASS(Basic_VS, Copy_PS, Render_Common_1_C)
 
         // Gaussian blur
-        PASS(Blur_0_P_VS, Post_Blur_0_PS, Shared_Resources_Datamosh::Render_Common_2_B)
-        PASS(Blur_1_P_VS, Post_Blur_1_PS, Shared_Resources_Datamosh::Render_Common_2_A)
+        PASS(Post_Blur_0_VS, Post_Blur_0_PS, Shared_Resources_Datamosh::Render_Common_2_B)
+        PASS(Post_Blur_1_VS, Post_Blur_1_PS, Shared_Resources_Datamosh::Render_Common_2_A)
 
         // Datamoshing
         pass
