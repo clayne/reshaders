@@ -85,8 +85,11 @@ namespace Shared_Resources_Motion_Blur
     TEXTURE(Render_Common_2, BUFFER_SIZE_2, RG16F, 1)
     SAMPLER(Sample_Common_2, Render_Common_2)
 
-    TEXTURE(Render_Common_3, BUFFER_SIZE_3, RG16F, 1)
-    SAMPLER(Sample_Common_3, Render_Common_3)
+    TEXTURE(Render_Common_3_A, BUFFER_SIZE_3, RG16F, 1)
+    SAMPLER(Sample_Common_3_A, Render_Common_3_A)
+
+    TEXTURE(Render_Common_3_B, BUFFER_SIZE_3, RG16F, 1)
+    SAMPLER(Sample_Common_3_B, Render_Common_3_B)
 
     TEXTURE(Render_Common_4, BUFFER_SIZE_4, RG16F, 1)
     SAMPLER(Sample_Common_4, Render_Common_4)
@@ -112,7 +115,7 @@ namespace Motion_Blur
         > = DEFAULT;
 
     OPTION(float, _Constraint, "slider", "Optical flow", "Motion constraint", 0.0, 1.0, 0.5)
-    OPTION(float, _MipBias, "slider", "Optical flow", "Optical flow mipmap bias", 0.0, 8.0, 5.5)
+    OPTION(float, _MipBias, "slider", "Optical flow", "Optical flow mipmap bias", 0.0, 8.0, 0.0)
     OPTION(float, _BlendFactor, "slider", "Optical flow", "Temporal blending factor", 0.0, 0.9, 0.1)
 
     OPTION(bool, _NormalMode, "radio", "Main", "Estimate normals", 0.0, 1.0, false)
@@ -149,10 +152,12 @@ namespace Motion_Blur
     TEXTURE(Render_Common_1_C, BUFFER_SIZE_1, RG16F, 9)
     SAMPLER(Sample_Common_1_C, Render_Common_1_C)
 
-    TEXTURE(Render_Optical_Flow, BUFFER_SIZE_1, RG16F, 1)
+    TEXTURE(Render_Optical_Flow, BUFFER_SIZE_1, RG16F, 9)
     SAMPLER(Sample_Optical_Flow, Render_Optical_Flow)
 
-    // Vertex Shaders
+    /*
+        [Vertex Shaders]
+    */
 
     void Basic_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float2 TexCoord : TEXCOORD0)
     {
@@ -195,6 +200,32 @@ namespace Motion_Blur
         }
     }
 
+    void Blur_0_P_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 TexCoords[7] : TEXCOORD0)
+    {
+        float2 CoordVS = 0.0;
+        Basic_VS(ID, Position, CoordVS);
+        TexCoords[0] = CoordVS.xyxy;
+
+        for(int i = 1; i < 4; i++)
+        {
+            TexCoords[i] = CoordVS.xyyy + (BlurOffsets[i].xyzw / BUFFER_SIZE_3.xyyy);
+            TexCoords[i + 3] = CoordVS.xyyy - (BlurOffsets[i].xyzw / BUFFER_SIZE_3.xyyy);
+        }
+    }
+
+    void Blur_1_P_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 TexCoords[7] : TEXCOORD0)
+    {
+        float2 CoordVS = 0.0;
+        Basic_VS(ID, Position, CoordVS);
+        TexCoords[0] = CoordVS.xyxy;
+
+        for(int i = 1; i < 4; i++)
+        {
+            TexCoords[i] = CoordVS.xxxy + (BlurOffsets[i].yzwx / BUFFER_SIZE_3.xxxy);
+            TexCoords[i + 3] = CoordVS.xxxy - (BlurOffsets[i].yzwx / BUFFER_SIZE_3.xxxy);
+        }
+    }
+
     void Sample_3x3_VS(in uint ID, in float2 TexelSize, out float4 Position, out float4 TexCoords[3])
     {
         float2 CoordVS = 0.0;
@@ -229,11 +260,57 @@ namespace Motion_Blur
         TexCoords[1] = CoordVS.xxyy + (float4(-0.5, 0.5, -1.5, 1.5) / BUFFER_SIZE_1.xxyy);
     }
 
-    // Pixel Shaders
+    /*
+        [Pixel Shaders]
 
-    // Generate normals: https://github.com/crosire/reshade-shaders/blob/slim/Shaders/DisplayDepth.fx [MIT]
-    // Normal encodes: https://knarkowicz.wordpress.com/2014/04/16/octahedron-normal-vector-encoding/
-    // Contour pass: https://github.com/keijiro/KinoContour [MIT]
+        [1] Generate normals
+            https://github.com/crosire/reshade-shaders/blob/slim/Shaders/DisplayDepth.fx
+
+        [2] Normal encoding
+            https://knarkowicz.wordpress.com/2014/04/16/octahedron-normal-vector-encoding/
+
+        [3] Polar-coordinate diagram
+            https://opg.optica.org/josaa/fulltext.cfm?uri=josaa-37-11-1721&id=440913
+
+                @article{buzzelli2020arc,
+                    title = {ARC: Angle-Retaining Chromaticity diagram for color constancy error analysis},
+                    author = {Marco Buzzelli and Simone Bianco and Raimondo Schettini},
+                    journal = {J. Opt. Soc. Am. A},
+                    number = {11},
+                    pages = {1721--1730},
+                    publisher = {OSA},
+                    volume = {37},
+                    month = {Nov},
+                    year = {2020},
+                    doi = {10.1364/JOSAA.398692}
+                }
+
+        [4] Horn-Schunck Optical Flow
+            https://github.com/Dtananaev/cv_opticalFlow
+
+                Copyright (c) 2014-2015, Denis Tananaev All rights reserved.
+
+                Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+
+                Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+
+                Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the
+                documentation and/or other materials provided with the distribution.
+
+                THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,
+                INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+                DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+                EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+                LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+                STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+                ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+        [5] Robert's cross operator
+            https://homepages.inf.ed.ac.uk/rbf/HIPR2/roberts.htm
+
+        [6] Prewitt compass operator
+            https://homepages.inf.ed.ac.uk/rbf/HIPR2/prewitt.htm
+    */
 
     float3 Get_Screen_Space_Normal(float2 TexCoord)
     {
@@ -282,7 +359,10 @@ namespace Motion_Blur
         else
         {
             float4 Frame = max(tex2D(Sample_Color, TexCoord), exp2(-10.0));
-            Color.xy = saturate(Frame.xy / dot(Frame.rgb, 1.0));
+            // Convert RGB into ARC's polar coordinates [3]
+            // Append "FP16_MINIMUM" to avoid dividing by zero
+            Color.x = saturate(acos(dot(Frame.rgb, 1.0) / (sqrt(3.0) * length(Frame.rgb))));
+            Color.y = atan2(dot(Frame.gb, float2(sqrt(3.0), -sqrt(3.0))), dot(Frame.rgb, float3(2.0, -1.0, -1.0)) + FP16_MINIMUM);
         }
     }
 
@@ -356,11 +436,20 @@ namespace Motion_Blur
         Gaussian_Blur(Shared_Resources_Motion_Blur::Sample_Common_1_B, TexCoords, true, OutputColor0);
     }
 
+    // Turn the packed angle vector into its respective unit vectors
+    float3 HS_Units_2D(sampler2D Source, float2 TexCoord)
+    {
+        float3 Color = tex2D(Source, TexCoord).xyz;
+        sincos(Color.y, Color.z, Color.y);
+        Color.zy = saturate(Color.zy * 0.5 + 0.5);
+        return Color;
+    }
+
     void Derivatives_Z_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0)
     {
-        float2 Current = tex2D(Shared_Resources_Motion_Blur::Sample_Common_1_A, TexCoord).xy;
-        float2 Previous = tex2D(Sample_Common_1_C, TexCoord).xy;
-        OutputColor0 = dot(Current - Previous, 1.0);
+        float3 Current = HS_Units_2D(Shared_Resources_Motion_Blur::Sample_Common_1_A, TexCoord);
+        float3 Previous = HS_Units_2D(Sample_Common_1_C, TexCoord);
+        OutputColor0 = dot(Current - Previous, float3(0.95, 0.025, 0.025));
     }
 
     void Derivatives_XY_PS(in float4 Position : SV_POSITION, in float4 TexCoords[2] : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0)
@@ -370,42 +459,29 @@ namespace Motion_Blur
         // A0     A1
         // A2     B0
         //   C0 C1
-        float2 A0 = tex2D(Shared_Resources_Motion_Blur::Sample_Common_1_A, TexCoords[0].xw).xy * 4.0; // <-1.5, +0.5>
-        float2 A1 = tex2D(Shared_Resources_Motion_Blur::Sample_Common_1_A, TexCoords[0].yw).xy * 4.0; // <+1.5, +0.5>
-        float2 A2 = tex2D(Shared_Resources_Motion_Blur::Sample_Common_1_A, TexCoords[0].xz).xy * 4.0; // <-1.5, -0.5>
-        float2 B0 = tex2D(Shared_Resources_Motion_Blur::Sample_Common_1_A, TexCoords[0].yz).xy * 4.0; // <+1.5, -0.5>
-        float2 B1 = tex2D(Shared_Resources_Motion_Blur::Sample_Common_1_A, TexCoords[1].xw).xy * 4.0; // <-0.5, +1.5>
-        float2 B2 = tex2D(Shared_Resources_Motion_Blur::Sample_Common_1_A, TexCoords[1].yw).xy * 4.0; // <+0.5, +1.5>
-        float2 C0 = tex2D(Shared_Resources_Motion_Blur::Sample_Common_1_A, TexCoords[1].xz).xy * 4.0; // <-0.5, -1.5>
-        float2 C1 = tex2D(Shared_Resources_Motion_Blur::Sample_Common_1_A, TexCoords[1].yz).xy * 4.0; // <+0.5, -1.5>
+        float3 A0 = HS_Units_2D(Shared_Resources_Motion_Blur::Sample_Common_1_A, TexCoords[0].xw) * 4.0; // <-1.5, +0.5>
+        float3 A1 = HS_Units_2D(Shared_Resources_Motion_Blur::Sample_Common_1_A, TexCoords[0].yw) * 4.0; // <+1.5, +0.5>
+        float3 A2 = HS_Units_2D(Shared_Resources_Motion_Blur::Sample_Common_1_A, TexCoords[0].xz) * 4.0; // <-1.5, -0.5>
+        float3 B0 = HS_Units_2D(Shared_Resources_Motion_Blur::Sample_Common_1_A, TexCoords[0].yz) * 4.0; // <+1.5, -0.5>
+        float3 B1 = HS_Units_2D(Shared_Resources_Motion_Blur::Sample_Common_1_A, TexCoords[1].xw) * 4.0; // <-0.5, +1.5>
+        float3 B2 = HS_Units_2D(Shared_Resources_Motion_Blur::Sample_Common_1_A, TexCoords[1].yw) * 4.0; // <+0.5, +1.5>
+        float3 C0 = HS_Units_2D(Shared_Resources_Motion_Blur::Sample_Common_1_A, TexCoords[1].xz) * 4.0; // <-0.5, -1.5>
+        float3 C1 = HS_Units_2D(Shared_Resources_Motion_Blur::Sample_Common_1_A, TexCoords[1].yz) * 4.0; // <+0.5, -1.5>
 
         OutputColor0 = 0.0;
-        float2 Ix = ((B2 + A1 + B0 + C1) - (B1 + A0 + A2 + C0)) / 12.0;
-        float2 Iy = ((A0 + B1 + B2 + A1) - (A2 + C0 + C1 + B0)) / 12.0;
-        OutputColor0.x = dot(Ix, 1.0);
-        OutputColor0.y = dot(Iy, 1.0);
+        float3 Ix = ((B2 + A1 + B0 + C1) - (B1 + A0 + A2 + C0)) / 12.0;
+        float3 Iy = ((A0 + B1 + B2 + A1) - (A2 + C0 + C1 + B0)) / 12.0;
+        OutputColor0.x = dot(Ix, float3(0.95, 0.025, 0.025));
+        OutputColor0.y = dot(Iy, float3(0.95, 0.025, 0.025));
     }
-
-    /*
-        https://github.com/Dtananaev/cv_opticalFlow
-
-        Copyright (c) 2014-2015, Denis Tananaev All rights reserved.
-
-        Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
-
-        Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
-
-        Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
-
-        THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-    */
 
     #define COARSEST_LEVEL 5
 
+    // Calculate first level of Horn-Schunck Optical Flow [4]
     void Coarse_Optical_Flow_TV(in float2 TexCoord, in float Level, in float4 UV, out float2 OpticalFlow)
     {
         OpticalFlow = 0.0;
-        const float Alpha = max((_Constraint * 3e-3) / pow(4.0, COARSEST_LEVEL - Level), FP16_MINIMUM);
+        const float Alpha = max((_Constraint * 6e-3) / pow(4.0, COARSEST_LEVEL - Level), FP16_MINIMUM);
 
         // Load textures
         float2 SD = tex2Dlod(Sample_Common_1_C, float4(TexCoord, 0.0, Level + 0.5)).xy;
@@ -435,7 +511,7 @@ namespace Motion_Blur
 
     void Gradient(in float4x2 Samples, out float Gradient)
     {
-        // 2x2 Robert's cross
+        // 2x2 Robert's cross [5]
         // [0] [2]
         // [1] [3]
         float4 SqGradientUV = 0.0;
@@ -464,8 +540,7 @@ namespace Motion_Blur
 
     void Process_Gradients(in float2 SampleUV[9], inout float4 AreaGrad, inout float4 UVGradient)
     {
-        // Center smoothness gradient using Prewitt compass
-        // https://homepages.inf.ed.ac.uk/rbf/HIPR2/prewitt.htm
+        // Calculate center gradient using Prewitt compass operator [6]
         // 0.xy           | 0.zw           | 1.xy           | 1.zw           | 2.xy           | 2.zw           | 3.xy           | 3.zw
         // .......................................................................................................................................
         // -1.0 +1.0 +1.0 | +1.0 +1.0 +1.0 | +1.0 +1.0 +1.0 | +1.0 +1.0 +1.0 | +1.0 +1.0 -1.0 | +1.0 -1.0 -1.0 | -1.0 -1.0 -1.0 | -1.0 -1.0 +1.0 |
@@ -508,25 +583,20 @@ namespace Motion_Blur
         Color = (SampleNW + SampleNE + SampleSW + SampleSE) * 0.25;
     }
 
+    // Calculate following levels of Horn-Schunck Optical Flow [4]
     void Optical_Flow_TV(in sampler2D SourceUV, in float4 TexCoords[3], in float Level, out float2 OpticalFlow)
     {
         OpticalFlow = 0.0;
-        const float Alpha = max((_Constraint * 3e-3) / pow(4.0, COARSEST_LEVEL - Level), FP16_MINIMUM);
+        const float Alpha = max((_Constraint * 6e-3) / pow(4.0, COARSEST_LEVEL - Level), FP16_MINIMUM);
 
         // Load textures
         float2 SD = tex2Dlod(Sample_Common_1_C, float4(TexCoords[1].xz, 0.0, Level + 0.5)).xy;
         float TD = tex2Dlod(Shared_Resources_Motion_Blur::Sample_Common_1_B, float4(TexCoords[1].xz, 0.0, Level + 0.5)).x;
 
         // Optical flow calculation
-
-        // <Ru, Rv, Gu, Gv>
         float2 SampleUV[9];
-
-        // [0] = Red, [1] = Green
         float4 AreaGrad;
         float4 UVGradient;
-
-        // <Ru, Rv, Gu, Gv>
         float2 AreaAvg[4];
         float4 CenterAverage;
         float4 UVAverage;
@@ -599,7 +669,7 @@ namespace Motion_Blur
     LEVEL_PS(Level_5_PS, Shared_Resources_Motion_Blur::Sample_Common_6, 4.0)
     LEVEL_PS(Level_4_PS, Shared_Resources_Motion_Blur::Sample_Common_5, 3.0)
     LEVEL_PS(Level_3_PS, Shared_Resources_Motion_Blur::Sample_Common_4, 2.0)
-    LEVEL_PS(Level_2_PS, Shared_Resources_Motion_Blur::Sample_Common_3, 1.0)
+    LEVEL_PS(Level_2_PS, Shared_Resources_Motion_Blur::Sample_Common_3_A, 1.0)
 
     void Level_1_PS(in float4 Position : SV_POSITION, in float4 TexCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
@@ -608,16 +678,20 @@ namespace Motion_Blur
         OutputColor0.ba = float2(0.0, _BlendFactor);
     }
 
-    void Post_Blur_0_PS(in float4 Position : SV_POSITION, in float4 TexCoords[7] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0, out float4 OutputColor1 : SV_TARGET1)
+    void Copy_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+    {
+        OutputColor0 = tex2D(Shared_Resources_Motion_Blur::Sample_Common_1_A, TexCoord);
+    }
+
+    void Post_Blur_0_PS(in float4 Position : SV_POSITION, in float4 TexCoords[7] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
         Gaussian_Blur(Sample_Optical_Flow, TexCoords, false, OutputColor0);
         OutputColor0.a = 1.0;
-        OutputColor1 = tex2D(Shared_Resources_Motion_Blur::Sample_Common_1_A, TexCoords[0].xy);
     }
 
     void Post_Blur_1_PS(in float4 Position : SV_POSITION, in float4 TexCoords[7] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
-        Gaussian_Blur(Shared_Resources_Motion_Blur::Sample_Common_1_B, TexCoords, true, OutputColor0);
+        Gaussian_Blur(Shared_Resources_Motion_Blur::Sample_Common_3_B, TexCoords, true, OutputColor0);
         OutputColor0.a = 1.0;
     }
 
@@ -630,7 +704,7 @@ namespace Motion_Blur
         float FrameRate = 1e+3 / _FrameTime;
         float FrameTimeRatio = _TargetFrameRate / FrameRate;
 
-        float2 Velocity = tex2Dlod(Shared_Resources_Motion_Blur::Sample_Common_1_A, float4(TexCoord, 0.0, _MipBias)).xy;
+        float2 Velocity = tex2Dlod(Shared_Resources_Motion_Blur::Sample_Common_3_A, float4(TexCoord, 0.0, _MipBias)).xy;
 
         float2 ScaledVelocity = (Velocity / BUFFER_SIZE_1) * _Scale;
         ScaledVelocity = (_FrameRateScaling) ?  ScaledVelocity / FrameTimeRatio : ScaledVelocity;
@@ -678,13 +752,14 @@ namespace Motion_Blur
 
         // Calculate spatial and temporal derivative pyramid
         PASS(Basic_VS, Derivatives_Z_PS, Shared_Resources_Motion_Blur::Render_Common_1_B)
+        // NOTE: Do not write to "Render_Common_1_A" until after we copy it to "Render_Common_1_C" to use for the next frame
         PASS(Derivatives_VS, Derivatives_XY_PS, Render_Common_1_C)
 
         // Bilinear Optical Flow
         PASS(Basic_VS, Level_6_PS, Shared_Resources_Motion_Blur::Render_Common_6)
         PASS(Sample_3x3_6_VS, Level_5_PS, Shared_Resources_Motion_Blur::Render_Common_5)
         PASS(Sample_3x3_5_VS, Level_4_PS, Shared_Resources_Motion_Blur::Render_Common_4)
-        PASS(Sample_3x3_4_VS, Level_3_PS, Shared_Resources_Motion_Blur::Render_Common_3)
+        PASS(Sample_3x3_4_VS, Level_3_PS, Shared_Resources_Motion_Blur::Render_Common_3_A)
         PASS(Sample_3x3_3_VS, Level_2_PS, Shared_Resources_Motion_Blur::Render_Common_2)
 
         pass
@@ -699,24 +774,14 @@ namespace Motion_Blur
             DestBlend = SRCALPHA;
         }
 
-        // Gaussian blur
-        pass // Do gaussian blur 0 and copy current convolved frame for next frame
-        {
-            VertexShader = Blur_0_VS;
-            PixelShader = Post_Blur_0_PS;
-            RenderTarget0 = Shared_Resources_Motion_Blur::Render_Common_1_B;
-            RenderTarget1 = Render_Common_1_C;
-        }
+        // Copy current convolved frame for next frame
+        PASS(Basic_VS, Copy_PS, Render_Common_1_C)
 
-        pass
-        {
-            VertexShader = Blur_1_VS;
-            PixelShader = Post_Blur_1_PS;
-            RenderTarget0 = Shared_Resources_Motion_Blur::Render_Common_1_A;
-        }
+        // Gaussian blur
+        PASS(Blur_0_P_VS, Post_Blur_0_PS, Shared_Resources_Motion_Blur::Render_Common_3_B)
+        PASS(Blur_1_P_VS, Post_Blur_1_PS, Shared_Resources_Motion_Blur::Render_Common_3_A)
 
         // Motion blur
-
         pass
         {
             VertexShader = Basic_VS;
