@@ -118,7 +118,7 @@ void Median_PS(in float4 Position : SV_POSITION, in float4 Offsets[3] : TEXCOORD
     OutputColor0 = Median_9(Sample[0], Sample[1], Sample[2],
                             Sample[3], Sample[4], Sample[5],
                             Sample[6], Sample[7], Sample[8]);
-    }
+}
 
 technique cMedian
 {
