@@ -277,29 +277,7 @@ namespace Datamosh
     /*
         [Pixel Shaders]
 
-        [1] Generate normals
-            https://github.com/crosire/reshade-shaders/blob/slim/Shaders/DisplayDepth.fx
-
-        [2] Normal encoding
-            https://knarkowicz.wordpress.com/2014/04/16/octahedron-normal-vector-encoding/
-
-        [3] Polar-coordinate diagram
-            https://opg.optica.org/josaa/fulltext.cfm?uri=josaa-37-11-1721&id=440913
-
-                @article{buzzelli2020arc,
-                    title = {ARC: Angle-Retaining Chromaticity diagram for color constancy error analysis},
-                    author = {Marco Buzzelli and Simone Bianco and Raimondo Schettini},
-                    journal = {J. Opt. Soc. Am. A},
-                    number = {11},
-                    pages = {1721--1730},
-                    publisher = {OSA},
-                    volume = {37},
-                    month = {Nov},
-                    year = {2020},
-                    doi = {10.1364/JOSAA.398692}
-                }
-
-        [4] Horn-Schunck Optical Flow
+        [1] Horn-Schunck Optical Flow
             https://github.com/Dtananaev/cv_opticalFlow
 
                 Copyright (c) 2014-2015, Denis Tananaev All rights reserved.
@@ -319,13 +297,13 @@ namespace Datamosh
                 STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
                 ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-        [5] Robert's cross operator
+        [2] Robert's cross operator
             https://homepages.inf.ed.ac.uk/rbf/HIPR2/roberts.htm
 
-        [6] Prewitt compass operator
+        [3] Prewitt compass operator
             https://homepages.inf.ed.ac.uk/rbf/HIPR2/prewitt.htm
 
-        [7] Color + BlendOp version of KinoDatamosh
+        [4] Color + BlendOp version of KinoDatamosh
             https://github.com/keijiro/KinoDatamosh
 
             This is free and unencumbered software released into the public domain.
@@ -357,10 +335,7 @@ namespace Datamosh
     void Normalize_Frame_PS(in float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD, out float2 Color : SV_TARGET0)
     {
         float4 Frame = max(tex2D(Sample_Color, TexCoord), exp2(-10.0));
-        // Convert RGB into ARC's polar coordinates [3]
-        // Append "FP16_MINIMUM" to avoid dividing by zero
-        Color.x = saturate(acos(dot(Frame.rgb, 1.0) / (sqrt(3.0) * length(Frame.rgb))));
-        Color.y = atan2(dot(Frame.gb, float2(sqrt(3.0), -sqrt(3.0))), dot(Frame.rgb, float3(2.0, -1.0, -1.0)) + FP16_MINIMUM);
+        Color.xy = saturate(Frame.xy / dot(Frame.xyz, 1.0));
     }
 
     void Blit_Frame_PS(in float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD, out float4 OutputColor0 : SV_TARGET0)
@@ -433,20 +408,11 @@ namespace Datamosh
         Gaussian_Blur(Shared_Resources_Datamosh::Sample_Common_1_B, TexCoords, true, OutputColor0);
     }
 
-    // Turn the packed angle vector into its respective unit vectors
-    float3 HS_Units_2D(sampler2D Source, float2 TexCoord)
-    {
-        float3 Color = tex2D(Source, TexCoord).xyz;
-        sincos(Color.y, Color.z, Color.y);
-        Color.zy = saturate(Color.zy * 0.5 + 0.5);
-        return Color;
-    }
-
     void Derivatives_Z_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0)
     {
-        float3 Current = HS_Units_2D(Shared_Resources_Datamosh::Sample_Common_1_A, TexCoord);
-        float3 Previous = HS_Units_2D(Sample_Common_1_C, TexCoord);
-        OutputColor0 = dot(Current - Previous, float3(0.95, 0.025, 0.025));
+        float2 Current = tex2D(Shared_Resources_Datamosh::Sample_Common_1_A, TexCoord).xy;
+        float2 Previous = tex2D(Sample_Common_1_C, TexCoord).xy;
+        OutputColor0 = dot(Current - Previous, 1.0);
     }
 
     void Derivatives_XY_PS(in float4 Position : SV_POSITION, in float4 TexCoords[2] : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0)
@@ -456,29 +422,29 @@ namespace Datamosh
         // A0     A1
         // A2     B0
         //   C0 C1
-        float3 A0 = HS_Units_2D(Shared_Resources_Datamosh::Sample_Common_1_A, TexCoords[0].xw) * 4.0; // <-1.5, +0.5>
-        float3 A1 = HS_Units_2D(Shared_Resources_Datamosh::Sample_Common_1_A, TexCoords[0].yw) * 4.0; // <+1.5, +0.5>
-        float3 A2 = HS_Units_2D(Shared_Resources_Datamosh::Sample_Common_1_A, TexCoords[0].xz) * 4.0; // <-1.5, -0.5>
-        float3 B0 = HS_Units_2D(Shared_Resources_Datamosh::Sample_Common_1_A, TexCoords[0].yz) * 4.0; // <+1.5, -0.5>
-        float3 B1 = HS_Units_2D(Shared_Resources_Datamosh::Sample_Common_1_A, TexCoords[1].xw) * 4.0; // <-0.5, +1.5>
-        float3 B2 = HS_Units_2D(Shared_Resources_Datamosh::Sample_Common_1_A, TexCoords[1].yw) * 4.0; // <+0.5, +1.5>
-        float3 C0 = HS_Units_2D(Shared_Resources_Datamosh::Sample_Common_1_A, TexCoords[1].xz) * 4.0; // <-0.5, -1.5>
-        float3 C1 = HS_Units_2D(Shared_Resources_Datamosh::Sample_Common_1_A, TexCoords[1].yz) * 4.0; // <+0.5, -1.5>
+        float2 A0 = tex2D(Shared_Resources_Datamosh::Sample_Common_1_A, TexCoords[0].xw).xy * 4.0; // <-1.5, +0.5>
+        float2 A1 = tex2D(Shared_Resources_Datamosh::Sample_Common_1_A, TexCoords[0].yw).xy * 4.0; // <+1.5, +0.5>
+        float2 A2 = tex2D(Shared_Resources_Datamosh::Sample_Common_1_A, TexCoords[0].xz).xy * 4.0; // <-1.5, -0.5>
+        float2 B0 = tex2D(Shared_Resources_Datamosh::Sample_Common_1_A, TexCoords[0].yz).xy * 4.0; // <+1.5, -0.5>
+        float2 B1 = tex2D(Shared_Resources_Datamosh::Sample_Common_1_A, TexCoords[1].xw).xy * 4.0; // <-0.5, +1.5>
+        float2 B2 = tex2D(Shared_Resources_Datamosh::Sample_Common_1_A, TexCoords[1].yw).xy * 4.0; // <+0.5, +1.5>
+        float2 C0 = tex2D(Shared_Resources_Datamosh::Sample_Common_1_A, TexCoords[1].xz).xy * 4.0; // <-0.5, -1.5>
+        float2 C1 = tex2D(Shared_Resources_Datamosh::Sample_Common_1_A, TexCoords[1].yz).xy * 4.0; // <+0.5, -1.5>
 
         OutputColor0 = 0.0;
-        float3 Ix = ((B2 + A1 + B0 + C1) - (B1 + A0 + A2 + C0)) / 12.0;
-        float3 Iy = ((A0 + B1 + B2 + A1) - (A2 + C0 + C1 + B0)) / 12.0;
-        OutputColor0.x = dot(Ix, float3(0.95, 0.025, 0.025));
-        OutputColor0.y = dot(Iy, float3(0.95, 0.025, 0.025));
+        float2 Ix = ((B2 + A1 + B0 + C1) - (B1 + A0 + A2 + C0)) / 12.0;
+        float2 Iy = ((A0 + B1 + B2 + A1) - (A2 + C0 + C1 + B0)) / 12.0;
+        OutputColor0.x = dot(Ix, 1.0);
+        OutputColor0.y = dot(Iy, 1.0);
     }
 
     #define COARSEST_LEVEL 5
 
-    // Calculate first level of Horn-Schunck Optical Flow [4]
+    // Calculate first level of Horn-Schunck Optical Flow
     void Coarse_Optical_Flow_TV(in float2 TexCoord, in float Level, in float4 UV, out float2 OpticalFlow)
     {
         OpticalFlow = 0.0;
-        const float Alpha = max((_Constraint * 6e-3) / pow(4.0, COARSEST_LEVEL - Level), FP16_MINIMUM);
+        const float Alpha = max((_Constraint * 1e-3) / pow(4.0, COARSEST_LEVEL - Level), FP16_MINIMUM);
 
         // Load textures
         float2 SD = tex2Dlod(Sample_Common_1_C, float4(TexCoord, 0.0, Level + 0.5)).xy;
@@ -508,7 +474,7 @@ namespace Datamosh
 
     void Gradient(in float4x2 Samples, out float Gradient)
     {
-        // 2x2 Robert's cross [5]
+        // 2x2 Robert's cross
         // [0] [2]
         // [1] [3]
         float4 SqGradientUV = 0.0;
@@ -537,7 +503,7 @@ namespace Datamosh
 
     void Process_Gradients(in float2 SampleUV[9], inout float4 AreaGrad, inout float4 UVGradient)
     {
-        // Calculate center gradient using Prewitt compass operator [6]
+        // Calculate center gradient using Prewitt compass operator
         // https://homepages.inf.ed.ac.uk/rbf/HIPR2/prewitt.htm
         // 0.xy           | 0.zw           | 1.xy           | 1.zw           | 2.xy           | 2.zw           | 3.xy           | 3.zw
         // .......................................................................................................................................
@@ -581,11 +547,11 @@ namespace Datamosh
         Color = (SampleNW + SampleNE + SampleSW + SampleSE) * 0.25;
     }
 
-    // Calculate following levels of Horn-Schunck Optical Flow [4]
+    // Calculate following levels of Horn-Schunck Optical Flow
     void Optical_Flow_TV(in sampler2D SourceUV, in float4 TexCoords[3], in float Level, out float2 OpticalFlow)
     {
         OpticalFlow = 0.0;
-        const float Alpha = max((_Constraint * 6e-3) / pow(4.0, COARSEST_LEVEL - Level), FP16_MINIMUM);
+        const float Alpha = max((_Constraint * 1e-3) / pow(4.0, COARSEST_LEVEL - Level), FP16_MINIMUM);
 
         // Load textures
         float2 SD = tex2Dlod(Sample_Common_1_C, float4(TexCoords[1].xz, 0.0, Level + 0.5)).xy;
