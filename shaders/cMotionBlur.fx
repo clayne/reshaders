@@ -482,15 +482,15 @@ namespace Motion_Blur
         // [1] [4] [7]
         // [2] [5] [8]
         float2 Output;
-        Output += (SampleUV[0] * Weights[0][0]);
-        Output += (SampleUV[1] * Weights[0][1]);
-        Output += (SampleUV[2] * Weights[0][2]);
-        Output += (SampleUV[3] * Weights[1][0]);
-        Output += (SampleUV[4] * Weights[1][1]);
-        Output += (SampleUV[5] * Weights[1][2]);
-        Output += (SampleUV[6] * Weights[2][0]);
-        Output += (SampleUV[7] * Weights[2][1]);
-        Output += (SampleUV[8] * Weights[2][2]);
+        Output += (SampleUV[0] * Weights._11);
+        Output += (SampleUV[1] * Weights._12);
+        Output += (SampleUV[2] * Weights._13);
+        Output += (SampleUV[3] * Weights._21);
+        Output += (SampleUV[4] * Weights._22);
+        Output += (SampleUV[5] * Weights._23);
+        Output += (SampleUV[6] * Weights._31);
+        Output += (SampleUV[7] * Weights._32);
+        Output += (SampleUV[8] * Weights._33);
         return Output;
     }
 
@@ -504,13 +504,13 @@ namespace Motion_Blur
         // -1.0 +1.0 +1.0 | -1.0 -1.0 +1.0 | -1.0 -1.0 -1.0 | +1.0 -1.0 -1.0 | +1.0 +1.0 -1.0 | +1.0 +1.0 +1.0 | +1.0 +1.0 +1.0 | +1.0 +1.0 +1.0 |
 
         float4 PrewittUV[4];
-        PrewittUV[0].xy = Prewitt(SampleUV, float3x3(-1.0, -1.0, -1.0, +1.0, -2.0, +1.0, +1.0, +1.0, +1.0));
-        PrewittUV[0].zw = Prewitt(SampleUV, float3x3(+1.0, -1.0, -1.0, +1.0, -2.0, -1.0, +1.0, +1.0, +1.0));
-        PrewittUV[1].xy = Prewitt(SampleUV, float3x3(+1.0, +1.0, -1.0, +1.0, -2.0, -1.0, +1.0, +1.0, -1.0));
+        PrewittUV[0].xy = Prewitt(SampleUV, float3x3(-1.0, +1.0, +1.0, -1.0, -2.0, +1.0, -1.0, +1.0, +1.0));
+        PrewittUV[0].zw = Prewitt(SampleUV, float3x3(+1.0, +1.0, +1.0, -1.0, -2.0, +1.0, -1.0, -1.0, +1.0));
+        PrewittUV[1].xy = Prewitt(SampleUV, float3x3(+1.0, +1.0, +1.0, +1.0, -2.0, +1.0, -1.0, -1.0, -1.0));
         PrewittUV[1].zw = Prewitt(SampleUV, float3x3(+1.0, +1.0, +1.0, +1.0, -2.0, -1.0, +1.0, -1.0, -1.0));
-        PrewittUV[2].xy = Prewitt(SampleUV, float3x3(+1.0, +1.0, +1.0, +1.0, -2.0, +1.0, -1.0, -1.0, -1.0));
-        PrewittUV[2].zw = Prewitt(SampleUV, float3x3(+1.0, +1.0, +1.0, -1.0, -2.0, +1.0, -1.0, -1.0, +1.0));
-        PrewittUV[3].xy = Prewitt(SampleUV, float3x3(-1.0, +1.0, +1.0, -1.0, -2.0, +1.0, -1.0, +1.0, +1.0));
+        PrewittUV[2].xy = Prewitt(SampleUV, float3x3(+1.0, +1.0, -1.0, +1.0, -2.0, -1.0, +1.0, +1.0, -1.0));
+        PrewittUV[2].zw = Prewitt(SampleUV, float3x3(+1.0, -1.0, -1.0, +1.0, -2.0, -1.0, +1.0, +1.0, +1.0));
+        PrewittUV[3].xy = Prewitt(SampleUV, float3x3(-1.0, -1.0, -1.0, +1.0, -2.0, +1.0, +1.0, +1.0, +1.0));
         PrewittUV[3].zw = Prewitt(SampleUV, float3x3(-1.0, -1.0, +1.0, -1.0, -2.0, +1.0, +1.0, +1.0, +1.0));
 
         float2 MaxGradient[3];
