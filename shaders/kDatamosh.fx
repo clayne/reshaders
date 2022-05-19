@@ -483,22 +483,22 @@ namespace Datamosh
         Gradient = rsqrt((dot(SqGradientUV, SqGradientUV) * 0.25) + FP16_MINIMUM);
     }
 
-    float Prewitt(float2 SampleUV[9], float3x3 Weights)
+    float2 Prewitt(float2 SampleUV[9], float3x3 Weights)
     {
         // [0] [3] [6]
         // [1] [4] [7]
         // [2] [5] [8]
-        float3 Kernel[3];
-        Kernel[0].x = length(SampleUV[0]);
-        Kernel[0].y = length(SampleUV[1]);
-        Kernel[0].z = length(SampleUV[2]);
-        Kernel[1].x = length(SampleUV[3]);
-        Kernel[1].y = length(SampleUV[4]);
-        Kernel[1].z = length(SampleUV[5]);
-        Kernel[2].x = length(SampleUV[6]);
-        Kernel[2].y = length(SampleUV[7]);
-        Kernel[2].z = length(SampleUV[8]);
-        return dot(Kernel[0], Weights._11_12_13) + dot(Kernel[1], Weights._21_22_23) + dot(Kernel[2], Weights._31_32_33);
+        float2 Output;
+        Output += (SampleUV[0] * Weights._11);
+        Output += (SampleUV[1] * Weights._12);
+        Output += (SampleUV[2] * Weights._13);
+        Output += (SampleUV[3] * Weights._21);
+        Output += (SampleUV[4] * Weights._22);
+        Output += (SampleUV[5] * Weights._23);
+        Output += (SampleUV[6] * Weights._31);
+        Output += (SampleUV[7] * Weights._32);
+        Output += (SampleUV[8] * Weights._33);
+        return Output;
     }
 
     void Process_Gradients(in float2 SampleUV[9], inout float4 AreaGrad, inout float4 UVGradient)
@@ -510,20 +510,23 @@ namespace Datamosh
         // -1.0 -2.0 +1.0 | -1.0 -2.0 +1.0 | +1.0 -2.0 +1.0 | +1.0 -2.0 -1.0 | +1.0 -2.0 -1.0 | +1.0 -2.0 -1.0 | +1.0 -2.0 +1.0 | -1.0 -2.0 +1.0 |
         // -1.0 +1.0 +1.0 | -1.0 -1.0 +1.0 | -1.0 -1.0 -1.0 | +1.0 -1.0 -1.0 | +1.0 +1.0 -1.0 | +1.0 +1.0 +1.0 | +1.0 +1.0 +1.0 | +1.0 +1.0 +1.0 |
 
-        float4 PrewittUV[2];
-        PrewittUV[0].x = Prewitt(SampleUV, float3x3(-1.0, +1.0, +1.0, -1.0, -2.0, +1.0, -1.0, +1.0, +1.0));
-        PrewittUV[0].y = Prewitt(SampleUV, float3x3(+1.0, +1.0, +1.0, -1.0, -2.0, +1.0, -1.0, -1.0, +1.0));
-        PrewittUV[0].z = Prewitt(SampleUV, float3x3(+1.0, +1.0, +1.0, +1.0, -2.0, +1.0, -1.0, -1.0, -1.0));
-        PrewittUV[0].w = Prewitt(SampleUV, float3x3(+1.0, +1.0, +1.0, +1.0, -2.0, -1.0, +1.0, -1.0, -1.0));
-        PrewittUV[1].x = Prewitt(SampleUV, float3x3(+1.0, +1.0, -1.0, +1.0, -2.0, -1.0, +1.0, +1.0, -1.0));
-        PrewittUV[1].y = Prewitt(SampleUV, float3x3(+1.0, -1.0, -1.0, +1.0, -2.0, -1.0, +1.0, +1.0, +1.0));
-        PrewittUV[1].z = Prewitt(SampleUV, float3x3(-1.0, -1.0, -1.0, +1.0, -2.0, +1.0, +1.0, +1.0, +1.0));
-        PrewittUV[1].w = Prewitt(SampleUV, float3x3(-1.0, -1.0, +1.0, -1.0, -2.0, +1.0, +1.0, +1.0, +1.0));
+        float4 PrewittUV[4];
+        PrewittUV[0].xy = Prewitt(SampleUV, float3x3(-1.0, +1.0, +1.0, -1.0, -2.0, +1.0, -1.0, +1.0, +1.0));
+        PrewittUV[0].zw = Prewitt(SampleUV, float3x3(+1.0, +1.0, +1.0, -1.0, -2.0, +1.0, -1.0, -1.0, +1.0));
+        PrewittUV[1].xy = Prewitt(SampleUV, float3x3(+1.0, +1.0, +1.0, +1.0, -2.0, +1.0, -1.0, -1.0, -1.0));
+        PrewittUV[1].zw = Prewitt(SampleUV, float3x3(+1.0, +1.0, +1.0, +1.0, -2.0, -1.0, +1.0, -1.0, -1.0));
+        PrewittUV[2].xy = Prewitt(SampleUV, float3x3(+1.0, +1.0, -1.0, +1.0, -2.0, -1.0, +1.0, +1.0, -1.0));
+        PrewittUV[2].zw = Prewitt(SampleUV, float3x3(+1.0, -1.0, -1.0, +1.0, -2.0, -1.0, +1.0, +1.0, +1.0));
+        PrewittUV[3].xy = Prewitt(SampleUV, float3x3(-1.0, -1.0, -1.0, +1.0, -2.0, +1.0, +1.0, +1.0, +1.0));
+        PrewittUV[3].zw = Prewitt(SampleUV, float3x3(-1.0, -1.0, +1.0, -1.0, -2.0, +1.0, +1.0, +1.0, +1.0));
 
-        float4 MaxGradient4 = max(abs(PrewittUV[0]), abs(PrewittUV[1]));
-        float2 MaxGradient2 = max(abs(MaxGradient4.xy), abs(MaxGradient4.zw));
+        float2 MaxGradient[3];
+        MaxGradient[0] = max(max(abs(PrewittUV[0].xy), abs(PrewittUV[0].zw)), max(abs(PrewittUV[1].xy), abs(PrewittUV[1].zw)));
+        MaxGradient[1] = max(max(abs(PrewittUV[2].xy), abs(PrewittUV[2].zw)), max(abs(PrewittUV[3].xy), abs(PrewittUV[3].zw)));
+
         const float Weight = 1.0 / 5.0;
-        float CenterGradient = 1.0 / ((max(abs(MaxGradient2.x), abs(MaxGradient2.y)) * Weight) + FP16_MINIMUM);
+        MaxGradient[2] = max(abs(MaxGradient[0]), abs(MaxGradient[1])) * Weight;
+        float CenterGradient = rsqrt((dot(MaxGradient[2], MaxGradient[2])) + FP16_MINIMUM);
 
         // Area smoothness gradients
         // .............................
