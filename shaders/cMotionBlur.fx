@@ -275,8 +275,8 @@ namespace Motion_Blur
         [4] Robert's cross operator
             https://homepages.inf.ed.ac.uk/rbf/HIPR2/roberts.htm
 
-        [5] Prewitt compass operator
-            https://homepages.inf.ed.ac.uk/rbf/HIPR2/prewitt.htm
+        [5] Frei-Chen operator
+            https://www.rastergrid.com/blog/2011/01/frei-chen-edge-detector/
     */
 
     float3 Get_Screen_Space_Normal(float2 TexCoord)
@@ -476,7 +476,7 @@ namespace Motion_Blur
         Gradient = rsqrt((dot(SqGradientUV, SqGradientUV) * 0.25) + FP16_MINIMUM);
     }
 
-    float2 Prewitt(float2 SampleUV[9], float3x3 Weights)
+    float2 FreiChen(float2 SampleUV[9], float3x3 Weights)
     {
         // [0] [3] [6]
         // [1] [4] [7]
@@ -491,35 +491,27 @@ namespace Motion_Blur
         Output += (SampleUV[6] * Weights._31);
         Output += (SampleUV[7] * Weights._32);
         Output += (SampleUV[8] * Weights._33);
-        return Output;
+        return Output * Output;
     }
 
     void Process_Gradients(in float2 SampleUV[9], inout float4 AreaGrad, inout float4 UVGradient)
     {
-        // Calculate center gradient using Prewitt compass operator
-        // 0.xy           | 0.zw           | 1.xy           | 1.zw           | 2.xy           | 2.zw           | 3.xy           | 3.zw
-        // .......................................................................................................................................
-        // -1.0 +1.0 +1.0 | +1.0 +1.0 +1.0 | +1.0 +1.0 +1.0 | +1.0 +1.0 +1.0 | +1.0 +1.0 -1.0 | +1.0 -1.0 -1.0 | -1.0 -1.0 -1.0 | -1.0 -1.0 +1.0 |
-        // -1.0 -2.0 +1.0 | -1.0 -2.0 +1.0 | +1.0 -2.0 +1.0 | +1.0 -2.0 -1.0 | +1.0 -2.0 -1.0 | +1.0 -2.0 -1.0 | +1.0 -2.0 +1.0 | -1.0 -2.0 +1.0 |
-        // -1.0 +1.0 +1.0 | -1.0 -1.0 +1.0 | -1.0 -1.0 -1.0 | +1.0 -1.0 -1.0 | +1.0 +1.0 -1.0 | +1.0 +1.0 +1.0 | +1.0 +1.0 +1.0 | +1.0 +1.0 +1.0 |
+        // Calculate center gradient using Frei-Chen operator
+        float2 FreiChenUV[9];
+        FreiChenUV[0] = FreiChen(SampleUV, float3x3(1.0, sqrt(2.0), 1.0, 0.0, 0.0, 0.0, -1.0, -sqrt(2.0), -1.0) * (1.0 / (2.0 * sqrt(2.0))));
+        FreiChenUV[1] = FreiChen(SampleUV, float3x3(1.0, 0.0, -1.0, sqrt(2.0), 0.0, -sqrt(2.0), 1.0, 0.0, -1.0) * (1.0 / (2.0 * sqrt(2.0))));
+        FreiChenUV[2] = FreiChen(SampleUV, float3x3(0.0, -1.0, sqrt(2.0), 1.0, 0.0, -1.0, -sqrt(2.0), 1.0, 0.0) * (1.0 / (2.0 * sqrt(2.0))));
+        FreiChenUV[3] = FreiChen(SampleUV, float3x3(sqrt(2.0), -1.0, 0.0, -1.0, 0.0, 1.0, 0.0, 1.0, -sqrt(2.0)) * (1.0 / (2.0 * sqrt(2.0))));
+        FreiChenUV[4] = FreiChen(SampleUV, float3x3(0.0, 1.0, 0.0, -1.0, 0.0, -1.0, 0.0, 1.0, 0.0) * (1.0 / 2.0));
+        FreiChenUV[5] = FreiChen(SampleUV, float3x3(-1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, -1.0) * (1.0 / 2.0));
+        FreiChenUV[6] = FreiChen(SampleUV, float3x3(1.0, -2.0, 1.0, -2.0, 4.0, -2.0, 1.0, -2.0, 1.0) * (1.0 / 6.0));
+        FreiChenUV[7] = FreiChen(SampleUV, float3x3(-2.0, 1.0, -2.0, 1.0, 4.0, 1.0, -2.0, 1.0, -2.0) * (1.0 / 6.0));
+        FreiChenUV[8] = FreiChen(SampleUV, float3x3(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0) * (1.0 / 3.0));
 
-        float4 PrewittUV[4];
-        PrewittUV[0].xy = Prewitt(SampleUV, float3x3(-1.0, +1.0, +1.0, -1.0, -2.0, +1.0, -1.0, +1.0, +1.0));
-        PrewittUV[0].zw = Prewitt(SampleUV, float3x3(+1.0, +1.0, +1.0, -1.0, -2.0, +1.0, -1.0, -1.0, +1.0));
-        PrewittUV[1].xy = Prewitt(SampleUV, float3x3(+1.0, +1.0, +1.0, +1.0, -2.0, +1.0, -1.0, -1.0, -1.0));
-        PrewittUV[1].zw = Prewitt(SampleUV, float3x3(+1.0, +1.0, +1.0, +1.0, -2.0, -1.0, +1.0, -1.0, -1.0));
-        PrewittUV[2].xy = Prewitt(SampleUV, float3x3(+1.0, +1.0, -1.0, +1.0, -2.0, -1.0, +1.0, +1.0, -1.0));
-        PrewittUV[2].zw = Prewitt(SampleUV, float3x3(+1.0, -1.0, -1.0, +1.0, -2.0, -1.0, +1.0, +1.0, +1.0));
-        PrewittUV[3].xy = Prewitt(SampleUV, float3x3(-1.0, -1.0, -1.0, +1.0, -2.0, +1.0, +1.0, +1.0, +1.0));
-        PrewittUV[3].zw = Prewitt(SampleUV, float3x3(-1.0, -1.0, +1.0, -1.0, -2.0, +1.0, +1.0, +1.0, +1.0));
-
-        float2 MaxGradient[3];
-        MaxGradient[0] = max(max(abs(PrewittUV[0].xy), abs(PrewittUV[0].zw)), max(abs(PrewittUV[1].xy), abs(PrewittUV[1].zw)));
-        MaxGradient[1] = max(max(abs(PrewittUV[2].xy), abs(PrewittUV[2].zw)), max(abs(PrewittUV[3].xy), abs(PrewittUV[3].zw)));
-
-        const float Weight = 1.0 / 5.0;
-        MaxGradient[2] = max(abs(MaxGradient[0]), abs(MaxGradient[1])) * Weight;
-        float CenterGradient = rsqrt((dot(MaxGradient[2], MaxGradient[2])) + FP16_MINIMUM);
+        float2 GradA = FreiChenUV[0] + FreiChenUV[1] + FreiChenUV[2] + FreiChenUV[3];
+        float2 GradB = FreiChenUV[4] + FreiChenUV[5] + FreiChenUV[6] + FreiChenUV[7] + FreiChenUV[8];
+        float2 Grad = sqrt(GradA / (GradA + GradB + FP16_MINIMUM));
+        float CenterGradient = rsqrt((dot(Grad, Grad) + FP16_MINIMUM));
 
         // Area smoothness gradients
         // .............................
