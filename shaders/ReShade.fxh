@@ -58,15 +58,15 @@
 namespace ReShade
 {
     #if defined(__RESHADE_FXC__)
-        float GetAspect_Ratio() { return BUFFER_WIDTH * BUFFER_RCP_HEIGHT; }
+        float GetAspectRatio() { return BUFFER_WIDTH * BUFFER_RCP_HEIGHT; }
         float2 GetPixelSize() { return float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT); }
-        float2 GetScreen_Size() { return float2(BUFFER_WIDTH, BUFFER_HEIGHT); }
-        #define Aspect_Ratio GetAspect_Ratio()
+        float2 GetScreenSize() { return float2(BUFFER_WIDTH, BUFFER_HEIGHT); }
+        #define AspectRatio GetAspectRatio()
         #define PixelSize GetPixelSize()
-        #define ScreenSize GetScreen_Size()
+        #define ScreenSize GetScreenSize()
     #else
         // These are deprecated and will be removed eventually.
-        static const float Aspect_Ratio = BUFFER_WIDTH * BUFFER_RCP_HEIGHT;
+        static const float AspectRatio = BUFFER_WIDTH * BUFFER_RCP_HEIGHT;
         static const float2 PixelSize = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
         static const float2 ScreenSize = float2(BUFFER_WIDTH, BUFFER_HEIGHT);
     #endif
