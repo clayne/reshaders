@@ -317,7 +317,7 @@ namespace Motion_Blur
         return normalize(Normal);
     }
 
-    void Normalize_Frame_PS(in float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD, out float2 Color : SV_TARGET0)
+    void Normalize_Frame_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float2 Color : SV_TARGET0)
     {
         Color = 0.0;
         if(_NormalMode)
@@ -331,7 +331,7 @@ namespace Motion_Blur
         }
     }
 
-    void Blit_Frame_PS(in float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD, out float4 OutputColor0 : SV_TARGET0)
+    void Blit_Frame_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
         OutputColor0 = tex2D(Shared_Resources_Motion_Blur::Sample_Common_0, TexCoord);
     }
