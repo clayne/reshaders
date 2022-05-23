@@ -218,10 +218,10 @@ namespace OpticalFlow
         float4(0.0, 13.416645, 15.404578, 17.392626)
     };
 
-    void Blur_VS(in bool IsAlt, in float2 PixelSize, in uint ID, inout float4 Position, inout float4 TexCoords[7])
+    void Blur_VS(in bool IsAlt, in float2 PixelSize, in uint ID, out float4 Position, out float4 TexCoords[7])
     {
+        TexCoords[0] = 0.0;
         Basic_VS(ID, Position, TexCoords[0].xy);
-
         if (!IsAlt)
         {
             TexCoords[1] = TexCoords[0].xyyy + (BlurOffsets[0].xyzw / PixelSize.xyyy);
@@ -240,11 +240,10 @@ namespace OpticalFlow
             TexCoords[5] = TexCoords[0].xxxy - (BlurOffsets[1].yzwx / PixelSize.xxxy);
             TexCoords[6] = TexCoords[0].xxxy - (BlurOffsets[2].yzwx / PixelSize.xxxy);
         }
-
     }
 
     #define BLUR_VS(NAME, IS_ALT, PIXEL_SIZE) \
-        void NAME(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float4 TexCoords[7] : TEXCOORD0) \
+        void NAME(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 TexCoords[7] : TEXCOORD0) \
         { \
             Blur_VS(IS_ALT, PIXEL_SIZE, ID, Position, TexCoords); \
         }
