@@ -598,8 +598,9 @@ namespace Motion_Blur
         // [Ix^2+A IxIy] [U] = -[IxIt]
         // [IxIy Iy^2+A] [V] = -[IyIt]
         UVAverage.xy = (AreaGrad.xx * AreaAvg[0]) + (AreaGrad.yy * AreaAvg[1]) + (AreaGrad.zz * AreaAvg[2]) + (AreaGrad.ww * AreaAvg[3]);
-        OpticalFlow.x = Aii.x * ((Alpha * UVAverage.x) - (Aij * CenterAverage.y) - Bi.x);
-        OpticalFlow.y = Aii.y * ((Alpha * UVAverage.y) - (Aij * OpticalFlow.x) - Bi.y);
+        UVAverage.xy = UVAverage.xy * Alpha;
+        OpticalFlow.x = Aii.x * (UVAverage.x - (Aij * CenterAverage.y) - Bi.x);
+        OpticalFlow.y = Aii.y * (UVAverage.y - (Aij * OpticalFlow.x) - Bi.y);
     }
 
     #define LEVEL_PS(NAME, SAMPLER, LEVEL)                                                                             \
