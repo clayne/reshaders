@@ -1,7 +1,7 @@
 
 # brimsonFX
 
-ReShade shaders and more
+Various image and video processing shaders for ReShade (convolutions, gpu optical flow, etc.)
 
 ## ...Why?
 
