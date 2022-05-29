@@ -504,8 +504,7 @@ namespace OpticalFlow
         // Solve linear equation for [U, V]
         // [Ix^2+A IxIy] [U] = -[IxIt]
         // [IxIy Iy^2+A] [V] = -[IyIt]
-        OpticalFlow.x = Aii.x * ((Alpha * UV.x) - (Aij * UV.y) - Bi.x);
-        OpticalFlow.y = Aii.y * ((Alpha * UV.y) - (Aij * OpticalFlow.x) - Bi.y);
+        OpticalFlow.xy = Aii.xy * (UV.xy - (Aij * UV.yx) - Bi.xy);
     }
 
     void Gradient(in float4x2 Samples, out float Gradient)
@@ -554,7 +553,7 @@ namespace OpticalFlow
         float2 GradA = FreiChenUV[0] + FreiChenUV[1] + FreiChenUV[2] + FreiChenUV[3];
         float2 GradB = FreiChenUV[4] + FreiChenUV[5] + FreiChenUV[6] + FreiChenUV[7] + FreiChenUV[8];
         float2 Grad = sqrt(GradA / (GradA + GradB + FP16_MINIMUM));
-        float CenterGradient = rsqrt((dot(Grad, Grad) + FP16_MINIMUM));
+        float CenterGradient = rsqrt(dot(Grad, Grad) + FP16_MINIMUM);
 
         // Area smoothness gradients
         // .............................
@@ -643,8 +642,7 @@ namespace OpticalFlow
         // [IxIy Iy^2+A] [V] = -[IyIt]
         UVAverage.xy = (AreaGrad.xx * AreaAvg[0]) + (AreaGrad.yy * AreaAvg[1]) + (AreaGrad.zz * AreaAvg[2]) + (AreaGrad.ww * AreaAvg[3]);
         UVAverage.xy = UVAverage.xy * Alpha;
-        OpticalFlow.x = Aii.x * (UVAverage.x - (Aij * CenterAverage.y) - Bi.x);
-        OpticalFlow.y = Aii.y * (UVAverage.y - (Aij * OpticalFlow.x) - Bi.y);
+        OpticalFlow.xy = Aii.xy * (UVAverage.xy - (Aij * CenterAverage.yx) - Bi.xy);
     }
 
     #define LEVEL_PS(NAME, SAMPLER, LEVEL)                                                                             \
