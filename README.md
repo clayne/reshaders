@@ -1,8 +1,6 @@
 
 # brimsonFX
-
-ReShade shaders and more
-
+ 
 ## ...Why?
 
 + Fun
