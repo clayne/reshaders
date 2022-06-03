@@ -364,8 +364,8 @@ namespace OpticalFlow
         [2] Robert's cross operator
             https://homepages.inf.ed.ac.uk/rbf/HIPR2/roberts.htm
 
-        [3] Frei-Chen operator
-            https://www.rastergrid.com/blog/2011/01/frei-chen-edge-detector/
+        [3] Sobel compass operator
+            https://homepages.inf.ed.ac.uk/rbf/HIPR2/prewitt.htm
     */
 
     void Normalize_Frame_PS(in float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD, out float2 Color : SV_TARGET0)
@@ -518,7 +518,7 @@ namespace OpticalFlow
         Gradient = rsqrt((dot(SqGradientUV, SqGradientUV) * 0.25) + FP16_MINIMUM);
     }
 
-    float2 FreiChen(float2 SampleUV[9], float3x3 Weights)
+    float2 Sobel(float2 SampleUV[9], float3x3 Weights)
     {
         // [0] [3] [6]
         // [1] [4] [7]
@@ -533,27 +533,20 @@ namespace OpticalFlow
         Output += (SampleUV[6] * Weights._31);
         Output += (SampleUV[7] * Weights._32);
         Output += (SampleUV[8] * Weights._33);
-        return Output * Output;
+        return Output;
     }
 
     void Process_Gradients(in float2 SampleUV[9], inout float4 AreaGrad, inout float4 UVGradient)
     {
-        // Calculate center gradient using Frei-Chen operator
-        float2 FreiChenUV[9];
-        FreiChenUV[0] = FreiChen(SampleUV, float3x3(1.0, sqrt(2.0), 1.0, 0.0, 0.0, 0.0, -1.0, -sqrt(2.0), -1.0) * (1.0 / (2.0 * sqrt(2.0))));
-        FreiChenUV[1] = FreiChen(SampleUV, float3x3(1.0, 0.0, -1.0, sqrt(2.0), 0.0, -sqrt(2.0), 1.0, 0.0, -1.0) * (1.0 / (2.0 * sqrt(2.0))));
-        FreiChenUV[2] = FreiChen(SampleUV, float3x3(0.0, -1.0, sqrt(2.0), 1.0, 0.0, -1.0, -sqrt(2.0), 1.0, 0.0) * (1.0 / (2.0 * sqrt(2.0))));
-        FreiChenUV[3] = FreiChen(SampleUV, float3x3(sqrt(2.0), -1.0, 0.0, -1.0, 0.0, 1.0, 0.0, 1.0, -sqrt(2.0)) * (1.0 / (2.0 * sqrt(2.0))));
-        FreiChenUV[4] = FreiChen(SampleUV, float3x3(0.0, 1.0, 0.0, -1.0, 0.0, -1.0, 0.0, 1.0, 0.0) * (1.0 / 2.0));
-        FreiChenUV[5] = FreiChen(SampleUV, float3x3(-1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, -1.0) * (1.0 / 2.0));
-        FreiChenUV[6] = FreiChen(SampleUV, float3x3(1.0, -2.0, 1.0, -2.0, 4.0, -2.0, 1.0, -2.0, 1.0) * (1.0 / 6.0));
-        FreiChenUV[7] = FreiChen(SampleUV, float3x3(-2.0, 1.0, -2.0, 1.0, 4.0, 1.0, -2.0, 1.0, -2.0) * (1.0 / 6.0));
-        FreiChenUV[8] = FreiChen(SampleUV, float3x3(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0) * (1.0 / 3.0));
-
-        float2 GradA = FreiChenUV[0] + FreiChenUV[1] + FreiChenUV[2] + FreiChenUV[3];
-        float2 GradB = FreiChenUV[4] + FreiChenUV[5] + FreiChenUV[6] + FreiChenUV[7] + FreiChenUV[8];
-        float2 Grad = sqrt(GradA / (GradA + GradB + FP16_MINIMUM));
-        float CenterGradient = rsqrt(dot(Grad, Grad) + FP16_MINIMUM);
+        // Calculate center gradient using Sobel compass operator	
+        float4 SobelUV[2];
+        SobelUV[0].xy = Sobel(SampleUV, float3x3(-1.0, -2.0, -1.0, 0.0, 0.0, 0.0, 1.0, 2.0, 1.0));
+        SobelUV[0].zw = Sobel(SampleUV, float3x3(-2.0, -1.0, 0.0, -1.0, 0.0, 1.0, 0.0, 1.0, 2.0));
+        SobelUV[1].xy = Sobel(SampleUV, float3x3(-1.0, 0.0, 1.0, -2.0, 0.0, 2.0, -1.0, 0.0, 1.0));
+        SobelUV[1].zw = Sobel(SampleUV, float3x3(0.0, 1.0, 2.0, -1.0, 0.0, 1.0, -2.0, -1.0, 0.0));
+        float4 MaxGradientA = max(abs(SobelUV[0]), abs(SobelUV[1]));
+        float2 MaxGradientB = max(abs(MaxGradientA.xy), abs(MaxGradientA.zw)) * (1.0 / 4.0);
+        float CenterGradient = rsqrt((dot(MaxGradientB, MaxGradientB)) + FP16_MINIMUM);
 
         // Area smoothness gradients
         // .............................
