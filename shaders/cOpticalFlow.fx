@@ -71,7 +71,7 @@
 
 namespace Shared_Resources_Flow
 {
-    TEXTURE(Render_Common_0, int2(BUFFER_WIDTH >> 1, BUFFER_HEIGHT >> 1), RG16F, 4)
+    TEXTURE(Render_Common_0, int2(BUFFER_WIDTH >> 1, BUFFER_HEIGHT >> 1), R8, 4)
     SAMPLER(Sample_Common_0, Render_Common_0)
 
     TEXTURE(Render_Common_1_A, BUFFER_SIZE_1, RG16F, 9)
@@ -368,10 +368,13 @@ namespace OpticalFlow
             https://homepages.inf.ed.ac.uk/rbf/HIPR2/prewitt.htm
     */
 
-    void Normalize_Frame_PS(in float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD, out float2 Color : SV_TARGET0)
+    void Saturate_Image_PS(in float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD, out float4 Color : SV_TARGET0)
     {
         float4 Frame = max(tex2D(Sample_Color, TexCoord), exp2(-10.0));
+        // Convert image to rg-chromaticity
         Color.xy = saturate(Frame.xy / dot(Frame.xyz, 1.0));
+        // Calculate the distance between the chromaticity coordinates and its middle-gray
+        Color = saturate(distance(Color.xy, 1.0 / 3.0));
     }
 
     void Blit_Frame_PS(in float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD, out float4 OutputColor0 : SV_TARGET0)
@@ -440,9 +443,9 @@ namespace OpticalFlow
 
     void Derivatives_Z_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0)
     {
-        float2 Current = tex2D(Shared_Resources_Flow::Sample_Common_1_A, TexCoord).xy;
-        float2 Previous = tex2D(Sample_Common_1_C, TexCoord).xy;
-        OutputColor0 = dot(Current - Previous, 1.0);
+        float Current = tex2D(Shared_Resources_Flow::Sample_Common_1_A, TexCoord).x;
+        float Previous = tex2D(Sample_Common_1_C, TexCoord).x;
+        OutputColor0 = Current - Previous;
     }
 
     void Derivatives_XY_PS(in float4 Position : SV_POSITION, in float4 TexCoords[2] : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0)
@@ -452,20 +455,18 @@ namespace OpticalFlow
         // A0     A1
         // A2     B0
         //   C0 C1
-        float2 A0 = tex2D(Shared_Resources_Flow::Sample_Common_1_A, TexCoords[0].xw).xy * 4.0; // <-1.5, +0.5>
-        float2 A1 = tex2D(Shared_Resources_Flow::Sample_Common_1_A, TexCoords[0].yw).xy * 4.0; // <+1.5, +0.5>
-        float2 A2 = tex2D(Shared_Resources_Flow::Sample_Common_1_A, TexCoords[0].xz).xy * 4.0; // <-1.5, -0.5>
-        float2 B0 = tex2D(Shared_Resources_Flow::Sample_Common_1_A, TexCoords[0].yz).xy * 4.0; // <+1.5, -0.5>
-        float2 B1 = tex2D(Shared_Resources_Flow::Sample_Common_1_A, TexCoords[1].xw).xy * 4.0; // <-0.5, +1.5>
-        float2 B2 = tex2D(Shared_Resources_Flow::Sample_Common_1_A, TexCoords[1].yw).xy * 4.0; // <+0.5, +1.5>
-        float2 C0 = tex2D(Shared_Resources_Flow::Sample_Common_1_A, TexCoords[1].xz).xy * 4.0; // <-0.5, -1.5>
-        float2 C1 = tex2D(Shared_Resources_Flow::Sample_Common_1_A, TexCoords[1].yz).xy * 4.0; // <+0.5, -1.5>
+        float A0 = tex2D(Shared_Resources_Flow::Sample_Common_1_A, TexCoords[0].xw).x * 4.0; // <-1.5, +0.5>
+        float A1 = tex2D(Shared_Resources_Flow::Sample_Common_1_A, TexCoords[0].yw).x * 4.0; // <+1.5, +0.5>
+        float A2 = tex2D(Shared_Resources_Flow::Sample_Common_1_A, TexCoords[0].xz).x * 4.0; // <-1.5, -0.5>
+        float B0 = tex2D(Shared_Resources_Flow::Sample_Common_1_A, TexCoords[0].yz).x * 4.0; // <+1.5, -0.5>
+        float B1 = tex2D(Shared_Resources_Flow::Sample_Common_1_A, TexCoords[1].xw).x * 4.0; // <-0.5, +1.5>
+        float B2 = tex2D(Shared_Resources_Flow::Sample_Common_1_A, TexCoords[1].yw).x * 4.0; // <+0.5, +1.5>
+        float C0 = tex2D(Shared_Resources_Flow::Sample_Common_1_A, TexCoords[1].xz).x * 4.0; // <-0.5, -1.5>
+        float C1 = tex2D(Shared_Resources_Flow::Sample_Common_1_A, TexCoords[1].yz).x * 4.0; // <+0.5, -1.5>
 
         OutputColor0 = 0.0;
-        float2 Ix = ((B2 + A1 + B0 + C1) - (B1 + A0 + A2 + C0)) / 12.0;
-        float2 Iy = ((A0 + B1 + B2 + A1) - (A2 + C0 + C1 + B0)) / 12.0;
-        OutputColor0.x = dot(Ix, 1.0);
-        OutputColor0.y = dot(Iy, 1.0);
+        OutputColor0.x = ((B2 + A1 + B0 + C1) - (B1 + A0 + A2 + C0)) / 12.0;
+        OutputColor0.y = ((A0 + B1 + B2 + A1) - (A2 + C0 + C1 + B0)) / 12.0;
     }
 
     #define COARSEST_LEVEL 5
@@ -719,7 +720,7 @@ namespace OpticalFlow
     technique cOpticalFlow
     {
         // Normalize current frame
-        PASS(Basic_VS, Normalize_Frame_PS, Shared_Resources_Flow::Render_Common_0)
+        PASS(Basic_VS, Saturate_Image_PS, Shared_Resources_Flow::Render_Common_0)
 
         // Scale frame
         PASS(Basic_VS, Blit_Frame_PS, Shared_Resources_Flow::Render_Common_1_A)

@@ -73,7 +73,7 @@
 
 namespace Shared_Resources_Motion_Blur
 {
-    TEXTURE(Render_Common_0, int2(BUFFER_WIDTH >> 1, BUFFER_HEIGHT >> 1), RG16F, 4)
+    TEXTURE(Render_Common_0, int2(BUFFER_WIDTH >> 1, BUFFER_HEIGHT >> 1), RG8, 4)
     SAMPLER(Sample_Common_0, Render_Common_0)
 
     TEXTURE(Render_Common_1_A, BUFFER_SIZE_1, RG16F, 9)
@@ -118,7 +118,6 @@ namespace Motion_Blur
     OPTION(float, _MipBias, "slider", "Optical flow", "Optical flow mipmap bias", 0.0, 6.0, 0.0)
     OPTION(float, _BlendFactor, "slider", "Optical flow", "Temporal blending factor", 0.0, 0.9, 0.1)
 
-    OPTION(bool, _NormalMode, "radio", "Main", "Estimate normals", 0.0, 1.0, false)
     OPTION(float, _Scale, "slider", "Main", "Blur scale", 0.0, 1.0, 0.25)
 
     OPTION(bool, _FrameRateScaling, "radio", "Other", "Enable frame-rate scaling", 0.0, 1.0, false)
@@ -245,13 +244,7 @@ namespace Motion_Blur
     /*
         [Pixel Shaders]
 
-        [1] Generate normals
-            https://github.com/crosire/reshade-shaders/blob/slim/Shaders/DisplayDepth.fx
-
-        [2] Normal encoding
-            https://knarkowicz.wordpress.com/2014/04/16/octahedron-normal-vector-encoding/
-
-        [3] Horn-Schunck Optical Flow
+        [1] Horn-Schunck Optical Flow
             https://github.com/Dtananaev/cv_opticalFlow
 
                 Copyright (c) 2014-2015, Denis Tananaev All rights reserved.
@@ -271,63 +264,21 @@ namespace Motion_Blur
                 STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
                 ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-        [4] Robert's cross operator
+        [2] Robert's cross operator
             https://homepages.inf.ed.ac.uk/rbf/HIPR2/roberts.htm
 
-        [5] Sobel compass operator
+        [3] Sobel compass operator
             https://homepages.inf.ed.ac.uk/rbf/HIPR2/prewitt.htm
     */
 
-    float3 Get_Screen_Space_Normal(float2 TexCoord)
-    {
-        float3 Offset = float3(BUFFER_PIXEL_SIZE, 0.0);
-        float2 PosCenter = TexCoord.xy;
-        float2 PosNorth = PosCenter - Offset.zy;
-        float2 PosEast = PosCenter + Offset.xz;
-
-        float3 VertCenter = float3(PosCenter - 0.5, 1.0) * ReShade::GetLinearizedDepth(PosCenter);
-        float3 VertNorth = float3(PosNorth - 0.5,  1.0) * ReShade::GetLinearizedDepth(PosNorth);
-        float3 VertEast = float3(PosEast - 0.5,   1.0) * ReShade::GetLinearizedDepth(PosEast);
-
-        return normalize(cross(VertCenter - VertNorth, VertCenter - VertEast));
-    }
-
-    float2 OctWrap(float2 V)
-    {
-        return (1.0 - abs(V.yx)) * (V.xy >= 0.0 ? 1.0 : -1.0);
-    }
-
-    float2 Encode(float3 Normal)
-    {
-        // max() divide based on
-        Normal /= max(max(abs(Normal.x), abs(Normal.y)), abs(Normal.z));
-        Normal.xy = Normal.z >= 0.0 ? Normal.xy : OctWrap(Normal.xy);
-        Normal.xy = saturate(Normal.xy * 0.5 + 0.5);
-        return Normal.xy;
-    }
-
-    float3 Decode(float2 f)
-    {
-        f = f * 2.0 - 1.0;
-        // https://twitter.com/Stubbesaurus/status/937994790553227264
-        float3 Normal = float3(f.x, f.y, 1.0 - abs(f.x) - abs(f.y));
-        float T = saturate(-Normal.z);
-        Normal.xy += Normal.xy >= 0.0 ? -T : T;
-        return normalize(Normal);
-    }
-
-    void Normalize_Frame_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float2 Color : SV_TARGET0)
+    void Saturate_Image_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float4 Color : SV_TARGET0)
     {
         Color = 0.0;
-        if(_NormalMode)
-        {
-            Color.xy = Encode(Get_Screen_Space_Normal(TexCoord));
-        }
-        else
-        {
-            float4 Frame = max(tex2D(Sample_Color, TexCoord), exp2(-10.0));
-            Color.xy = saturate(Frame.xy / dot(Frame.xyz, 1.0));
-        }
+        float4 Frame = max(tex2D(Sample_Color, TexCoord), exp2(-10.0));
+        // Convert image to rg-chromaticity
+        Color.xy = saturate(Frame.xy / dot(Frame.xyz, 1.0));
+        // Calculate the distance between the chromaticity coordinates and its middle-gray
+        Color = saturate(distance(Color.xy, 1.0 / 3.0));
     }
 
     void Blit_Frame_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
@@ -396,9 +347,9 @@ namespace Motion_Blur
 
     void Derivatives_Z_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0)
     {
-        float2 Current = tex2D(Shared_Resources_Motion_Blur::Sample_Common_1_A, TexCoord).xy;
-        float2 Previous = tex2D(Sample_Common_1_C, TexCoord).xy;
-        OutputColor0 = dot(Current - Previous, 1.0);
+        float Current = tex2D(Shared_Resources_Motion_Blur::Sample_Common_1_A, TexCoord).x;
+        float Previous = tex2D(Sample_Common_1_C, TexCoord).x;
+        OutputColor0 = Current - Previous;
     }
 
     void Derivatives_XY_PS(in float4 Position : SV_POSITION, in float4 TexCoords[2] : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0)
@@ -408,20 +359,18 @@ namespace Motion_Blur
         // A0     A1
         // A2     B0
         //   C0 C1
-        float2 A0 = tex2D(Shared_Resources_Motion_Blur::Sample_Common_1_A, TexCoords[0].xw).xy * 4.0; // <-1.5, +0.5>
-        float2 A1 = tex2D(Shared_Resources_Motion_Blur::Sample_Common_1_A, TexCoords[0].yw).xy * 4.0; // <+1.5, +0.5>
-        float2 A2 = tex2D(Shared_Resources_Motion_Blur::Sample_Common_1_A, TexCoords[0].xz).xy * 4.0; // <-1.5, -0.5>
-        float2 B0 = tex2D(Shared_Resources_Motion_Blur::Sample_Common_1_A, TexCoords[0].yz).xy * 4.0; // <+1.5, -0.5>
-        float2 B1 = tex2D(Shared_Resources_Motion_Blur::Sample_Common_1_A, TexCoords[1].xw).xy * 4.0; // <-0.5, +1.5>
-        float2 B2 = tex2D(Shared_Resources_Motion_Blur::Sample_Common_1_A, TexCoords[1].yw).xy * 4.0; // <+0.5, +1.5>
-        float2 C0 = tex2D(Shared_Resources_Motion_Blur::Sample_Common_1_A, TexCoords[1].xz).xy * 4.0; // <-0.5, -1.5>
-        float2 C1 = tex2D(Shared_Resources_Motion_Blur::Sample_Common_1_A, TexCoords[1].yz).xy * 4.0; // <+0.5, -1.5>
+        float A0 = tex2D(Shared_Resources_Motion_Blur::Sample_Common_1_A, TexCoords[0].xw).x * 4.0; // <-1.5, +0.5>
+        float A1 = tex2D(Shared_Resources_Motion_Blur::Sample_Common_1_A, TexCoords[0].yw).x * 4.0; // <+1.5, +0.5>
+        float A2 = tex2D(Shared_Resources_Motion_Blur::Sample_Common_1_A, TexCoords[0].xz).x * 4.0; // <-1.5, -0.5>
+        float B0 = tex2D(Shared_Resources_Motion_Blur::Sample_Common_1_A, TexCoords[0].yz).x * 4.0; // <+1.5, -0.5>
+        float B1 = tex2D(Shared_Resources_Motion_Blur::Sample_Common_1_A, TexCoords[1].xw).x * 4.0; // <-0.5, +1.5>
+        float B2 = tex2D(Shared_Resources_Motion_Blur::Sample_Common_1_A, TexCoords[1].yw).x * 4.0; // <+0.5, +1.5>
+        float C0 = tex2D(Shared_Resources_Motion_Blur::Sample_Common_1_A, TexCoords[1].xz).x * 4.0; // <-0.5, -1.5>
+        float C1 = tex2D(Shared_Resources_Motion_Blur::Sample_Common_1_A, TexCoords[1].yz).x * 4.0; // <+0.5, -1.5>
 
         OutputColor0 = 0.0;
-        float2 Ix = ((B2 + A1 + B0 + C1) - (B1 + A0 + A2 + C0)) / 12.0;
-        float2 Iy = ((A0 + B1 + B2 + A1) - (A2 + C0 + C1 + B0)) / 12.0;
-        OutputColor0.x = dot(Ix, 1.0);
-        OutputColor0.y = dot(Iy, 1.0);
+        OutputColor0.x = ((B2 + A1 + B0 + C1) - (B1 + A0 + A2 + C0)) / 12.0;
+        OutputColor0.y = ((A0 + B1 + B2 + A1) - (A2 + C0 + C1 + B0)) / 12.0;
     }
 
     #define COARSEST_LEVEL 5
@@ -674,7 +623,7 @@ namespace Motion_Blur
     technique cMotionBlur
     {
         // Normalize current frame
-        PASS(Basic_VS, Normalize_Frame_PS, Shared_Resources_Motion_Blur::Render_Common_0)
+        PASS(Basic_VS, Saturate_Image_PS, Shared_Resources_Motion_Blur::Render_Common_0)
 
         // Scale frame
         PASS(Basic_VS, Blit_Frame_PS, Shared_Resources_Motion_Blur::Render_Common_1_A)
