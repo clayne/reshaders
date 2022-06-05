@@ -31,7 +31,6 @@ Shader (click to download) | Description
 [cFilmGrain](/shaders/cFilmGrain.fx)                    | Film grain without copying texture
 [cFrameBlending](/shaders/cFrameBlending.fx)            | Frame blending using the previous result
 [cGaussianBlur](/shaders/cGaussianBlur.fx)              | HLSL implementation of RasterGrid's linear Gaussian blur
-[cInterpolation](/shaders/cInterpolation.fx)            | Optical flow frame blending
 [cLetterBox](/shaders/cLetterBox.fx)                    | LetterBox without copying textures
 [cLuminance](/shaders/cLuminance.fx)                    | Various grayscale algoritms
 [cMedian](/shaders/cMedian.fx)                          | 3x3 median filter

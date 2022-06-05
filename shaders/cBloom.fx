@@ -43,76 +43,22 @@
 #define BUFFER_SIZE_8 int2(BUFFER_WIDTH >> 8, BUFFER_HEIGHT >> 8)
 
 #define TEXTURE(NAME, SIZE, FORMAT, LEVELS) \
-    texture2D NAME                          \
-    {                                       \
-        Width = SIZE.x;                     \
-        Height = SIZE.y;                    \
-        Format = FORMAT;                    \
-        MipLevels = LEVELS;                 \
+    texture2D NAME \
+    { \
+        Width = SIZE.x; \
+        Height = SIZE.y; \
+        Format = FORMAT; \
+        MipLevels = LEVELS; \
     };
 
 #define SAMPLER(NAME, TEXTURE) \
-    sampler2D NAME             \
-    {                          \
-        Texture = TEXTURE;     \
-        MagFilter = LINEAR;    \
-        MinFilter = LINEAR;    \
-        MipFilter = LINEAR;    \
+    sampler2D NAME \
+    { \
+        Texture = TEXTURE; \
+        MagFilter = LINEAR; \
+        MinFilter = LINEAR; \
+        MipFilter = LINEAR; \
     };
-
-#define DOWNSAMPLE_VS(NAME, TEXEL_SIZE)                                                                        \
-    void NAME(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 TexCoord[4] : TEXCOORD0) \
-    {                                                                                                          \
-        Downsample_VS(ID, Position, TexCoord, TEXEL_SIZE);                                                     \
-    }
-
-#define UPSAMPLE_VS(NAME, TEXEL_SIZE)                                                                          \
-    void NAME(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 TexCoord[3] : TEXCOORD0) \
-    {                                                                                                          \
-        Upsample_VS(ID, Position, TexCoord, TEXEL_SIZE);                                                       \
-    }
-
-#define DOWNSAMPLE_PS(NAME, SAMPLER)                                                                                     \
-    void NAME(in float4 Position : SV_POSITION, in float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0) \
-    {                                                                                                                    \
-        Downsample(SAMPLER, TexCoord, OutputColor0);                                                                     \
-    }
-
-#define UPSAMPLE_PS(NAME, SAMPLER, LEVEL_WEIGHT)                                                                         \
-    void NAME(in float4 Position : SV_POSITION, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0) \
-    {                                                                                                                    \
-        Upsample(SAMPLER, TexCoord, LEVEL_WEIGHT, OutputColor0);                                                         \
-    }
-
-#define DOWNSAMPLE_PASS(VERTEX_SHADER, PIXEL_SHADER, RENDER_TARGET) \
-    pass                                                            \
-    {                                                               \
-        VertexShader = VERTEX_SHADER;                               \
-        PixelShader = PIXEL_SHADER;                                 \
-        RenderTarget0 = RENDER_TARGET;                              \
-    }
-
-#define UPSAMPLE_BLEND_PASS(VERTEX_SHADER, PIXEL_SHADER, RENDER_TARGET) \
-    pass                                                                \
-    {                                                                   \
-        VertexShader = VERTEX_SHADER;                                   \
-        PixelShader = PIXEL_SHADER;                                     \
-        RenderTarget0 = RENDER_TARGET;                                  \
-        ClearRenderTargets = FALSE;                                     \
-        BlendEnable = TRUE;                                             \
-        BlendOp = ADD;                                                  \
-        SrcBlend = SRCALPHA;                                            \
-        DestBlend = ONE;                                                \
-    }
-
-#define OPTION(DATATYPE, NAME, CATEGORY, LABEL, TYPE, MAXIMUM, DEFAULT) \
-    uniform DATATYPE NAME <                                             \
-        ui_category = CATEGORY;                                         \
-        ui_label = LABEL;                                               \
-        ui_type = TYPE;                                                 \
-        ui_min = 0.0;                                                   \
-        ui_max = MAXIMUM;                                               \
-    > = DEFAULT;
 
 namespace Shared_Resources_Bloom
 {
@@ -140,6 +86,15 @@ namespace Shared_Resources_Bloom
     TEXTURE(Render_Common_8, BUFFER_SIZE_8, RGBA16F, 1)
     SAMPLER(Sample_Common_8, Render_Common_8)
 }
+
+#define OPTION(DATATYPE, NAME, CATEGORY, LABEL, TYPE, MAXIMUM, DEFAULT) \
+    uniform DATATYPE NAME < \
+        ui_category = CATEGORY; \
+        ui_label = LABEL; \
+        ui_type = TYPE; \
+        ui_min = 0.0; \
+        ui_max = MAXIMUM; \
+    > = DEFAULT;
 
 OPTION(float, _Threshold, "Main", "Threshold", "drag", 1.0, 0.8)
 OPTION(float, _Smooth, "Main", "Smoothing", "drag", 1.0, 0.5)
@@ -203,6 +158,12 @@ void Upsample_VS(in uint ID, out float4 Position, out float4 TexCoord[3], float2
     TexCoord[2] = CoordVS.xyyy + float4(2.0, 2.0, 0.0, -2.0) * PixelSize.xyyy;
 }
 
+#define DOWNSAMPLE_VS(NAME, TEXEL_SIZE) \
+    void NAME(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 TexCoord[4] : TEXCOORD0) \
+    { \
+        Downsample_VS(ID, Position, TexCoord, TEXEL_SIZE); \
+    }
+
 DOWNSAMPLE_VS(Downsample_1_VS, 1.0 / BUFFER_SIZE_1)
 DOWNSAMPLE_VS(Downsample_2_VS, 1.0 / BUFFER_SIZE_2)
 DOWNSAMPLE_VS(Downsample_3_VS, 1.0 / BUFFER_SIZE_3)
@@ -210,6 +171,12 @@ DOWNSAMPLE_VS(Downsample_4_VS, 1.0 / BUFFER_SIZE_4)
 DOWNSAMPLE_VS(Downsample_5_VS, 1.0 / BUFFER_SIZE_5)
 DOWNSAMPLE_VS(Downsample_6_VS, 1.0 / BUFFER_SIZE_6)
 DOWNSAMPLE_VS(Downsample_7_VS, 1.0 / BUFFER_SIZE_7)
+
+#define UPSAMPLE_VS(NAME, TEXEL_SIZE) \
+    void NAME(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 TexCoord[3] : TEXCOORD0) \
+    { \
+        Upsample_VS(ID, Position, TexCoord, TEXEL_SIZE); \
+    }
 
 UPSAMPLE_VS(Upsample_7_VS, 1.0 / BUFFER_SIZE_7)
 UPSAMPLE_VS(Upsample_6_VS, 1.0 / BUFFER_SIZE_6)
@@ -329,6 +296,12 @@ void Prefilter_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOOR
     OutputColor0.a = 1.0;
 }
 
+#define DOWNSAMPLE_PS(NAME, SAMPLER) \
+    void NAME(in float4 Position : SV_POSITION, in float4 TexCoord[4] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0) \
+    { \
+        Downsample(SAMPLER, TexCoord, OutputColor0); \
+    }
+
 DOWNSAMPLE_PS(Downsample_1_PS, Shared_Resources_Bloom::Sample_Common_1)
 DOWNSAMPLE_PS(Downsample_2_PS, Shared_Resources_Bloom::Sample_Common_2)
 DOWNSAMPLE_PS(Downsample_3_PS, Shared_Resources_Bloom::Sample_Common_3)
@@ -336,6 +309,12 @@ DOWNSAMPLE_PS(Downsample_4_PS, Shared_Resources_Bloom::Sample_Common_4)
 DOWNSAMPLE_PS(Downsample_5_PS, Shared_Resources_Bloom::Sample_Common_5)
 DOWNSAMPLE_PS(Downsample_6_PS, Shared_Resources_Bloom::Sample_Common_6)
 DOWNSAMPLE_PS(Downsample_7_PS, Shared_Resources_Bloom::Sample_Common_7)
+
+#define UPSAMPLE_PS(NAME, SAMPLER, LEVEL_WEIGHT) \
+    void NAME(in float4 Position : SV_POSITION, in float4 TexCoord[3] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0) \
+    { \
+        Upsample(SAMPLER, TexCoord, LEVEL_WEIGHT, OutputColor0); \
+    }
 
 UPSAMPLE_PS(Upsample_7_PS, Shared_Resources_Bloom::Sample_Common_8, _Level6Weight)
 UPSAMPLE_PS(Upsample_6_PS, Shared_Resources_Bloom::Sample_Common_7, _Level5Weight)
@@ -356,6 +335,27 @@ void Composite_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOOR
 }
 
 /* [ TECHNIQUE ] */
+
+#define DOWNSAMPLE_PASS(VERTEX_SHADER, PIXEL_SHADER, RENDER_TARGET) \
+    pass \
+    { \
+        VertexShader = VERTEX_SHADER; \
+        PixelShader = PIXEL_SHADER; \
+        RenderTarget0 = RENDER_TARGET; \
+    }
+
+#define UPSAMPLE_BLEND_PASS(VERTEX_SHADER, PIXEL_SHADER, RENDER_TARGET) \
+    pass \
+    { \
+        VertexShader = VERTEX_SHADER; \
+        PixelShader = PIXEL_SHADER; \
+        RenderTarget0 = RENDER_TARGET; \
+        ClearRenderTargets = FALSE; \
+        BlendEnable = TRUE; \
+        BlendOp = ADD; \
+        SrcBlend = SRCALPHA; \
+        DestBlend = ONE; \
+    }
 
 technique cBloom
 {

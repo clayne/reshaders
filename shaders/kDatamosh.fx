@@ -345,15 +345,9 @@ namespace Datamosh
     static const float BlurWeights[10] =
     {
         0.06299088,
-        0.122137636,
-        0.10790718,
-        0.08633988,
-        0.062565096,
-        0.04105926,
-        0.024403222,
-        0.013135255,
-        0.006402994,
-        0.002826693
+        0.122137636, 0.10790718, 0.08633988,
+        0.062565096, 0.04105926, 0.024403222,
+        0.013135255, 0.006402994, 0.002826693
     };
 
     void Gaussian_Blur(in sampler2D Source, in float4 TexCoords[7], bool Alt, out float4 OutputColor0)
