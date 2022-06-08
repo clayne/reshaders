@@ -53,7 +53,7 @@ Shader (click to download) | Description
 
 ## Coding Convention
 
-Practice | Variable
+Practice | Elements
 -------- | --------
 **ALLCAPS** | System-Value semantics, state parameters
 **ALL_CAPS** | Preprocessor macros and parameters
