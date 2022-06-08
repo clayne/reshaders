@@ -55,11 +55,11 @@ Shader (click to download) | Description
 
 Practice | Variable
 -------- | --------
-**ALLCAPS**     | System-Value semantics, state parameters
-**ALL_CAPS**    | Preprocessor macros and parameters
-**SnakeCase**   | Discrete local and global variables
-**Snake_Case**  | Namespace, structs, functions, textures, sampler, and packed data (i.e. `float4 TexCoord_Base_Water` stores 2 UVs for 2 textures, base and water)
+**ALLCAPS** | System-Value semantics, state parameters
+**ALL_CAPS** | Preprocessor macros and parameters
 **_SnakeCase** | Uniform variables
+**SnakeCase** | Discrete local and global variables
+**Snake_Case** | Namespace, structs, functions, textures, sampler, and packed data (i.e. `float4 TexCoord_Base_Water` stores 2 UVs for 2 textures, base and water)
 **Suffix `VS` and `PS`** | `PixelShader` and `VertexShader`
 
 ## Acknowledgements
