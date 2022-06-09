@@ -71,7 +71,7 @@
 
 namespace Shared_Resources_Datamosh
 {
-    TEXTURE(Render_Common_0, int2(BUFFER_WIDTH >> 1, BUFFER_HEIGHT >> 1), RG8, 4)
+    TEXTURE(Render_Common_0, int2(BUFFER_WIDTH >> 1, BUFFER_HEIGHT >> 1), R8, 4)
     SAMPLER(Sample_Common_0, Render_Common_0)
 
     TEXTURE(Render_Common_1_A, BUFFER_SIZE_1, RG16F, 9)
