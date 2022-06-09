@@ -371,10 +371,11 @@ namespace OpticalFlow
     void Saturate_Image_PS(in float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD, out float4 Color : SV_TARGET0)
     {
         float4 Frame = max(tex2D(Sample_Color, TexCoord), exp2(-10.0));
-        // Convert image to rg-chromaticity
-        Color.xy = saturate(Frame.xy / dot(Frame.xyz, 1.0));
-        // Calculate the distance between the chromaticity coordinates and its middle-gray
-        Color = saturate(distance(Color.xy, 1.0 / 3.0));
+        // Normalize color vector to always be in [0,1] range with a sum of sqrt(3.0)
+        Color.xyz = saturate(normalize(Frame.xyz));
+        // Calculate the distance between the normalized chromaticity coordinates and its middle-gray
+        // Middle-gray = (maximum normalized value, 1.0) / (sum of normalized components, sqrt(3.0))
+        Color = saturate(distance(Color.xyz, 1.0 / sqrt(3.0)));
     }
 
     void Blit_Frame_PS(in float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD, out float4 OutputColor0 : SV_TARGET0)
