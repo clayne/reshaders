@@ -69,7 +69,7 @@
         MipFilter = LINEAR; \
     };
 
-namespace Shared_Resources_Flow
+namespace Shared_Resources_HS
 {
     TEXTURE(Render_Common_0, int2(BUFFER_WIDTH >> 1, BUFFER_HEIGHT >> 1), R8, 4)
     SAMPLER(Sample_Common_0, Render_Common_0)
@@ -306,7 +306,7 @@ namespace OpticalFlow
         float2 VelocityCoord = 0.0;
         VelocityCoord.xy = Origin.xy * PixelSize.xy;
         VelocityCoord.y = 1.0 - VelocityCoord.y;
-        Velocity = tex2Dlod(Shared_Resources_Flow::Sample_Common_2_A, float4(VelocityCoord, 0.0, _MipBias)).xy;
+        Velocity = tex2Dlod(Shared_Resources_HS::Sample_Common_2_A, float4(VelocityCoord, 0.0, _MipBias)).xy;
 
         // Scale velocity
         float2 Direction = Velocity * VELOCITY_SCALE;
@@ -380,7 +380,7 @@ namespace OpticalFlow
 
     void Blit_Frame_PS(in float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD, out float4 OutputColor0 : SV_TARGET0)
     {
-        OutputColor0 = tex2D(Shared_Resources_Flow::Sample_Common_0, TexCoord);
+        OutputColor0 = tex2D(Shared_Resources_HS::Sample_Common_0, TexCoord);
     }
 
     static const float BlurWeights[10] =
@@ -434,17 +434,17 @@ namespace OpticalFlow
 
     void Pre_Blur_0_PS(in float4 Position : SV_POSITION, in float4 TexCoords[7] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
-        Gaussian_Blur(Shared_Resources_Flow::Sample_Common_1_A, TexCoords, false, OutputColor0);
+        Gaussian_Blur(Shared_Resources_HS::Sample_Common_1_A, TexCoords, false, OutputColor0);
     }
 
     void Pre_Blur_1_PS(in float4 Position : SV_POSITION, in float4 TexCoords[7] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
-        Gaussian_Blur(Shared_Resources_Flow::Sample_Common_1_B, TexCoords, true, OutputColor0);
+        Gaussian_Blur(Shared_Resources_HS::Sample_Common_1_B, TexCoords, true, OutputColor0);
     }
 
     void Derivatives_Z_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0)
     {
-        float Current = tex2D(Shared_Resources_Flow::Sample_Common_1_A, TexCoord).x;
+        float Current = tex2D(Shared_Resources_HS::Sample_Common_1_A, TexCoord).x;
         float Previous = tex2D(Sample_Common_1_C, TexCoord).x;
         OutputColor0 = Current - Previous;
     }
@@ -456,14 +456,14 @@ namespace OpticalFlow
         // A0     A1
         // A2     B0
         //   C0 C1
-        float A0 = tex2D(Shared_Resources_Flow::Sample_Common_1_A, TexCoords[0].xw).x * 4.0; // <-1.5, +0.5>
-        float A1 = tex2D(Shared_Resources_Flow::Sample_Common_1_A, TexCoords[0].yw).x * 4.0; // <+1.5, +0.5>
-        float A2 = tex2D(Shared_Resources_Flow::Sample_Common_1_A, TexCoords[0].xz).x * 4.0; // <-1.5, -0.5>
-        float B0 = tex2D(Shared_Resources_Flow::Sample_Common_1_A, TexCoords[0].yz).x * 4.0; // <+1.5, -0.5>
-        float B1 = tex2D(Shared_Resources_Flow::Sample_Common_1_A, TexCoords[1].xw).x * 4.0; // <-0.5, +1.5>
-        float B2 = tex2D(Shared_Resources_Flow::Sample_Common_1_A, TexCoords[1].yw).x * 4.0; // <+0.5, +1.5>
-        float C0 = tex2D(Shared_Resources_Flow::Sample_Common_1_A, TexCoords[1].xz).x * 4.0; // <-0.5, -1.5>
-        float C1 = tex2D(Shared_Resources_Flow::Sample_Common_1_A, TexCoords[1].yz).x * 4.0; // <+0.5, -1.5>
+        float A0 = tex2D(Shared_Resources_HS::Sample_Common_1_A, TexCoords[0].xw).x * 4.0; // <-1.5, +0.5>
+        float A1 = tex2D(Shared_Resources_HS::Sample_Common_1_A, TexCoords[0].yw).x * 4.0; // <+1.5, +0.5>
+        float A2 = tex2D(Shared_Resources_HS::Sample_Common_1_A, TexCoords[0].xz).x * 4.0; // <-1.5, -0.5>
+        float B0 = tex2D(Shared_Resources_HS::Sample_Common_1_A, TexCoords[0].yz).x * 4.0; // <+1.5, -0.5>
+        float B1 = tex2D(Shared_Resources_HS::Sample_Common_1_A, TexCoords[1].xw).x * 4.0; // <-0.5, +1.5>
+        float B2 = tex2D(Shared_Resources_HS::Sample_Common_1_A, TexCoords[1].yw).x * 4.0; // <+0.5, +1.5>
+        float C0 = tex2D(Shared_Resources_HS::Sample_Common_1_A, TexCoords[1].xz).x * 4.0; // <-0.5, -1.5>
+        float C1 = tex2D(Shared_Resources_HS::Sample_Common_1_A, TexCoords[1].yz).x * 4.0; // <+0.5, -1.5>
 
         OutputColor0 = 0.0;
         OutputColor0.x = ((B2 + A1 + B0 + C1) - (B1 + A0 + A2 + C0)) / 12.0;
@@ -480,7 +480,7 @@ namespace OpticalFlow
 
         // Load textures
         float2 SD = tex2Dlod(Sample_Common_1_C, float4(TexCoord, 0.0, Level + 0.5)).xy;
-        float TD = tex2Dlod(Shared_Resources_Flow::Sample_Common_1_B, float4(TexCoord, 0.0, Level + 0.5)).x;
+        float TD = tex2Dlod(Shared_Resources_HS::Sample_Common_1_B, float4(TexCoord, 0.0, Level + 0.5)).x;
 
         float C = 0.0;
         float2 Aii = 0.0;
@@ -570,7 +570,7 @@ namespace OpticalFlow
 
         // Load textures
         float2 SD = tex2Dlod(Sample_Common_1_C, float4(TexCoords[1].xz, 0.0, Level + 0.5)).xy;
-        float TD = tex2Dlod(Shared_Resources_Flow::Sample_Common_1_B, float4(TexCoords[1].xz, 0.0, Level + 0.5)).x;
+        float TD = tex2Dlod(Shared_Resources_HS::Sample_Common_1_B, float4(TexCoords[1].xz, 0.0, Level + 0.5)).x;
 
         // Optical flow calculation
         float2 SampleUV[9];
@@ -645,21 +645,21 @@ namespace OpticalFlow
         Coarse_Optical_Flow_TV(TexCoord, 5.0, 0.0, Color);
     }
 
-    LEVEL_PS(Level_5_PS, Shared_Resources_Flow::Sample_Common_6, 4.0)
-    LEVEL_PS(Level_4_PS, Shared_Resources_Flow::Sample_Common_5, 3.0)
-    LEVEL_PS(Level_3_PS, Shared_Resources_Flow::Sample_Common_4, 2.0)
-    LEVEL_PS(Level_2_PS, Shared_Resources_Flow::Sample_Common_3, 1.0)
+    LEVEL_PS(Level_5_PS, Shared_Resources_HS::Sample_Common_6, 4.0)
+    LEVEL_PS(Level_4_PS, Shared_Resources_HS::Sample_Common_5, 3.0)
+    LEVEL_PS(Level_3_PS, Shared_Resources_HS::Sample_Common_4, 2.0)
+    LEVEL_PS(Level_2_PS, Shared_Resources_HS::Sample_Common_3, 1.0)
 
     void Level_1_PS(in float4 Position : SV_POSITION, in float4 TexCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
         OutputColor0 = 0.0;
-        Optical_Flow_TV(Shared_Resources_Flow::Sample_Common_2_A, TexCoords, 0.0, OutputColor0.xy);
+        Optical_Flow_TV(Shared_Resources_HS::Sample_Common_2_A, TexCoords, 0.0, OutputColor0.xy);
         OutputColor0.ba = float2(0.0, _BlendFactor);
     }
 
     void Copy_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
-        OutputColor0 = tex2D(Shared_Resources_Flow::Sample_Common_1_A, TexCoord);
+        OutputColor0 = tex2D(Shared_Resources_HS::Sample_Common_1_A, TexCoord);
     }
 
     void Post_Blur_0_PS(in float4 Position : SV_POSITION, in float4 TexCoords[7] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
@@ -670,13 +670,13 @@ namespace OpticalFlow
 
     void Post_Blur_1_PS(in float4 Position : SV_POSITION, in float4 TexCoords[7] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
-        Gaussian_Blur(Shared_Resources_Flow::Sample_Common_2_B, TexCoords, true, OutputColor0);
+        Gaussian_Blur(Shared_Resources_HS::Sample_Common_2_B, TexCoords, true, OutputColor0);
         OutputColor0.a = 1.0;
     }
 
     void Velocity_Shading_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target)
     {
-        float2 Velocity = tex2Dlod(Shared_Resources_Flow::Sample_Common_2_A, float4(TexCoord, 0.0, _MipBias)).xy;
+        float2 Velocity = tex2Dlod(Shared_Resources_HS::Sample_Common_2_A, float4(TexCoord, 0.0, _MipBias)).xy;
 
         if(_NormalizedShading)
         {
@@ -718,28 +718,28 @@ namespace OpticalFlow
             RenderTarget0 = RENDER_TARGET; \
         }
 
-    technique cOpticalFlow
+    technique cOpticalFlowHS
     {
         // Normalize current frame
-        PASS(Basic_VS, Saturate_Image_PS, Shared_Resources_Flow::Render_Common_0)
+        PASS(Basic_VS, Saturate_Image_PS, Shared_Resources_HS::Render_Common_0)
 
         // Scale frame
-        PASS(Basic_VS, Blit_Frame_PS, Shared_Resources_Flow::Render_Common_1_A)
+        PASS(Basic_VS, Blit_Frame_PS, Shared_Resources_HS::Render_Common_1_A)
 
         // Gaussian blur
-        PASS(Pre_Blur_0_VS, Pre_Blur_0_PS, Shared_Resources_Flow::Render_Common_1_B)
-        PASS(Pre_Blur_1_VS, Pre_Blur_1_PS, Shared_Resources_Flow::Render_Common_1_A) // Save this to store later
+        PASS(Pre_Blur_0_VS, Pre_Blur_0_PS, Shared_Resources_HS::Render_Common_1_B)
+        PASS(Pre_Blur_1_VS, Pre_Blur_1_PS, Shared_Resources_HS::Render_Common_1_A) // Save this to store later
 
         // Calculate spatial and temporal derivative pyramid
-        PASS(Basic_VS, Derivatives_Z_PS, Shared_Resources_Flow::Render_Common_1_B)
+        PASS(Basic_VS, Derivatives_Z_PS, Shared_Resources_HS::Render_Common_1_B)
         PASS(Derivatives_VS, Derivatives_XY_PS, Render_Common_1_C)
 
         // Bilinear Optical Flow
-        PASS(Basic_VS, Level_6_PS, Shared_Resources_Flow::Render_Common_6)
-        PASS(Sample_3x3_6_VS, Level_5_PS, Shared_Resources_Flow::Render_Common_5)
-        PASS(Sample_3x3_5_VS, Level_4_PS, Shared_Resources_Flow::Render_Common_4)
-        PASS(Sample_3x3_4_VS, Level_3_PS, Shared_Resources_Flow::Render_Common_3)
-        PASS(Sample_3x3_3_VS, Level_2_PS, Shared_Resources_Flow::Render_Common_2_A)
+        PASS(Basic_VS, Level_6_PS, Shared_Resources_HS::Render_Common_6)
+        PASS(Sample_3x3_6_VS, Level_5_PS, Shared_Resources_HS::Render_Common_5)
+        PASS(Sample_3x3_5_VS, Level_4_PS, Shared_Resources_HS::Render_Common_4)
+        PASS(Sample_3x3_4_VS, Level_3_PS, Shared_Resources_HS::Render_Common_3)
+        PASS(Sample_3x3_3_VS, Level_2_PS, Shared_Resources_HS::Render_Common_2_A)
 
         pass
         {
@@ -757,8 +757,8 @@ namespace OpticalFlow
         PASS(Basic_VS, Copy_PS, Render_Common_1_C)
 
         // Gaussian blur
-        PASS(Post_Blur_0_VS, Post_Blur_0_PS, Shared_Resources_Flow::Render_Common_2_B)
-        PASS(Post_Blur_1_VS, Post_Blur_1_PS, Shared_Resources_Flow::Render_Common_2_A)
+        PASS(Post_Blur_0_VS, Post_Blur_0_PS, Shared_Resources_HS::Render_Common_2_B)
+        PASS(Post_Blur_1_VS, Post_Blur_1_PS, Shared_Resources_HS::Render_Common_2_A)
 
         // Visualize optical flow
 

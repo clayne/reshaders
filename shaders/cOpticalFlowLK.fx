@@ -39,8 +39,6 @@ namespace OpticalFlowLK
         Shader parameters
     */
 
-    uniform float _FrameTime < source = "frametime"; >;
-
     #define OPTION(DATA_TYPE, NAME, TYPE, CATEGORY, LABEL, MINIMUM, MAXIMUM, DEFAULT) \
         uniform DATA_TYPE NAME < \
             ui_type = TYPE; \
@@ -52,11 +50,6 @@ namespace OpticalFlowLK
 
     OPTION(float, _MipBias, "slider", "Optical flow", "Optical flow mipmap bias", 0.0, 6.0, 0.0)
     OPTION(float, _BlendFactor, "slider", "Optical flow", "Temporal blending factor", 0.0, 0.9, 0.2)
-
-    OPTION(float, _Scale, "slider", "Main", "Blur scale", 0.0, 0.2, 0.075)
-
-    OPTION(bool, _FrameRateScaling, "radio", "Other", "Enable frame-rate scaling", 0.0, 1.0, false)
-    OPTION(float, _TargetFrameRate, "drag", "Other", "Target frame-rate", 0.0, 144.0, 60.0)
 
     /*
         Macro for resolution sizes and scaling
@@ -403,27 +396,11 @@ namespace OpticalFlowLK
         OutputColor0.a = 1.0;
     }
 
-    void Motion_Blur_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target)
+    void Display_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target)
     {
         OutputColor0 = 0.0;
-        const int Samples = 4;
-        float Noise = frac(52.9829189 * frac(dot(Position.xy, float2(0.06711056, 0.00583715))));
-
-        float FrameRate = 1e+3 / _FrameTime;
-        float FrameTimeRatio = _TargetFrameRate / FrameRate;
-
-        float2 Velocity = tex2Dlod(Sample_Common_3_A, float4(TexCoord, 0.0, _MipBias)).xy;
-
-        float2 ScaledVelocity = (Velocity / BUFFER_SIZE_3) * _Scale;
-        ScaledVelocity = (_FrameRateScaling) ?  ScaledVelocity / FrameTimeRatio : ScaledVelocity;
-
-        for(int k = 0; k < Samples; ++k)
-        {
-            float2 Offset = ScaledVelocity * (Noise + k);
-            OutputColor0 += tex2D(Sample_Color, (TexCoord + Offset));
-            OutputColor0 += tex2D(Sample_Color, (TexCoord - Offset));
-        }
-        OutputColor0 /= (Samples * 2.0);
+        OutputColor0 = tex2Dlod(Sample_Common_3_A, float4(TexCoord, 0.0, _MipBias));
+        OutputColor0.ba = 0.0;
     }
 
     #define CREATE_PASS(VERTEX_SHADER, PIXEL_SHADER, RENDER_TARGET) \
@@ -434,7 +411,7 @@ namespace OpticalFlowLK
             RenderTarget0 = RENDER_TARGET; \
         }
 
-    technique cMotionBlur
+    technique cOpticalFlowLK
     {
         // Normalize current frame
         CREATE_PASS(Basic_VS, Saturate_Image_PS, Render_Common_0)
@@ -472,11 +449,11 @@ namespace OpticalFlowLK
         CREATE_PASS(Post_Blur_0_VS, Post_Blur_0_PS, Render_Common_3_B)
         CREATE_PASS(Post_Blur_1_VS, Post_Blur_1_PS, Render_Common_3_A)
 
-        // Motion blur
+        // Display
         pass
         {
             VertexShader = Basic_VS;
-            PixelShader = Motion_Blur_PS;
+            PixelShader = Display_PS;
             #if BUFFER_COLOR_BIT_DEPTH == 8
                 SRGBWriteEnable = TRUE;
             #endif
