@@ -352,6 +352,7 @@ namespace OpticalFlowLK
         T[2] = tex2D(Sample_Common_1_A, TexCoord.xy).x - tex2D(Sample_Common_1_C, TexCoord.xy).x;
         T[3] = tex2D(Sample_Common_1_A, TexCoord.zy).x - tex2D(Sample_Common_1_C, TexCoord.zy).x;
 
+        // B.x = IxIt (Q1); B.y = IyIt (Q2)
         float2 B = 0.0;
         B += (S[0] * T[0]);
         B += (S[1] * T[1]);
