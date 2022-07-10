@@ -36,7 +36,7 @@
 namespace OpticalFlowLK
 {
     /*
-        Shader parameters
+        [Shader parameters]
     */
 
     #define OPTION(DATA_TYPE, NAME, TYPE, CATEGORY, LABEL, MINIMUM, MAXIMUM, DEFAULT) \
@@ -52,7 +52,7 @@ namespace OpticalFlowLK
     OPTION(float, _BlendFactor, "slider", "Optical flow", "Temporal blending factor", 0.0, 0.9, 0.2)
 
     /*
-        Macro for resolution sizes and scaling
+        [Macros for resolution sizes and scaling]
     */
 
     #define FP16_MINIMUM float((1.0 / float(1 << 14)) * (0.0 + (1.0 / 1024.0)))
@@ -72,7 +72,7 @@ namespace OpticalFlowLK
     #define BUFFER_SIZE_6 int2(ROUND_UP_EVEN(SIZE.x >> 5), ROUND_UP_EVEN(SIZE.y >> 5))
 
     /*
-        Textures and samplers
+        [Textures and samplers]
     */
 
     #define CREATE_TEXTURE(NAME, SIZE, FORMAT, LEVELS) \
@@ -145,7 +145,7 @@ namespace OpticalFlowLK
     CREATE_SAMPLER(Sample_Optical_Flow, Render_Optical_Flow)
 
     /*
-        Vertex shaders
+        [Vertex shaders]
     */
 
     void Basic_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float2 TexCoord : TEXCOORD0)
@@ -223,6 +223,10 @@ namespace OpticalFlowLK
     CREATE_LEVEL_VS(LK_Level_4_VS, BUFFER_SIZE_4)
     CREATE_LEVEL_VS(LK_Level_5_VS, BUFFER_SIZE_5)
     CREATE_LEVEL_VS(LK_Level_6_VS, BUFFER_SIZE_6)
+
+    /*
+        [Pixel shaders]
+    */
 
     void Saturate_Image_PS(in float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD, out float4 Color : SV_TARGET0)
     {

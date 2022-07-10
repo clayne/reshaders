@@ -52,7 +52,7 @@
 namespace Datamosh
 {
     /*
-        Shader properties
+        [Shader properties]
     */
 
     #ifndef LINEAR_SAMPLING
@@ -86,7 +86,7 @@ namespace Datamosh
     OPTION(float, _BlendFactor, "slider", "Optical flow", "Temporal blending factor", 0.0, 0.9, 0.5)
 
     /*
-        Textures and samplers
+        [Textures and samplers]
     */
 
     #define CREATE_TEXTURE(NAME, SIZE, FORMAT, LEVELS) \
