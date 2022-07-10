@@ -1,6 +1,6 @@
 
 /*
-    Optical flow motion blur shader
+    Pyramidal Lucas-Kanade optical flow shader
 
     BSD 3-Clause License
 
