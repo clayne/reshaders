@@ -407,7 +407,7 @@ namespace Datamosh
         S[3] = tex2D(Sample_Common_1_B, TexCoord.zy).xy;
 
         // A.x = Ix^2 (A11); A.y = Iy^2 (A22); A.z = IxIy (A12)
-        float3 A = ldexp(float3(FP16_MINIMUM, FP16_MINIMUM, 0.0), Level);
+        float3 A = float3(FP16_MINIMUM, FP16_MINIMUM, 0.0);
         A += (S[0].xyx * S[0].xyy);
         A += (S[1].xyx * S[1].xyy);
         A += (S[2].xyx * S[2].xyy);
