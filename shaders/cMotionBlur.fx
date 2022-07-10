@@ -345,7 +345,7 @@ namespace OpticalFlowLK
         A += (S[3].xyx * S[3].xyy);
         A /= 4.0;
 
-        // Temporal Derivatives
+        // Temporal derivative window in 4 bilinear fetches
         float T[4];
         T[0] = tex2D(Sample_Common_1_A, TexCoord.xw).x - tex2D(Sample_Common_1_C, TexCoord.xw).x;
         T[1] = tex2D(Sample_Common_1_A, TexCoord.zw).x - tex2D(Sample_Common_1_C, TexCoord.zw).x;
