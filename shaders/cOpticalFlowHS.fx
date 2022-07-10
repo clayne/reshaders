@@ -1,6 +1,6 @@
 
 /*
-    Optical flow visualization shader
+    Pyramidal Horn-Schunck optical flow shader
 
     BSD 3-Clause License
 
