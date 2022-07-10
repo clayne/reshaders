@@ -260,7 +260,7 @@ namespace Datamosh
     CREATE_LEVEL_VS(LK_Level_5_VS, BUFFER_SIZE_5)
     CREATE_LEVEL_VS(LK_Level_6_VS, BUFFER_SIZE_6)
 
-    void Derivatives_VS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float4 TexCoords[2] : TEXCOORD0)
+    void Derivatives_Spatial_VS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float4 TexCoords[2] : TEXCOORD0)
     {
         float2 CoordVS = 0.0;
         Basic_VS(ID, Position, CoordVS);
@@ -374,7 +374,14 @@ namespace Datamosh
         Gaussian_Blur(Sample_Common_1_B, TexCoords, true, OutputColor0);
     }
 
-    void Derivatives_PS(in float4 Position : SV_POSITION, in float4 TexCoords[2] : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0)
+    void Derivatives_Temporal_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0)
+    {
+        float Current = tex2D(Sample_Common_1_A, TexCoord).x;
+        float Previous = tex2D(Sample_Common_1_C, TexCoord).x;
+        OutputColor0 = Current - Previous;
+    }
+
+    void Derivatives_Spatial_PS(in float4 Position : SV_POSITION, in float4 TexCoords[2] : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0)
     {
         // Bilinear 5x5 Sobel by CeeJayDK
         //   B1 B2
@@ -401,10 +408,10 @@ namespace Datamosh
         // [TexCoord.xw TexCoord.zw]
         // [TexCoord.xy TexCoord.zy]
         float2 S[4];
-        S[0] = tex2D(Sample_Common_1_B, TexCoord.xw).xy;
-        S[1] = tex2D(Sample_Common_1_B, TexCoord.zw).xy;
-        S[2] = tex2D(Sample_Common_1_B, TexCoord.xy).xy;
-        S[3] = tex2D(Sample_Common_1_B, TexCoord.zy).xy;
+        S[0] = tex2D(Sample_Common_1_C, TexCoord.xw).xy;
+        S[1] = tex2D(Sample_Common_1_C, TexCoord.zw).xy;
+        S[2] = tex2D(Sample_Common_1_C, TexCoord.xy).xy;
+        S[3] = tex2D(Sample_Common_1_C, TexCoord.zy).xy;
 
         // A.x = Ix^2 (A11); A.y = Iy^2 (A22); A.z = IxIy (A12)
         float3 A = float3(FP16_MINIMUM, FP16_MINIMUM, 0.0);
@@ -416,10 +423,10 @@ namespace Datamosh
 
         // Temporal derivative window in 4 bilinear fetches
         float T[4];
-        T[0] = tex2D(Sample_Common_1_A, TexCoord.xw).x - tex2D(Sample_Common_1_C, TexCoord.xw).x;
-        T[1] = tex2D(Sample_Common_1_A, TexCoord.zw).x - tex2D(Sample_Common_1_C, TexCoord.zw).x;
-        T[2] = tex2D(Sample_Common_1_A, TexCoord.xy).x - tex2D(Sample_Common_1_C, TexCoord.xy).x;
-        T[3] = tex2D(Sample_Common_1_A, TexCoord.zy).x - tex2D(Sample_Common_1_C, TexCoord.zy).x;
+        T[0] = tex2D(Sample_Common_1_B, TexCoord.xw).x;
+        T[1] = tex2D(Sample_Common_1_B, TexCoord.zw).x;
+        T[2] = tex2D(Sample_Common_1_B, TexCoord.xy).x;
+        T[3] = tex2D(Sample_Common_1_B, TexCoord.zy).x;
 
         // B.x = IxIt (Q1); B.y = IyIt (Q2)
         float2 B = 0.0;
@@ -431,7 +438,6 @@ namespace Datamosh
 
         // Determinant
         float D = (A.z * A.z - A.x * A.y);
-
         return ((A.yx * B.xy - A.zz * B.yx) / D) + Vectors;
     }
 
@@ -583,8 +589,9 @@ namespace Datamosh
         CREATE_PASS(Pre_Blur_0_VS, Pre_Blur_0_PS, Render_Common_1_B)
         CREATE_PASS(Pre_Blur_1_VS, Pre_Blur_1_PS, Render_Common_1_A) // Save this to store later
 
-        // Calculate spatial derivative pyramid
-        CREATE_PASS(Derivatives_VS, Derivatives_PS, Render_Common_1_B)
+        // Calculate derivative pyramids
+        CREATE_PASS(Basic_VS, Derivatives_Temporal_PS, Render_Common_1_B)
+        CREATE_PASS(Derivatives_Spatial_VS, Derivatives_Spatial_PS, Render_Common_1_C)
 
         // Bilinear Optical Flow
         CREATE_PASS(LK_Level_6_VS, LK_Level_6_PS, Render_Common_6)
