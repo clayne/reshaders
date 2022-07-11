@@ -37,8 +37,8 @@ Shader (click to download) | Description
 [cMotionBlur](/shaders/cMotionBlur.fx)                  | Color motion blur
 [cMotionMask](/shaders/cMotionMask.fx)                  | Frame masking based on temporal derivative
 [cNoiseConvolution](/shaders/cNoiseConvolution.fx)      | Convolution using rotated gradient noise sampling
-[cOpticalFlowHS](/shaders/cOpticalFlowHS.fx)            | HLSL implementation of pyramidal Horn-Schunck with visualization
-[cOpticalFlowLK](/shaders/cOpticalFlowLK.fx)            | HLSL implementation of pyramidal Lucas-Kanade with visualization
+[cOpticalFlowHS](/shaders/cOpticalFlowHS.fx)            | Pyramidal Horn-Schunck optical flow with visualization
+[cOpticalFlowLK](/shaders/cOpticalFlowLK.fx)            | Pyramidal Lucas-Kanade optical flow with visualization
 [cOverlay](/shaders/cOverlay.fx)                        | Simple backbuffer overlay
 [cPingPong](/shaders/cPingPong.fx)                      | Gaussian blur approximation using ping-pong box blurs
 [cScale](/shaders/cScale.fx)                            | Buffer scaling using vertex shaders
