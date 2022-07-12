@@ -79,10 +79,10 @@ namespace Datamosh
     OPTION(int, _BlockSize, "slider", "Datamosh", "Block Size", 4, 32, 16)
     OPTION(float, _Entropy, "slider", "Datamosh", "Entropy", 0.0, 1.0, 0.5)
     OPTION(float, _Contrast, "slider", "Datamosh", "Contrast of stripe-shaped noise", 0.0, 4.0, 2.0)
-    OPTION(float, _Scale, "slider", "Datamosh", "Scale factor for velocity vectors", 0.0, 1.0, 0.5)
+    OPTION(float, _Scale, "slider", "Datamosh", "Scale factor for velocity vectors", 0.0, 2.0, 1.0)
     OPTION(float, _Diffusion, "slider", "Datamosh", "Amount of random displacement", 0.0, 4.0, 2.0)
 
-    OPTION(float, _MipBias, "slider", "Optical flow", "Optical flow mipmap bias", 0.0, 6.0, 0.0)
+    OPTION(float, _MipBias, "slider", "Optical flow", "Optical flow mipmap bias", 0.0, 6.0, 2.0)
     OPTION(float, _BlendFactor, "slider", "Optical flow", "Temporal blending factor", 0.0, 0.9, 0.5)
 
     /*
@@ -520,7 +520,7 @@ namespace Datamosh
 
     void Datamosh_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
-        const float2 DisplacementTexel = 1.0 / BUFFER_SIZE_2;
+        const float2 DisplacementTexel = 1.0 / float2(BUFFER_WIDTH, BUFFER_HEIGHT);
         const float Quality = 1.0 - _Entropy;
 
         // Random numbers

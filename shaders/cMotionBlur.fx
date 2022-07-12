@@ -53,7 +53,7 @@ namespace OpticalFlowLK
     OPTION(float, _MipBias, "slider", "Optical flow", "Optical flow mipmap bias", 0.0, 6.0, 0.0)
     OPTION(float, _BlendFactor, "slider", "Optical flow", "Temporal blending factor", 0.0, 0.9, 0.2)
 
-    OPTION(float, _Scale, "slider", "Main", "Blur scale", 0.0, 0.1, 0.05)
+    OPTION(float, _Scale, "slider", "Main", "Blur scale", 0.0, 1.0, 0.5)
 
     OPTION(bool, _FrameRateScaling, "radio", "Other", "Enable frame-rate scaling", 0.0, 1.0, false)
     OPTION(float, _TargetFrameRate, "drag", "Other", "Target frame-rate", 0.0, 144.0, 60.0)
@@ -425,15 +425,19 @@ namespace OpticalFlowLK
 
         float2 Velocity = tex2Dlod(Sample_Common_3_A, float4(TexCoord, 0.0, _MipBias)).xy;
 
-        float2 ScaledVelocity = (Velocity / BUFFER_SIZE_3) * _Scale;
+        float2 ScaledVelocity = Velocity * _Scale;
         ScaledVelocity = (_FrameRateScaling) ?  ScaledVelocity / FrameTimeRatio : ScaledVelocity;
+
+        float2 ScreenSize = float2(BUFFER_WIDTH, BUFFER_HEIGHT);
+        float2 ScreenCoord = TexCoord.xy * ScreenSize;
 
         for(int k = 0; k < Samples; ++k)
         {
             float2 Offset = ScaledVelocity * (Noise + k);
-            OutputColor0 += tex2D(Sample_Color, (TexCoord + Offset));
-            OutputColor0 += tex2D(Sample_Color, (TexCoord - Offset));
+            OutputColor0 += tex2D(Sample_Color, (ScreenCoord + Offset) / ScreenSize);
+            OutputColor0 += tex2D(Sample_Color, (ScreenCoord - Offset) / ScreenSize);
         }
+
         OutputColor0 /= (Samples * 2.0);
     }
 
