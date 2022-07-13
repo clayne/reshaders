@@ -33,8 +33,6 @@
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#define FP16_MINIMUM float((1.0 / float(1 << 14)) * (0.0 + (1.0 / 1024.0)))
-
 #define RCP_HEIGHT (1.0 / BUFFER_HEIGHT)
 #define ASPECT_RATIO (BUFFER_WIDTH * RCP_HEIGHT)
 #define ROUND_UP_EVEN(x) int(x) + (int(x) % 2)
@@ -476,7 +474,7 @@ namespace OpticalFlow
     void Coarse_Optical_Flow_TV(in float2 TexCoord, in float Level, in float4 UV, out float2 OpticalFlow)
     {
         OpticalFlow = 0.0;
-        const float Alpha = max((_Constraint * 1e-3) / pow(4.0, COARSEST_LEVEL - Level), FP16_MINIMUM);
+        const float Alpha = (_Constraint * 1e-3) / pow(4.0, COARSEST_LEVEL - Level);
 
         // Load textures
         float2 SD = tex2Dlod(Sample_Common_1_C, float4(TexCoord, 0.0, Level + 0.5)).xy;
@@ -488,7 +486,7 @@ namespace OpticalFlow
         float2 Bi = 0.0;
 
         // Calculate constancy assumption nonlinearity
-        C = rsqrt((TD * TD) + FP16_MINIMUM);
+        C = rsqrt(TD * TD);
 
         // Build linear equation
         // [Aii Aij] [X] = [Bi]
@@ -501,6 +499,7 @@ namespace OpticalFlow
         // [Ix^2+A IxIy] [U] = -[IxIt]
         // [IxIy Iy^2+A] [V] = -[IyIt]
         OpticalFlow.xy = Aii.xy * (UV.xy - (Aij * UV.yx) - Bi.xy);
+        OpticalFlow.xy = (isinf(OpticalFlow.xy)) ? 0.0 : OpticalFlow.xy;
     }
 
     void Gradient(in float4x2 Samples, out float Gradient)
@@ -511,7 +510,7 @@ namespace OpticalFlow
         float4 SqGradientUV = 0.0;
         SqGradientUV.xy = (Samples[0] - Samples[3]); // <IxU, IxV>
         SqGradientUV.zw = (Samples[2] - Samples[1]); // <IyU, IyV>
-        Gradient = rsqrt((dot(SqGradientUV, SqGradientUV) * 0.25) + FP16_MINIMUM);
+        Gradient = rsqrt(dot(SqGradientUV, SqGradientUV) * 0.25);
     }
 
     float2 Sobel(float2 SampleUV[9], float3x3 Weights)
@@ -534,7 +533,7 @@ namespace OpticalFlow
 
     void Process_Gradients(in float2 SampleUV[9], inout float4 AreaGrad, inout float4 UVGradient)
     {
-        // Calculate center gradient using Sobel compass operator	
+        // Calculate center gradient using Sobel compass operator
         float4 SobelUV[2];
         SobelUV[0].xy = Sobel(SampleUV, float3x3(-1.0, -2.0, -1.0, 0.0, 0.0, 0.0, 1.0, 2.0, 1.0));
         SobelUV[0].zw = Sobel(SampleUV, float3x3(-2.0, -1.0, 0.0, -1.0, 0.0, 1.0, 0.0, 1.0, 2.0));
@@ -542,7 +541,7 @@ namespace OpticalFlow
         SobelUV[1].zw = Sobel(SampleUV, float3x3(0.0, 1.0, 2.0, -1.0, 0.0, 1.0, -2.0, -1.0, 0.0));
         float4 MaxGradientA = max(abs(SobelUV[0]), abs(SobelUV[1]));
         float2 MaxGradientB = max(abs(MaxGradientA.xy), abs(MaxGradientA.zw)) * (1.0 / 4.0);
-        float CenterGradient = rsqrt((dot(MaxGradientB, MaxGradientB)) + FP16_MINIMUM);
+        float CenterGradient = rsqrt(dot(MaxGradientB, MaxGradientB));
 
         // Area smoothness gradients
         // .............................
@@ -566,7 +565,7 @@ namespace OpticalFlow
     void Optical_Flow_TV(in sampler2D SourceUV, in float4 TexCoords[3], in float Level, out float2 OpticalFlow)
     {
         OpticalFlow = 0.0;
-        const float Alpha = max((_Constraint * 1e-3) / pow(4.0, COARSEST_LEVEL - Level), FP16_MINIMUM);
+        const float Alpha = (_Constraint * 1e-3) / pow(4.0, COARSEST_LEVEL - Level);
 
         // Load textures
         float2 SD = tex2Dlod(Sample_Common_1_C, float4(TexCoords[1].xz, 0.0, Level + 0.5)).xy;
@@ -617,7 +616,7 @@ namespace OpticalFlow
         // Dot-product increases when the current gradient + previous estimation are parallel
         // IxU + IyV = -It -> IxU + IyV + It = 0.0
         C = dot(SD.xy, CenterAverage.xy) + TD;
-        C = rsqrt((C * C) + FP16_MINIMUM);
+        C = rsqrt(C * C);
 
         // Build linear equation
         // [Aii Aij] [X] = [Bi]
@@ -632,6 +631,7 @@ namespace OpticalFlow
         UVAverage.xy = (AreaGrad.xx * AreaAvg[0]) + (AreaGrad.yy * AreaAvg[1]) + (AreaGrad.zz * AreaAvg[2]) + (AreaGrad.ww * AreaAvg[3]);
         UVAverage.xy = UVAverage.xy * Alpha;
         OpticalFlow.xy = Aii.xy * (UVAverage.xy - (Aij * CenterAverage.yx) - Bi.xy);
+        OpticalFlow.xy = (isinf(OpticalFlow.xy)) ? 0.0 : OpticalFlow.xy;
     }
 
     #define LEVEL_PS(NAME, SAMPLER, LEVEL)                                                                             \

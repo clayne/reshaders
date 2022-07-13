@@ -62,8 +62,6 @@ namespace OpticalFlowLK
         [Macros for resolution sizes and scaling]
     */
 
-    #define FP16_MINIMUM float((1.0 / float(1 << 14)) * (0.0 + (1.0 / 1024.0)))
-
     #define RCP_HEIGHT (1.0 / BUFFER_HEIGHT)
     #define ASPECT_RATIO (BUFFER_WIDTH * RCP_HEIGHT)
     #define ROUND_UP_EVEN(x) int(x) + (int(x) % 2)
@@ -337,7 +335,7 @@ namespace OpticalFlowLK
         OutputColor0.y = ((A0 + B1 + B2 + A1) - (A2 + C0 + C1 + B0)) / 12.0;
     }
 
-    float2 Lucas_Kanade(int Level, float2 Vectors, float4 TexCoord, bool IsFine)
+    float2 Lucas_Kanade(int Level, float2 Vectors, float4 TexCoord)
     {
         // 3x3 Spatial derivative window in 4 bilinear fetches
         // [TexCoord.xw TexCoord.zw]
@@ -349,12 +347,15 @@ namespace OpticalFlowLK
         S[3] = tex2D(Sample_Common_1_C, TexCoord.zy).xy;
 
         // A.x = Ix^2 (A11); A.y = Iy^2 (A22); A.z = IxIy (A12)
-        float3 A = float3(FP16_MINIMUM, FP16_MINIMUM, 0.0);
+        float3 A = 0.0;
         A += (S[0].xyx * S[0].xyy);
         A += (S[1].xyx * S[1].xyy);
         A += (S[2].xyx * S[2].xyy);
         A += (S[3].xyx * S[3].xyy);
         A /= 4.0;
+
+        // Determinant
+        float D = (A.z * A.z - A.x * A.y);
 
         // Temporal derivative window in 4 bilinear fetches
         float T[4];
@@ -371,20 +372,20 @@ namespace OpticalFlowLK
         B += (S[3] * T[3]);
         B /= 4.0;
 
-        // Determinant
-        float D = (A.z * A.z - A.x * A.y);
-        return ((A.yx * B.xy - A.zz * B.yx) / D) + Vectors;
+        float2 UV = ((A.yx * B.xy - A.zz * B.yx) / D) + Vectors;
+        UV = isinf(UV) ? 0.0 : UV;
+        return UV;
     }
 
     #define CREATE_LK_LEVEL_PS(NAME, LEVEL, SAMPLER) \
         void NAME(in float4 Position : SV_POSITION, in float2 Tex0 : TEXCOORD0, in float4 Tex1 : TEXCOORD1, out float2 Color : SV_TARGET0) \
         { \
-            Color = Lucas_Kanade(LEVEL, tex2D(SAMPLER, Tex0).xy, Tex1, false); \
+            Color = Lucas_Kanade(LEVEL, tex2D(SAMPLER, Tex0).xy, Tex1); \
         }
 
     void LK_Level_6_PS(in float4 Position : SV_POSITION, in float2 Tex0 : TEXCOORD0, in float4 Tex1 : TEXCOORD1, out float2 Color : SV_TARGET0)
     {
-        Color = Lucas_Kanade(5, 0.0, Tex1, false);
+        Color = Lucas_Kanade(5, 0.0, Tex1);
     }
 
     CREATE_LK_LEVEL_PS(LK_Level_5_PS, 4, Sample_Common_6)
@@ -394,7 +395,7 @@ namespace OpticalFlowLK
 
     void LK_Level_1_PS(in float4 Position : SV_POSITION, in float2 Tex0 : TEXCOORD0, in float4 Tex1 : TEXCOORD1, out float4 Color : SV_TARGET0)
     {
-        Color = float4(Lucas_Kanade(0, tex2D(Sample_Common_2, Tex0).xy, Tex1, true), 0.0, _BlendFactor);
+        Color = float4(Lucas_Kanade(0, tex2D(Sample_Common_2, Tex0).xy, Tex1), 0.0, _BlendFactor);
     }
 
     void Copy_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
