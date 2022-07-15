@@ -62,6 +62,8 @@ namespace OpticalFlowLK
         [Macros for resolution sizes and scaling]
     */
 
+	#define FP16_MINIMUM float((1.0 / float(1 << 14)) * (0.0 + (1.0 / 1024.0)))
+
     #define RCP_HEIGHT (1.0 / BUFFER_HEIGHT)
     #define ASPECT_RATIO (BUFFER_WIDTH * RCP_HEIGHT)
     #define ROUND_UP_EVEN(x) int(x) + (int(x) % 2)
@@ -347,7 +349,7 @@ namespace OpticalFlowLK
         S[3] = tex2D(Sample_Common_1_C, TexCoord.zy).xy;
 
         // A.x = Ix^2 (A11); A.y = Iy^2 (A22); A.z = IxIy (A12)
-        float3 A = 0.0;
+        float3 A = float3(FP16_MINIMUM, FP16_MINIMUM, 0.0);
         A += (S[0].xyx * S[0].xyy);
         A += (S[1].xyx * S[1].xyy);
         A += (S[2].xyx * S[2].xyy);
@@ -355,7 +357,7 @@ namespace OpticalFlowLK
         A /= 4.0;
 
         // Determinant
-        float D = (A.z * A.z - A.x * A.y);
+        float D = (A.x * A.y - A.z * A.z);
 
         // Temporal derivative window in 4 bilinear fetches
         float T[4];
@@ -372,8 +374,7 @@ namespace OpticalFlowLK
         B += (S[3] * T[3]);
         B /= 4.0;
 
-        float2 UV = ((A.yx * B.xy - A.zz * B.yx) / D) + Vectors;
-        UV = isinf(UV) ? 0.0 : UV;
+        float2 UV = (D != 0.0) ? ((A.yx * B.xy - A.zz * B.yx) / D) + Vectors : 0.0;
         return UV;
     }
 
