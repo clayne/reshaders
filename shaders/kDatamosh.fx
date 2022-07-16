@@ -422,7 +422,7 @@ namespace Datamosh
         A /= 4.0;
 
         // Determinant
-        float D = (A.x * A.y - A.z * A.z);
+        float D = (A.z * A.z - A.x * A.y);
 
         // Temporal derivative window in 4 bilinear fetches
         float T[4];
@@ -439,7 +439,7 @@ namespace Datamosh
         B += (S[3] * T[3]);
         B /= 4.0;
 
-        float2 UV = (D != 0.0) ? ((A.yx * B.xy - A.zz * B.yx) / D) + Vectors : 0.0;
+        float2 UV = (D != 0.0) ? ((A.yx * B.xy - A.zz * B.yx) / D) + (Vectors * 2.0) : 0.0;
         return UV;
     }
 
@@ -522,7 +522,8 @@ namespace Datamosh
 
     void Datamosh_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
-        const float2 DisplacementTexel = 1.0 / float2(BUFFER_WIDTH, BUFFER_HEIGHT);
+        float2 ScreenSize = float2(BUFFER_WIDTH, BUFFER_HEIGHT);
+        const float2 DisplacementTexel = 1.0 / ScreenSize;
         const float Quality = 1.0 - _Entropy;
 
         // Random numbers
@@ -532,7 +533,10 @@ namespace Datamosh
         Random.y = RandomNoise(TexCoord.xy + Time.yx);
         Random.z = RandomNoise(TexCoord.yx - Time.xx);
 
-        float2 MotionVectors = tex2Dlod(Sample_Optical_Flow_Post, float4(TexCoord, 0.0, _MipBias)).xy;
+        // DownsampledRatio = Texel ratio between the finest optical flow level and the buffer we're warping
+        // We need this because the velocity between the downsampled finest level is not to-scale with the current buffer
+        float2 DownsampledRatio = BUFFER_SIZE_3 / ScreenSize;
+        float2 MotionVectors = tex2Dlod(Sample_Optical_Flow_Post, float4(TexCoord, 0.0, _MipBias)).xy * DownsampledRatio;
         MotionVectors *= _Scale;
 
         float4 Source = tex2D(Sample_Color, TexCoord); // Color from the original image
