@@ -33,7 +33,7 @@
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-namespace OpticalFlowLK
+namespace MotionBlur
 {
     /*
         [Shader parameters]
@@ -62,7 +62,7 @@ namespace OpticalFlowLK
         [Macros for resolution sizes and scaling]
     */
 
-    #define FP16_MINIMUM float((1.0 / float(1 << 14)) * (0.0 + (1.0 / 1024.0)))
+	#define FP16_MINIMUM float((1.0 / float(1 << 14)) * (0.0 + (1.0 / 1024.0)))
 
     #define RCP_HEIGHT (1.0 / BUFFER_HEIGHT)
     #define ASPECT_RATIO (BUFFER_WIDTH * RCP_HEIGHT)
@@ -374,7 +374,7 @@ namespace OpticalFlowLK
         B += (S[3] * T[3]);
         B /= 4.0;
 
-        float2 UV = (D != 0.0) ? ((A.yx * B.xy - A.zz * B.yx) / D) + (Vectors * 2.0) : 0.0;
+        float2 UV = (D != 0.0) ? ((A.yx * B.xy - A.zz * B.yx) / D) + Vectors : 0.0;
         return UV;
     }
 
@@ -428,10 +428,7 @@ namespace OpticalFlowLK
         float2 ScreenSize = float2(BUFFER_WIDTH, BUFFER_HEIGHT);
         float2 ScreenCoord = TexCoord.xy * ScreenSize;
 
-        // DownsampledRatio = Texel ratio between the finest optical flow level and the buffer we're warping
-        // We need this because the velocity between the downsampled finest level is not to-scale with the current buffer
-        float2 DownsampledRatio = BUFFER_SIZE_3 / ScreenSize;
-        float2 Velocity = tex2Dlod(Sample_Common_3_A, float4(TexCoord, 0.0, _MipBias)).xy * DownsampledRatio;
+        float2 Velocity = tex2Dlod(Sample_Common_3_A, float4(TexCoord, 0.0, _MipBias)).xy;
 
         float2 ScaledVelocity = Velocity * _Scale;
         ScaledVelocity = (_FrameRateScaling) ?  ScaledVelocity / FrameTimeRatio : ScaledVelocity;

@@ -54,7 +54,7 @@ namespace OpticalFlowLK
     /*
         [Macros for resolution sizes and scaling]
     */
-    
+
     #define FP16_MINIMUM float((1.0 / float(1 << 14)) * (0.0 + (1.0 / 1024.0)))
 
     #define RCP_HEIGHT (1.0 / BUFFER_HEIGHT)
@@ -367,7 +367,7 @@ namespace OpticalFlowLK
         B += (S[3] * T[3]);
         B /= 4.0;
 
-        float2 UV = (D != 0.0) ? ((A.yx * B.xy - A.zz * B.yx) / D) + (Vectors * 2.0) : 0.0;
+        float2 UV = (D != 0.0) ? ((A.yx * B.xy - A.zz * B.yx) / D) + Vectors : 0.0;
         return UV;
     }
 
