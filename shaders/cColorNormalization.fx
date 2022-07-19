@@ -107,8 +107,5 @@ technique cColorNormalization
     {
         VertexShader = Basic_VS;
         PixelShader = Normalization_PS;
-        #if BUFFER_COLOR_BIT_DEPTH == 8
-            SRGBWriteEnable = TRUE;
-        #endif
     }
 }

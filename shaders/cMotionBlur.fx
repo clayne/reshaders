@@ -62,7 +62,7 @@ namespace MotionBlur
         [Macros for resolution sizes and scaling]
     */
 
-	#define FP16_MINIMUM float((1.0 / float(1 << 14)) * (0.0 + (1.0 / 1024.0)))
+    #define FP32_MINIMUM float((1.0 / (1 << 126)) * (0.0 + (1.0 / (1 << 23))))
 
     #define RCP_HEIGHT (1.0 / BUFFER_HEIGHT)
     #define ASPECT_RATIO (BUFFER_WIDTH * RCP_HEIGHT)
@@ -242,7 +242,7 @@ namespace MotionBlur
         Color.xyz = saturate(normalize(Frame.xyz));
         // Calculate the distance between the normalized chromaticity coordinates and its middle-gray
         // Middle-gray = (maximum normalized value, 1.0) / (sum of normalized components, sqrt(3.0))
-        Color = saturate(distance(Color.xyz, 1.0 / sqrt(3.0)));
+        Color = saturate(distance(Color.xyz, rsqrt(3.0)));
     }
 
     void Blit_Frame_PS(in float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD, out float4 OutputColor0 : SV_TARGET0)
@@ -349,7 +349,7 @@ namespace MotionBlur
         S[3] = tex2D(Sample_Common_1_C, TexCoord.zy).xy;
 
         // A.x = Ix^2 (A11); A.y = Iy^2 (A22); A.z = IxIy (A12)
-        float3 A = float3(FP16_MINIMUM, FP16_MINIMUM, 0.0);
+        float3 A = float3(FP32_MINIMUM, FP32_MINIMUM, 0.0);
         A += (S[0].xyx * S[0].xyy);
         A += (S[1].xyx * S[1].xyy);
         A += (S[2].xyx * S[2].xyy);
