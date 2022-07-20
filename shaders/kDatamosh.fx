@@ -241,16 +241,17 @@ namespace Datamosh
     BLUR_VS(Post_Blur_0_VS, false, BUFFER_SIZE_2)
     BLUR_VS(Post_Blur_1_VS, true, BUFFER_SIZE_2)
 
-    void Level_VS(in uint ID, in float2 TexelSize, out float4 Position, out float2 Tex0, out float4 Tex1)
+    void Level_VS(in uint ID, in float2 TexelSize, out float4 Position, out float4 Tex)
     {
-        Basic_VS(ID, Position, Tex0);
-        Tex1 = Tex0.xyxy + (float4(-0.5, -0.5, 0.5, 0.5) / TexelSize.xyxy);
+        float2 TexCoordVS = 0.0;
+        Basic_VS(ID, Position, TexCoordVS);
+        Tex = TexCoordVS.xyxy + (float4(-0.5, -0.5, 0.5, 0.5) / TexelSize.xyxy);
     }
 
     #define CREATE_LEVEL_VS(NAME, BUFFER_SIZE) \
-        void NAME(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float2 Tex0 : TEXCOORD0, out float4 Tex1 : TEXCOORD1) \
+        void NAME(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 Tex : TEXCOORD0) \
         { \
-            Level_VS(ID, BUFFER_SIZE, Position, Tex0, Tex1); \
+            Level_VS(ID, BUFFER_SIZE, Position, Tex); \
         }
 
     CREATE_LEVEL_VS(LK_Level_1_VS, BUFFER_SIZE_1)
@@ -414,12 +415,12 @@ namespace Datamosh
         S[3] = tex2D(Sample_Common_1_C, TexCoord.zy).xy;
 
         // A.x = Ix^2 (A11); A.y = Iy^2 (A22); A.z = IxIy (A12)
-        float3 A = float3(FP16_SMALLEST_SUBNORMAL, FP16_SMALLEST_SUBNORMAL, 0.0);
+        float3 A = 0.0;
         A += (S[0].xyx * S[0].xyy);
         A += (S[1].xyx * S[1].xyy);
         A += (S[2].xyx * S[2].xyy);
         A += (S[3].xyx * S[3].xyy);
-        A /= 4.0;
+        A.xy = max(A.xy, FP16_SMALLEST_SUBNORMAL);
 
         // Determinant
         float D = (A.z * A.z - A.x * A.y);
@@ -437,21 +438,30 @@ namespace Datamosh
         B += (S[1] * T[1]);
         B += (S[2] * T[2]);
         B += (S[3] * T[3]);
-        B /= 4.0;
 
         float2 UV = (D != 0.0) ? ((A.yx * B.xy - A.zz * B.yx) / D) + Vectors : 0.0;
         return UV;
     }
 
+    float2 Average2D(sampler2D Source, float4 TexCoord)
+    {
+        float2 Color = 0.0;
+        Color += (tex2D(Source, TexCoord.xw).xy * 0.25);
+        Color += (tex2D(Source, TexCoord.zw).xy * 0.25);
+        Color += (tex2D(Source, TexCoord.xy).xy * 0.25);
+        Color += (tex2D(Source, TexCoord.zy).xy * 0.25);
+        return Color;
+    }
+
     #define CREATE_LK_LEVEL_PS(NAME, LEVEL, SAMPLER) \
-        void NAME(in float4 Position : SV_POSITION, in float2 Tex0 : TEXCOORD0, in float4 Tex1 : TEXCOORD1, out float2 Color : SV_TARGET0) \
+        void NAME(in float4 Position : SV_POSITION, in float4 Tex : TEXCOORD0, out float2 Color : SV_TARGET0) \
         { \
-            Color = Lucas_Kanade(LEVEL, tex2D(SAMPLER, Tex0).xy, Tex1); \
+            Color = Lucas_Kanade(LEVEL, Average2D(SAMPLER, Tex).xy, Tex); \
         }
 
-    void LK_Level_6_PS(in float4 Position : SV_POSITION, in float2 Tex0 : TEXCOORD0, in float4 Tex1 : TEXCOORD1, out float2 Color : SV_TARGET0)
+    void LK_Level_6_PS(in float4 Position : SV_POSITION, in float4 Tex : TEXCOORD0, out float2 Color : SV_TARGET0)
     {
-        Color = Lucas_Kanade(5, 0.0, Tex1);
+        Color = Lucas_Kanade(5, 0.0, Tex);
     }
 
     CREATE_LK_LEVEL_PS(LK_Level_5_PS, 4, Sample_Common_6)
@@ -459,9 +469,9 @@ namespace Datamosh
     CREATE_LK_LEVEL_PS(LK_Level_3_PS, 2, Sample_Common_4)
     CREATE_LK_LEVEL_PS(LK_Level_2_PS, 1, Sample_Common_3)
 
-    void LK_Level_1_PS(in float4 Position : SV_POSITION, in float2 Tex0 : TEXCOORD0, in float4 Tex1 : TEXCOORD1, out float4 Color : SV_TARGET0)
+    void LK_Level_1_PS(in float4 Position : SV_POSITION, in float4 Tex : TEXCOORD0, out float4 Color : SV_TARGET0)
     {
-        Color = float4(Lucas_Kanade(0, tex2D(Sample_Common_2_A, Tex0).xy, Tex1), 0.0, _BlendFactor);
+        Color = float4(Lucas_Kanade(0, Average2D(Sample_Common_2_A, Tex).xy, Tex), 0.0, _BlendFactor);
     }
 
     void Copy_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
