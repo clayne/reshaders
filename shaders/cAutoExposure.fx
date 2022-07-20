@@ -87,6 +87,7 @@ void Basic_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out f
 }
 
 // Pixel shaders
+// TODO: Add average, spot, and center-weighted metering with adjustable radius and slope
 
 void Blit_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
 {
