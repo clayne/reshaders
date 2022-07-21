@@ -377,9 +377,14 @@ namespace Datamosh
 
     void Derivatives_Temporal_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0)
     {
-        float Current = tex2D(Sample_Common_1_A, TexCoord).x;
-        float Previous = tex2D(Sample_Common_1_C, TexCoord).x;
-        OutputColor0 = Current - Previous;
+        float I0 = tex2D(Sample_Common_1_C, TexCoord).x;
+        float I1 = tex2D(Sample_Common_1_A, TexCoord).x;
+        OutputColor0 = I0 - I1;
+    }
+
+    void Copy_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+    {
+        OutputColor0 = tex2D(Sample_Common_1_A, TexCoord);
     }
 
     void Derivatives_Spatial_PS(in float4 Position : SV_POSITION, in float4 TexCoords[2] : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0)
@@ -389,14 +394,14 @@ namespace Datamosh
         // A0     A1
         // A2     B0
         //   C0 C1
-        float A0 = tex2D(Sample_Common_1_A, TexCoords[0].xw).x * 4.0; // <-1.5, +0.5>
-        float A1 = tex2D(Sample_Common_1_A, TexCoords[0].yw).x * 4.0; // <+1.5, +0.5>
-        float A2 = tex2D(Sample_Common_1_A, TexCoords[0].xz).x * 4.0; // <-1.5, -0.5>
-        float B0 = tex2D(Sample_Common_1_A, TexCoords[0].yz).x * 4.0; // <+1.5, -0.5>
-        float B1 = tex2D(Sample_Common_1_A, TexCoords[1].xw).x * 4.0; // <-0.5, +1.5>
-        float B2 = tex2D(Sample_Common_1_A, TexCoords[1].yw).x * 4.0; // <+0.5, +1.5>
-        float C0 = tex2D(Sample_Common_1_A, TexCoords[1].xz).x * 4.0; // <-0.5, -1.5>
-        float C1 = tex2D(Sample_Common_1_A, TexCoords[1].yz).x * 4.0; // <+0.5, -1.5>
+        float A0 = tex2D(Sample_Common_1_C, TexCoords[0].xw).x * 4.0; // <-1.5, +0.5>
+        float A1 = tex2D(Sample_Common_1_C, TexCoords[0].yw).x * 4.0; // <+1.5, +0.5>
+        float A2 = tex2D(Sample_Common_1_C, TexCoords[0].xz).x * 4.0; // <-1.5, -0.5>
+        float B0 = tex2D(Sample_Common_1_C, TexCoords[0].yz).x * 4.0; // <+1.5, -0.5>
+        float B1 = tex2D(Sample_Common_1_C, TexCoords[1].xw).x * 4.0; // <-0.5, +1.5>
+        float B2 = tex2D(Sample_Common_1_C, TexCoords[1].yw).x * 4.0; // <+0.5, +1.5>
+        float C0 = tex2D(Sample_Common_1_C, TexCoords[1].xz).x * 4.0; // <-0.5, -1.5>
+        float C1 = tex2D(Sample_Common_1_C, TexCoords[1].yz).x * 4.0; // <+0.5, -1.5>
 
         OutputColor0 = 0.0;
         OutputColor0.x = ((B2 + A1 + B0 + C1) - (B1 + A0 + A2 + C0)) / 12.0;
@@ -409,10 +414,10 @@ namespace Datamosh
         // [TexCoord.xw TexCoord.zw]
         // [TexCoord.xy TexCoord.zy]
         float2 S[4];
-        S[0] = tex2D(Sample_Common_1_C, TexCoord.xw).xy;
-        S[1] = tex2D(Sample_Common_1_C, TexCoord.zw).xy;
-        S[2] = tex2D(Sample_Common_1_C, TexCoord.xy).xy;
-        S[3] = tex2D(Sample_Common_1_C, TexCoord.zy).xy;
+        S[0] = tex2D(Sample_Common_1_A, TexCoord.xw).xy;
+        S[1] = tex2D(Sample_Common_1_A, TexCoord.zw).xy;
+        S[2] = tex2D(Sample_Common_1_A, TexCoord.xy).xy;
+        S[3] = tex2D(Sample_Common_1_A, TexCoord.zy).xy;
 
         // A.x = Ix^2 (A11); A.y = Iy^2 (A22); A.z = IxIy (A12)
         float3 A = 0.0;
@@ -472,11 +477,6 @@ namespace Datamosh
     void LK_Level_1_PS(in float4 Position : SV_POSITION, in float4 Tex : TEXCOORD0, out float4 Color : SV_TARGET0)
     {
         Color = float4(Lucas_Kanade(0, Average2D(Sample_Common_2_A, Tex).xy, Tex), 0.0, _BlendFactor);
-    }
-
-    void Copy_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
-    {
-        OutputColor0 = tex2D(Sample_Common_1_A, TexCoord);
     }
 
     void Post_Blur_0_PS(in float4 Position : SV_POSITION, in float4 TexCoords[7] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
@@ -602,9 +602,14 @@ namespace Datamosh
         CREATE_PASS(Pre_Blur_0_VS, Pre_Blur_0_PS, Render_Common_1_B)
         CREATE_PASS(Pre_Blur_1_VS, Pre_Blur_1_PS, Render_Common_1_A) // Save this to store later
 
-        // Calculate derivative pyramids
+        // Calculate temporal derivative pyramids
         CREATE_PASS(Basic_VS, Derivatives_Temporal_PS, Render_Common_1_B)
-        CREATE_PASS(Derivatives_Spatial_VS, Derivatives_Spatial_PS, Render_Common_1_C)
+
+        // Copy current convolved frame for next frame
+        CREATE_PASS(Basic_VS, Copy_PS, Render_Common_1_C)
+
+        // Calculate spatial derivative pyramids
+        CREATE_PASS(Derivatives_Spatial_VS, Derivatives_Spatial_PS, Render_Common_1_A)
 
         // Bilinear Optical Flow
         CREATE_PASS(LK_Level_6_VS, LK_Level_6_PS, Render_Common_6)
@@ -624,9 +629,6 @@ namespace Datamosh
             SrcBlend = INVSRCALPHA;
             DestBlend = SRCALPHA;
         }
-
-        // Copy current convolved frame for next frame
-        CREATE_PASS(Basic_VS, Copy_PS, Render_Common_1_C)
 
         // Gaussian blur
         CREATE_PASS(Post_Blur_0_VS, Post_Blur_0_PS, Render_Common_2_B)
