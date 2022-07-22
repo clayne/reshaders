@@ -346,7 +346,7 @@ namespace MotionBlur
     float2 Lucas_Kanade(int Level, float2 Vectors, float4 TexCoord)
     {
         /*
-            Fetch 2x2 bilinear-filtered windows for spatial and temporal dertivatives
+            Fetch 2x2 bilinear-filtered windows for spatial(S) and temporal(T) dertivatives
             [TexCoord.xw TexCoord.zw]
             [TexCoord.xy TexCoord.zy]
         */
@@ -375,7 +375,7 @@ namespace MotionBlur
             B2 = IyIt
         */
 
-        // Solve window equation at matrix A
+        // Create matrix A and solve its window sum
         // A.x = A11; A.y = A22; A.z = A12/A22
         float3 A = 0.0;
         A += (S[0].xyx * S[0].xyy);
@@ -383,7 +383,19 @@ namespace MotionBlur
         A += (S[2].xyx * S[2].xyy);
         A += (S[3].xyx * S[3].xyy);
 
-        // Solve window equation at vector B
+        // Ensure Lucas-Kanade's determinant is non-zero
+        A.xy = max(A.xy, FP16_SMALLEST_SUBNORMAL);
+
+        // Create -IxIy (A12) for A^-1 and its determinant
+        A.z = A.z * (-1.0);
+
+        // Calculate A^-1 determinant
+        float D = ((A.x * A.y) - (A.z * A.z));
+
+        // Calculate A^-1
+        A = (1.0 / D) * A;
+
+        // Create vector B and solve its window sum
         // B.x = B1; B.y = B2
         float2 B = 0.0;
         B += (S[0] * T[0]);
@@ -391,20 +403,11 @@ namespace MotionBlur
         B += (S[2] * T[2]);
         B += (S[3] * T[3]);
 
-        // Ensure Lucas-Kanade's determinant is non-zero
-        A.xy = max(A.xy, FP16_SMALLEST_SUBNORMAL);
-
-        // Create -IxIy (A12) for A's determinant and LK matrix
-        A.z = A.z * (-1.0);
-
-        // Calculate determinant
-        float D = ((A.x * A.y) - (A.z * A.z));
-
         // Calculate Lucas-Kanade matrix
         float2 LK = 0.0;
         LK.x = dot(A.yz, -B.xy);
         LK.y = dot(A.zx, -B.xy);
-        LK = (D != 0.0) ? (LK / D) + Vectors : 0.0;
+        LK = (D != 0.0) ? LK + Vectors : 0.0;
         return LK;
     }
 
