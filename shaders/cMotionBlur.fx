@@ -53,7 +53,7 @@ namespace MotionBlur
     OPTION(float, _MipBias, "slider", "Optical flow", "Optical flow mipmap bias", 0.0, 6.0, 0.5)
     OPTION(float, _BlendFactor, "slider", "Optical flow", "Temporal blending factor", 0.0, 0.9, 0.2)
 
-    OPTION(float, _Scale, "slider", "Main", "Blur scale", 0.0, 1.0, 0.5)
+    OPTION(float, _Scale, "slider", "Main", "Blur scale", 0.0, 2.0, 1.0)
 
     OPTION(bool, _FrameRateScaling, "radio", "Other", "Enable frame-rate scaling", 0.0, 1.0, false)
     OPTION(float, _TargetFrameRate, "drag", "Other", "Target frame-rate", 0.0, 144.0, 60.0)
@@ -390,9 +390,6 @@ namespace MotionBlur
         B += (S[1] * T[1]);
         B += (S[2] * T[2]);
         B += (S[3] * T[3]);
-
-        // Ensure Lucas-Kanade's determinant is non-zero
-        A.xy = max(A.xy, FP16_SMALLEST_SUBNORMAL);
 
         // Create -IxIy (A12) for A^-1 and its determinant
         A.z = A.z * (-1.0);

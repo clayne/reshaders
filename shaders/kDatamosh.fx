@@ -456,9 +456,6 @@ namespace Datamosh
         B += (S[2] * T[2]);
         B += (S[3] * T[3]);
 
-        // Ensure Lucas-Kanade's determinant is non-zero
-        A.xy = max(A.xy, FP16_SMALLEST_SUBNORMAL);
-
         // Create -IxIy (A12) for A^-1 and its determinant
         A.z = A.z * (-1.0);
 
