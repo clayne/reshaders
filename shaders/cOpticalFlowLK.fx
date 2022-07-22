@@ -356,7 +356,7 @@ namespace OpticalFlowLK
         A.xy = max(A.xy, FP16_SMALLEST_SUBNORMAL);
 
         // Determinant
-        float D = (A.z * A.z - A.x * A.y);
+        float D = ((A.x * A.y) - (A.z * A.z));
 
         // Temporal derivative window in 4 bilinear fetches
         float T[4];
@@ -372,7 +372,7 @@ namespace OpticalFlowLK
         B += (S[2] * T[2]);
         B += (S[3] * T[3]);
 
-        float2 UV = (D != 0.0) ? ((A.yx * B.xy - A.zz * B.yx) / D) + Vectors : 0.0;
+        float2 UV = (D != 0.0) ? (((A.yx * B.xy) - (A.zz * B.yx)) / D) + Vectors : 0.0;
         return UV;
     }
 
