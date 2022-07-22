@@ -426,11 +426,12 @@ namespace Datamosh
         A += (S[2].xyx * S[2].xyy);
         A += (S[3].xyx * S[3].xyy);
         A.xy = max(A.xy, FP16_SMALLEST_SUBNORMAL);
+        A.z = A.z * (-1.0);
 
         // Determinant
         float D = ((A.x * A.y) - (A.z * A.z));
 
-        // Temporal derivative window in 4 bilinear fetches
+        // 3x3 Temporal derivative window in 4 bilinear fetches
         float T[4];
         T[0] = tex2D(Sample_Common_1_B, TexCoord.xw).x;
         T[1] = tex2D(Sample_Common_1_B, TexCoord.zw).x;
@@ -444,7 +445,10 @@ namespace Datamosh
         B += (S[2] * T[2]);
         B += (S[3] * T[3]);
 
-        float2 UV = (D != 0.0) ? (((A.yx * B.xy) - (A.zz * B.yx)) / D) + Vectors : 0.0;
+        float2 UV = 0.0;
+        UV.x = dot(A.yz, -B.xy);
+        UV.y = dot(A.zx, -B.xy);
+        UV = (D != 0.0) ? (UV / D) + Vectors : 0.0;
         return UV;
     }
 
@@ -548,7 +552,7 @@ namespace Datamosh
 
         float4 Source = tex2D(Sample_Color, TexCoord); // Color from the original image
         float Displacement = tex2D(Sample_Accumulation, TexCoord).r; // Displacement vector
-        float4 Working = tex2D(Sample_Feedback, TexCoord - MotionVectors * DisplacementTexel);
+        float4 Working = tex2D(Sample_Feedback, TexCoord + MotionVectors * DisplacementTexel);
 
         MotionVectors *= int2(BUFFER_WIDTH, BUFFER_HEIGHT); // Normalized screen space -> Pixel coordinates
         MotionVectors += (Random.xy - 0.5) * _Diffusion; // Small random displacement (diffusion)
