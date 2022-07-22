@@ -410,46 +410,67 @@ namespace Datamosh
 
     float2 Lucas_Kanade(int Level, float2 Vectors, float4 TexCoord)
     {
-        // 3x3 Spatial derivative window in 4 bilinear fetches
-        // [TexCoord.xw TexCoord.zw]
-        // [TexCoord.xy TexCoord.zy]
+        /*
+            Fetch 2x2 bilinear-filtered windows for spatial and temporal dertivatives
+            [TexCoord.xw TexCoord.zw]
+            [TexCoord.xy TexCoord.zy]
+        */
+
         float2 S[4];
         S[0] = tex2D(Sample_Common_1_A, TexCoord.xw).xy;
         S[1] = tex2D(Sample_Common_1_A, TexCoord.zw).xy;
         S[2] = tex2D(Sample_Common_1_A, TexCoord.xy).xy;
         S[3] = tex2D(Sample_Common_1_A, TexCoord.zy).xy;
 
-        // A.x = Ix^2 (A11); A.y = Iy^2 (A22); A.z = IxIy (A12)
-        float3 A = 0.0;
-        A += (S[0].xyx * S[0].xyy);
-        A += (S[1].xyx * S[1].xyy);
-        A += (S[2].xyx * S[2].xyy);
-        A += (S[3].xyx * S[3].xyy);
-        A.xy = max(A.xy, FP16_SMALLEST_SUBNORMAL);
-        A.z = A.z * (-1.0);
-
-        // Determinant
-        float D = ((A.x * A.y) - (A.z * A.z));
-
-        // 3x3 Temporal derivative window in 4 bilinear fetches
         float T[4];
         T[0] = tex2D(Sample_Common_1_B, TexCoord.xw).x;
         T[1] = tex2D(Sample_Common_1_B, TexCoord.zw).x;
         T[2] = tex2D(Sample_Common_1_B, TexCoord.xy).x;
         T[3] = tex2D(Sample_Common_1_B, TexCoord.zy).x;
 
-        // B.x = IxIt (Q1); B.y = IyIt (Q2)
+        /*
+            Calculate Lucas-Kanade optical flow by solving (A^-1 * B)
+            [A11 A12]^-1 [-B1] -> [ A11 -A12] [-B1]
+            [A21 A22]^-1 [-B2] -> [-A21  A22] [-B2]
+            A11 = Ix^2
+            A12 = IxIy
+            A21 = IxIy
+            A22 = Iy^2
+            B1 = IxIt
+            B2 = IyIt
+        */
+
+        // Solve window equation at matrix A
+        // A.x = A11; A.y = A22; A.z = A12/A22
+        float3 A = 0.0;
+        A += (S[0].xyx * S[0].xyy);
+        A += (S[1].xyx * S[1].xyy);
+        A += (S[2].xyx * S[2].xyy);
+        A += (S[3].xyx * S[3].xyy);
+
+        // Solve window equation at vector B
+        // B.x = B1; B.y = B2
         float2 B = 0.0;
         B += (S[0] * T[0]);
         B += (S[1] * T[1]);
         B += (S[2] * T[2]);
         B += (S[3] * T[3]);
 
-        float2 UV = 0.0;
-        UV.x = dot(A.yz, -B.xy);
-        UV.y = dot(A.zx, -B.xy);
-        UV = (D != 0.0) ? (UV / D) + Vectors : 0.0;
-        return UV;
+        // Ensure Lucas-Kanade's determinant is non-zero
+        A.xy = max(A.xy, FP16_SMALLEST_SUBNORMAL);
+
+        // Create -IxIy (A12) for A's determinant and LK matrix
+        A.z = A.z * (-1.0);
+
+        // Calculate determinant
+        float D = ((A.x * A.y) - (A.z * A.z));
+
+        // Calculate Lucas-Kanade matrix
+        float2 LK = 0.0;
+        LK.x = dot(A.yz, -B.xy);
+        LK.y = dot(A.zx, -B.xy);
+        LK = (D != 0.0) ? (LK / D) + Vectors : 0.0;
+        return LK;
     }
 
     float2 Average2D(sampler2D Source, float4 TexCoord)
