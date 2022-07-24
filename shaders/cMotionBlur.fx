@@ -118,7 +118,7 @@ namespace MotionBlur
         #endif
     };
 
-    CREATE_TEXTURE(Render_Common_0, int2(BUFFER_WIDTH >> 1, BUFFER_HEIGHT >> 1), RG8, 4)
+    CREATE_TEXTURE(Render_Common_0, int2(BUFFER_WIDTH >> 1, BUFFER_HEIGHT >> 1), RG16F, 6)
     CREATE_SAMPLER(Sample_Common_0, Render_Common_0)
 
     CREATE_TEXTURE(Render_Common_1_A, BUFFER_SIZE_1, RGBA16F, 9)
@@ -372,7 +372,7 @@ namespace MotionBlur
         */
 
         // Create matrix A and solve its window sum
-        float3 A = float3(FP16_SMALLEST_SUBNORMAL, FP16_SMALLEST_SUBNORMAL, 0.0);
+        float3 A = 0.0;
 
         // Create vector B and solve its window sum
         float2 B = 0.0;
@@ -388,6 +388,9 @@ namespace MotionBlur
             B.x += dot(S[i].xy, T[i].xy);
             B.y += dot(S[i].zw, T[i].xy);
         }
+
+        // Make determinant non-zero
+        A.xy = max(A.xy, FP16_SMALLEST_SUBNORMAL);
 
         // Create -IxIy (A12) for A^-1 and its determinant
         A.z = A.z * (-1.0);
