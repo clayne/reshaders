@@ -111,10 +111,10 @@ namespace OpticalFlowLK
         #endif
     };
 
-    CREATE_TEXTURE(Render_Common_0, int2(BUFFER_WIDTH >> 1, BUFFER_HEIGHT >> 1), R8, 4)
+    CREATE_TEXTURE(Render_Common_0, int2(BUFFER_WIDTH >> 1, BUFFER_HEIGHT >> 1), RG8, 4)
     CREATE_SAMPLER(Sample_Common_0, Render_Common_0)
 
-    CREATE_TEXTURE(Render_Common_1_A, BUFFER_SIZE_1, RG16F, 9)
+    CREATE_TEXTURE(Render_Common_1_A, BUFFER_SIZE_1, RGBA16F, 9)
     CREATE_SAMPLER(Sample_Common_1_A, Render_Common_1_A)
 
     CREATE_TEXTURE(Render_Common_1_B, BUFFER_SIZE_1, RG16F, 9)
@@ -229,17 +229,13 @@ namespace OpticalFlowLK
         [Pixel shaders]
     */
 
-    void Saturate_Image_PS(in float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD, out float4 Color : SV_TARGET0)
+    void Normalize_PS(in float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD, out float2 Color : SV_TARGET0)
     {
         float4 Frame = max(tex2D(Sample_Color, TexCoord), exp2(-10.0));
-        // Normalize color vector to always be in [0,1] range with a sum of sqrt(3.0)
-        Color.xyz = saturate(normalize(Frame.xyz));
-        // Calculate the distance between the normalized chromaticity coordinates and its middle-gray
-        // Middle-gray = (maximum normalized value, 1.0) / (sum of normalized components, sqrt(3.0))
-        Color = saturate(distance(Color.xyz, 1.0 / sqrt(3.0)));
+        Color = saturate(Frame.rg / dot(Frame.rgb, 1.0));
     }
 
-    void Blit_Frame_PS(in float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD, out float4 OutputColor0 : SV_TARGET0)
+    void Blit_PS(in float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD, out float4 OutputColor0 : SV_TARGET0)
     {
         OutputColor0 = tex2D(Sample_Common_0, TexCoord);
     }
@@ -305,8 +301,8 @@ namespace OpticalFlowLK
 
     void Derivatives_Temporal_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0)
     {
-        float I0 = tex2D(Sample_Common_1_C, TexCoord).x;
-        float I1 = tex2D(Sample_Common_1_A, TexCoord).x;
+        float2 I0 = tex2D(Sample_Common_1_C, TexCoord).xy;
+        float2 I1 = tex2D(Sample_Common_1_A, TexCoord).xy;
         OutputColor0 = I0 - I1;
     }
 
@@ -315,25 +311,25 @@ namespace OpticalFlowLK
         OutputColor0 = tex2D(Sample_Common_1_A, TexCoord);
     }
 
-    void Derivatives_Spatial_PS(in float4 Position : SV_POSITION, in float4 TexCoords[2] : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0)
+    void Derivatives_Spatial_PS(in float4 Position : SV_POSITION, in float4 TexCoords[2] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
         // Bilinear 5x5 Sobel by CeeJayDK
         //   B1 B2
         // A0     A1
         // A2     B0
         //   C0 C1
-        float A0 = tex2D(Sample_Common_1_C, TexCoords[0].xw).x * 4.0; // <-1.5, +0.5>
-        float A1 = tex2D(Sample_Common_1_C, TexCoords[0].yw).x * 4.0; // <+1.5, +0.5>
-        float A2 = tex2D(Sample_Common_1_C, TexCoords[0].xz).x * 4.0; // <-1.5, -0.5>
-        float B0 = tex2D(Sample_Common_1_C, TexCoords[0].yz).x * 4.0; // <+1.5, -0.5>
-        float B1 = tex2D(Sample_Common_1_C, TexCoords[1].xw).x * 4.0; // <-0.5, +1.5>
-        float B2 = tex2D(Sample_Common_1_C, TexCoords[1].yw).x * 4.0; // <+0.5, +1.5>
-        float C0 = tex2D(Sample_Common_1_C, TexCoords[1].xz).x * 4.0; // <-0.5, -1.5>
-        float C1 = tex2D(Sample_Common_1_C, TexCoords[1].yz).x * 4.0; // <+0.5, -1.5>
+        float2 A0 = tex2D(Sample_Common_1_C, TexCoords[0].xw).xy * 4.0; // <-1.5, +0.5>
+        float2 A1 = tex2D(Sample_Common_1_C, TexCoords[0].yw).xy * 4.0; // <+1.5, +0.5>
+        float2 A2 = tex2D(Sample_Common_1_C, TexCoords[0].xz).xy * 4.0; // <-1.5, -0.5>
+        float2 B0 = tex2D(Sample_Common_1_C, TexCoords[0].yz).xy * 4.0; // <+1.5, -0.5>
+        float2 B1 = tex2D(Sample_Common_1_C, TexCoords[1].xw).xy * 4.0; // <-0.5, +1.5>
+        float2 B2 = tex2D(Sample_Common_1_C, TexCoords[1].yw).xy * 4.0; // <+0.5, +1.5>
+        float2 C0 = tex2D(Sample_Common_1_C, TexCoords[1].xz).xy * 4.0; // <-0.5, -1.5>
+        float2 C1 = tex2D(Sample_Common_1_C, TexCoords[1].yz).xy * 4.0; // <+0.5, -1.5>
 
         OutputColor0 = 0.0;
-        OutputColor0.x = ((B2 + A1 + B0 + C1) - (B1 + A0 + A2 + C0)) / 12.0;
-        OutputColor0.y = ((A0 + B1 + B2 + A1) - (A2 + C0 + C1 + B0)) / 12.0;
+        OutputColor0.xy = ((B2 + A1 + B0 + C1) - (B1 + A0 + A2 + C0)) / 12.0;
+        OutputColor0.zw = ((A0 + B1 + B2 + A1) - (A2 + C0 + C1 + B0)) / 12.0;
     }
 
     float2 Lucas_Kanade(int Level, float2 Vectors, float4 TexCoord)
@@ -344,17 +340,17 @@ namespace OpticalFlowLK
             [TexCoord.xy TexCoord.zy]
         */
 
-        float2 S[4];
-        S[0] = tex2D(Sample_Common_1_A, TexCoord.xw).xy;
-        S[1] = tex2D(Sample_Common_1_A, TexCoord.zw).xy;
-        S[2] = tex2D(Sample_Common_1_A, TexCoord.xy).xy;
-        S[3] = tex2D(Sample_Common_1_A, TexCoord.zy).xy;
+        float4 S[4];
+        S[0] = tex2D(Sample_Common_1_A, TexCoord.xw).xyzw;
+        S[1] = tex2D(Sample_Common_1_A, TexCoord.zw).xyzw;
+        S[2] = tex2D(Sample_Common_1_A, TexCoord.xy).xyzw;
+        S[3] = tex2D(Sample_Common_1_A, TexCoord.zy).xyzw;
 
-        float T[4];
-        T[0] = tex2D(Sample_Common_1_B, TexCoord.xw).x;
-        T[1] = tex2D(Sample_Common_1_B, TexCoord.zw).x;
-        T[2] = tex2D(Sample_Common_1_B, TexCoord.xy).x;
-        T[3] = tex2D(Sample_Common_1_B, TexCoord.zy).x;
+        float2 T[4];
+        T[0] = tex2D(Sample_Common_1_B, TexCoord.xw).xy;
+        T[1] = tex2D(Sample_Common_1_B, TexCoord.zw).xy;
+        T[2] = tex2D(Sample_Common_1_B, TexCoord.xy).xy;
+        T[3] = tex2D(Sample_Common_1_B, TexCoord.zy).xy;
 
         /*
             Calculate Lucas-Kanade optical flow by solving (A^-1 * B)
@@ -369,20 +365,22 @@ namespace OpticalFlowLK
         */
 
         // Create matrix A and solve its window sum
-        // A.x = A11; A.y = A22; A.z = A12/A22
         float3 A = float3(FP16_SMALLEST_SUBNORMAL, FP16_SMALLEST_SUBNORMAL, 0.0);
-        A += (S[0].xyx * S[0].xyy);
-        A += (S[1].xyx * S[1].xyy);
-        A += (S[2].xyx * S[2].xyy);
-        A += (S[3].xyx * S[3].xyy);
 
         // Create vector B and solve its window sum
-        // B.x = B1; B.y = B2
         float2 B = 0.0;
-        B += (S[0] * T[0]);
-        B += (S[1] * T[1]);
-        B += (S[2] * T[2]);
-        B += (S[3] * T[3]);
+
+        for(int i = 0; i < 4; i++)
+        {
+            // A.x = A11; A.y = A22; A.z = A12/A22
+            A.x += dot(S[i].xy, S[i].xy);
+            A.y += dot(S[i].zw, S[i].zw);
+            A.z += dot(S[i].xy, S[i].zw);
+
+            // B.x = B1; B.y = B2
+            B.x += dot(S[i].xy, T[i].xy);
+            B.y += dot(S[i].zw, T[i].xy);
+        }
 
         // Create -IxIy (A12) for A^-1 and its determinant
         A.z = A.z * (-1.0);
@@ -465,10 +463,10 @@ namespace OpticalFlowLK
     technique cOpticalFlowLK
     {
         // Normalize current frame
-        CREATE_PASS(Basic_VS, Saturate_Image_PS, Render_Common_0)
+        CREATE_PASS(Basic_VS, Normalize_PS, Render_Common_0)
 
         // Scale frame
-        CREATE_PASS(Basic_VS, Blit_Frame_PS, Render_Common_1_A)
+        CREATE_PASS(Basic_VS, Blit_PS, Render_Common_1_A)
 
         // Pre-process Gaussian blur
         CREATE_PASS(Pre_Blur_0_VS, Pre_Blur_0_PS, Render_Common_1_B)
