@@ -109,7 +109,7 @@ namespace Datamosh
             MipFilter = LINEAR; \
         };
 
-    CREATE_TEXTURE(Render_Common_0, int2(BUFFER_WIDTH >> 1, BUFFER_HEIGHT >> 1), RG16F, 6)
+    CREATE_TEXTURE(Render_Common_0, int2(BUFFER_WIDTH >> 1, BUFFER_HEIGHT >> 1), RG8, 6)
     CREATE_SAMPLER(Sample_Common_0, Render_Common_0)
 
     CREATE_TEXTURE(Render_Common_1_A, BUFFER_SIZE_1, RGBA16F, 9)
@@ -304,7 +304,7 @@ namespace Datamosh
     void Normalize_PS(in float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD, out float2 Color : SV_TARGET0)
     {
         float4 Frame = max(tex2D(Sample_Color, TexCoord), exp2(-10.0));
-        Color = saturate(Frame.rg / dot(Frame.rgb, 1.0));
+        Color = saturate(normalize(Frame.rgb).xy);
     }
 
     void Blit_PS(in float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD, out float4 OutputColor0 : SV_TARGET0)
