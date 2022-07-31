@@ -42,12 +42,9 @@
 #define RENDER_BUFFER_HEIGHT int(256.0)
 
 #define SIZE int2(RENDER_BUFFER_WIDTH, RENDER_BUFFER_HEIGHT)
-#define BUFFER_SIZE_1 int2(ROUND_UP_EVEN(SIZE.x >> 0), ROUND_UP_EVEN(SIZE.y >> 0))
-#define BUFFER_SIZE_2 int2(ROUND_UP_EVEN(SIZE.x >> 1), ROUND_UP_EVEN(SIZE.y >> 1))
-#define BUFFER_SIZE_3 int2(ROUND_UP_EVEN(SIZE.x >> 2), ROUND_UP_EVEN(SIZE.y >> 2))
-#define BUFFER_SIZE_4 int2(ROUND_UP_EVEN(SIZE.x >> 3), ROUND_UP_EVEN(SIZE.y >> 3))
-#define BUFFER_SIZE_5 int2(ROUND_UP_EVEN(SIZE.x >> 4), ROUND_UP_EVEN(SIZE.y >> 4))
-#define BUFFER_SIZE_6 int2(ROUND_UP_EVEN(SIZE.x >> 5), ROUND_UP_EVEN(SIZE.y >> 5))
+#define BUFFER_SIZE_1 int2(SIZE >> 0)
+#define BUFFER_SIZE_2 int2(SIZE >> 1)
+#define BUFFER_SIZE_3 int2(SIZE >> 2)
 
 namespace Datamosh
 {
@@ -112,13 +109,13 @@ namespace Datamosh
     CREATE_TEXTURE(Render_Common_0, int2(BUFFER_WIDTH >> 1, BUFFER_HEIGHT >> 1), RG8, 6)
     CREATE_SAMPLER(Sample_Common_0, Render_Common_0)
 
-    CREATE_TEXTURE(Render_Common_1_A, BUFFER_SIZE_1, RGBA16F, 9)
+    CREATE_TEXTURE(Render_Common_1_A, BUFFER_SIZE_1, RGBA16F, 4)
     CREATE_SAMPLER(Sample_Common_1_A, Render_Common_1_A)
 
-    CREATE_TEXTURE(Render_Common_1_B, BUFFER_SIZE_1, RG16F, 9)
+    CREATE_TEXTURE(Render_Common_1_B, BUFFER_SIZE_1, RG16F, 4)
     CREATE_SAMPLER(Sample_Common_1_B, Render_Common_1_B)
 
-    CREATE_TEXTURE(Render_Common_2_A, BUFFER_SIZE_2, RG16F, 7)
+    CREATE_TEXTURE(Render_Common_2_A, BUFFER_SIZE_2, RG16F, 4)
     CREATE_SAMPLER(Sample_Common_2_A, Render_Common_2_A)
 
     CREATE_TEXTURE(Render_Common_2_B, BUFFER_SIZE_2, RG16F, 1)
@@ -126,15 +123,6 @@ namespace Datamosh
 
     CREATE_TEXTURE(Render_Common_3, BUFFER_SIZE_3, RG16F, 1)
     CREATE_SAMPLER(Sample_Common_3, Render_Common_3)
-
-    CREATE_TEXTURE(Render_Common_4, BUFFER_SIZE_4, RG16F, 1)
-    CREATE_SAMPLER(Sample_Common_4, Render_Common_4)
-
-    CREATE_TEXTURE(Render_Common_5, BUFFER_SIZE_5, RG16F, 1)
-    CREATE_SAMPLER(Sample_Common_5, Render_Common_5)
-
-    CREATE_TEXTURE(Render_Common_6, BUFFER_SIZE_6, RG16F, 1)
-    CREATE_SAMPLER(Sample_Common_6, Render_Common_6)
 
     texture2D Render_Color : COLOR;
 
@@ -151,7 +139,7 @@ namespace Datamosh
         #endif
     };
 
-    CREATE_TEXTURE(Render_Common_1_C, BUFFER_SIZE_1, RG16F, 9)
+    CREATE_TEXTURE(Render_Common_1_C, BUFFER_SIZE_1, RG16F, 4)
     CREATE_SAMPLER(Sample_Common_1_C, Render_Common_1_C)
 
     CREATE_TEXTURE(Render_Optical_Flow, BUFFER_SIZE_1, RG16F, 9)
@@ -257,9 +245,6 @@ namespace Datamosh
     CREATE_LEVEL_VS(LK_Level_1_VS, BUFFER_SIZE_1)
     CREATE_LEVEL_VS(LK_Level_2_VS, BUFFER_SIZE_2)
     CREATE_LEVEL_VS(LK_Level_3_VS, BUFFER_SIZE_3)
-    CREATE_LEVEL_VS(LK_Level_4_VS, BUFFER_SIZE_4)
-    CREATE_LEVEL_VS(LK_Level_5_VS, BUFFER_SIZE_5)
-    CREATE_LEVEL_VS(LK_Level_6_VS, BUFFER_SIZE_6)
 
     void Derivatives_Spatial_VS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float4 TexCoords[2] : TEXCOORD0)
     {
@@ -470,7 +455,7 @@ namespace Datamosh
         float2 LK = 0.0;
         LK.x = dot(A.yz, -B.xy);
         LK.y = dot(A.zx, -B.xy);
-        LK = (D != 0.0) ? LK + Vectors : 0.0;
+        LK = (D != 0.0) ? LK + (Vectors * 2.0) : 0.0;
         return LK;
     }
 
@@ -484,27 +469,21 @@ namespace Datamosh
         return Color;
     }
 
-    #define CREATE_LK_LEVEL_PS(NAME, LEVEL, SAMPLER) \
-        void NAME(in float4 Position : SV_POSITION, in float4 Tex : TEXCOORD0, out float2 Color : SV_TARGET0) \
-        { \
-            Color = Lucas_Kanade(LEVEL, Average2D(SAMPLER, Tex).xy, Tex); \
-        }
-
-    void LK_Level_6_PS(in float4 Position : SV_POSITION, in float4 Tex : TEXCOORD0, out float2 Color : SV_TARGET0)
+    void LK_Level_3_PS(in float4 Position: SV_POSITION, in float4 Tex: TEXCOORD0, out float4 Color: SV_TARGET0)
     {
-        Color = Lucas_Kanade(5, 0.0, Tex);
+        Color = float4(Lucas_Kanade(2, 0.0, Tex), 0.0, _BlendFactor);
     }
 
-    CREATE_LK_LEVEL_PS(LK_Level_5_PS, 4, Sample_Common_6)
-    CREATE_LK_LEVEL_PS(LK_Level_4_PS, 3, Sample_Common_5)
-    CREATE_LK_LEVEL_PS(LK_Level_3_PS, 2, Sample_Common_4)
-    CREATE_LK_LEVEL_PS(LK_Level_2_PS, 1, Sample_Common_3)
+    void LK_Level_2_PS(in float4 Position: SV_POSITION, in float4 Tex: TEXCOORD0, out float4 Color: SV_TARGET0)
+    {
+        Color = float4(Lucas_Kanade(1, Average2D(Sample_Common_3, Tex).xy, Tex), 0.0, _BlendFactor);
+    }
 
     void LK_Level_1_PS(in float4 Position : SV_POSITION, in float4 Tex : TEXCOORD0, out float4 Color : SV_TARGET0)
     {
         Color = float4(Lucas_Kanade(0, Average2D(Sample_Common_2_A, Tex).xy, Tex), 0.0, _BlendFactor);
     }
-
+    
     void Post_Blur_0_PS(in float4 Position : SV_POSITION, in float4 TexCoords[7] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
         Gaussian_Blur(Sample_Optical_Flow, TexCoords, false, OutputColor0);
@@ -638,12 +617,8 @@ namespace Datamosh
         CREATE_PASS(Derivatives_Spatial_VS, Derivatives_Spatial_PS, Render_Common_1_A)
 
         // Bilinear Optical Flow
-        CREATE_PASS(LK_Level_6_VS, LK_Level_6_PS, Render_Common_6)
-        CREATE_PASS(LK_Level_5_VS, LK_Level_5_PS, Render_Common_5)
-        CREATE_PASS(LK_Level_4_VS, LK_Level_4_PS, Render_Common_4)
         CREATE_PASS(LK_Level_3_VS, LK_Level_3_PS, Render_Common_3)
         CREATE_PASS(LK_Level_2_VS, LK_Level_2_PS, Render_Common_2_A)
-
         pass
         {
             VertexShader = LK_Level_1_VS;
