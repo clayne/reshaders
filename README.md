@@ -1,5 +1,5 @@
 
-# brimsonFX
+# BrimsonFX
  
 ## ...Why?
 
