@@ -459,7 +459,7 @@ namespace Datamosh
         // Propagate (add) vectors
         LK = (D != 0.0) ? LK + Vectors : 0.0;
 
-        // Do not multiply on fine
+        // Do not multiply on the finest level
         LK = (Level > 0) ? LK * 2.0 : LK;
         return LK;
     }
