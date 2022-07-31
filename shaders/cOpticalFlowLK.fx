@@ -383,7 +383,7 @@ namespace OpticalFlowLK
         float2 LK = 0.0;
         LK.x = dot(A.yz, -B.xy);
         LK.y = dot(A.zx, -B.xy);
-        LK = (D != 0.0) ? LK + Vectors : 0.0;
+        LK = (D != 0.0) ? LK + (Vectors * 2.0) : 0.0;
         return LK;
     }
 
