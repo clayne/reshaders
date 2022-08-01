@@ -39,7 +39,7 @@ namespace MotionBlur
         [Shader parameters]
     */
 
-    uniform float _FrameTime < source = "frametime"; >;
+    uniform float _FrameTime < source = "frametime"; > ;
 
     #define OPTION(DATA_TYPE, NAME, TYPE, CATEGORY, LABEL, MINIMUM, MAXIMUM, DEFAULT) \
         uniform DATA_TYPE NAME < \
@@ -48,7 +48,7 @@ namespace MotionBlur
             ui_label = LABEL; \
             ui_min = MINIMUM; \
             ui_max = MAXIMUM; \
-        > = DEFAULT;
+        > = DEFAULT; \
 
     OPTION(float, _MipBias, "slider", "Optical flow", "Optical flow mipmap bias", 0.0, 6.0, 0.5)
     OPTION(float, _BlendFactor, "slider", "Optical flow", "Temporal blending factor", 0.0, 0.9, 0.2)
@@ -98,7 +98,6 @@ namespace MotionBlur
             MinFilter = LINEAR; \
             MipFilter = LINEAR; \
         };
-
 
     texture2D Render_Color : COLOR;
 
@@ -200,15 +199,18 @@ namespace MotionBlur
     CREATE_BLUR_VS(Post_Blur_0_VS, false, BUFFER_SIZE_3)
     CREATE_BLUR_VS(Post_Blur_1_VS, true, BUFFER_SIZE_3)
 
-    void Level_VS(in uint ID, in float2 TexelSize, out float4 Position, out float4 Tex)
+    void Level_VS(in uint ID, in float2 TexelSize, out float4 Position, out float4 Tex[4])
     {
         float2 TexCoordVS = 0.0;
         Basic_VS(ID, Position, TexCoordVS);
-        Tex = TexCoordVS.xyxy + (float4(-0.5, -0.5, 0.5, 0.5) / TexelSize.xyxy);
+        Tex[0] = TexCoordVS.xyxy + (float4(-1.5, +0.5, -0.5, +1.5) / TexelSize.xyxy);
+        Tex[1] = TexCoordVS.xyxy + (float4(+0.5, +0.5, +1.5, +1.5) / TexelSize.xyxy);
+        Tex[2] = TexCoordVS.xyxy + (float4(-1.5, -1.5, -0.5, -0.5) / TexelSize.xyxy);
+        Tex[3] = TexCoordVS.xyxy + (float4(+0.5, -1.5, +1.5, -0.5) / TexelSize.xyxy);
     }
 
     #define CREATE_LEVEL_VS(NAME, BUFFER_SIZE) \
-        void NAME(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 Tex : TEXCOORD0) \
+        void NAME(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 Tex[4] : TEXCOORD0) \
         { \
             Level_VS(ID, BUFFER_SIZE, Position, Tex); \
         }
@@ -248,9 +250,9 @@ namespace MotionBlur
         int CoordIndex = 1;
         int WeightIndex = 1;
 
-        while(CoordIndex < 4)
+        while (CoordIndex < 4)
         {
-            if(!Alt)
+            if (!Alt)
             {
                 OutputColor0 += (tex2D(Source, TexCoords[CoordIndex].xy) * BlurWeights[WeightIndex + 0]);
                 OutputColor0 += (tex2D(Source, TexCoords[CoordIndex].xz) * BlurWeights[WeightIndex + 1]);
@@ -273,7 +275,7 @@ namespace MotionBlur
             WeightIndex = WeightIndex + 3;
         }
 
-        for(int i = 1; i < 10; i++)
+        for (int i = 1; i < 10; i++)
         {
             TotalWeights += (BlurWeights[i] * 2.0);
         }
@@ -324,7 +326,7 @@ namespace MotionBlur
         OutputColor0.zw = ((A0 + B1 + B2 + A1) - (A2 + C0 + C1 + B0)) / 12.0;
     }
 
-    float2 Lucas_Kanade(int Level, float2 Vectors, float4 TexCoord)
+    float2 Lucas_Kanade(int Level, float2 Vectors, float4 TexCoords[4])
     {
         /*
             Fetch 2x2 bilinear-filtered windows for spatial and temporal dertivatives
@@ -332,17 +334,32 @@ namespace MotionBlur
             [TexCoord.xy TexCoord.zy]
         */
 
-        float4 S[4];
-        S[0] = tex2D(Sample_Common_1_A, TexCoord.xw).xyzw;
-        S[1] = tex2D(Sample_Common_1_A, TexCoord.zw).xyzw;
-        S[2] = tex2D(Sample_Common_1_A, TexCoord.xy).xyzw;
-        S[3] = tex2D(Sample_Common_1_A, TexCoord.zy).xyzw;
+        const int WindowSize = 16;
 
-        float2 T[4];
-        T[0] = tex2D(Sample_Common_1_B, TexCoord.xw).xy;
-        T[1] = tex2D(Sample_Common_1_B, TexCoord.zw).xy;
-        T[2] = tex2D(Sample_Common_1_B, TexCoord.xy).xy;
-        T[3] = tex2D(Sample_Common_1_B, TexCoord.zy).xy;
+        // Bilinear spatial derivative window
+        float4 S[WindowSize];
+
+        // Bilinear temporal derivative window
+        float2 T[WindowSize];
+
+        int CoordIndex = 0;
+        int WindowIndex = 0;
+
+        [unroll] while (WindowIndex < WindowSize)
+        {
+            S[WindowIndex + 0] = tex2D(Sample_Common_1_A, TexCoords[CoordIndex].xw).xyzw;
+            S[WindowIndex + 1] = tex2D(Sample_Common_1_A, TexCoords[CoordIndex].zw).xyzw;
+            S[WindowIndex + 2] = tex2D(Sample_Common_1_A, TexCoords[CoordIndex].xy).xyzw;
+            S[WindowIndex + 3] = tex2D(Sample_Common_1_A, TexCoords[CoordIndex].zy).xyzw;
+
+            T[WindowIndex + 0] = tex2D(Sample_Common_1_B, TexCoords[CoordIndex].xw).xy;
+            T[WindowIndex + 1] = tex2D(Sample_Common_1_B, TexCoords[CoordIndex].zw).xy;
+            T[WindowIndex + 2] = tex2D(Sample_Common_1_B, TexCoords[CoordIndex].xy).xy;
+            T[WindowIndex + 3] = tex2D(Sample_Common_1_B, TexCoords[CoordIndex].zy).xy;
+
+            WindowIndex += 4;
+            CoordIndex += 1;
+        }
 
         /*
             Calculate Lucas-Kanade optical flow by solving (A^-1 * B)
@@ -362,7 +379,7 @@ namespace MotionBlur
         // Create vector B and solve its window sum
         float2 B = 0.0;
 
-        for(int i = 0; i < 4; i++)
+        [unroll] for (int i = 0; i < WindowSize; i++)
         {
             // A.x = A11; A.y = A22; A.z = A12/A22
             A.x += dot(S[i].xy, S[i].xy);
@@ -399,27 +416,27 @@ namespace MotionBlur
         return LK;
     }
 
-    float2 Average2D(sampler2D Source, float4 TexCoord)
+    float2 Average2D(sampler2D Source, float4 TexCoord[4])
     {
         float2 Color = 0.0;
-        Color += (tex2D(Source, TexCoord.xw).xy * 0.25);
-        Color += (tex2D(Source, TexCoord.zw).xy * 0.25);
-        Color += (tex2D(Source, TexCoord.xy).xy * 0.25);
-        Color += (tex2D(Source, TexCoord.zy).xy * 0.25);
+        Color += (tex2D(Source, TexCoord[0].zy).xy * 0.25);
+        Color += (tex2D(Source, TexCoord[1].xy).xy * 0.25);
+        Color += (tex2D(Source, TexCoord[2].zw).xy * 0.25);
+        Color += (tex2D(Source, TexCoord[3].xw).xy * 0.25);
         return Color;
     }
 
-    void LK_Level_3_PS(in float4 Position: SV_POSITION, in float4 Tex: TEXCOORD0, out float4 Color: SV_TARGET0)
+    void LK_Level_3_PS(in float4 Position : SV_POSITION, in float4 Tex[4] : TEXCOORD0, out float4 Color : SV_TARGET0)
     {
         Color = float4(Lucas_Kanade(2, 0.0, Tex), 0.0, _BlendFactor);
     }
 
-    void LK_Level_2_PS(in float4 Position: SV_POSITION, in float4 Tex: TEXCOORD0, out float4 Color: SV_TARGET0)
+    void LK_Level_2_PS(in float4 Position : SV_POSITION, in float4 Tex[4] : TEXCOORD0, out float4 Color : SV_TARGET0)
     {
         Color = float4(Lucas_Kanade(1, Average2D(Sample_Common_3_A, Tex).xy, Tex), 0.0, _BlendFactor);
     }
 
-    void LK_Level_1_PS(in float4 Position : SV_POSITION, in float4 Tex : TEXCOORD0, out float4 Color : SV_TARGET0)
+    void LK_Level_1_PS(in float4 Position : SV_POSITION, in float4 Tex[4] : TEXCOORD0, out float4 Color : SV_TARGET0)
     {
         Color = float4(Lucas_Kanade(0, Average2D(Sample_Common_2, Tex).xy, Tex), 0.0, _BlendFactor);
     }
@@ -451,9 +468,9 @@ namespace MotionBlur
         float2 Velocity = tex2Dlod(Sample_Common_3_A, float4(TexCoord, 0.0, _MipBias)).xy;
 
         float2 ScaledVelocity = Velocity * _Scale;
-        ScaledVelocity = (_FrameRateScaling) ?  ScaledVelocity / FrameTimeRatio : ScaledVelocity;
+        ScaledVelocity = (_FrameRateScaling) ? ScaledVelocity / FrameTimeRatio : ScaledVelocity;
 
-        for(int k = 0; k < Samples; ++k)
+        for (int k = 0; k < Samples; ++k)
         {
             float2 Offset = ScaledVelocity * (Noise + k);
             OutputColor0 += tex2D(Sample_Color, (ScreenCoord + Offset) / ScreenSize);
