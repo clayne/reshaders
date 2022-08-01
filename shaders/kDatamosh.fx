@@ -106,14 +106,28 @@ namespace Datamosh
             MipFilter = LINEAR; \
         };
 
+    #define CREATE_SAMPLER_TRILINEAR(NAME, TEXTURE) \
+        sampler2D NAME \
+        { \
+            Texture = TEXTURE; \
+            AddressU = MIRROR; \
+            AddressV = MIRROR; \
+            MagFilter = LINEAR; \
+            MinFilter = LINEAR; \
+            MipFilter = LINEAR; \
+            MipLODBias = 0.5; \
+        }; \
+
     CREATE_TEXTURE(Render_Common_0, int2(BUFFER_WIDTH >> 1, BUFFER_HEIGHT >> 1), RG8, 6)
     CREATE_SAMPLER(Sample_Common_0, Render_Common_0)
 
     CREATE_TEXTURE(Render_Common_1_A, BUFFER_SIZE_1, RGBA16F, 4)
     CREATE_SAMPLER(Sample_Common_1_A, Render_Common_1_A)
+    CREATE_SAMPLER_TRILINEAR(Sample_Common_1_A_Trilinear, Render_Common_1_A)
 
     CREATE_TEXTURE(Render_Common_1_B, BUFFER_SIZE_1, RG16F, 4)
     CREATE_SAMPLER(Sample_Common_1_B, Render_Common_1_B)
+    CREATE_SAMPLER_TRILINEAR(Sample_Common_1_B_Trilinear, Render_Common_1_B)
 
     CREATE_TEXTURE(Render_Common_2_A, BUFFER_SIZE_2, RG16F, 4)
     CREATE_SAMPLER(Sample_Common_2_A, Render_Common_2_A)
@@ -229,20 +243,24 @@ namespace Datamosh
     BLUR_VS(Post_Blur_0_VS, false, BUFFER_SIZE_2)
     BLUR_VS(Post_Blur_1_VS, true, BUFFER_SIZE_2)
 
-    void Level_VS(in uint ID, in float2 TexelSize, out float4 Position, out float4 Tex[4])
+    void Level_VS(in uint ID, in float2 TexelSize, out float4 Position, out float4 TexCoords[8])
     {
         float2 TexCoordVS = 0.0;
         Basic_VS(ID, Position, TexCoordVS);
-        Tex[0] = TexCoordVS.xyxy + (float4(-1.5, +0.5, -0.5, +1.5) / TexelSize.xyxy);
-        Tex[1] = TexCoordVS.xyxy + (float4(+0.5, +0.5, +1.5, +1.5) / TexelSize.xyxy);
-        Tex[2] = TexCoordVS.xyxy + (float4(-1.5, -1.5, -0.5, -0.5) / TexelSize.xyxy);
-        Tex[3] = TexCoordVS.xyxy + (float4(+0.5, -1.5, +1.5, -0.5) / TexelSize.xyxy);
+        TexCoords[0] = TexCoordVS.xyyy + (float4(-2.0, 1.0, 0.0, -1.0) / TexelSize.xyyy);
+        TexCoords[1] = TexCoordVS.xyyy + (float4(-1.0, 1.0, 0.0, -1.0) / TexelSize.xyyy);
+        TexCoords[2] = TexCoordVS.xyyy + (float4(0.0, 1.0, 0.0, -1.0) / TexelSize.xyyy);
+        TexCoords[3] = TexCoordVS.xyyy + (float4(1.0, 1.0, 0.0, -1.0) / TexelSize.xyyy);
+        TexCoords[4] = TexCoordVS.xyyy + (float4(2.0, 1.0, 0.0, -1.0) / TexelSize.xyyy);
+        TexCoords[5] = TexCoordVS.xxxy + (float4(1.0, 0.0, -1.0, 2.0) / TexelSize.xxxy);
+        TexCoords[6] = TexCoordVS.xxxy + (float4(1.0, 0.0, -1.0, -2.0) / TexelSize.xxxy);
+        TexCoords[7] = TexCoordVS.xyxy + (float4(-2.0, -2.0, 2.0, 2.0) / TexelSize.xyxy);
     }
 
     #define CREATE_LEVEL_VS(NAME, BUFFER_SIZE) \
-        void NAME(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 Tex[4] : TEXCOORD0) \
+        void NAME(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 TexCoords[8] : TEXCOORD0) \
         { \
-            Level_VS(ID, BUFFER_SIZE, Position, Tex); \
+            Level_VS(ID, BUFFER_SIZE, Position, TexCoords); \
         }
 
     CREATE_LEVEL_VS(LK_Level_1_VS, BUFFER_SIZE_1)
@@ -392,41 +410,8 @@ namespace Datamosh
         OutputColor0.zw = ((A0 + B1 + B2 + A1) - (A2 + C0 + C1 + B0)) / 12.0;
     }
 
-    float2 Lucas_Kanade(int Level, float2 Vectors, float4 TexCoords[4])
+    float2 Lucas_Kanade(int Level, float2 Vectors, float4 TexCoords[8])
     {
-        /*
-            Fetch 2x2 bilinear-filtered windows for spatial and temporal dertivatives
-            [TexCoord.xw TexCoord.zw]
-            [TexCoord.xy TexCoord.zy]
-        */
-
-        const int WindowSize = 16;
-
-        // Bilinear spatial derivative window
-        float4 S[WindowSize];
-
-        // Bilinear temporal derivative window
-        float2 T[WindowSize];
-
-        int CoordIndex = 0;
-        int WindowIndex = 0;
-
-        [unroll] while (WindowIndex < WindowSize)
-        {
-            S[WindowIndex + 0] = tex2D(Sample_Common_1_A, TexCoords[CoordIndex].xw).xyzw;
-            S[WindowIndex + 1] = tex2D(Sample_Common_1_A, TexCoords[CoordIndex].zw).xyzw;
-            S[WindowIndex + 2] = tex2D(Sample_Common_1_A, TexCoords[CoordIndex].xy).xyzw;
-            S[WindowIndex + 3] = tex2D(Sample_Common_1_A, TexCoords[CoordIndex].zy).xyzw;
-
-            T[WindowIndex + 0] = tex2D(Sample_Common_1_B, TexCoords[CoordIndex].xw).xy;
-            T[WindowIndex + 1] = tex2D(Sample_Common_1_B, TexCoords[CoordIndex].zw).xy;
-            T[WindowIndex + 2] = tex2D(Sample_Common_1_B, TexCoords[CoordIndex].xy).xy;
-            T[WindowIndex + 3] = tex2D(Sample_Common_1_B, TexCoords[CoordIndex].zy).xy;
-
-            WindowIndex += 4;
-            CoordIndex += 1;
-        }
-
         /*
             Calculate Lucas-Kanade optical flow by solving (A^-1 * B)
             [A11 A12]^-1 [-B1] -> [ A11 -A12] [-B1]
@@ -439,14 +424,32 @@ namespace Datamosh
             B2 = IyIt
         */
 
-        // Create matrix A and solve its window sum
-        float3 A = 0.0;
+        // The spatial(S) and temporal(T) derivative neighbors to sample
+        const int WindowSize = 25;
+        float4 S[WindowSize];
+        float2 T[WindowSize];
 
-        // Create vector B and solve its window sum
+        // Windows matrices to sum
+        float3 A = 0.0;
         float2 B = 0.0;
+
+        float2 WindowCoords[25] =
+        {
+            TexCoords[0].xy, TexCoords[0].xz, TexCoords[0].xw,
+            TexCoords[1].xy, TexCoords[1].xz, TexCoords[1].xw,
+            TexCoords[2].xy, TexCoords[2].xz, TexCoords[2].xw,
+            TexCoords[3].xy, TexCoords[3].xz, TexCoords[3].xw,
+            TexCoords[4].xy, TexCoords[4].xz, TexCoords[4].xw,
+            TexCoords[5].xw, TexCoords[5].yw, TexCoords[5].zw,
+            TexCoords[6].xw, TexCoords[6].yw, TexCoords[6].zw,
+            TexCoords[7].xw, TexCoords[7].zw, TexCoords[7].xy, TexCoords[7].zy,
+        };
 
         [unroll] for (int i = 0; i < WindowSize; i++)
         {
+            S[i] = tex2D(Sample_Common_1_A_Trilinear, WindowCoords[i]).xyzw;
+            T[i] = tex2D(Sample_Common_1_B_Trilinear, WindowCoords[i]).xy;
+
             // A.x = A11; A.y = A22; A.z = A12/A22
             A.x += dot(S[i].xy, S[i].xy);
             A.y += dot(S[i].zw, S[i].zw);
@@ -482,29 +485,47 @@ namespace Datamosh
         return LK;
     }
 
-    float2 Average2D(sampler2D Source, float4 TexCoord[4])
+    float2 AverageUV(sampler2D Source, float4 TexCoords[8])
     {
+        const int WindowSize = 9;
+
+        float2 WindowCoords[WindowSize] =
+        {
+            TexCoords[7].xw, TexCoords[7].zw, TexCoords[7].xy, TexCoords[7].zy,
+            TexCoords[0].xz, TexCoords[4].xz, TexCoords[5].yw, TexCoords[6].yw,
+            TexCoords[2].xz,
+        };
+
+        float WindowWeights[WindowSize] =
+        {
+            1.0, 1.0, 1.0, 1.0,
+            2.0, 2.0, 2.0, 2.0,
+            4.0,
+        };
+
         float2 Color = 0.0;
-        Color += (tex2D(Source, TexCoord[0].zy).xy * 0.25);
-        Color += (tex2D(Source, TexCoord[1].xy).xy * 0.25);
-        Color += (tex2D(Source, TexCoord[2].zw).xy * 0.25);
-        Color += (tex2D(Source, TexCoord[3].xw).xy * 0.25);
-        return Color;
+
+        for (int i = 0; i < WindowSize; i++)
+        {
+            Color += (tex2D(Source, WindowCoords[i]).xy * WindowWeights[i]);
+        }
+
+        return Color / 16.0;
     }
 
-    void LK_Level_3_PS(in float4 Position : SV_POSITION, in float4 Tex[4] : TEXCOORD0, out float4 Color : SV_TARGET0)
+    void LK_Level_3_PS(in float4 Position : SV_POSITION, in float4 TexCoords[8] : TEXCOORD0, out float4 Color : SV_TARGET0)
     {
-        Color = float4(Lucas_Kanade(2, 0.0, Tex), 0.0, _BlendFactor);
+        Color = float4(Lucas_Kanade(2, 0.0, TexCoords), 0.0, _BlendFactor);
     }
 
-    void LK_Level_2_PS(in float4 Position : SV_POSITION, in float4 Tex[4] : TEXCOORD0, out float4 Color : SV_TARGET0)
+    void LK_Level_2_PS(in float4 Position : SV_POSITION, in float4 TexCoords[8] : TEXCOORD0, out float4 Color : SV_TARGET0)
     {
-        Color = float4(Lucas_Kanade(1, Average2D(Sample_Common_3, Tex).xy, Tex), 0.0, _BlendFactor);
+        Color = float4(Lucas_Kanade(1, AverageUV(Sample_Common_3, TexCoords).xy, TexCoords), 0.0, _BlendFactor);
     }
 
-    void LK_Level_1_PS(in float4 Position : SV_POSITION, in float4 Tex[4] : TEXCOORD0, out float4 Color : SV_TARGET0)
+    void LK_Level_1_PS(in float4 Position : SV_POSITION, in float4 TexCoords[8] : TEXCOORD0, out float4 Color : SV_TARGET0)
     {
-        Color = float4(Lucas_Kanade(0, Average2D(Sample_Common_2_A, Tex).xy, Tex), 0.0, _BlendFactor);
+        Color = float4(Lucas_Kanade(0, AverageUV(Sample_Common_2_A, TexCoords).xy, TexCoords), 0.0, _BlendFactor);
     }
 
     void Post_Blur_0_PS(in float4 Position : SV_POSITION, in float4 TexCoords[7] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
