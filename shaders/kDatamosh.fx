@@ -499,12 +499,12 @@ namespace Datamosh
 
     void LK_Level_2_PS(in float4 Position : SV_POSITION, in float4 Tex[4] : TEXCOORD0, out float4 Color : SV_TARGET0)
     {
-        Color = float4(Lucas_Kanade(1, Average2D(Sample_Common_3_A, Tex).xy, Tex), 0.0, _BlendFactor);
+        Color = float4(Lucas_Kanade(1, Average2D(Sample_Common_3, Tex).xy, Tex), 0.0, _BlendFactor);
     }
 
     void LK_Level_1_PS(in float4 Position : SV_POSITION, in float4 Tex[4] : TEXCOORD0, out float4 Color : SV_TARGET0)
     {
-        Color = float4(Lucas_Kanade(0, Average2D(Sample_Common_2, Tex).xy, Tex), 0.0, _BlendFactor);
+        Color = float4(Lucas_Kanade(0, Average2D(Sample_Common_2_A, Tex).xy, Tex), 0.0, _BlendFactor);
     }
 
     void Post_Blur_0_PS(in float4 Position : SV_POSITION, in float4 TexCoords[7] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
