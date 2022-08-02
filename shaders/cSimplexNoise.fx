@@ -82,29 +82,29 @@ void Basic_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out f
     THE SOFTWARE.
 */
 
-float2 Mod_289(float2 x)
+float2 Mod_289(float2 X)
 {
-    return x - floor(x * (1.0 / 289.0)) * 289.0;
+    return X - floor(X * (1.0 / 289.0)) * 289.0;
 }
 
-float3 Mod_289(float3 x)
+float3 Mod_289(float3 X)
 {
-    return x - floor(x * (1.0 / 289.0)) * 289.0;
+    return X - floor(X * (1.0 / 289.0)) * 289.0;
 }
 
-float4 Mod_289(float4 x)
+float4 Mod_289(float4 X)
 {
-    return x - floor(x * (1.0 / 289.0)) * 289.0;
+    return X - floor(X * (1.0 / 289.0)) * 289.0;
 }
 
-float2 Permute(float2 x)
+float2 Permute(float2 X)
 {
-    return Mod_289(((x * 34.0) + 10.0)* x);
+    return Mod_289(((X * 34.0) + 10.0)* X);
 }
 
-float4 Permute(float4 x)
+float4 Permute(float4 X)
 {
-    return Mod_289(((x * 34.0) + 10.0) * x);
+    return Mod_289(((X * 34.0) + 10.0) * X);
 }
 
 float4 Taylor_Inverse_Sqrt(float4 r)
@@ -132,8 +132,8 @@ float Simplex_Noise(float3 V)
     // X2 = X0 - I2  + 2.0 * C.xxx;
     // X3 = X0 - 1.0 + 3.0 * C.xxx;
     float3 X1 = X0 - I1 + C.xxx;
-    float3 X2 = X0 - I2 + C.yyy; // 2.0*C.x = 1/3 = C.y
-    float3 X3 = X0 - D.yyy;      // -1.0+3.0*C.x = -0.5 = -D.y
+    float3 X2 = X0 - I2 + C.yyy; // 2.0 * C.x = 1/3 = C.y
+    float3 X3 = X0 - D.yyy; // -1.0 + 3.0 * C.x = -0.5 = -D.y
 
     // Permutations
     I = Mod_289(I); 
@@ -143,16 +143,16 @@ float Simplex_Noise(float3 V)
 
     // Gradients: 7x7 points over a square, mapped onto an octahedron.
     // The ring size 17*17 = 289 is close to a multiple of 49 (49 * 6 = 294)
-    float N_ = 0.142857142857; // 1.0 / 7.0
-    float3 N_S = N_ * D.wyz - D.xzx;
+    float N = 0.142857142857; // 1.0 / 7.0
+    float3 NS = N * D.wyz - D.xzx;
 
-    float4 J = P - 49.0 * floor(P * N_S.z * N_S.z);  // mod(P, 7 * 7)
+    float4 J = P - 49.0 * floor(P * NS.z * NS.z); // mod(P, 7 * 7)
 
-    float4 X_ = floor(J * N_S.z);
+    float4 X_ = floor(J * NS.z);
     float4 Y_ = floor(J - 7.0 * X_); // mod(J, N)
 
-    float4 X = X_ * N_S.x + N_S.yyyy;
-    float4 Y = Y_ * N_S.x + N_S.yyyy;
+    float4 X = X_ * NS.x + NS.yyyy;
+    float4 Y = Y_ * NS.x + NS.yyyy;
     float4 H = 1.0 - abs(X) - abs(Y);
 
     float4 B0 = float4(X.xy, Y.xy);
