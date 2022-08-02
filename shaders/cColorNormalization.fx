@@ -67,8 +67,7 @@ void Basic_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out f
 void Normalization_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float3 OutputColor0 : SV_TARGET0)
 {
     OutputColor0 = 0.0;
-    const float Minima = exp2(-10.0);
-    float3 Color = max(tex2D(Sample_Color, TexCoord).rgb, Minima);
+    float3 Color = max(tex2D(Sample_Color, TexCoord).rgb, exp2(-10.0));
     switch(_Select)
     {
         case 0: // Length (RG)
@@ -102,14 +101,11 @@ void Normalization_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEX
     }
 }
 
-technique cNormalizedColor
+technique cColorNormalization
 {
     pass
     {
         VertexShader = Basic_VS;
         PixelShader = Normalization_PS;
-        #if BUFFER_COLOR_BIT_DEPTH == 8
-            SRGBWriteEnable = TRUE;
-        #endif
     }
 }

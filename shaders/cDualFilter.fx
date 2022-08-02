@@ -40,54 +40,22 @@
 #define BUFFER_SIZE_4 int2(BUFFER_WIDTH >> 4, BUFFER_HEIGHT >> 4)
 
 #define TEXTURE(NAME, SIZE, FORMAT, LEVELS) \
-    texture2D NAME < pooled = true; >       \
-    {                                       \
-        Width = SIZE.x;                     \
-        Height = SIZE.y;                    \
-        Format = FORMAT;                    \
-        MipLevels = LEVELS;                 \
+    texture2D NAME < pooled = true; > \
+    { \
+        Width = SIZE.x; \
+        Height = SIZE.y; \
+        Format = FORMAT; \
+        MipLevels = LEVELS; \
     };
 
 #define SAMPLER(NAME, TEXTURE) \
-    sampler2D NAME             \
-    {                          \
-        Texture = TEXTURE;     \
-        MagFilter = LINEAR;    \
-        MinFilter = LINEAR;    \
-        MipFilter = LINEAR;    \
+    sampler2D NAME \
+    { \
+        Texture = TEXTURE; \
+        MagFilter = LINEAR; \
+        MinFilter = LINEAR; \
+        MipFilter = LINEAR; \
     };
-
-#define DOWNSAMPLE_VS(NAME, TEXEL_SIZE)                                                                             \
-    void NAME(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float4 TexCoords[4] : TEXCOORD0) \
-    {                                                                                                               \
-        Downsample_VS(ID, Position, TexCoords, TEXEL_SIZE);                                                         \
-    }
-
-#define UPSAMPLE_VS(NAME, TEXEL_SIZE)                                                                               \
-    void NAME(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float4 TexCoords[3] : TEXCOORD0) \
-    {                                                                                                               \
-        Upsample_VS(ID, Position, TexCoords, TEXEL_SIZE);                                                           \
-    }
-
-#define DOWNSAMPLE_PS(NAME, SAMPLER)                                                                                      \
-    void NAME(in float4 Position : SV_POSITION, in float4 TexCoords[4] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0) \
-    {                                                                                                                     \
-        Downsample_PS(SAMPLER, TexCoords, OutputColor0);                                                                  \
-    }
-
-#define UPSAMPLE_PS(NAME, SAMPLER)                                                                                        \
-    void NAME(in float4 Position : SV_POSITION, in float4 TexCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0) \
-    {                                                                                                                     \
-        Upsample_PS(SAMPLER, TexCoords, OutputColor0);                                                                    \
-    }
-
-#define PASS(VERTEX_SHADER, PIXEL_SHADER, RENDER_TARGET) \
-    pass                                                 \
-    {                                                    \
-        VertexShader = VERTEX_SHADER;                    \
-        PixelShader = PIXEL_SHADER;                      \
-        RenderTarget0 = RENDER_TARGET;                   \
-    }
 
 texture2D Render_Color : COLOR;
 
@@ -166,6 +134,12 @@ void Downsample_VS(in uint ID, inout float4 Position, inout float4 TexCoords[4],
     }
 }
 
+#define DOWNSAMPLE_VS(NAME, TEXEL_SIZE)                                                                             \
+    void NAME(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float4 TexCoords[4] : TEXCOORD0) \
+    {                                                                                                               \
+        Downsample_VS(ID, Position, TexCoords, TEXEL_SIZE);                                                         \
+    }
+
 DOWNSAMPLE_VS(Downsample_1_VS, 1.0 / BUFFER_SIZE_0)
 DOWNSAMPLE_VS(Downsample_2_VS, 1.0 / BUFFER_SIZE_1)
 DOWNSAMPLE_VS(Downsample_3_VS, 1.0 / BUFFER_SIZE_2)
@@ -192,6 +166,12 @@ void Upsample_VS(in uint ID, inout float4 Position, inout float4 TexCoords[3], f
             break;
     }
 }
+
+#define UPSAMPLE_VS(NAME, TEXEL_SIZE)                                                                               \
+    void NAME(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float4 TexCoords[3] : TEXCOORD0) \
+    {                                                                                                               \
+        Upsample_VS(ID, Position, TexCoords, TEXEL_SIZE);                                                           \
+    }
 
 UPSAMPLE_VS(Upsample_3_VS, 1.0 / BUFFER_SIZE_4)
 UPSAMPLE_VS(Upsample_2_VS, 1.0 / BUFFER_SIZE_3)
@@ -288,6 +268,12 @@ void Downsample_PS(in sampler2D Source, in float4 TexCoords[4], out float4 Outpu
     OutputColor.a = 1.0;
 }
 
+#define DOWNSAMPLE_PS(NAME, SAMPLER)                                                                                      \
+    void NAME(in float4 Position : SV_POSITION, in float4 TexCoords[4] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0) \
+    {                                                                                                                     \
+        Downsample_PS(SAMPLER, TexCoords, OutputColor0);                                                                  \
+    }
+
 DOWNSAMPLE_PS(Downsample_1_PS, Sample_Color)
 DOWNSAMPLE_PS(Downsample_2_PS, Sample_Common_1)
 DOWNSAMPLE_PS(Downsample_3_PS, Sample_Common_2)
@@ -338,10 +324,24 @@ void Upsample_PS(in sampler2D Source, in float4 TexCoords[3], out float4 OutputC
     OutputColor.a = 1.0;
 }
 
+#define UPSAMPLE_PS(NAME, SAMPLER)                                                                                        \
+    void NAME(in float4 Position : SV_POSITION, in float4 TexCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0) \
+    {                                                                                                                     \
+        Upsample_PS(SAMPLER, TexCoords, OutputColor0);                                                                    \
+    }
+
 UPSAMPLE_PS(Upsample_3_PS, Sample_Common_4)
 UPSAMPLE_PS(Upsample_2_PS, Sample_Common_3)
 UPSAMPLE_PS(Upsample_1_PS, Sample_Common_2)
 UPSAMPLE_PS(Upsample_0_PS, Sample_Common_1)
+
+#define PASS(VERTEX_SHADER, PIXEL_SHADER, RENDER_TARGET) \
+    pass                                                 \
+    {                                                    \
+        VertexShader = VERTEX_SHADER;                    \
+        PixelShader = PIXEL_SHADER;                      \
+        RenderTarget0 = RENDER_TARGET;                   \
+    }
 
 technique cDualFilter
 {

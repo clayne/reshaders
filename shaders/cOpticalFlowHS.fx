@@ -1,6 +1,6 @@
 
 /*
-    Optical flow visualization shader
+    Pyramidal Horn-Schunck optical flow shader
 
     BSD 3-Clause License
 
@@ -32,8 +32,6 @@
     OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-
-#define FP16_MINIMUM float((1.0 / float(1 << 14)) * (0.0 + (1.0 / 1024.0)))
 
 #define RCP_HEIGHT (1.0 / BUFFER_HEIGHT)
 #define ASPECT_RATIO (BUFFER_WIDTH * RCP_HEIGHT)
@@ -69,9 +67,9 @@
         MipFilter = LINEAR; \
     };
 
-namespace Shared_Resources_Flow
+namespace Shared_Resources_HS
 {
-    TEXTURE(Render_Common_0, int2(BUFFER_WIDTH >> 1, BUFFER_HEIGHT >> 1), RG16F, 4)
+    TEXTURE(Render_Common_0, int2(BUFFER_WIDTH >> 1, BUFFER_HEIGHT >> 1), R8, 4)
     SAMPLER(Sample_Common_0, Render_Common_0)
 
     TEXTURE(Render_Common_1_A, BUFFER_SIZE_1, RG16F, 9)
@@ -218,10 +216,10 @@ namespace OpticalFlow
         float4(0.0, 13.416645, 15.404578, 17.392626)
     };
 
-    void Blur_VS(in bool IsAlt, in float2 PixelSize, in uint ID, inout float4 Position, inout float4 TexCoords[7])
+    void Blur_VS(in bool IsAlt, in float2 PixelSize, in uint ID, out float4 Position, out float4 TexCoords[7])
     {
+        TexCoords[0] = 0.0;
         Basic_VS(ID, Position, TexCoords[0].xy);
-
         if (!IsAlt)
         {
             TexCoords[1] = TexCoords[0].xyyy + (BlurOffsets[0].xyzw / PixelSize.xyyy);
@@ -240,11 +238,10 @@ namespace OpticalFlow
             TexCoords[5] = TexCoords[0].xxxy - (BlurOffsets[1].yzwx / PixelSize.xxxy);
             TexCoords[6] = TexCoords[0].xxxy - (BlurOffsets[2].yzwx / PixelSize.xxxy);
         }
-
     }
 
     #define BLUR_VS(NAME, IS_ALT, PIXEL_SIZE) \
-        void NAME(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float4 TexCoords[7] : TEXCOORD0) \
+        void NAME(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 TexCoords[7] : TEXCOORD0) \
         { \
             Blur_VS(IS_ALT, PIXEL_SIZE, ID, Position, TexCoords); \
         }
@@ -307,7 +304,7 @@ namespace OpticalFlow
         float2 VelocityCoord = 0.0;
         VelocityCoord.xy = Origin.xy * PixelSize.xy;
         VelocityCoord.y = 1.0 - VelocityCoord.y;
-        Velocity = tex2Dlod(Shared_Resources_Flow::Sample_Common_2_A, float4(VelocityCoord, 0.0, _MipBias)).xy;
+        Velocity = tex2Dlod(Shared_Resources_HS::Sample_Common_2_A, float4(VelocityCoord, 0.0, _MipBias)).xy;
 
         // Scale velocity
         float2 Direction = Velocity * VELOCITY_SCALE;
@@ -365,33 +362,31 @@ namespace OpticalFlow
         [2] Robert's cross operator
             https://homepages.inf.ed.ac.uk/rbf/HIPR2/roberts.htm
 
-        [3] Prewitt compass operator
+        [3] Sobel compass operator
             https://homepages.inf.ed.ac.uk/rbf/HIPR2/prewitt.htm
     */
 
-    void Normalize_Frame_PS(in float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD, out float2 Color : SV_TARGET0)
+    void Saturate_Image_PS(in float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD, out float4 Color : SV_TARGET0)
     {
         float4 Frame = max(tex2D(Sample_Color, TexCoord), exp2(-10.0));
-        Color.xy = saturate(Frame.xy / dot(Frame.xyz, 1.0));
+        // Normalize color vector to always be in [0,1] range with a sum of sqrt(3.0)
+        Color.xyz = saturate(normalize(Frame.xyz));
+        // Calculate the distance between the normalized chromaticity coordinates and its middle-gray
+        // Middle-gray = (maximum normalized value, 1.0) / (sum of normalized components, sqrt(3.0))
+        Color = saturate(distance(Color.xyz, 1.0 / sqrt(3.0)));
     }
 
     void Blit_Frame_PS(in float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD, out float4 OutputColor0 : SV_TARGET0)
     {
-        OutputColor0 = tex2D(Shared_Resources_Flow::Sample_Common_0, TexCoord);
+        OutputColor0 = tex2D(Shared_Resources_HS::Sample_Common_0, TexCoord);
     }
 
     static const float BlurWeights[10] =
     {
         0.06299088,
-        0.122137636,
-        0.10790718,
-        0.08633988,
-        0.062565096,
-        0.04105926,
-        0.024403222,
-        0.013135255,
-        0.006402994,
-        0.002826693
+        0.122137636, 0.10790718, 0.08633988,
+        0.062565096, 0.04105926, 0.024403222,
+        0.013135255, 0.006402994, 0.002826693
     };
 
     void Gaussian_Blur(in sampler2D Source, in float4 TexCoords[7], bool Alt, out float4 OutputColor0)
@@ -437,19 +432,19 @@ namespace OpticalFlow
 
     void Pre_Blur_0_PS(in float4 Position : SV_POSITION, in float4 TexCoords[7] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
-        Gaussian_Blur(Shared_Resources_Flow::Sample_Common_1_A, TexCoords, false, OutputColor0);
+        Gaussian_Blur(Shared_Resources_HS::Sample_Common_1_A, TexCoords, false, OutputColor0);
     }
 
     void Pre_Blur_1_PS(in float4 Position : SV_POSITION, in float4 TexCoords[7] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
-        Gaussian_Blur(Shared_Resources_Flow::Sample_Common_1_B, TexCoords, true, OutputColor0);
+        Gaussian_Blur(Shared_Resources_HS::Sample_Common_1_B, TexCoords, true, OutputColor0);
     }
 
     void Derivatives_Z_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0)
     {
-        float2 Current = tex2D(Shared_Resources_Flow::Sample_Common_1_A, TexCoord).xy;
-        float2 Previous = tex2D(Sample_Common_1_C, TexCoord).xy;
-        OutputColor0 = dot(Current - Previous, 1.0);
+        float Current = tex2D(Shared_Resources_HS::Sample_Common_1_A, TexCoord).x;
+        float Previous = tex2D(Sample_Common_1_C, TexCoord).x;
+        OutputColor0 = Current - Previous;
     }
 
     void Derivatives_XY_PS(in float4 Position : SV_POSITION, in float4 TexCoords[2] : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0)
@@ -459,20 +454,18 @@ namespace OpticalFlow
         // A0     A1
         // A2     B0
         //   C0 C1
-        float2 A0 = tex2D(Shared_Resources_Flow::Sample_Common_1_A, TexCoords[0].xw).xy * 4.0; // <-1.5, +0.5>
-        float2 A1 = tex2D(Shared_Resources_Flow::Sample_Common_1_A, TexCoords[0].yw).xy * 4.0; // <+1.5, +0.5>
-        float2 A2 = tex2D(Shared_Resources_Flow::Sample_Common_1_A, TexCoords[0].xz).xy * 4.0; // <-1.5, -0.5>
-        float2 B0 = tex2D(Shared_Resources_Flow::Sample_Common_1_A, TexCoords[0].yz).xy * 4.0; // <+1.5, -0.5>
-        float2 B1 = tex2D(Shared_Resources_Flow::Sample_Common_1_A, TexCoords[1].xw).xy * 4.0; // <-0.5, +1.5>
-        float2 B2 = tex2D(Shared_Resources_Flow::Sample_Common_1_A, TexCoords[1].yw).xy * 4.0; // <+0.5, +1.5>
-        float2 C0 = tex2D(Shared_Resources_Flow::Sample_Common_1_A, TexCoords[1].xz).xy * 4.0; // <-0.5, -1.5>
-        float2 C1 = tex2D(Shared_Resources_Flow::Sample_Common_1_A, TexCoords[1].yz).xy * 4.0; // <+0.5, -1.5>
+        float A0 = tex2D(Shared_Resources_HS::Sample_Common_1_A, TexCoords[0].xw).x * 4.0; // <-1.5, +0.5>
+        float A1 = tex2D(Shared_Resources_HS::Sample_Common_1_A, TexCoords[0].yw).x * 4.0; // <+1.5, +0.5>
+        float A2 = tex2D(Shared_Resources_HS::Sample_Common_1_A, TexCoords[0].xz).x * 4.0; // <-1.5, -0.5>
+        float B0 = tex2D(Shared_Resources_HS::Sample_Common_1_A, TexCoords[0].yz).x * 4.0; // <+1.5, -0.5>
+        float B1 = tex2D(Shared_Resources_HS::Sample_Common_1_A, TexCoords[1].xw).x * 4.0; // <-0.5, +1.5>
+        float B2 = tex2D(Shared_Resources_HS::Sample_Common_1_A, TexCoords[1].yw).x * 4.0; // <+0.5, +1.5>
+        float C0 = tex2D(Shared_Resources_HS::Sample_Common_1_A, TexCoords[1].xz).x * 4.0; // <-0.5, -1.5>
+        float C1 = tex2D(Shared_Resources_HS::Sample_Common_1_A, TexCoords[1].yz).x * 4.0; // <+0.5, -1.5>
 
         OutputColor0 = 0.0;
-        float2 Ix = ((B2 + A1 + B0 + C1) - (B1 + A0 + A2 + C0)) / 12.0;
-        float2 Iy = ((A0 + B1 + B2 + A1) - (A2 + C0 + C1 + B0)) / 12.0;
-        OutputColor0.x = dot(Ix, 1.0);
-        OutputColor0.y = dot(Iy, 1.0);
+        OutputColor0.x = ((B2 + A1 + B0 + C1) - (B1 + A0 + A2 + C0)) / 12.0;
+        OutputColor0.y = ((A0 + B1 + B2 + A1) - (A2 + C0 + C1 + B0)) / 12.0;
     }
 
     #define COARSEST_LEVEL 5
@@ -481,11 +474,11 @@ namespace OpticalFlow
     void Coarse_Optical_Flow_TV(in float2 TexCoord, in float Level, in float4 UV, out float2 OpticalFlow)
     {
         OpticalFlow = 0.0;
-        const float Alpha = max((_Constraint * 1e-3) / pow(4.0, COARSEST_LEVEL - Level), FP16_MINIMUM);
+        const float Alpha = (_Constraint * 1e-3) / pow(4.0, COARSEST_LEVEL - Level);
 
         // Load textures
         float2 SD = tex2Dlod(Sample_Common_1_C, float4(TexCoord, 0.0, Level + 0.5)).xy;
-        float TD = tex2Dlod(Shared_Resources_Flow::Sample_Common_1_B, float4(TexCoord, 0.0, Level + 0.5)).x;
+        float TD = tex2Dlod(Shared_Resources_HS::Sample_Common_1_B, float4(TexCoord, 0.0, Level + 0.5)).x;
 
         float C = 0.0;
         float2 Aii = 0.0;
@@ -493,7 +486,7 @@ namespace OpticalFlow
         float2 Bi = 0.0;
 
         // Calculate constancy assumption nonlinearity
-        C = rsqrt((TD * TD) + FP16_MINIMUM);
+        C = rsqrt(TD * TD);
 
         // Build linear equation
         // [Aii Aij] [X] = [Bi]
@@ -505,8 +498,8 @@ namespace OpticalFlow
         // Solve linear equation for [U, V]
         // [Ix^2+A IxIy] [U] = -[IxIt]
         // [IxIy Iy^2+A] [V] = -[IyIt]
-        OpticalFlow.x = Aii.x * ((Alpha * UV.x) - (Aij * UV.y) - Bi.x);
-        OpticalFlow.y = Aii.y * ((Alpha * UV.y) - (Aij * OpticalFlow.x) - Bi.y);
+        OpticalFlow.xy = Aii.xy * (UV.xy - (Aij * UV.yx) - Bi.xy);
+        OpticalFlow.xy = (isinf(OpticalFlow.xy)) ? 0.0 : OpticalFlow.xy;
     }
 
     void Gradient(in float4x2 Samples, out float Gradient)
@@ -517,10 +510,10 @@ namespace OpticalFlow
         float4 SqGradientUV = 0.0;
         SqGradientUV.xy = (Samples[0] - Samples[3]); // <IxU, IxV>
         SqGradientUV.zw = (Samples[2] - Samples[1]); // <IyU, IyV>
-        Gradient = rsqrt((dot(SqGradientUV, SqGradientUV) * 0.25) + FP16_MINIMUM);
+        Gradient = rsqrt(dot(SqGradientUV, SqGradientUV) * 0.25);
     }
 
-    float2 Prewitt(float2 SampleUV[9], float3x3 Weights)
+    float2 Sobel(float2 SampleUV[9], float3x3 Weights)
     {
         // [0] [3] [6]
         // [1] [4] [7]
@@ -540,30 +533,15 @@ namespace OpticalFlow
 
     void Process_Gradients(in float2 SampleUV[9], inout float4 AreaGrad, inout float4 UVGradient)
     {
-        // Calculate center gradient using Prewitt compass operator
-        // 0.xy           | 0.zw           | 1.xy           | 1.zw           | 2.xy           | 2.zw           | 3.xy           | 3.zw
-        // .......................................................................................................................................
-        // -1.0 +1.0 +1.0 | +1.0 +1.0 +1.0 | +1.0 +1.0 +1.0 | +1.0 +1.0 +1.0 | +1.0 +1.0 -1.0 | +1.0 -1.0 -1.0 | -1.0 -1.0 -1.0 | -1.0 -1.0 +1.0 |
-        // -1.0 -2.0 +1.0 | -1.0 -2.0 +1.0 | +1.0 -2.0 +1.0 | +1.0 -2.0 -1.0 | +1.0 -2.0 -1.0 | +1.0 -2.0 -1.0 | +1.0 -2.0 +1.0 | -1.0 -2.0 +1.0 |
-        // -1.0 +1.0 +1.0 | -1.0 -1.0 +1.0 | -1.0 -1.0 -1.0 | +1.0 -1.0 -1.0 | +1.0 +1.0 -1.0 | +1.0 +1.0 +1.0 | +1.0 +1.0 +1.0 | +1.0 +1.0 +1.0 |
-
-        float4 PrewittUV[4];
-        PrewittUV[0].xy = Prewitt(SampleUV, float3x3(-1.0, +1.0, +1.0, -1.0, -2.0, +1.0, -1.0, +1.0, +1.0));
-        PrewittUV[0].zw = Prewitt(SampleUV, float3x3(+1.0, +1.0, +1.0, -1.0, -2.0, +1.0, -1.0, -1.0, +1.0));
-        PrewittUV[1].xy = Prewitt(SampleUV, float3x3(+1.0, +1.0, +1.0, +1.0, -2.0, +1.0, -1.0, -1.0, -1.0));
-        PrewittUV[1].zw = Prewitt(SampleUV, float3x3(+1.0, +1.0, +1.0, +1.0, -2.0, -1.0, +1.0, -1.0, -1.0));
-        PrewittUV[2].xy = Prewitt(SampleUV, float3x3(+1.0, +1.0, -1.0, +1.0, -2.0, -1.0, +1.0, +1.0, -1.0));
-        PrewittUV[2].zw = Prewitt(SampleUV, float3x3(+1.0, -1.0, -1.0, +1.0, -2.0, -1.0, +1.0, +1.0, +1.0));
-        PrewittUV[3].xy = Prewitt(SampleUV, float3x3(-1.0, -1.0, -1.0, +1.0, -2.0, +1.0, +1.0, +1.0, +1.0));
-        PrewittUV[3].zw = Prewitt(SampleUV, float3x3(-1.0, -1.0, +1.0, -1.0, -2.0, +1.0, +1.0, +1.0, +1.0));
-
-        float2 MaxGradient[3];
-        MaxGradient[0] = max(max(abs(PrewittUV[0].xy), abs(PrewittUV[0].zw)), max(abs(PrewittUV[1].xy), abs(PrewittUV[1].zw)));
-        MaxGradient[1] = max(max(abs(PrewittUV[2].xy), abs(PrewittUV[2].zw)), max(abs(PrewittUV[3].xy), abs(PrewittUV[3].zw)));
-
-        const float Weight = 1.0 / 5.0;
-        MaxGradient[2] = max(abs(MaxGradient[0]), abs(MaxGradient[1])) * Weight;
-        float CenterGradient = rsqrt((dot(MaxGradient[2], MaxGradient[2])) + FP16_MINIMUM);
+        // Calculate center gradient using Sobel compass operator
+        float4 SobelUV[2];
+        SobelUV[0].xy = Sobel(SampleUV, float3x3(-1.0, -2.0, -1.0, 0.0, 0.0, 0.0, 1.0, 2.0, 1.0));
+        SobelUV[0].zw = Sobel(SampleUV, float3x3(-2.0, -1.0, 0.0, -1.0, 0.0, 1.0, 0.0, 1.0, 2.0));
+        SobelUV[1].xy = Sobel(SampleUV, float3x3(-1.0, 0.0, 1.0, -2.0, 0.0, 2.0, -1.0, 0.0, 1.0));
+        SobelUV[1].zw = Sobel(SampleUV, float3x3(0.0, 1.0, 2.0, -1.0, 0.0, 1.0, -2.0, -1.0, 0.0));
+        float4 MaxGradientA = max(abs(SobelUV[0]), abs(SobelUV[1]));
+        float2 MaxGradientB = max(abs(MaxGradientA.xy), abs(MaxGradientA.zw)) * (1.0 / 4.0);
+        float CenterGradient = rsqrt(dot(MaxGradientB, MaxGradientB));
 
         // Area smoothness gradients
         // .............................
@@ -587,11 +565,11 @@ namespace OpticalFlow
     void Optical_Flow_TV(in sampler2D SourceUV, in float4 TexCoords[3], in float Level, out float2 OpticalFlow)
     {
         OpticalFlow = 0.0;
-        const float Alpha = max((_Constraint * 1e-3) / pow(4.0, COARSEST_LEVEL - Level), FP16_MINIMUM);
+        const float Alpha = (_Constraint * 1e-3) / pow(4.0, COARSEST_LEVEL - Level);
 
         // Load textures
         float2 SD = tex2Dlod(Sample_Common_1_C, float4(TexCoords[1].xz, 0.0, Level + 0.5)).xy;
-        float TD = tex2Dlod(Shared_Resources_Flow::Sample_Common_1_B, float4(TexCoords[1].xz, 0.0, Level + 0.5)).x;
+        float TD = tex2Dlod(Shared_Resources_HS::Sample_Common_1_B, float4(TexCoords[1].xz, 0.0, Level + 0.5)).x;
 
         // Optical flow calculation
         float2 SampleUV[9];
@@ -638,7 +616,7 @@ namespace OpticalFlow
         // Dot-product increases when the current gradient + previous estimation are parallel
         // IxU + IyV = -It -> IxU + IyV + It = 0.0
         C = dot(SD.xy, CenterAverage.xy) + TD;
-        C = rsqrt((C * C) + FP16_MINIMUM);
+        C = rsqrt(C * C);
 
         // Build linear equation
         // [Aii Aij] [X] = [Bi]
@@ -651,8 +629,9 @@ namespace OpticalFlow
         // [Ix^2+A IxIy] [U] = -[IxIt]
         // [IxIy Iy^2+A] [V] = -[IyIt]
         UVAverage.xy = (AreaGrad.xx * AreaAvg[0]) + (AreaGrad.yy * AreaAvg[1]) + (AreaGrad.zz * AreaAvg[2]) + (AreaGrad.ww * AreaAvg[3]);
-        OpticalFlow.x = Aii.x * ((Alpha * UVAverage.x) - (Aij * CenterAverage.y) - Bi.x);
-        OpticalFlow.y = Aii.y * ((Alpha * UVAverage.y) - (Aij * OpticalFlow.x) - Bi.y);
+        UVAverage.xy = UVAverage.xy * Alpha;
+        OpticalFlow.xy = Aii.xy * (UVAverage.xy - (Aij * CenterAverage.yx) - Bi.xy);
+        OpticalFlow.xy = (isinf(OpticalFlow.xy)) ? 0.0 : OpticalFlow.xy;
     }
 
     #define LEVEL_PS(NAME, SAMPLER, LEVEL)                                                                             \
@@ -666,21 +645,21 @@ namespace OpticalFlow
         Coarse_Optical_Flow_TV(TexCoord, 5.0, 0.0, Color);
     }
 
-    LEVEL_PS(Level_5_PS, Shared_Resources_Flow::Sample_Common_6, 4.0)
-    LEVEL_PS(Level_4_PS, Shared_Resources_Flow::Sample_Common_5, 3.0)
-    LEVEL_PS(Level_3_PS, Shared_Resources_Flow::Sample_Common_4, 2.0)
-    LEVEL_PS(Level_2_PS, Shared_Resources_Flow::Sample_Common_3, 1.0)
+    LEVEL_PS(Level_5_PS, Shared_Resources_HS::Sample_Common_6, 4.0)
+    LEVEL_PS(Level_4_PS, Shared_Resources_HS::Sample_Common_5, 3.0)
+    LEVEL_PS(Level_3_PS, Shared_Resources_HS::Sample_Common_4, 2.0)
+    LEVEL_PS(Level_2_PS, Shared_Resources_HS::Sample_Common_3, 1.0)
 
     void Level_1_PS(in float4 Position : SV_POSITION, in float4 TexCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
         OutputColor0 = 0.0;
-        Optical_Flow_TV(Shared_Resources_Flow::Sample_Common_2_A, TexCoords, 0.0, OutputColor0.xy);
+        Optical_Flow_TV(Shared_Resources_HS::Sample_Common_2_A, TexCoords, 0.0, OutputColor0.xy);
         OutputColor0.ba = float2(0.0, _BlendFactor);
     }
 
     void Copy_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
-        OutputColor0 = tex2D(Shared_Resources_Flow::Sample_Common_1_A, TexCoord);
+        OutputColor0 = tex2D(Shared_Resources_HS::Sample_Common_1_A, TexCoord);
     }
 
     void Post_Blur_0_PS(in float4 Position : SV_POSITION, in float4 TexCoords[7] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
@@ -691,13 +670,13 @@ namespace OpticalFlow
 
     void Post_Blur_1_PS(in float4 Position : SV_POSITION, in float4 TexCoords[7] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
-        Gaussian_Blur(Shared_Resources_Flow::Sample_Common_2_B, TexCoords, true, OutputColor0);
+        Gaussian_Blur(Shared_Resources_HS::Sample_Common_2_B, TexCoords, true, OutputColor0);
         OutputColor0.a = 1.0;
     }
 
     void Velocity_Shading_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target)
     {
-        float2 Velocity = tex2Dlod(Shared_Resources_Flow::Sample_Common_2_A, float4(TexCoord, 0.0, _MipBias)).xy;
+        float2 Velocity = tex2Dlod(Shared_Resources_HS::Sample_Common_2_A, float4(TexCoord, 0.0, _MipBias)).xy;
 
         if(_NormalizedShading)
         {
@@ -739,28 +718,28 @@ namespace OpticalFlow
             RenderTarget0 = RENDER_TARGET; \
         }
 
-    technique cOpticalFlow
+    technique cOpticalFlowHS
     {
         // Normalize current frame
-        PASS(Basic_VS, Normalize_Frame_PS, Shared_Resources_Flow::Render_Common_0)
+        PASS(Basic_VS, Saturate_Image_PS, Shared_Resources_HS::Render_Common_0)
 
         // Scale frame
-        PASS(Basic_VS, Blit_Frame_PS, Shared_Resources_Flow::Render_Common_1_A)
+        PASS(Basic_VS, Blit_Frame_PS, Shared_Resources_HS::Render_Common_1_A)
 
         // Gaussian blur
-        PASS(Pre_Blur_0_VS, Pre_Blur_0_PS, Shared_Resources_Flow::Render_Common_1_B)
-        PASS(Pre_Blur_1_VS, Pre_Blur_1_PS, Shared_Resources_Flow::Render_Common_1_A) // Save this to store later
+        PASS(Pre_Blur_0_VS, Pre_Blur_0_PS, Shared_Resources_HS::Render_Common_1_B)
+        PASS(Pre_Blur_1_VS, Pre_Blur_1_PS, Shared_Resources_HS::Render_Common_1_A) // Save this to store later
 
         // Calculate spatial and temporal derivative pyramid
-        PASS(Basic_VS, Derivatives_Z_PS, Shared_Resources_Flow::Render_Common_1_B)
+        PASS(Basic_VS, Derivatives_Z_PS, Shared_Resources_HS::Render_Common_1_B)
         PASS(Derivatives_VS, Derivatives_XY_PS, Render_Common_1_C)
 
         // Bilinear Optical Flow
-        PASS(Basic_VS, Level_6_PS, Shared_Resources_Flow::Render_Common_6)
-        PASS(Sample_3x3_6_VS, Level_5_PS, Shared_Resources_Flow::Render_Common_5)
-        PASS(Sample_3x3_5_VS, Level_4_PS, Shared_Resources_Flow::Render_Common_4)
-        PASS(Sample_3x3_4_VS, Level_3_PS, Shared_Resources_Flow::Render_Common_3)
-        PASS(Sample_3x3_3_VS, Level_2_PS, Shared_Resources_Flow::Render_Common_2_A)
+        PASS(Basic_VS, Level_6_PS, Shared_Resources_HS::Render_Common_6)
+        PASS(Sample_3x3_6_VS, Level_5_PS, Shared_Resources_HS::Render_Common_5)
+        PASS(Sample_3x3_5_VS, Level_4_PS, Shared_Resources_HS::Render_Common_4)
+        PASS(Sample_3x3_4_VS, Level_3_PS, Shared_Resources_HS::Render_Common_3)
+        PASS(Sample_3x3_3_VS, Level_2_PS, Shared_Resources_HS::Render_Common_2_A)
 
         pass
         {
@@ -778,8 +757,8 @@ namespace OpticalFlow
         PASS(Basic_VS, Copy_PS, Render_Common_1_C)
 
         // Gaussian blur
-        PASS(Post_Blur_0_VS, Post_Blur_0_PS, Shared_Resources_Flow::Render_Common_2_B)
-        PASS(Post_Blur_1_VS, Post_Blur_1_PS, Shared_Resources_Flow::Render_Common_2_A)
+        PASS(Post_Blur_0_VS, Post_Blur_0_PS, Shared_Resources_HS::Render_Common_2_B)
+        PASS(Post_Blur_1_VS, Post_Blur_1_PS, Shared_Resources_HS::Render_Common_2_A)
 
         // Visualize optical flow
 

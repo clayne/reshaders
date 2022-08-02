@@ -33,7 +33,7 @@
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#define FP16_MINIMUM float((1.0 / float(1 << 14)) * (0.0 + (1.0 / 1024.0)))
+#define FP16_SMALLEST_SUBNORMAL float((1.0 / (1 << 14)) * (0.0 + (1.0 / (1 << 10))))
 
 #define RCP_HEIGHT (1.0 / BUFFER_HEIGHT)
 #define ASPECT_RATIO (BUFFER_WIDTH * RCP_HEIGHT)
@@ -42,66 +42,25 @@
 #define RENDER_BUFFER_HEIGHT int(256.0)
 
 #define SIZE int2(RENDER_BUFFER_WIDTH, RENDER_BUFFER_HEIGHT)
-#define BUFFER_SIZE_1 int2(ROUND_UP_EVEN(SIZE.x >> 0), ROUND_UP_EVEN(SIZE.y >> 0))
-#define BUFFER_SIZE_2 int2(ROUND_UP_EVEN(SIZE.x >> 1), ROUND_UP_EVEN(SIZE.y >> 1))
-#define BUFFER_SIZE_3 int2(ROUND_UP_EVEN(SIZE.x >> 2), ROUND_UP_EVEN(SIZE.y >> 2))
-#define BUFFER_SIZE_4 int2(ROUND_UP_EVEN(SIZE.x >> 3), ROUND_UP_EVEN(SIZE.y >> 3))
-#define BUFFER_SIZE_5 int2(ROUND_UP_EVEN(SIZE.x >> 4), ROUND_UP_EVEN(SIZE.y >> 4))
-#define BUFFER_SIZE_6 int2(ROUND_UP_EVEN(SIZE.x >> 5), ROUND_UP_EVEN(SIZE.y >> 5))
-
-#define TEXTURE(NAME, SIZE, FORMAT, LEVELS) \
-    texture2D NAME \
-    { \
-        Width = SIZE.x; \
-        Height = SIZE.y; \
-        Format = FORMAT; \
-        MipLevels = LEVELS; \
-    };
-
-#define SAMPLER(NAME, TEXTURE) \
-    sampler2D NAME \
-    { \
-        Texture = TEXTURE; \
-        AddressU = MIRROR; \
-        AddressV = MIRROR; \
-        MagFilter = LINEAR; \
-        MinFilter = LINEAR; \
-        MipFilter = LINEAR; \
-    };
-
-namespace Shared_Resources_Datamosh
-{
-    TEXTURE(Render_Common_0, int2(BUFFER_WIDTH >> 1, BUFFER_HEIGHT >> 1), RG16F, 4)
-    SAMPLER(Sample_Common_0, Render_Common_0)
-
-    TEXTURE(Render_Common_1_A, BUFFER_SIZE_1, RG16F, 9)
-    SAMPLER(Sample_Common_1_A, Render_Common_1_A)
-
-    TEXTURE(Render_Common_1_B, BUFFER_SIZE_1, RG16F, 9)
-    SAMPLER(Sample_Common_1_B, Render_Common_1_B)
-
-    TEXTURE(Render_Common_2_A, BUFFER_SIZE_2, RG16F, 7)
-    SAMPLER(Sample_Common_2_A, Render_Common_2_A)
-
-    TEXTURE(Render_Common_2_B, BUFFER_SIZE_2, RG16F, 1)
-    SAMPLER(Sample_Common_2_B, Render_Common_2_B)
-
-    TEXTURE(Render_Common_3, BUFFER_SIZE_3, RG16F, 1)
-    SAMPLER(Sample_Common_3, Render_Common_3)
-
-    TEXTURE(Render_Common_4, BUFFER_SIZE_4, RG16F, 1)
-    SAMPLER(Sample_Common_4, Render_Common_4)
-
-    TEXTURE(Render_Common_5, BUFFER_SIZE_5, RG16F, 1)
-    SAMPLER(Sample_Common_5, Render_Common_5)
-
-    TEXTURE(Render_Common_6, BUFFER_SIZE_6, RG16F, 1)
-    SAMPLER(Sample_Common_6, Render_Common_6)
-}
+#define BUFFER_SIZE_1 int2(SIZE >> 0)
+#define BUFFER_SIZE_2 int2(SIZE >> 1)
+#define BUFFER_SIZE_3 int2(SIZE >> 2)
 
 namespace Datamosh
 {
-    // Shader properties
+    /*
+        [Shader properties]
+    */
+
+    #ifndef LINEAR_SAMPLING
+        #define LINEAR_SAMPLING 0
+    #endif
+
+    #if LINEAR_SAMPLING == 1
+        #define _FILTER LINEAR
+    #else
+        #define _FILTER POINT
+    #endif
 
     #define OPTION(DATA_TYPE, NAME, TYPE, CATEGORY, LABEL, MINIMUM, MAXIMUM, DEFAULT) \
         uniform DATA_TYPE NAME <                                                      \
@@ -120,19 +79,64 @@ namespace Datamosh
     OPTION(float, _Scale, "slider", "Datamosh", "Scale factor for velocity vectors", 0.0, 2.0, 1.0)
     OPTION(float, _Diffusion, "slider", "Datamosh", "Amount of random displacement", 0.0, 4.0, 2.0)
 
-    OPTION(float, _Constraint, "slider", "Optical flow", "Motion constraint", 0.0, 1.0, 0.5)
-    OPTION(float, _MipBias, "slider", "Optical flow", "Optical flow mipmap bias", 0.0, 6.0, 0.0)
+    OPTION(float, _MipBias, "slider", "Optical flow", "Optical flow mipmap bias", 0.0, 6.0, 2.0)
     OPTION(float, _BlendFactor, "slider", "Optical flow", "Temporal blending factor", 0.0, 0.9, 0.5)
 
-    #ifndef LINEAR_SAMPLING
-        #define LINEAR_SAMPLING 0
-    #endif
+    /*
+        [Textures and samplers]
+    */
 
-    #if LINEAR_SAMPLING == 1
-        #define _FILTER LINEAR
-    #else
-        #define _FILTER POINT
-    #endif
+    #define CREATE_TEXTURE(NAME, SIZE, FORMAT, LEVELS) \
+    texture2D NAME \
+    { \
+        Width = SIZE.x; \
+        Height = SIZE.y; \
+        Format = FORMAT; \
+        MipLevels = LEVELS; \
+    };
+
+    #define CREATE_SAMPLER(NAME, TEXTURE) \
+        sampler2D NAME \
+        { \
+            Texture = TEXTURE; \
+            AddressU = MIRROR; \
+            AddressV = MIRROR; \
+            MagFilter = LINEAR; \
+            MinFilter = LINEAR; \
+            MipFilter = LINEAR; \
+        };
+
+    #define CREATE_SAMPLER_TRILINEAR(NAME, TEXTURE) \
+        sampler2D NAME \
+        { \
+            Texture = TEXTURE; \
+            AddressU = MIRROR; \
+            AddressV = MIRROR; \
+            MagFilter = LINEAR; \
+            MinFilter = LINEAR; \
+            MipFilter = LINEAR; \
+            MipLODBias = 0.5; \
+        }; \
+
+    CREATE_TEXTURE(Render_Common_0, int2(BUFFER_WIDTH >> 1, BUFFER_HEIGHT >> 1), RG8, 6)
+    CREATE_SAMPLER(Sample_Common_0, Render_Common_0)
+
+    CREATE_TEXTURE(Render_Common_1_A, BUFFER_SIZE_1, RGBA16F, 4)
+    CREATE_SAMPLER(Sample_Common_1_A, Render_Common_1_A)
+    CREATE_SAMPLER_TRILINEAR(Sample_Common_1_A_Trilinear, Render_Common_1_A)
+
+    CREATE_TEXTURE(Render_Common_1_B, BUFFER_SIZE_1, RG16F, 4)
+    CREATE_SAMPLER(Sample_Common_1_B, Render_Common_1_B)
+    CREATE_SAMPLER_TRILINEAR(Sample_Common_1_B_Trilinear, Render_Common_1_B)
+
+    CREATE_TEXTURE(Render_Common_2_A, BUFFER_SIZE_2, RG16F, 4)
+    CREATE_SAMPLER(Sample_Common_2_A, Render_Common_2_A)
+
+    CREATE_TEXTURE(Render_Common_2_B, BUFFER_SIZE_2, RG16F, 1)
+    CREATE_SAMPLER(Sample_Common_2_B, Render_Common_2_B)
+
+    CREATE_TEXTURE(Render_Common_3, BUFFER_SIZE_3, RG16F, 1)
+    CREATE_SAMPLER(Sample_Common_3, Render_Common_3)
 
     texture2D Render_Color : COLOR;
 
@@ -149,20 +153,20 @@ namespace Datamosh
         #endif
     };
 
-    TEXTURE(Render_Common_1_C, BUFFER_SIZE_1, RG16F, 9)
-    SAMPLER(Sample_Common_1_C, Render_Common_1_C)
+    CREATE_TEXTURE(Render_Common_1_C, BUFFER_SIZE_1, RG16F, 4)
+    CREATE_SAMPLER(Sample_Common_1_C, Render_Common_1_C)
 
-    TEXTURE(Render_Optical_Flow, BUFFER_SIZE_1, RG16F, 9)
-    SAMPLER(Sample_Optical_Flow, Render_Optical_Flow)
+    CREATE_TEXTURE(Render_Optical_Flow, BUFFER_SIZE_1, RG16F, 9)
+    CREATE_SAMPLER(Sample_Optical_Flow, Render_Optical_Flow)
 
     sampler2D Sample_Optical_Flow_Post
     {
-        Texture = Shared_Resources_Datamosh::Render_Common_2_A;
+        Texture = Render_Common_2_A;
         MagFilter = _FILTER;
         MinFilter = _FILTER;
     };
 
-    TEXTURE(Render_Accumulation, BUFFER_SIZE_1, R16F, 1)
+    CREATE_TEXTURE(Render_Accumulation, BUFFER_SIZE_1, R16F, 1)
 
     sampler2D Sample_Accumulation
     {
@@ -171,7 +175,7 @@ namespace Datamosh
         MinFilter = _FILTER;
     };
 
-    TEXTURE(Render_Feedback, int2(BUFFER_WIDTH, BUFFER_HEIGHT), RGBA8, 1)
+    CREATE_TEXTURE(Render_Feedback, int2(BUFFER_WIDTH, BUFFER_HEIGHT), RGBA8, 1)
 
     sampler2D Sample_Feedback
     {
@@ -204,10 +208,10 @@ namespace Datamosh
         float4(0.0, 13.416645, 15.404578, 17.392626)
     };
 
-    void Blur_VS(in bool IsAlt, in float2 PixelSize, in uint ID, inout float4 Position, inout float4 TexCoords[7])
+    void Blur_VS(in bool IsAlt, in float2 PixelSize, in uint ID, out float4 Position, out float4 TexCoords[7])
     {
+        TexCoords[0] = 0.0;
         Basic_VS(ID, Position, TexCoords[0].xy);
-
         if (!IsAlt)
         {
             TexCoords[1] = TexCoords[0].xyyy + (BlurOffsets[0].xyzw / PixelSize.xyyy);
@@ -226,11 +230,10 @@ namespace Datamosh
             TexCoords[5] = TexCoords[0].xxxy - (BlurOffsets[1].yzwx / PixelSize.xxxy);
             TexCoords[6] = TexCoords[0].xxxy - (BlurOffsets[2].yzwx / PixelSize.xxxy);
         }
-
     }
 
     #define BLUR_VS(NAME, IS_ALT, PIXEL_SIZE) \
-        void NAME(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float4 TexCoords[7] : TEXCOORD0) \
+        void NAME(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 TexCoords[7] : TEXCOORD0) \
         { \
             Blur_VS(IS_ALT, PIXEL_SIZE, ID, Position, TexCoords); \
         }
@@ -240,33 +243,31 @@ namespace Datamosh
     BLUR_VS(Post_Blur_0_VS, false, BUFFER_SIZE_2)
     BLUR_VS(Post_Blur_1_VS, true, BUFFER_SIZE_2)
 
-    void Sample_3x3_VS(in uint ID, in float2 TexelSize, out float4 Position, out float4 TexCoords[3])
+    void Level_VS(in uint ID, in float2 TexelSize, out float4 Position, out float4 TexCoords[8])
     {
-        float2 CoordVS = 0.0;
-        Basic_VS(ID, Position, CoordVS);
-        // Sample locations:
-        // [0].xy [1].xy [2].xy
-        // [0].xz [1].xz [2].xz
-        // [0].xw [1].xw [2].xw
-        TexCoords[0] = CoordVS.xyyy + (float4(-1.0, 1.0, 0.0, -1.0) / TexelSize.xyyy);
-        TexCoords[1] = CoordVS.xyyy + (float4(0.0, 1.0, 0.0, -1.0) / TexelSize.xyyy);
-        TexCoords[2] = CoordVS.xyyy + (float4(1.0, 1.0, 0.0, -1.0) / TexelSize.xyyy);
+        float2 TexCoordVS = 0.0;
+        Basic_VS(ID, Position, TexCoordVS);
+        TexCoords[0] = TexCoordVS.xyyy + (float4(-2.0, 1.0, 0.0, -1.0) / TexelSize.xyyy);
+        TexCoords[1] = TexCoordVS.xyyy + (float4(-1.0, 1.0, 0.0, -1.0) / TexelSize.xyyy);
+        TexCoords[2] = TexCoordVS.xyyy + (float4(0.0, 1.0, 0.0, -1.0) / TexelSize.xyyy);
+        TexCoords[3] = TexCoordVS.xyyy + (float4(1.0, 1.0, 0.0, -1.0) / TexelSize.xyyy);
+        TexCoords[4] = TexCoordVS.xyyy + (float4(2.0, 1.0, 0.0, -1.0) / TexelSize.xyyy);
+        TexCoords[5] = TexCoordVS.xxxy + (float4(1.0, 0.0, -1.0, 2.0) / TexelSize.xxxy);
+        TexCoords[6] = TexCoordVS.xxxy + (float4(1.0, 0.0, -1.0, -2.0) / TexelSize.xxxy);
+        TexCoords[7] = TexCoordVS.xyxy + (float4(-2.0, -2.0, 2.0, 2.0) / TexelSize.xyxy);
     }
 
-    #define SAMPLE_3X3_VS(NAME, BUFFER_SIZE)                                                                        \
-        void NAME(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 TexCoords[3] : TEXCOORD0) \
-        {                                                                                                           \
-            Sample_3x3_VS(ID, BUFFER_SIZE, Position, TexCoords);                                                    \
+    #define CREATE_LEVEL_VS(NAME, BUFFER_SIZE) \
+        void NAME(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 TexCoords[8] : TEXCOORD0) \
+        { \
+            Level_VS(ID, BUFFER_SIZE, Position, TexCoords); \
         }
 
-    SAMPLE_3X3_VS(Sample_3x3_1_VS, BUFFER_SIZE_1)
-    SAMPLE_3X3_VS(Sample_3x3_2_VS, BUFFER_SIZE_2)
-    SAMPLE_3X3_VS(Sample_3x3_3_VS, BUFFER_SIZE_3)
-    SAMPLE_3X3_VS(Sample_3x3_4_VS, BUFFER_SIZE_4)
-    SAMPLE_3X3_VS(Sample_3x3_5_VS, BUFFER_SIZE_5)
-    SAMPLE_3X3_VS(Sample_3x3_6_VS, BUFFER_SIZE_6)
+    CREATE_LEVEL_VS(LK_Level_1_VS, BUFFER_SIZE_1)
+    CREATE_LEVEL_VS(LK_Level_2_VS, BUFFER_SIZE_2)
+    CREATE_LEVEL_VS(LK_Level_3_VS, BUFFER_SIZE_3)
 
-    void Derivatives_VS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float4 TexCoords[2] : TEXCOORD0)
+    void Derivatives_Spatial_VS(in uint ID : SV_VERTEXID, inout float4 Position : SV_POSITION, inout float4 TexCoords[2] : TEXCOORD0)
     {
         float2 CoordVS = 0.0;
         Basic_VS(ID, Position, CoordVS);
@@ -277,33 +278,7 @@ namespace Datamosh
     /*
         [Pixel Shaders]
 
-        [1] Horn-Schunck Optical Flow
-            https://github.com/Dtananaev/cv_opticalFlow
-
-                Copyright (c) 2014-2015, Denis Tananaev All rights reserved.
-
-                Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
-
-                Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
-
-                Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the
-                documentation and/or other materials provided with the distribution.
-
-                THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,
-                INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-                DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-                EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-                LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
-                STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
-                ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-        [2] Robert's cross operator
-            https://homepages.inf.ed.ac.uk/rbf/HIPR2/roberts.htm
-
-        [3] Prewitt compass operator
-            https://homepages.inf.ed.ac.uk/rbf/HIPR2/prewitt.htm
-
-        [4] Color + BlendOp version of KinoDatamosh
+        [1] Color + BlendOp version of KinoDatamosh
             https://github.com/keijiro/KinoDatamosh
 
             This is free and unencumbered software released into the public domain.
@@ -332,29 +307,23 @@ namespace Datamosh
             For more information, please refer to <http://unlicense.org/>
     */
 
-    void Normalize_Frame_PS(in float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD, out float2 Color : SV_TARGET0)
+    void Normalize_PS(in float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD, out float2 Color : SV_TARGET0)
     {
         float4 Frame = max(tex2D(Sample_Color, TexCoord), exp2(-10.0));
-        Color.xy = saturate(Frame.xy / dot(Frame.xyz, 1.0));
+        Color = saturate(normalize(Frame.rgb).xy);
     }
 
-    void Blit_Frame_PS(in float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD, out float4 OutputColor0 : SV_TARGET0)
+    void Blit_PS(in float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD, out float4 OutputColor0 : SV_TARGET0)
     {
-        OutputColor0 = tex2D(Shared_Resources_Datamosh::Sample_Common_0, TexCoord);
+        OutputColor0 = tex2D(Sample_Common_0, TexCoord);
     }
 
     static const float BlurWeights[10] =
     {
         0.06299088,
-        0.122137636,
-        0.10790718,
-        0.08633988,
-        0.062565096,
-        0.04105926,
-        0.024403222,
-        0.013135255,
-        0.006402994,
-        0.002826693
+        0.122137636, 0.10790718, 0.08633988,
+        0.062565096, 0.04105926, 0.024403222,
+        0.013135255, 0.006402994, 0.002826693
     };
 
     void Gaussian_Blur(in sampler2D Source, in float4 TexCoords[7], bool Alt, out float4 OutputColor0)
@@ -400,250 +369,163 @@ namespace Datamosh
 
     void Pre_Blur_0_PS(in float4 Position : SV_POSITION, in float4 TexCoords[7] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
-        Gaussian_Blur(Shared_Resources_Datamosh::Sample_Common_1_A, TexCoords, false, OutputColor0);
+        Gaussian_Blur(Sample_Common_1_A, TexCoords, false, OutputColor0);
     }
 
     void Pre_Blur_1_PS(in float4 Position : SV_POSITION, in float4 TexCoords[7] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
-        Gaussian_Blur(Shared_Resources_Datamosh::Sample_Common_1_B, TexCoords, true, OutputColor0);
+        Gaussian_Blur(Sample_Common_1_B, TexCoords, true, OutputColor0);
     }
 
-    void Derivatives_Z_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0)
+    void Derivatives_Temporal_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0)
     {
-        float2 Current = tex2D(Shared_Resources_Datamosh::Sample_Common_1_A, TexCoord).xy;
-        float2 Previous = tex2D(Sample_Common_1_C, TexCoord).xy;
-        OutputColor0 = dot(Current - Previous, 1.0);
+        float2 I0 = tex2D(Sample_Common_1_C, TexCoord).xy;
+        float2 I1 = tex2D(Sample_Common_1_A, TexCoord).xy;
+        OutputColor0 = I0 - I1;
     }
 
-    void Derivatives_XY_PS(in float4 Position : SV_POSITION, in float4 TexCoords[2] : TEXCOORD0, out float2 OutputColor0 : SV_TARGET0)
+    void Copy_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+    {
+        OutputColor0 = tex2D(Sample_Common_1_A, TexCoord);
+    }
+
+    void Derivatives_Spatial_PS(in float4 Position : SV_POSITION, in float4 TexCoords[2] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
         // Bilinear 5x5 Sobel by CeeJayDK
         //   B1 B2
         // A0     A1
         // A2     B0
         //   C0 C1
-        float2 A0 = tex2D(Shared_Resources_Datamosh::Sample_Common_1_A, TexCoords[0].xw).xy * 4.0; // <-1.5, +0.5>
-        float2 A1 = tex2D(Shared_Resources_Datamosh::Sample_Common_1_A, TexCoords[0].yw).xy * 4.0; // <+1.5, +0.5>
-        float2 A2 = tex2D(Shared_Resources_Datamosh::Sample_Common_1_A, TexCoords[0].xz).xy * 4.0; // <-1.5, -0.5>
-        float2 B0 = tex2D(Shared_Resources_Datamosh::Sample_Common_1_A, TexCoords[0].yz).xy * 4.0; // <+1.5, -0.5>
-        float2 B1 = tex2D(Shared_Resources_Datamosh::Sample_Common_1_A, TexCoords[1].xw).xy * 4.0; // <-0.5, +1.5>
-        float2 B2 = tex2D(Shared_Resources_Datamosh::Sample_Common_1_A, TexCoords[1].yw).xy * 4.0; // <+0.5, +1.5>
-        float2 C0 = tex2D(Shared_Resources_Datamosh::Sample_Common_1_A, TexCoords[1].xz).xy * 4.0; // <-0.5, -1.5>
-        float2 C1 = tex2D(Shared_Resources_Datamosh::Sample_Common_1_A, TexCoords[1].yz).xy * 4.0; // <+0.5, -1.5>
+        float2 A0 = tex2D(Sample_Common_1_C, TexCoords[0].xw).xy * 4.0; // <-1.5, +0.5>
+        float2 A1 = tex2D(Sample_Common_1_C, TexCoords[0].yw).xy * 4.0; // <+1.5, +0.5>
+        float2 A2 = tex2D(Sample_Common_1_C, TexCoords[0].xz).xy * 4.0; // <-1.5, -0.5>
+        float2 B0 = tex2D(Sample_Common_1_C, TexCoords[0].yz).xy * 4.0; // <+1.5, -0.5>
+        float2 B1 = tex2D(Sample_Common_1_C, TexCoords[1].xw).xy * 4.0; // <-0.5, +1.5>
+        float2 B2 = tex2D(Sample_Common_1_C, TexCoords[1].yw).xy * 4.0; // <+0.5, +1.5>
+        float2 C0 = tex2D(Sample_Common_1_C, TexCoords[1].xz).xy * 4.0; // <-0.5, -1.5>
+        float2 C1 = tex2D(Sample_Common_1_C, TexCoords[1].yz).xy * 4.0; // <+0.5, -1.5>
 
         OutputColor0 = 0.0;
-        float2 Ix = ((B2 + A1 + B0 + C1) - (B1 + A0 + A2 + C0)) / 12.0;
-        float2 Iy = ((A0 + B1 + B2 + A1) - (A2 + C0 + C1 + B0)) / 12.0;
-        OutputColor0.x = dot(Ix, 1.0);
-        OutputColor0.y = dot(Iy, 1.0);
+        OutputColor0.xy = ((B2 + A1 + B0 + C1) - (B1 + A0 + A2 + C0)) / 12.0;
+        OutputColor0.zw = ((A0 + B1 + B2 + A1) - (A2 + C0 + C1 + B0)) / 12.0;
     }
 
-    #define COARSEST_LEVEL 5
-
-    // Calculate first level of Horn-Schunck Optical Flow
-    void Coarse_Optical_Flow_TV(in float2 TexCoord, in float Level, in float4 UV, out float2 OpticalFlow)
+    float2 Lucas_Kanade(int Level, float2 Vectors, float4 TexCoords[8])
     {
-        OpticalFlow = 0.0;
-        const float Alpha = max((_Constraint * 1e-3) / pow(4.0, COARSEST_LEVEL - Level), FP16_MINIMUM);
+        /*
+            Calculate Lucas-Kanade optical flow by solving (A^-1 * B)
+            [A11 A12]^-1 [-B1] -> [ A11 -A12] [-B1]
+            [A21 A22]^-1 [-B2] -> [-A21  A22] [-B2]
+            A11 = Ix^2
+            A12 = IxIy
+            A21 = IxIy
+            A22 = Iy^2
+            B1 = IxIt
+            B2 = IyIt
+        */
 
-        // Load textures
-        float2 SD = tex2Dlod(Sample_Common_1_C, float4(TexCoord, 0.0, Level + 0.5)).xy;
-        float TD = tex2Dlod(Shared_Resources_Datamosh::Sample_Common_1_B, float4(TexCoord, 0.0, Level + 0.5)).x;
+        // The spatial(S) and temporal(T) derivative neighbors to sample
+        const int WindowSize = 25;
+        float4 S[WindowSize];
+        float2 T[WindowSize];
 
-        float C = 0.0;
-        float2 Aii = 0.0;
-        float Aij = 0.0;
-        float2 Bi = 0.0;
+        // Windows matrices to sum
+        float3 A = 0.0;
+        float2 B = 0.0;
 
-        // Calculate constancy assumption nonlinearity
-        C = rsqrt((TD * TD) + FP16_MINIMUM);
+        float2 WindowCoords[25] =
+        {
+            TexCoords[0].xy, TexCoords[0].xz, TexCoords[0].xw,
+            TexCoords[1].xy, TexCoords[1].xz, TexCoords[1].xw,
+            TexCoords[2].xy, TexCoords[2].xz, TexCoords[2].xw,
+            TexCoords[3].xy, TexCoords[3].xz, TexCoords[3].xw,
+            TexCoords[4].xy, TexCoords[4].xz, TexCoords[4].xw,
+            TexCoords[5].xw, TexCoords[5].yw, TexCoords[5].zw,
+            TexCoords[6].xw, TexCoords[6].yw, TexCoords[6].zw,
+            TexCoords[7].xw, TexCoords[7].zw, TexCoords[7].xy, TexCoords[7].zy,
+        };
 
-        // Build linear equation
-        // [Aii Aij] [X] = [Bi]
-        // [Aij Aii] [Y] = [Bi]
-        Aii = 1.0 / (C * (SD.xy * SD.xy) + Alpha);
-        Aij = C * (SD.x * SD.y);
-        Bi = C * (SD.xy * TD);
+        [unroll] for (int i = 0; i < WindowSize; i++)
+        {
+            S[i] = tex2D(Sample_Common_1_A_Trilinear, WindowCoords[i]).xyzw;
+            T[i] = tex2D(Sample_Common_1_B_Trilinear, WindowCoords[i]).xy;
 
-        // Solve linear equation for [U, V]
-        // [Ix^2+A IxIy] [U] = -[IxIt]
-        // [IxIy Iy^2+A] [V] = -[IyIt]
-        OpticalFlow.x = Aii.x * ((Alpha * UV.x) - (Aij * UV.y) - Bi.x);
-        OpticalFlow.y = Aii.y * ((Alpha * UV.y) - (Aij * OpticalFlow.x) - Bi.y);
-    }
+            // A.x = A11; A.y = A22; A.z = A12/A22
+            A.x += dot(S[i].xy, S[i].xy);
+            A.y += dot(S[i].zw, S[i].zw);
+            A.z += dot(S[i].xy, S[i].zw);
 
-    void Gradient(in float4x2 Samples, out float Gradient)
-    {
-        // 2x2 Robert's cross
-        // [0] [2]
-        // [1] [3]
-        float4 SqGradientUV = 0.0;
-        SqGradientUV.xy = (Samples[0] - Samples[3]); // <IxU, IxV>
-        SqGradientUV.zw = (Samples[2] - Samples[1]); // <IyU, IyV>
-        Gradient = rsqrt((dot(SqGradientUV, SqGradientUV) * 0.25) + FP16_MINIMUM);
-    }
-
-    float2 Prewitt(float2 SampleUV[9], float3x3 Weights)
-    {
-        // [0] [3] [6]
-        // [1] [4] [7]
-        // [2] [5] [8]
-        float2 Output;
-        Output += (SampleUV[0] * Weights._11);
-        Output += (SampleUV[1] * Weights._12);
-        Output += (SampleUV[2] * Weights._13);
-        Output += (SampleUV[3] * Weights._21);
-        Output += (SampleUV[4] * Weights._22);
-        Output += (SampleUV[5] * Weights._23);
-        Output += (SampleUV[6] * Weights._31);
-        Output += (SampleUV[7] * Weights._32);
-        Output += (SampleUV[8] * Weights._33);
-        return Output;
-    }
-
-    void Process_Gradients(in float2 SampleUV[9], inout float4 AreaGrad, inout float4 UVGradient)
-    {
-        // Calculate center gradient using Prewitt compass operator
-        // 0.xy           | 0.zw           | 1.xy           | 1.zw           | 2.xy           | 2.zw           | 3.xy           | 3.zw
-        // .......................................................................................................................................
-        // -1.0 +1.0 +1.0 | +1.0 +1.0 +1.0 | +1.0 +1.0 +1.0 | +1.0 +1.0 +1.0 | +1.0 +1.0 -1.0 | +1.0 -1.0 -1.0 | -1.0 -1.0 -1.0 | -1.0 -1.0 +1.0 |
-        // -1.0 -2.0 +1.0 | -1.0 -2.0 +1.0 | +1.0 -2.0 +1.0 | +1.0 -2.0 -1.0 | +1.0 -2.0 -1.0 | +1.0 -2.0 -1.0 | +1.0 -2.0 +1.0 | -1.0 -2.0 +1.0 |
-        // -1.0 +1.0 +1.0 | -1.0 -1.0 +1.0 | -1.0 -1.0 -1.0 | +1.0 -1.0 -1.0 | +1.0 +1.0 -1.0 | +1.0 +1.0 +1.0 | +1.0 +1.0 +1.0 | +1.0 +1.0 +1.0 |
-
-        float4 PrewittUV[4];
-        PrewittUV[0].xy = Prewitt(SampleUV, float3x3(-1.0, +1.0, +1.0, -1.0, -2.0, +1.0, -1.0, +1.0, +1.0));
-        PrewittUV[0].zw = Prewitt(SampleUV, float3x3(+1.0, +1.0, +1.0, -1.0, -2.0, +1.0, -1.0, -1.0, +1.0));
-        PrewittUV[1].xy = Prewitt(SampleUV, float3x3(+1.0, +1.0, +1.0, +1.0, -2.0, +1.0, -1.0, -1.0, -1.0));
-        PrewittUV[1].zw = Prewitt(SampleUV, float3x3(+1.0, +1.0, +1.0, +1.0, -2.0, -1.0, +1.0, -1.0, -1.0));
-        PrewittUV[2].xy = Prewitt(SampleUV, float3x3(+1.0, +1.0, -1.0, +1.0, -2.0, -1.0, +1.0, +1.0, -1.0));
-        PrewittUV[2].zw = Prewitt(SampleUV, float3x3(+1.0, -1.0, -1.0, +1.0, -2.0, -1.0, +1.0, +1.0, +1.0));
-        PrewittUV[3].xy = Prewitt(SampleUV, float3x3(-1.0, -1.0, -1.0, +1.0, -2.0, +1.0, +1.0, +1.0, +1.0));
-        PrewittUV[3].zw = Prewitt(SampleUV, float3x3(-1.0, -1.0, +1.0, -1.0, -2.0, +1.0, +1.0, +1.0, +1.0));
-
-        float2 MaxGradient[3];
-        MaxGradient[0] = max(max(abs(PrewittUV[0].xy), abs(PrewittUV[0].zw)), max(abs(PrewittUV[1].xy), abs(PrewittUV[1].zw)));
-        MaxGradient[1] = max(max(abs(PrewittUV[2].xy), abs(PrewittUV[2].zw)), max(abs(PrewittUV[3].xy), abs(PrewittUV[3].zw)));
-
-        const float Weight = 1.0 / 5.0;
-        MaxGradient[2] = max(abs(MaxGradient[0]), abs(MaxGradient[1])) * Weight;
-        float CenterGradient = rsqrt((dot(MaxGradient[2], MaxGradient[2])) + FP16_MINIMUM);
-
-        // Area smoothness gradients
-        // .............................
-        //  [0]     [1]     [2]     [3]
-        // 0 3 . | . 3 6 | . . . | . . .
-        // 1 4 . | . 4 7 | 1 4 . | . 4 7
-        // . . . | . . . | 2 5 . | . 5 8
-        Gradient(float4x2(SampleUV[0], SampleUV[3], SampleUV[1], SampleUV[4]), AreaGrad[0]);
-        Gradient(float4x2(SampleUV[3], SampleUV[6], SampleUV[4], SampleUV[7]), AreaGrad[1]);
-        Gradient(float4x2(SampleUV[1], SampleUV[4], SampleUV[2], SampleUV[5]), AreaGrad[2]);
-        Gradient(float4x2(SampleUV[4], SampleUV[7], SampleUV[5], SampleUV[8]), AreaGrad[3]);
-        UVGradient = 0.5 * (CenterGradient + AreaGrad);
-    }
-
-    void Area_Average(in float2 SampleNW, in float2 SampleNE, in float2 SampleSW, in float2 SampleSE, out float2 Color)
-    {
-        Color = (SampleNW + SampleNE + SampleSW + SampleSE) * 0.25;
-    }
-
-    // Calculate following levels of Horn-Schunck Optical Flow
-    void Optical_Flow_TV(in sampler2D SourceUV, in float4 TexCoords[3], in float Level, out float2 OpticalFlow)
-    {
-        OpticalFlow = 0.0;
-        const float Alpha = max((_Constraint * 1e-3) / pow(4.0, COARSEST_LEVEL - Level), FP16_MINIMUM);
-
-        // Load textures
-        float2 SD = tex2Dlod(Sample_Common_1_C, float4(TexCoords[1].xz, 0.0, Level + 0.5)).xy;
-        float TD = tex2Dlod(Shared_Resources_Datamosh::Sample_Common_1_B, float4(TexCoords[1].xz, 0.0, Level + 0.5)).x;
-
-        // Optical flow calculation
-        float2 SampleUV[9];
-        float4 AreaGrad;
-        float4 UVGradient;
-        float2 AreaAvg[4];
-        float4 CenterAverage;
-        float4 UVAverage;
-
-        // SampleUV[i]
-        // 0 3 6
-        // 1 4 7
-        // 2 5 8
-        SampleUV[0] = tex2D(SourceUV, TexCoords[0].xy).xy;
-        SampleUV[1] = tex2D(SourceUV, TexCoords[0].xz).xy;
-        SampleUV[2] = tex2D(SourceUV, TexCoords[0].xw).xy;
-        SampleUV[3] = tex2D(SourceUV, TexCoords[1].xy).xy;
-        SampleUV[4] = tex2D(SourceUV, TexCoords[1].xz).xy;
-        SampleUV[5] = tex2D(SourceUV, TexCoords[1].xw).xy;
-        SampleUV[6] = tex2D(SourceUV, TexCoords[2].xy).xy;
-        SampleUV[7] = tex2D(SourceUV, TexCoords[2].xz).xy;
-        SampleUV[8] = tex2D(SourceUV, TexCoords[2].xw).xy;
-
-        // Process area gradients in each patch, per plane
-        Process_Gradients(SampleUV, AreaGrad, UVGradient);
-
-        // Calculate area + center averages of estimated vectors
-        Area_Average(SampleUV[0], SampleUV[3], SampleUV[1], SampleUV[4], AreaAvg[0]);
-        Area_Average(SampleUV[3], SampleUV[6], SampleUV[4], SampleUV[7], AreaAvg[1]);
-        Area_Average(SampleUV[1], SampleUV[4], SampleUV[2], SampleUV[5], AreaAvg[2]);
-        Area_Average(SampleUV[4], SampleUV[7], SampleUV[5], SampleUV[8], AreaAvg[3]);
-
-        CenterAverage += ((SampleUV[0] + SampleUV[6] + SampleUV[2] + SampleUV[8]) * 1.0);
-        CenterAverage += ((SampleUV[3] + SampleUV[1] + SampleUV[7] + SampleUV[5]) * 2.0);
-        CenterAverage += (SampleUV[4] * 4.0);
-        CenterAverage = CenterAverage / 16.0;
-
-        float C = 0.0;
-        float2 Aii = 0.0;
-        float Aij = 0.0;
-        float2 Bi = 0.0;
-
-        // Calculate constancy assumption nonlinearity
-        // Dot-product increases when the current gradient + previous estimation are parallel
-        // IxU + IyV = -It -> IxU + IyV + It = 0.0
-        C = dot(SD.xy, CenterAverage.xy) + TD;
-        C = rsqrt((C * C) + FP16_MINIMUM);
-
-        // Build linear equation
-        // [Aii Aij] [X] = [Bi]
-        // [Aij Aii] [Y] = [Bi]
-        Aii = 1.0 / (dot(UVGradient, 1.0) * Alpha + (C * (SD.xy * SD.xy)));
-        Aij = C * (SD.x * SD.y);
-        Bi = C * (SD.xy * TD);
-
-        // Solve linear equation for [U, V]
-        // [Ix^2+A IxIy] [U] = -[IxIt]
-        // [IxIy Iy^2+A] [V] = -[IyIt]
-        UVAverage.xy = (AreaGrad.xx * AreaAvg[0]) + (AreaGrad.yy * AreaAvg[1]) + (AreaGrad.zz * AreaAvg[2]) + (AreaGrad.ww * AreaAvg[3]);
-        OpticalFlow.x = Aii.x * ((Alpha * UVAverage.x) - (Aij * CenterAverage.y) - Bi.x);
-        OpticalFlow.y = Aii.y * ((Alpha * UVAverage.y) - (Aij * OpticalFlow.x) - Bi.y);
-    }
-
-    #define LEVEL_PS(NAME, SAMPLER, LEVEL)                                                                             \
-        void NAME(in float4 Position : SV_POSITION, in float4 TexCoords[3] : TEXCOORD0, out float2 Color : SV_TARGET0) \
-        {                                                                                                              \
-            Optical_Flow_TV(SAMPLER, TexCoords, LEVEL, Color);                                                         \
+            // B.x = B1; B.y = B2
+            B.x += dot(S[i].xy, T[i].xy);
+            B.y += dot(S[i].zw, T[i].xy);
         }
 
-    void Level_6_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float2 Color : SV_TARGET0)
-    {
-        Coarse_Optical_Flow_TV(TexCoord, 5.0, 0.0, Color);
+        // Make determinant non-zero
+        A.xy = max(A.xy, FP16_SMALLEST_SUBNORMAL);
+
+        // Create -IxIy (A12) for A^-1 and its determinant
+        A.z = A.z * (-1.0);
+
+        // Calculate A^-1 determinant
+        float D = ((A.x * A.y) - (A.z * A.z));
+
+        // Solve A^-1
+        A = (1.0 / D) * A;
+
+        // Calculate Lucas-Kanade matrix
+        float2 LK = 0.0;
+        LK.x = dot(A.yz, -B.xy);
+        LK.y = dot(A.zx, -B.xy);
+
+        // Propagate (add) vectors
+        LK = (D != 0.0) ? LK + Vectors : 0.0;
+
+        // Do not multiply on the finest level
+        LK = (Level > 0) ? LK * 2.0 : LK;
+        return LK;
     }
 
-    LEVEL_PS(Level_5_PS, Shared_Resources_Datamosh::Sample_Common_6, 4.0)
-    LEVEL_PS(Level_4_PS, Shared_Resources_Datamosh::Sample_Common_5, 3.0)
-    LEVEL_PS(Level_3_PS, Shared_Resources_Datamosh::Sample_Common_4, 2.0)
-    LEVEL_PS(Level_2_PS, Shared_Resources_Datamosh::Sample_Common_3, 1.0)
-
-    void Level_1_PS(in float4 Position : SV_POSITION, in float4 TexCoords[3] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+    float2 AverageUV(sampler2D Source, float4 TexCoords[8])
     {
-        OutputColor0 = 0.0;
-        Optical_Flow_TV(Shared_Resources_Datamosh::Sample_Common_2_A, TexCoords, 0.0, OutputColor0.xy);
-        OutputColor0.ba = float2(0.0, _BlendFactor);
+        const int WindowSize = 9;
+
+        float2 WindowCoords[WindowSize] =
+        {
+            TexCoords[7].xw, TexCoords[7].zw, TexCoords[7].xy, TexCoords[7].zy,
+            TexCoords[0].xz, TexCoords[4].xz, TexCoords[5].yw, TexCoords[6].yw,
+            TexCoords[2].xz,
+        };
+
+        float WindowWeights[WindowSize] =
+        {
+            1.0, 1.0, 1.0, 1.0,
+            2.0, 2.0, 2.0, 2.0,
+            4.0,
+        };
+
+        float2 Color = 0.0;
+
+        for (int i = 0; i < WindowSize; i++)
+        {
+            Color += (tex2D(Source, WindowCoords[i]).xy * WindowWeights[i]);
+        }
+
+        return Color / 16.0;
     }
 
-    void Copy_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
+    void LK_Level_3_PS(in float4 Position : SV_POSITION, in float4 TexCoords[8] : TEXCOORD0, out float4 Color : SV_TARGET0)
     {
-        OutputColor0 = tex2D(Shared_Resources_Datamosh::Sample_Common_1_A, TexCoord);
+        Color = float4(Lucas_Kanade(2, 0.0, TexCoords), 0.0, _BlendFactor);
+    }
+
+    void LK_Level_2_PS(in float4 Position : SV_POSITION, in float4 TexCoords[8] : TEXCOORD0, out float4 Color : SV_TARGET0)
+    {
+        Color = float4(Lucas_Kanade(1, AverageUV(Sample_Common_3, TexCoords).xy, TexCoords), 0.0, _BlendFactor);
+    }
+
+    void LK_Level_1_PS(in float4 Position : SV_POSITION, in float4 TexCoords[8] : TEXCOORD0, out float4 Color : SV_TARGET0)
+    {
+        Color = float4(Lucas_Kanade(0, AverageUV(Sample_Common_2_A, TexCoords).xy, TexCoords), 0.0, _BlendFactor);
     }
 
     void Post_Blur_0_PS(in float4 Position : SV_POSITION, in float4 TexCoords[7] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
@@ -654,7 +536,7 @@ namespace Datamosh
 
     void Post_Blur_1_PS(in float4 Position : SV_POSITION, in float4 TexCoords[7] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
-        Gaussian_Blur(Shared_Resources_Datamosh::Sample_Common_2_B, TexCoords, true, OutputColor0);
+        Gaussian_Blur(Sample_Common_2_B, TexCoords, true, OutputColor0);
         OutputColor0.a = 1.0;
     }
 
@@ -699,7 +581,8 @@ namespace Datamosh
 
     void Datamosh_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
-        const float2 DisplacementTexel = 1.0 / BUFFER_SIZE_2;
+        float2 ScreenSize = float2(BUFFER_WIDTH, BUFFER_HEIGHT);
+        const float2 DisplacementTexel = 1.0 / ScreenSize;
         const float Quality = 1.0 - _Entropy;
 
         // Random numbers
@@ -714,7 +597,7 @@ namespace Datamosh
 
         float4 Source = tex2D(Sample_Color, TexCoord); // Color from the original image
         float Displacement = tex2D(Sample_Accumulation, TexCoord).r; // Displacement vector
-        float4 Working = tex2D(Sample_Feedback, TexCoord - MotionVectors * DisplacementTexel);
+        float4 Working = tex2D(Sample_Feedback, TexCoord + MotionVectors * DisplacementTexel);
 
         MotionVectors *= int2(BUFFER_WIDTH, BUFFER_HEIGHT); // Normalized screen space -> Pixel coordinates
         MotionVectors += (Random.xy - 0.5) * _Diffusion; // Small random displacement (diffusion)
@@ -748,7 +631,7 @@ namespace Datamosh
         OutputColor0.a = 1.0;
     }
 
-    #define PASS(VERTEX_SHADER, PIXEL_SHADER, RENDER_TARGET) \
+    #define CREATE_PASS(VERTEX_SHADER, PIXEL_SHADER, RENDER_TARGET) \
         pass \
         { \
             VertexShader = VERTEX_SHADER; \
@@ -759,30 +642,31 @@ namespace Datamosh
     technique KinoDatamosh
     {
         // Normalize current frame
-        PASS(Basic_VS, Normalize_Frame_PS, Shared_Resources_Datamosh::Render_Common_0)
+        CREATE_PASS(Basic_VS, Normalize_PS, Render_Common_0)
 
         // Scale frame
-        PASS(Basic_VS, Blit_Frame_PS, Shared_Resources_Datamosh::Render_Common_1_A)
+        CREATE_PASS(Basic_VS, Blit_PS, Render_Common_1_A)
 
         // Gaussian blur
-        PASS(Pre_Blur_0_VS, Pre_Blur_0_PS, Shared_Resources_Datamosh::Render_Common_1_B)
-        PASS(Pre_Blur_1_VS, Pre_Blur_1_PS, Shared_Resources_Datamosh::Render_Common_1_A) // Save this to store later
+        CREATE_PASS(Pre_Blur_0_VS, Pre_Blur_0_PS, Render_Common_1_B)
+        CREATE_PASS(Pre_Blur_1_VS, Pre_Blur_1_PS, Render_Common_1_A) // Save this to store later
 
-        // Calculate spatial and temporal derivative pyramid
-        PASS(Basic_VS, Derivatives_Z_PS, Shared_Resources_Datamosh::Render_Common_1_B)
-        PASS(Derivatives_VS, Derivatives_XY_PS, Render_Common_1_C)
+        // Calculate temporal derivative pyramids
+        CREATE_PASS(Basic_VS, Derivatives_Temporal_PS, Render_Common_1_B)
+
+        // Copy current convolved frame for next frame
+        CREATE_PASS(Basic_VS, Copy_PS, Render_Common_1_C)
+
+        // Calculate spatial derivative pyramids
+        CREATE_PASS(Derivatives_Spatial_VS, Derivatives_Spatial_PS, Render_Common_1_A)
 
         // Bilinear Optical Flow
-        PASS(Basic_VS, Level_6_PS, Shared_Resources_Datamosh::Render_Common_6)
-        PASS(Sample_3x3_6_VS, Level_5_PS, Shared_Resources_Datamosh::Render_Common_5)
-        PASS(Sample_3x3_5_VS, Level_4_PS, Shared_Resources_Datamosh::Render_Common_4)
-        PASS(Sample_3x3_4_VS, Level_3_PS, Shared_Resources_Datamosh::Render_Common_3)
-        PASS(Sample_3x3_3_VS, Level_2_PS, Shared_Resources_Datamosh::Render_Common_2_A)
-
+        CREATE_PASS(LK_Level_3_VS, LK_Level_3_PS, Render_Common_3)
+        CREATE_PASS(LK_Level_2_VS, LK_Level_2_PS, Render_Common_2_A)
         pass
         {
-            VertexShader = Sample_3x3_2_VS;
-            PixelShader = Level_1_PS;
+            VertexShader = LK_Level_1_VS;
+            PixelShader = LK_Level_1_PS;
             RenderTarget0 = Render_Optical_Flow;
             ClearRenderTargets = FALSE;
             BlendEnable = TRUE;
@@ -791,12 +675,9 @@ namespace Datamosh
             DestBlend = SRCALPHA;
         }
 
-        // Copy current convolved frame for next frame
-        PASS(Basic_VS, Copy_PS, Render_Common_1_C)
-
         // Gaussian blur
-        PASS(Post_Blur_0_VS, Post_Blur_0_PS, Shared_Resources_Datamosh::Render_Common_2_B)
-        PASS(Post_Blur_1_VS, Post_Blur_1_PS, Shared_Resources_Datamosh::Render_Common_2_A)
+        CREATE_PASS(Post_Blur_0_VS, Post_Blur_0_PS, Render_Common_2_B)
+        CREATE_PASS(Post_Blur_1_VS, Post_Blur_1_PS, Render_Common_2_A)
 
         // Datamoshing
         pass

@@ -1,8 +1,6 @@
 
-# brimsonFX
-
-ReShade shaders and more
-
+# BrimsonFX
+ 
 ## ...Why?
 
 + Fun
@@ -33,14 +31,14 @@ Shader (click to download) | Description
 [cFilmGrain](/shaders/cFilmGrain.fx)                    | Film grain without copying texture
 [cFrameBlending](/shaders/cFrameBlending.fx)            | Frame blending using the previous result
 [cGaussianBlur](/shaders/cGaussianBlur.fx)              | HLSL implementation of RasterGrid's linear Gaussian blur
-[cInterpolation](/shaders/cInterpolation.fx)            | Optical flow frame blending
 [cLetterBox](/shaders/cLetterBox.fx)                    | LetterBox without copying textures
 [cLuminance](/shaders/cLuminance.fx)                    | Various grayscale algoritms
 [cMedian](/shaders/cMedian.fx)                          | 3x3 median filter
 [cMotionBlur](/shaders/cMotionBlur.fx)                  | Color motion blur
 [cMotionMask](/shaders/cMotionMask.fx)                  | Frame masking based on temporal derivative
 [cNoiseConvolution](/shaders/cNoiseConvolution.fx)      | Convolution using rotated gradient noise sampling
-[cOpticalFlow](/shaders/cOpticalFlow.fx)                | HLSL implementation of pyramidal Horn Schunck with visualization
+[cOpticalFlowHS](/shaders/cOpticalFlowHS.fx)            | Pyramidal Horn-Schunck optical flow with visualization
+[cOpticalFlowLK](/shaders/cOpticalFlowLK.fx)            | Multi-channel, Pyramidal inverse Lucas-Kanade optical flow
 [cOverlay](/shaders/cOverlay.fx)                        | Simple backbuffer overlay
 [cPingPong](/shaders/cPingPong.fx)                      | Gaussian blur approximation using ping-pong box blurs
 [cScale](/shaders/cScale.fx)                            | Buffer scaling using vertex shaders
@@ -56,13 +54,13 @@ Shader (click to download) | Description
 
 ## Coding Convention
 
-Practice | Variable
+Practice | Elements
 -------- | --------
-**ALLCAPS**     | System-Value semantics, state parameters
-**ALL_CAPS**    | Preprocessor macros and parameters
-**SnakeCase**   | Discrete local and global data
-**Snake_Case**  | Namespace, structs, functions, textures, sampler, and packed data (i.e. `float4 TexCoord_Base_Water` stores 2 UVs for 2 textures, base and water)
-**_Snake_Case** | Uniform data
+**ALLCAPS** | System-Value semantics, state parameters
+**ALL_CAPS** | Preprocessor macros and parameters
+**_SnakeCase** | Uniform variables
+**SnakeCase** | Discrete local and global variables
+**Snake_Case** | Namespace, structs, functions, textures, sampler, and packed data (i.e. `float4 TexCoord_Base_Water` stores 2 UVs for 2 textures, base and water)
 **Suffix `VS` and `PS`** | `PixelShader` and `VertexShader`
 
 ## Acknowledgements

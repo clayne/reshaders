@@ -1,6 +1,6 @@
 
 /*
-    Optical flow motion blur shader
+    Pyramidal Lucas-Kanade optical flow shader
 
     BSD 3-Clause License
 
@@ -33,13 +33,11 @@
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-namespace MotionBlur
+namespace OpticalFlowLK
 {
     /*
         [Shader parameters]
     */
-
-    uniform float _FrameTime < source = "frametime"; > ;
 
     #define OPTION(DATA_TYPE, NAME, TYPE, CATEGORY, LABEL, MINIMUM, MAXIMUM, DEFAULT) \
         uniform DATA_TYPE NAME < \
@@ -48,15 +46,10 @@ namespace MotionBlur
             ui_label = LABEL; \
             ui_min = MINIMUM; \
             ui_max = MAXIMUM; \
-        > = DEFAULT; \
+        > = DEFAULT;
 
-    OPTION(float, _MipBias, "slider", "Optical flow", "Optical flow mipmap bias", 0.0, 6.0, 0.5)
+    OPTION(float, _MipBias, "slider", "Optical flow", "Optical flow mipmap bias", 0.0, 6.0, 0.0)
     OPTION(float, _BlendFactor, "slider", "Optical flow", "Temporal blending factor", 0.0, 0.9, 0.2)
-
-    OPTION(float, _Scale, "slider", "Main", "Blur scale", 0.0, 2.0, 1.0)
-
-    OPTION(bool, _FrameRateScaling, "radio", "Other", "Enable frame-rate scaling", 0.0, 1.0, false)
-    OPTION(float, _TargetFrameRate, "drag", "Other", "Target frame-rate", 0.0, 144.0, 60.0)
 
     /*
         [Macros for resolution sizes and scaling]
@@ -252,7 +245,7 @@ namespace MotionBlur
         OutputColor0 = tex2D(Sample_Common_0, TexCoord);
     }
 
-    static const float BlurWeights[10] =
+        static const float BlurWeights[10] =
     {
         0.06299088,
         0.122137636, 0.10790718, 0.08633988,
@@ -268,9 +261,9 @@ namespace MotionBlur
         int CoordIndex = 1;
         int WeightIndex = 1;
 
-        while (CoordIndex < 4)
+        while(CoordIndex < 4)
         {
-            if (!Alt)
+            if(!Alt)
             {
                 OutputColor0 += (tex2D(Source, TexCoords[CoordIndex].xy) * BlurWeights[WeightIndex + 0]);
                 OutputColor0 += (tex2D(Source, TexCoords[CoordIndex].xz) * BlurWeights[WeightIndex + 1]);
@@ -293,7 +286,7 @@ namespace MotionBlur
             WeightIndex = WeightIndex + 3;
         }
 
-        for (int i = 1; i < 10; i++)
+        for(int i = 1; i < 10; i++)
         {
             TotalWeights += (BlurWeights[i] * 2.0);
         }
@@ -474,31 +467,14 @@ namespace MotionBlur
         OutputColor0.a = 1.0;
     }
 
-    void Motion_Blur_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target)
+    void Display_PS(in float4 Position : SV_POSITION, in float2 TexCoord : TEXCOORD0, out float4 OutputColor0 : SV_Target)
     {
         OutputColor0 = 0.0;
-        const int Samples = 4;
-        float Noise = frac(52.9829189 * frac(dot(Position.xy, float2(0.06711056, 0.00583715))));
-
-        float FrameRate = 1e+3 / _FrameTime;
-        float FrameTimeRatio = _TargetFrameRate / FrameRate;
-
-        float2 ScreenSize = float2(BUFFER_WIDTH, BUFFER_HEIGHT);
-        float2 ScreenCoord = TexCoord.xy * ScreenSize;
-
         float2 Velocity = tex2Dlod(Sample_Common_3_A, float4(TexCoord, 0.0, _MipBias)).xy;
-
-        float2 ScaledVelocity = Velocity * _Scale;
-        ScaledVelocity = (_FrameRateScaling) ? ScaledVelocity / FrameTimeRatio : ScaledVelocity;
-
-        for (int k = 0; k < Samples; ++k)
-        {
-            float2 Offset = ScaledVelocity * (Noise + k);
-            OutputColor0 += tex2D(Sample_Color, (ScreenCoord + Offset) / ScreenSize);
-            OutputColor0 += tex2D(Sample_Color, (ScreenCoord - Offset) / ScreenSize);
-        }
-
-        OutputColor0 /= (Samples * 2.0);
+        float VelocityLength = saturate(rsqrt(dot(Velocity, Velocity)));
+        OutputColor0.rg = (Velocity * VelocityLength) * 0.5 + 0.5;
+        OutputColor0.b = -dot(OutputColor0.rg, 1.0) * 0.5 + 1.0;
+        OutputColor0.rgb /= max(max(OutputColor0.x, OutputColor0.y), OutputColor0.z);
     }
 
     #define CREATE_PASS(VERTEX_SHADER, PIXEL_SHADER, RENDER_TARGET) \
@@ -509,7 +485,7 @@ namespace MotionBlur
             RenderTarget0 = RENDER_TARGET; \
         }
 
-    technique cMotionBlur
+    technique cOpticalFlowLK
     {
         // Normalize current frame
         CREATE_PASS(Basic_VS, Normalize_PS, Render_Common_0)
@@ -549,14 +525,11 @@ namespace MotionBlur
         CREATE_PASS(Post_Blur_0_VS, Post_Blur_0_PS, Render_Common_3_B)
         CREATE_PASS(Post_Blur_1_VS, Post_Blur_1_PS, Render_Common_3_A)
 
-        // Motion blur
+        // Display
         pass
         {
             VertexShader = Basic_VS;
-            PixelShader = Motion_Blur_PS;
-            #if BUFFER_COLOR_BIT_DEPTH == 8
-                SRGBWriteEnable = TRUE;
-            #endif
+            PixelShader = Display_PS;
         }
     }
 }
