@@ -39,8 +39,8 @@
 
 #define BUFFER_SIZE_0 int2(BUFFER_WIDTH >> 1, BUFFER_HEIGHT >> 1)
 #define BUFFER_SIZE_1 int2(BUFFER_SIZE_0 >> 1)
-#define BUFFER_SIZE_2 int2(BUFFER_SIZE_0 >> 2)
-#define BUFFER_SIZE_3 int2(BUFFER_SIZE_0 >> 3)
+#define BUFFER_SIZE_2 int2(BUFFER_SIZE_1 >> 1)
+#define BUFFER_SIZE_3 int2(BUFFER_SIZE_2 >> 1)
 
 namespace Datamosh
 {
@@ -102,28 +102,14 @@ namespace Datamosh
             MipFilter = LINEAR; \
         };
 
-    #define CREATE_SAMPLER_TRILINEAR(NAME, TEXTURE) \
-        sampler2D NAME \
-        { \
-            Texture = TEXTURE; \
-            AddressU = MIRROR; \
-            AddressV = MIRROR; \
-            MagFilter = LINEAR; \
-            MinFilter = LINEAR; \
-            MipFilter = LINEAR; \
-            MipLODBias = 0.5; \
-        };
-
     CREATE_TEXTURE(Render_Common_0, BUFFER_SIZE_0, RG8, 2)
     CREATE_SAMPLER(Sample_Common_0, Render_Common_0)
 
     CREATE_TEXTURE(Render_Common_1_A, BUFFER_SIZE_1, RGBA16F, 4)
     CREATE_SAMPLER(Sample_Common_1_A, Render_Common_1_A)
-    CREATE_SAMPLER_TRILINEAR(Sample_Common_1_A_Trilinear, Render_Common_1_A)
 
     CREATE_TEXTURE(Render_Common_1_B, BUFFER_SIZE_1, RG16F, 4)
     CREATE_SAMPLER(Sample_Common_1_B, Render_Common_1_B)
-    CREATE_SAMPLER_TRILINEAR(Sample_Common_1_B_Trilinear, Render_Common_1_B)
 
     CREATE_TEXTURE(Render_Common_2_A, BUFFER_SIZE_2, RG16F, 4)
     CREATE_SAMPLER(Sample_Common_2_A, Render_Common_2_A)
@@ -438,8 +424,8 @@ namespace Datamosh
 
         [unroll] for (int i = 0; i < WindowSize; i++)
         {
-            S[i] = tex2D(Sample_Common_1_A_Trilinear, WindowCoords[i]).xyzw;
-            T[i] = tex2D(Sample_Common_1_B_Trilinear, WindowCoords[i]).xy;
+            S[i] = tex2D(Sample_Common_1_A, WindowCoords[i]).xyzw;
+            T[i] = tex2D(Sample_Common_1_B, WindowCoords[i]).xy;
 
             // A.x = A11; A.y = A22; A.z = A12/A22
             A.x += dot(S[i].xy, S[i].xy);
