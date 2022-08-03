@@ -64,16 +64,12 @@ namespace MotionBlur
 
     #define FP16_SMALLEST_SUBNORMAL float((1.0 / (1 << 14)) * (0.0 + (1.0 / (1 << 10))))
 
-    #define RCP_HEIGHT (1.0 / BUFFER_HEIGHT)
-    #define ASPECT_RATIO (BUFFER_WIDTH * RCP_HEIGHT)
     #define ROUND_UP_EVEN(x) int(x) + (int(x) % 2)
-    #define RENDER_BUFFER_WIDTH int(ROUND_UP_EVEN(256.0 * ASPECT_RATIO))
-    #define RENDER_BUFFER_HEIGHT int(256.0)
 
-    #define SIZE int2(RENDER_BUFFER_WIDTH, RENDER_BUFFER_HEIGHT)
-    #define BUFFER_SIZE_1 int2(SIZE >> 0)
-    #define BUFFER_SIZE_2 int2(SIZE >> 1)
-    #define BUFFER_SIZE_3 int2(SIZE >> 2)
+    #define BUFFER_SIZE_0 int2(BUFFER_WIDTH >> 1, BUFFER_HEIGHT >> 1)
+    #define BUFFER_SIZE_1 int2(BUFFER_SIZE_0 >> 1)
+    #define BUFFER_SIZE_2 int2(BUFFER_SIZE_0 >> 2)
+    #define BUFFER_SIZE_3 int2(BUFFER_SIZE_0 >> 3)
 
     /*
         [Textures and samplers]
@@ -126,7 +122,7 @@ namespace MotionBlur
         #endif
     };
 
-    CREATE_TEXTURE(Render_Common_0, int2(BUFFER_WIDTH >> 1, BUFFER_HEIGHT >> 1), RG8, 6)
+    CREATE_TEXTURE(Render_Common_0, BUFFER_SIZE_0, RG8, 2)
     CREATE_SAMPLER(Sample_Common_0, Render_Common_0)
 
     CREATE_TEXTURE(Render_Common_1_A, BUFFER_SIZE_1, RGBA16F, 4)
@@ -247,11 +243,6 @@ namespace MotionBlur
         Color = saturate(normalize(Frame.rgb).xy);
     }
 
-    void Blit_PS(in float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD, out float4 OutputColor0 : SV_TARGET0)
-    {
-        OutputColor0 = tex2D(Sample_Common_0, TexCoord);
-    }
-
     static const float BlurWeights[10] =
     {
         0.06299088,
@@ -303,7 +294,7 @@ namespace MotionBlur
 
     void Pre_Blur_0_PS(in float4 Position : SV_POSITION, in float4 TexCoords[7] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
     {
-        Gaussian_Blur(Sample_Common_1_A, TexCoords, false, OutputColor0);
+        Gaussian_Blur(Sample_Common_0, TexCoords, false, OutputColor0);
     }
 
     void Pre_Blur_1_PS(in float4 Position : SV_POSITION, in float4 TexCoords[7] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
@@ -513,9 +504,6 @@ namespace MotionBlur
     {
         // Normalize current frame
         CREATE_PASS(Basic_VS, Normalize_PS, Render_Common_0)
-
-        // Scale frame
-        CREATE_PASS(Basic_VS, Blit_PS, Render_Common_1_A)
 
         // Pre-process Gaussian blur
         CREATE_PASS(Pre_Blur_0_VS, Pre_Blur_0_PS, Render_Common_1_B)
