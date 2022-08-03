@@ -73,21 +73,21 @@ void Matrix_VS(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out 
 
     float2x2 RotationMatrix = float2x2
     (
-    	cos(RotationAngle), -sin(RotationAngle),
-    	sin(RotationAngle), cos(RotationAngle)
+    	cos(RotationAngle), -sin(RotationAngle), // Row 1
+    	sin(RotationAngle), cos(RotationAngle) // Row 2
     );
 
     float3x3 TranslationMatrix = float3x3
     (
-    	1.0, 0.0, 0.0,
-    	0.0, 1.0, 0.0,
-    	_Translate.x, _Translate.y, 1.0
+    	1.0, 0.0, 0.0, // Row 1
+    	0.0, 1.0, 0.0, // Row 2
+    	_Translate.x, _Translate.y, 1.0 // Row 3
     );
     
     float2x2 ScalingMatrix = float2x2
     (
-    	_Scale.x, 0.0,
-    	0.0, _Scale.y
+    	_Scale.x, 0.0, // Row 1
+    	0.0, _Scale.y // Row 2
     );
 
     // Scale TexCoord from [0,1] to [-1,1]
