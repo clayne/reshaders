@@ -455,7 +455,7 @@ namespace Datamosh
         LK.y = dot(A.zx, -B.xy);
 
         // Propagate (add) vectors
-        LK = (D != 0.0) ? Vectors - LK : 0.0;
+        LK = (D != 0.0) ? Vectors + LK : 0.0;
 
         // Do not multiply on the finest level
         LK = (Level > 0) ? LK * 2.0 : LK;
@@ -574,7 +574,7 @@ namespace Datamosh
 
         float4 Source = tex2D(Sample_Color, TexCoord); // Color from the original image
         float Displacement = tex2D(Sample_Accumulation, TexCoord).r; // Displacement vector
-        float4 Working = tex2D(Sample_Feedback, TexCoord - MotionVectors * DisplacementTexel);
+        float4 Working = tex2D(Sample_Feedback, TexCoord + MotionVectors * DisplacementTexel);
 
         MotionVectors *= int2(BUFFER_WIDTH, BUFFER_HEIGHT); // Normalized screen space -> Pixel coordinates
         MotionVectors += (Random.xy - 0.5) * _Diffusion; // Small random displacement (diffusion)
