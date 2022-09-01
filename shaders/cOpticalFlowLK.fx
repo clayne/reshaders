@@ -188,22 +188,18 @@ namespace OpticalFlowLK
     CREATE_BLUR_VS(Post_Blur_0_VS, false, BUFFER_SIZE_3)
     CREATE_BLUR_VS(Post_Blur_1_VS, true, BUFFER_SIZE_3)
 
-    void Level_VS(in uint ID, in float2 TexelSize, out float4 Position, out float4 TexCoords[8])
+    void Level_VS(in uint ID, in float2 TexelSize, out float4 Position, out float4 TexCoords[4])
     {
         float2 TexCoordVS = 0.0;
         Basic_VS(ID, Position, TexCoordVS);
-        TexCoords[0] = TexCoordVS.xyyy + (float4(-2.0, 1.0, 0.0, -1.0) / TexelSize.xyyy);
-        TexCoords[1] = TexCoordVS.xyyy + (float4(-1.0, 1.0, 0.0, -1.0) / TexelSize.xyyy);
-        TexCoords[2] = TexCoordVS.xyyy + (float4(0.0, 1.0, 0.0, -1.0) / TexelSize.xyyy);
-        TexCoords[3] = TexCoordVS.xyyy + (float4(1.0, 1.0, 0.0, -1.0) / TexelSize.xyyy);
-        TexCoords[4] = TexCoordVS.xyyy + (float4(2.0, 1.0, 0.0, -1.0) / TexelSize.xyyy);
-        TexCoords[5] = TexCoordVS.xxxy + (float4(1.0, 0.0, -1.0, 2.0) / TexelSize.xxxy);
-        TexCoords[6] = TexCoordVS.xxxy + (float4(1.0, 0.0, -1.0, -2.0) / TexelSize.xxxy);
-        TexCoords[7] = TexCoordVS.xyxy + (float4(-2.0, -2.0, 2.0, 2.0) / TexelSize.xyxy);
+        TexCoords[0] = TexCoordVS.xxyy + (float4(-1.5, -0.5, 0.5, 1.5) / TexelSize.xxyy);
+        TexCoords[1] = TexCoordVS.xxyy + (float4(0.5, 1.5, 0.5, 1.5) / TexelSize.xxyy);
+        TexCoords[2] = TexCoordVS.xxyy + (float4(-1.5, -0.5, -0.5, -1.5) / TexelSize.xxyy);
+        TexCoords[3] = TexCoordVS.xxyy + (float4(0.5, 1.5, -0.5, -1.5) / TexelSize.xxyy);
     }
 
     #define CREATE_LEVEL_VS(NAME, BUFFER_SIZE) \
-        void NAME(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 TexCoords[8] : TEXCOORD0) \
+        void NAME(in uint ID : SV_VERTEXID, out float4 Position : SV_POSITION, out float4 TexCoords[4] : TEXCOORD0) \
         { \
             Level_VS(ID, BUFFER_SIZE, Position, TexCoords); \
         }
@@ -314,7 +310,7 @@ namespace OpticalFlowLK
         OutputColor0.zw = ((A0 + B1 + B2 + A1) - (A2 + C0 + C1 + B0)) / 12.0;
     }
 
-    float2 Lucas_Kanade(int Level, float2 Vectors, float4 TexCoords[8])
+    float2 Lucas_Kanade(int Level, float2 Vectors, float4 TexCoords[4])
     {
         /*
             Calculate Lucas-Kanade optical flow by solving (A^-1 * B)
@@ -329,7 +325,7 @@ namespace OpticalFlowLK
         */
 
         // The spatial(S) and temporal(T) derivative neighbors to sample
-        const int WindowSize = 25;
+        const int WindowSize = 16;
         float4 S[WindowSize];
         float2 T[WindowSize];
 
@@ -337,16 +333,12 @@ namespace OpticalFlowLK
         float3 A = 0.0;
         float2 B = 0.0;
 
-        float2 WindowCoords[25] =
+        float2 WindowCoords[WindowSize] =
         {
-            TexCoords[0].xy, TexCoords[0].xz, TexCoords[0].xw,
-            TexCoords[1].xy, TexCoords[1].xz, TexCoords[1].xw,
-            TexCoords[2].xy, TexCoords[2].xz, TexCoords[2].xw,
-            TexCoords[3].xy, TexCoords[3].xz, TexCoords[3].xw,
-            TexCoords[4].xy, TexCoords[4].xz, TexCoords[4].xw,
-            TexCoords[5].xw, TexCoords[5].yw, TexCoords[5].zw,
-            TexCoords[6].xw, TexCoords[6].yw, TexCoords[6].zw,
-            TexCoords[7].xw, TexCoords[7].zw, TexCoords[7].xy, TexCoords[7].zy,
+            TexCoords[0].xz, TexCoords[0].xw, TexCoords[0].yz, TexCoords[0].yw,
+            TexCoords[1].xz, TexCoords[1].xw, TexCoords[1].yz, TexCoords[1].yw,
+            TexCoords[2].xz, TexCoords[2].xw, TexCoords[2].yz, TexCoords[2].yw,
+            TexCoords[3].xz, TexCoords[3].xw, TexCoords[3].yz, TexCoords[3].yw,
         };
 
         [unroll] for (int i = 0; i < WindowSize; i++)
@@ -389,47 +381,39 @@ namespace OpticalFlowLK
         return LK;
     }
 
-    float2 AverageUV(sampler2D Source, float4 TexCoords[8])
+    float2 Average_UV(sampler2D Source, float4 TexCoords[4])
     {
-        const int WindowSize = 9;
+        const int WindowSize = 4;
 
         float2 WindowCoords[WindowSize] =
         {
-            TexCoords[7].xw, TexCoords[7].zw, TexCoords[7].xy, TexCoords[7].zy,
-            TexCoords[0].xz, TexCoords[4].xz, TexCoords[5].yw, TexCoords[6].yw,
-            TexCoords[2].xz,
-        };
-
-        float WindowWeights[WindowSize] =
-        {
-            1.0, 1.0, 1.0, 1.0,
-            2.0, 2.0, 2.0, 2.0,
-            4.0,
+            TexCoords[0].yz, TexCoords[1].xz,
+            TexCoords[2].yz, TexCoords[3].xz,
         };
 
         float2 Color = 0.0;
 
         for (int i = 0; i < WindowSize; i++)
         {
-            Color += (tex2D(Source, WindowCoords[i]).xy * WindowWeights[i]);
+            Color += tex2D(Source, WindowCoords[i]).xy;
         }
 
-        return Color / 16.0;
+        return Color / 4.0;
     }
 
-    void LK_Level_3_PS(in float4 Position : SV_POSITION, in float4 TexCoords[8] : TEXCOORD0, out float4 Color : SV_TARGET0)
+    void LK_Level_3_PS(in float4 Position : SV_POSITION, in float4 TexCoords[4] : TEXCOORD0, out float4 Color : SV_TARGET0)
     {
         Color = float4(Lucas_Kanade(2, 0.0, TexCoords), 0.0, _BlendFactor);
     }
 
-    void LK_Level_2_PS(in float4 Position : SV_POSITION, in float4 TexCoords[8] : TEXCOORD0, out float4 Color : SV_TARGET0)
+    void LK_Level_2_PS(in float4 Position : SV_POSITION, in float4 TexCoords[4] : TEXCOORD0, out float4 Color : SV_TARGET0)
     {
-        Color = float4(Lucas_Kanade(1, AverageUV(Sample_Common_3_A, TexCoords).xy, TexCoords), 0.0, _BlendFactor);
+        Color = float4(Lucas_Kanade(1, Average_UV(Sample_Common_3_A, TexCoords).xy, TexCoords), 0.0, _BlendFactor);
     }
 
-    void LK_Level_1_PS(in float4 Position : SV_POSITION, in float4 TexCoords[8] : TEXCOORD0, out float4 Color : SV_TARGET0)
+    void LK_Level_1_PS(in float4 Position : SV_POSITION, in float4 TexCoords[4] : TEXCOORD0, out float4 Color : SV_TARGET0)
     {
-        Color = float4(Lucas_Kanade(0, AverageUV(Sample_Common_2, TexCoords).xy, TexCoords), 0.0, _BlendFactor);
+        Color = float4(Lucas_Kanade(0, Average_UV(Sample_Common_2, TexCoords).xy, TexCoords), 0.0, _BlendFactor);
     }
 
     void Post_Blur_0_PS(in float4 Position : SV_POSITION, in float4 TexCoords[7] : TEXCOORD0, out float4 OutputColor0 : SV_TARGET0)
