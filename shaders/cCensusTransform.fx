@@ -69,7 +69,7 @@ void CensusTransform_PS(in float4 Position : SV_POSITION, in float4 TexCoords[3]
 
     const int Neighbors = 8;
 
-    float4 CenterSample = (tex2D(Sample_Color, TexCoords[1].xz));
+    float4 CenterSample = tex2D(Sample_Color, TexCoords[1].xz);
 
     float4 NeightborSample[8];
     NeightborSample[0] = tex2D(Sample_Color, TexCoords[0].xy);
