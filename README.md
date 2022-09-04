@@ -23,6 +23,7 @@ Shader (click to download) | Description
 [cAutoExposure](/shaders/cAutoExposure.fx) | 2-pass automatic exposure
 [cBloom](/shaders/cBloom.fx) | Dual-filtering bloom
 [cBlur](/shaders/cBlur.fx) | Convolution using Vogel spiral sampling
+[cCensusTransform](/shaders/cCensusTransform.fx) | 3x3 census transform shader 
 [cCheckerBoard](/shaders/cCheckerBoard.fx) | Customizable 2-pattern checkerboard
 [cColorBlendOp](/shaders/cColorBlendOp.fx) | Blend to backbuffer without copying textures
 [cColorNormalization](/shaders/cColorNormalization.fx) | Various color normalization algoritms
