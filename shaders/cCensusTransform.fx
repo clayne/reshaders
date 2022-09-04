@@ -71,25 +71,25 @@ void CensusTransform_PS(in float4 Position : SV_POSITION, in float4 TexCoords[3]
 
     float4 CenterSample = tex2D(Sample_Color, TexCoords[1].xz);
 
-    float4 NeightborSample[8];
-    NeightborSample[0] = tex2D(Sample_Color, TexCoords[0].xy);
-    NeightborSample[1] = tex2D(Sample_Color, TexCoords[1].xy);
-    NeightborSample[2] = tex2D(Sample_Color, TexCoords[2].xy);
-    NeightborSample[3] = tex2D(Sample_Color, TexCoords[0].xz);
-    NeightborSample[4] = tex2D(Sample_Color, TexCoords[2].xz);
-    NeightborSample[5] = tex2D(Sample_Color, TexCoords[0].xw);
-    NeightborSample[6] = tex2D(Sample_Color, TexCoords[1].xw);
-    NeightborSample[7] = tex2D(Sample_Color, TexCoords[2].xw);
+    float4 NeighborSample[8];
+    NeighborSample[0] = tex2D(Sample_Color, TexCoords[0].xy);
+    NeighborSample[1] = tex2D(Sample_Color, TexCoords[1].xy);
+    NeighborSample[2] = tex2D(Sample_Color, TexCoords[2].xy);
+    NeighborSample[3] = tex2D(Sample_Color, TexCoords[0].xz);
+    NeighborSample[4] = tex2D(Sample_Color, TexCoords[2].xz);
+    NeighborSample[5] = tex2D(Sample_Color, TexCoords[0].xw);
+    NeighborSample[6] = tex2D(Sample_Color, TexCoords[1].xw);
+    NeighborSample[7] = tex2D(Sample_Color, TexCoords[2].xw);
     
     // Generate 8-bit integer from the 8-pixel neighborhood
     for(int i = 0; i < Neighbors; i++)
     {
-        float4 Comparison = step(NeightborSample[i], CenterSample);
+        float4 Comparison = step(NeighborSample[i], CenterSample);
         OutputColor0 += ldexp(Comparison, i);
     }
 
 	// Convert the 8-bit integer to float, and average the results from each channel
-    OutputColor0 = saturate(dot(OutputColor0.rgb * (1.0f / (exp2(8) - 1)), 1.0 / 3.0));
+    OutputColor0 = saturate(dot(OutputColor0.rgb * (1.0 / (exp2(8) - 1)), 1.0 / 3.0));
 }
 
 technique cCensusTransform
