@@ -81,15 +81,15 @@ void CensusTransform_PS(in float4 Position : SV_POSITION, in float4 TexCoords[3]
     NeightborSample[6] = tex2D(Sample_Color, TexCoords[1].xw);
     NeightborSample[7] = tex2D(Sample_Color, TexCoords[2].xw);
     
-    // Generate integer
+    // Generate 8-bit integer from the 8-pixel neighborhood
     for(int i = 0; i < Neighbors; i++)
     {
         float4 Comparison = step(NeightborSample[i], CenterSample);
-        OutputColor0 += Comparison * exp2(i);
+        OutputColor0 += ldexp(Comparison, i);
     }
 
-	// Conver
-    OutputColor0 = saturate(dot(OutputColor0.rgb / 255, 1.0 / 3.0));
+	// Convert the 8-bit integer to float, and average the results from each channel
+    OutputColor0 = saturate(dot(OutputColor0.rgb * (1.0f / (exp2(8) - 1)), 1.0 / 3.0));
 }
 
 technique cCensusTransform
