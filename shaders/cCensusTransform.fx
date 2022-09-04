@@ -1,6 +1,6 @@
 
 /*
-    Census transform shader
+    Census transform shader (https://en.wikipedia.org/wiki/Census_transform)
 
     BSD 3-Clause License
 
