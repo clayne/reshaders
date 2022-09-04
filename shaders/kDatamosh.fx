@@ -287,8 +287,8 @@ namespace Datamosh
 
     void Normalize_PS(in float4 Position : SV_POSITION, float2 TexCoord : TEXCOORD, out float2 Color : SV_TARGET0)
     {
-        float4 Frame = max(tex2D(Sample_Color, TexCoord), exp2(-10.0));
-        Color = saturate(normalize(Frame.rgb).xy);
+        float4 LocalColor = max(tex2D(Sample_Color, TexCoord), exp2(-10.0));
+        Color = saturate(LocalColor.rgb.xy / dot(LocalColor.rgb, 1.0));
     }
 
     static const float BlurWeights[10] =

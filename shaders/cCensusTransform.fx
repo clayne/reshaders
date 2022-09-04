@@ -92,7 +92,6 @@ void CensusTransform_PS(in float4 Position : SV_POSITION, in float4 TexCoords[3]
     OutputColor0 = saturate(dot(OutputColor0.rgb / 255, 1.0 / 3.0));
 }
 
-
 technique cCensusTransform
 {
     pass
