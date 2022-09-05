@@ -343,10 +343,10 @@ namespace OpticalFlowLK
 
         [unroll] for (int i = 0; i < WindowSize; i++)
         {
-            // .x = IxR; .y = IxG; .z = IyR; .w = IyG;
+            // S[i].x = IxR; S[i].y = IxG; S[i].z = IyR; S[i].w = IyG;
             S[i] = tex2D(Sample_Common_1_A, WindowCoords[i]).xyzw;
 
-            // .r = ItR; .g = ItG;
+            // T[i].r = ItR; T[i].g = ItG;
             T[i] = tex2D(Sample_Common_1_B, WindowCoords[i]).rg;
 
             // A.x = A11; A.y = A22; A.z = A12/A22
