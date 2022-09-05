@@ -33,7 +33,7 @@
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-namespace OpticalFlowLK
+namespace OpticalFlow
 {
     /*
         [Shader parameters]
@@ -448,7 +448,7 @@ namespace OpticalFlowLK
             RenderTarget0 = RENDER_TARGET; \
         }
 
-    technique cOpticalFlowLK
+    technique cOpticalFlow
     {
         // Normalize current frame
         CREATE_PASS(Basic_VS, Normalize_PS, Render_Common_0)
