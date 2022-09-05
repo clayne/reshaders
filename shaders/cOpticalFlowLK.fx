@@ -343,17 +343,17 @@ namespace OpticalFlowLK
 
         [unroll] for (int i = 0; i < WindowSize; i++)
         {
+            // .x = IxR; .y = IxG; .z = IyR; .w = IyG;
             S[i] = tex2D(Sample_Common_1_A, WindowCoords[i]).xyzw;
-            T[i] = tex2D(Sample_Common_1_B, WindowCoords[i]).xy;
+
+            // .r = ItR; .g = ItG;
+            T[i] = tex2D(Sample_Common_1_B, WindowCoords[i]).rg;
 
             // A.x = A11; A.y = A22; A.z = A12/A22
-            A.x += dot(S[i].xy, S[i].xy);
-            A.y += dot(S[i].zw, S[i].zw);
-            A.z += dot(S[i].xy, S[i].zw);
+            A.xyz += ((S[i].xzx * S[i].xzz) + (S[i].ywy * S[i].yww));
 
             // B.x = B1; B.y = B2
-            B.x += dot(S[i].xy, T[i].xy);
-            B.y += dot(S[i].zw, T[i].xy);
+            B.xy += ((S[i].xz * T[i].rr) + (S[i].yw * T[i].gg));
         }
 
         // Make determinant non-zero
