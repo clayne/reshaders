@@ -357,10 +357,12 @@ namespace MotionBlur
             T[i] = tex2D(Sample_Common_1_B, WindowCoords[i]).rg;
 
             // A.x = A11; A.y = A22; A.z = A12/A22
-            A.xyz += ((S[i].xzx * S[i].xzz) + (S[i].ywy * S[i].yww));
+            A.xyz += (S[i].xzx * S[i].xzz);
+            A.xyz += (S[i].ywy * S[i].yww);
 
             // B.x = B1; B.y = B2
-            B.xy += ((S[i].xz * T[i].rr) + (S[i].yw * T[i].gg));
+            B.xy += (S[i].xz * T[i].rr);
+            B.xy += (S[i].yw * T[i].gg);
         }
 
         // Make determinant non-zero
