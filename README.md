@@ -39,7 +39,7 @@ Shader (click to download) | Description
 [cMotionBlur](/shaders/cMotionBlur.fx) | Color motion blur
 [cMotionMask](/shaders/cMotionMask.fx) | Frame masking based on temporal derivative
 [cNoiseConvolution](/shaders/cNoiseConvolution.fx) | Convolution using rotated gradient noise sampling
-[cOpticalFlowLK](/shaders/cOpticalFlow.fx) | Multi-channel, pyramidal inverse Lucas-Kanade optical flow
+[cOpticalFlow](/shaders/cOpticalFlow.fx) | Multi-channel, pyramidal inverse Lucas-Kanade optical flow
 [cOverlay](/shaders/cOverlay.fx) | Simple backbuffer overlay
 [cPingPong](/shaders/cPingPong.fx) | Gaussian blur approximation using ping-pong box blurs
 [cScale](/shaders/cScale.fx) | Buffer scaling using vertex shaders
